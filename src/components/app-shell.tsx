@@ -69,6 +69,26 @@ function AppShellInner() {
       <AnimatePresence>
         {activeSeller && <SellerProfileScreen />}
       </AnimatePresence>
+
+      <Toaster
+        position="top-center"
+        offset={16}
+        duration={3000}
+        visibleToasts={3}
+        toastOptions={{
+          unstyled: false,
+          classNames: {
+            toast:
+              "!bg-background/80 !text-foreground !border !border-border !shadow-lg !rounded-2xl !backdrop-blur-xl",
+            title: "!text-[14px] !font-semibold",
+            description: "!text-muted-foreground !text-[12px]",
+          },
+          style: {
+            backdropFilter: "saturate(180%) blur(20px)",
+            WebkitBackdropFilter: "saturate(180%) blur(20px)",
+          },
+        }}
+      />
     </div>
   );
 }
