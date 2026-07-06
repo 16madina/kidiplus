@@ -7,6 +7,7 @@ import {
   animate,
 } from "framer-motion";
 import { ChevronLeft, Star, BadgeCheck, Bell, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
