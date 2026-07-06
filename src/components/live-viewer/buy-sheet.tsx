@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 import { BottomSheet } from "./bottom-sheet";
 import { Press } from "@/components/press";
 import { formatEuro, type Product } from "@/lib/live-viewer-mock";
@@ -23,6 +24,7 @@ export function BuySheet({
 
   const confirm = () => {
     setDone(true);
+    if (product) toast.success(`Commande confirmée : ${product.name}`);
     setTimeout(onClose, 1200);
   };
 

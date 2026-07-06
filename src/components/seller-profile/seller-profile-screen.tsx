@@ -7,6 +7,7 @@ import {
   animate,
 } from "framer-motion";
 import { ChevronLeft, Star, BadgeCheck, Bell, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
@@ -379,8 +380,10 @@ function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
   const toggle = (id: string) => {
-    setReminders((r) => ({ ...r, [id]: !r[id] }));
+    const next = !reminders[id];
+    setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
+    toast(next ? "Rappel activé" : "Rappel désactivé");
   };
   return (
     <div className="space-y-2">
@@ -482,9 +485,10 @@ function AvisTab({ info }: { info: SellerInfo }) {
                 <span className="w-3 text-[11px] tabular-nums text-muted-foreground">{stars}</span>
                 <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border/60">
                   <motion.div
-                    className="absolute inset-y-0 left-0 rounded-full bg-amber-400"
-                    initial={{ width: 0 }}
-                    animate={{ width: barsVisible ? `${pct}%` : 0 }}
+                    className="absolute inset-0 rounded-full bg-amber-400"
+                    style={{ transformOrigin: "left center", width: `${pct}%` }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: barsVisible ? 1 : 0 }}
                     transition={{ duration: 0.5, ease: EASE_IOS, delay: i * 0.05 }}
                   />
                 </div>
