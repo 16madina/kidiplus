@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Heart, Plus, Share2, X, Eye } from "lucide-react";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import {
   bidStep,
@@ -25,6 +26,7 @@ const AUCTION_SECONDS = 45;
 
 export function LiveViewerScreen() {
   const { active, close } = useLiveViewer();
+  const { open: openSeller } = useSellerProfile();
 
   // === Chat ===
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -276,27 +278,33 @@ export function LiveViewerScreen() {
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           {/* Left: seller info + follow */}
           <div className="flex min-w-0 items-center gap-2">
-            <img
-              src={active.avatar}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
-              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-              draggable={false}
-            />
-            <div className="min-w-0">
-              <p
-                className="truncate text-[14px] font-bold text-white"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
-              >
-                {active.seller}
-              </p>
-              <p
-                className="text-[11px] text-white/80"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
-              >
-                {(followerCount / 1000).toFixed(1)}k abonnés
-              </p>
-            </div>
+            <Press
+              onClick={() => openSeller(active.seller)}
+              aria-label={`Voir le profil de ${active.seller}`}
+              className="!block flex min-w-0 items-center gap-2 p-0 text-left"
+            >
+              <img
+                src={active.avatar}
+                alt=""
+                className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                draggable={false}
+              />
+              <div className="min-w-0">
+                <p
+                  className="truncate text-[14px] font-bold text-white"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+                >
+                  {active.seller}
+                </p>
+                <p
+                  className="text-[11px] text-white/80"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+                >
+                  {(followerCount / 1000).toFixed(1)}k abonnés
+                </p>
+              </div>
+            </Press>
             <motion.div whileTap={{ scale: 0.94 }}>
               <Press
                 onClick={() => setFollowing((v) => !v)}

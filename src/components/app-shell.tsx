@@ -10,21 +10,29 @@ import {
   LiveViewerProvider,
   useLiveViewer,
 } from "@/lib/live-viewer-context";
+import {
+  SellerProfileProvider,
+  useSellerProfile,
+} from "@/lib/seller-profile-context";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
+import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
 export function AppShell() {
   return (
-    <LiveViewerProvider>
-      <AppShellInner />
-    </LiveViewerProvider>
+    <SellerProfileProvider>
+      <LiveViewerProvider>
+        <AppShellInner />
+      </LiveViewerProvider>
+    </SellerProfileProvider>
   );
 }
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
   const { active: liveStream } = useLiveViewer();
+  const { activeSeller } = useSellerProfile();
 
   return (
     <div
@@ -51,6 +59,10 @@ function AppShellInner() {
 
       <AnimatePresence>
         {liveStream && <LiveViewerScreen />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeSeller && <SellerProfileScreen />}
       </AnimatePresence>
     </div>
   );
