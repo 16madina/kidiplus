@@ -344,7 +344,19 @@ export function LiveViewerScreen() {
             </Press>
             <motion.div whileTap={{ scale: 0.94 }}>
               <Press
-                onClick={() => setFollowing((v) => !v)}
+                onClick={() => {
+                  haptic.medium();
+                  setFollowing((v) => {
+                    const next = !v;
+                    if (next && active) {
+                      void requestWithPrePrompt(
+                        `Active les notifications pour ne rater aucun live de ${active.seller} 🔔`,
+                      );
+                    }
+                    return next;
+                  });
+                }}
+                hapticOnTap={false}
                 className="!min-h-8 ml-1 rounded-full px-3 text-[12px] font-bold"
                 style={
                   following
