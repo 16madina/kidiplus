@@ -73,18 +73,22 @@ export function LiveViewerScreen() {
 
   // === Hearts ===
   const [heartTrigger, setHeartTrigger] = useState(0);
-  const fireHeart = () => setHeartTrigger((v) => v + 1);
+  const fireHeart = () => {
+    haptic.medium();
+    setHeartTrigger((v) => v + 1);
+  };
   const lastTap = useRef(0);
   const onVideoTap = () => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
       // double tap -> multiple hearts
       fireHeart();
-      setTimeout(fireHeart, 80);
-      setTimeout(fireHeart, 160);
+      setTimeout(() => setHeartTrigger((v) => v + 1), 80);
+      setTimeout(() => setHeartTrigger((v) => v + 1), 160);
     }
     lastTap.current = now;
   };
+
 
   // === Products & Auction ===
   const [products, setProducts] = useState<Product[]>(() => makeProducts());
@@ -102,18 +106,26 @@ export function LiveViewerScreen() {
     setLastBidder(undefined);
   }, [active]);
 
-  // countdown tick
+  // countdown tick (paused when app is backgrounded)
   useEffect(() => {
     if (!active || !currentProduct || currentProduct.mode !== "auction") return;
+    if (!appActive) return;
     const id = window.setInterval(() => {
       setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
     return () => clearInterval(id);
-  }, [active, currentProduct?.id, currentProduct?.mode]);
+  }, [active, appActive, currentProduct?.id, currentProduct?.mode]);
 
-  // AI bids
+  // Warning haptic when the auction crosses into the last 10 seconds.
+  useEffect(() => {
+    if (!currentProduct || currentProduct.mode !== "auction") return;
+    if (secondsLeft === 10) haptic.warning();
+  }, [secondsLeft, currentProduct?.id, currentProduct?.mode]);
+
+  // AI bids (paused when backgrounded)
   useEffect(() => {
     if (!active || !currentProduct || currentProduct.mode !== "auction") return;
+    if (!appActive) return;
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
@@ -135,7 +147,8 @@ export function LiveViewerScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [active, currentProduct?.id, currentProduct?.mode]);
+  }, [active, appActive, currentProduct?.id, currentProduct?.mode]);
+
 
   // Countdown hits zero -> sold, advance to next product
   useEffect(() => {
