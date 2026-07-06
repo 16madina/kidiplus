@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
@@ -16,6 +18,8 @@ import {
   useSellerProfile,
 } from "@/lib/seller-profile-context";
 import { SettingsProvider } from "@/lib/settings-context";
+import { PushProvider } from "@/lib/push";
+import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 
@@ -24,11 +28,13 @@ export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 export function AppShell() {
   return (
     <SettingsProvider>
-      <SellerProfileProvider>
-        <LiveViewerProvider>
-          <AppShellInner />
-        </LiveViewerProvider>
-      </SellerProfileProvider>
+      <PushProvider>
+        <SellerProfileProvider>
+          <LiveViewerProvider>
+            <AppShellInner />
+          </LiveViewerProvider>
+        </SellerProfileProvider>
+      </PushProvider>
     </SettingsProvider>
   );
 }
@@ -36,8 +42,41 @@ export function AppShell() {
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
-  const { active: liveStream } = useLiveViewer();
-  const { activeSeller } = useSellerProfile();
+  const { active: liveStream, close: closeLive } = useLiveViewer();
+  const { activeSeller, close: closeSeller } = useSellerProfile();
+
+  // Native bootstrap (status bar, splash, keyboard, theme sync).
+  useEffect(() => {
+    void bootstrapNative();
+  }, []);
+
+  // Android hardware back button: close sheets/live viewer first, then minimize.
+  useEffect(() => {
+    let native = false;
+    try {
+      native = Capacitor.isNativePlatform();
+    } catch {}
+    if (!native) return;
+    let handle: { remove: () => void } | null = null;
+    App.addListener("backButton", () => {
+      if (liveStream) {
+        closeLive();
+        return;
+      }
+      if (activeSeller) {
+        closeSeller();
+        return;
+      }
+      if (active !== "home") {
+        setActive("home");
+        return;
+      }
+      App.minimizeApp().catch(() => {});
+    }).then((h) => {
+      handle = h;
+    });
+    return () => handle?.remove();
+  }, [liveStream, activeSeller, active, closeLive, closeSeller]);
 
   return (
     <div
