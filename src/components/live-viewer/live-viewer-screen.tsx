@@ -5,6 +5,10 @@ import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
+import { haptic } from "@/lib/haptics";
+import { pushStatusBarLight } from "@/lib/native";
+import { useAppActive } from "@/lib/app-state";
+import { usePush } from "@/lib/push";
 import {
   bidStep,
   formatEuro,
