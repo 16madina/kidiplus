@@ -379,8 +379,10 @@ function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
   const toggle = (id: string) => {
-    setReminders((r) => ({ ...r, [id]: !r[id] }));
+    const next = !reminders[id];
+    setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
+    toast(next ? "Rappel activé" : "Rappel désactivé");
   };
   return (
     <div className="space-y-2">
