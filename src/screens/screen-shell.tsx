@@ -10,7 +10,14 @@ export function ScreenShell({
   children?: ReactNode;
 }) {
   return (
-    <div className="min-h-full pt-safe">
+    <div
+      className="h-full overflow-y-auto pt-safe"
+      style={{
+        paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
+      }}
+    >
       <header className="px-5 pb-3 pt-3">
         <h1 className="text-[28px] font-bold tracking-tight">{title}</h1>
       </header>
