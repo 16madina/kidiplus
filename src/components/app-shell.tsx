@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Toaster } from "sonner";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
@@ -14,6 +15,7 @@ import {
   SellerProfileProvider,
   useSellerProfile,
 } from "@/lib/seller-profile-context";
+import { SettingsProvider } from "@/lib/settings-context";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 
@@ -21,13 +23,16 @@ export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
 export function AppShell() {
   return (
-    <SellerProfileProvider>
-      <LiveViewerProvider>
-        <AppShellInner />
-      </LiveViewerProvider>
-    </SellerProfileProvider>
+    <SettingsProvider>
+      <SellerProfileProvider>
+        <LiveViewerProvider>
+          <AppShellInner />
+        </LiveViewerProvider>
+      </SellerProfileProvider>
+    </SettingsProvider>
   );
 }
+
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
