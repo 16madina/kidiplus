@@ -5,6 +5,7 @@ import { Press } from "@/components/press";
 import { CategoryPills } from "@/components/category-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
 import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
+import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
 
 const PAGE = 12;
