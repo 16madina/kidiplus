@@ -1,17 +1,30 @@
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
 import { ActivityScreen } from "@/screens/activity-screen";
 import { ProfileScreen } from "@/screens/profile-screen";
+import {
+  LiveViewerProvider,
+  useLiveViewer,
+} from "@/lib/live-viewer-context";
+import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
-// All tab screens are kept mounted; we toggle visibility so scroll position
-// and internal state are preserved across tab switches (native feel).
 export function AppShell() {
+  return (
+    <LiveViewerProvider>
+      <AppShellInner />
+    </LiveViewerProvider>
+  );
+}
+
+function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
+  const { active: liveStream } = useLiveViewer();
 
   return (
     <div
@@ -35,6 +48,10 @@ export function AppShell() {
       </TabPane>
 
       <BottomTabBar active={active} onChange={setActive} />
+
+      <AnimatePresence>
+        {liveStream && <LiveViewerScreen />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -49,13 +66,8 @@ function TabPane({
   return (
     <div
       aria-hidden={!visible}
-      className="absolute inset-0 overflow-y-auto pb-safe"
-      style={{
-        display: visible ? "block" : "none",
-        paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "contain",
-      }}
+      className="absolute inset-0 overflow-hidden"
+      style={{ display: visible ? "block" : "none" }}
     >
       {children}
     </div>
