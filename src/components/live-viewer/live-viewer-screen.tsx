@@ -160,7 +160,9 @@ export function LiveViewerScreen() {
       ...prev,
       systemMessage(`Vendu à @${winner} 🎉 ${formatEuro(currentProduct.price)}`),
     ]);
+    haptic.success();
     setConfettiKey((k) => k + 1);
+
     setTimeout(() => {
       setProducts((prev) => {
         const idx = prev.findIndex((p) => p.id === currentProduct.id);
@@ -208,11 +210,13 @@ export function LiveViewerScreen() {
   // Manual bid
   const doBid = () => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
+    haptic.medium();
     setProducts((prev) =>
       prev.map((p) =>
         p.id === currentProduct.id ? { ...p, price: p.price + 1 } : p,
       ),
     );
+
     setLastBidder("toi");
     setSecondsLeft((s) => (s < 6 ? s + 3 : s));
   };
