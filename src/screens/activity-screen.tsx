@@ -454,14 +454,18 @@ function OrderDetailBody({ order }: { order: Order }) {
             className="absolute left-[13px] top-3 bottom-3 w-[2px] rounded-full"
             style={{ backgroundColor: "var(--border)" }}
           />
-          {/* animated progress */}
+          {/* animated progress (scaleY only) */}
           <motion.div
-            className="absolute left-[13px] top-3 w-[2px] rounded-full"
-            style={{ backgroundColor: "oklch(0.6 0.17 155)" }}
-            initial={{ height: 0 }}
-            animate={{ height: `calc(${(progress / (STEPS.length - 1)) * 100}% * 0.94)` }}
+            className="absolute left-[13px] top-3 bottom-3 w-[2px] rounded-full"
+            style={{
+              backgroundColor: "oklch(0.6 0.17 155)",
+              transformOrigin: "top center",
+            }}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: progress / (STEPS.length - 1) }}
             transition={{ duration: 0.6, ease: EASE_IOS }}
           />
+
           <ul className="space-y-4">
             {STEPS.map((s, i) => {
               const done = i <= activeIdx;
