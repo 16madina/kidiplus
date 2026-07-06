@@ -1,0 +1,139 @@
+export type Category =
+  | "For You"
+  | "Beauty"
+  | "Sneakers"
+  | "Fashion"
+  | "Cards"
+  | "Electronics"
+  | "Jewelry";
+
+export const CATEGORIES: Category[] = [
+  "For You",
+  "Beauty",
+  "Sneakers",
+  "Fashion",
+  "Cards",
+  "Electronics",
+  "Jewelry",
+];
+
+export type LiveStream = {
+  id: string;
+  seller: string;
+  avatar: string;
+  title: string;
+  thumbnail: string;
+  viewers: number;
+  category: Exclude<Category, "For You">;
+};
+
+// Unsplash source images per category (stable IDs, hot-linkable).
+const IMG = {
+  Beauty: [
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=70",
+    "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&q=70",
+    "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600&q=70",
+    "https://images.unsplash.com/photo-1631730359585-38a4935cbec4?w=600&q=70",
+    "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&q=70",
+  ],
+  Sneakers: [
+    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70",
+    "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&q=70",
+    "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&q=70",
+    "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&q=70",
+    "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&q=70",
+  ],
+  Fashion: [
+    "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=70",
+    "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=70",
+    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=70",
+    "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=70",
+    "https://images.unsplash.com/photo-1485518882345-15568b007407?w=600&q=70",
+  ],
+  Cards: [
+    "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=600&q=70",
+    "https://images.unsplash.com/photo-1628960198207-3d1fed6f28d3?w=600&q=70",
+    "https://images.unsplash.com/photo-1637419450536-378d5457abb8?w=600&q=70",
+    "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=600&q=70",
+  ],
+  Electronics: [
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70",
+    "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=600&q=70",
+    "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=70",
+    "https://images.unsplash.com/photo-1512446816042-444d641267d4?w=600&q=70",
+  ],
+  Jewelry: [
+    "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=600&q=70",
+    "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=600&q=70",
+    "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=70",
+    "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=70",
+  ],
+} as const;
+
+const AVATAR = (seed: string) =>
+  `https://i.pravatar.cc/80?u=${encodeURIComponent(seed)}`;
+
+type Seed = {
+  seller: string;
+  title: string;
+  category: LiveStream["category"];
+};
+
+const SEEDS: Seed[] = [
+  { seller: "Aïcha Beauty", title: "Nouveautés maquillage — prix cassés ce soir 💄", category: "Beauty" },
+  { seller: "Kevin Sneaks", title: "Drop Jordan 4 + Yeezy taille 42-45", category: "Sneakers" },
+  { seller: "Marie Vintage", title: "Friperie de luxe : Chanel, Dior, YSL", category: "Fashion" },
+  { seller: "Studio Dee", title: "Pokémon vintage : booster japonais 1999", category: "Cards" },
+  { seller: "Fatou Bijoux", title: "Or 18 carats — enchères à partir de 10€", category: "Jewelry" },
+  { seller: "Tech Amir", title: "iPhone reconditionnés + AirPods garantis", category: "Electronics" },
+  { seller: "Léa Glow", title: "Routine peau grasse — tout à -50%", category: "Beauty" },
+  { seller: "Sneak Léo", title: "Nike Dunk Low : je vide le stock", category: "Sneakers" },
+  { seller: "Chloé Chic", title: "Robes d'été — pièces uniques", category: "Fashion" },
+  { seller: "Yassine Cards", title: "One Piece TCG — cartes rares OP07", category: "Cards" },
+  { seller: "Nina Diamants", title: "Bagues solitaires — direct atelier", category: "Jewelry" },
+  { seller: "Momo Gadgets", title: "Manettes PS5 & accessoires gaming", category: "Electronics" },
+  { seller: "Sarah Skin", title: "Soins coréens : masques & sérums", category: "Beauty" },
+  { seller: "Drip Malik", title: "New Balance 550 & 990 en direct", category: "Sneakers" },
+  { seller: "Camille Paris", title: "Streetwear premium — Stüssy, Palace", category: "Fashion" },
+  { seller: "Baptiste TCG", title: "Magic The Gathering — sealed boxes", category: "Cards" },
+  { seller: "Inès Or", title: "Chaînes cubaines argent 925 massif", category: "Jewelry" },
+  { seller: "Karim Console", title: "Rétro gaming : Game Boy & cartouches", category: "Electronics" },
+  { seller: "Élodie Rouge", title: "Rouges à lèvres MAC & Charlotte Tilbury", category: "Beauty" },
+  { seller: "Théo Kicks", title: "ASICS Gel Kayano — toutes tailles", category: "Sneakers" },
+  { seller: "Sofia Mode", title: "Sacs vintage Louis Vuitton authentifiés", category: "Fashion" },
+  { seller: "Lucas Poké", title: "Cartes Pokémon FR — session enchères", category: "Cards" },
+  { seller: "Amélie Perles", title: "Colliers perles Tahiti — direct grossiste", category: "Jewelry" },
+  { seller: "Rayan Audio", title: "Casques Bose & Sony — neufs scellés", category: "Electronics" },
+];
+
+function pick<T>(arr: readonly T[], i: number): T {
+  return arr[i % arr.length];
+}
+
+// Deterministic viewer count between 15 and 2400 based on seed index
+function viewers(i: number): number {
+  const noise = (i * 9301 + 49297) % 233280;
+  return 15 + (noise % 2386);
+}
+
+export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
+  return Array.from({ length: count }, (_, k) => {
+    const i = (offset + k) % SEEDS.length;
+    const s = SEEDS[i];
+    const gallery = IMG[s.category];
+    return {
+      id: `stream-${offset + k}`,
+      seller: s.seller,
+      avatar: AVATAR(s.seller),
+      title: s.title,
+      thumbnail: pick(gallery, offset + k),
+      viewers: viewers(offset + k + 1),
+      category: s.category,
+    };
+  });
+}
+
+export function formatViewers(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}k`;
+  return String(n);
+}
