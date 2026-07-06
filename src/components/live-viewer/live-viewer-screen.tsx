@@ -31,14 +31,29 @@ const AUCTION_SECONDS = 45;
 export function LiveViewerScreen() {
   const { active, close } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
+  const appActive = useAppActive();
+  const { requestWithPrePrompt } = usePush();
 
-  // === Chat ===
+  // Force light status-bar content while the viewer is mounted (dark background).
+  useEffect(() => {
+    let restore: (() => void) | null = null;
+    void pushStatusBarLight().then((fn) => {
+      restore = fn;
+    });
+    return () => {
+      restore?.();
+    };
+  }, []);
+
+
+  // === Chat === (paused when app is backgrounded)
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   useEffect(() => {
     if (!active) return;
     setMessages([
       systemMessage(`Bienvenue dans le live de ${active.seller} 👋`),
     ]);
+    if (!appActive) return;
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
@@ -53,7 +68,8 @@ export function LiveViewerScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [active]);
+  }, [active, appActive]);
+
 
   // === Hearts ===
   const [heartTrigger, setHeartTrigger] = useState(0);
