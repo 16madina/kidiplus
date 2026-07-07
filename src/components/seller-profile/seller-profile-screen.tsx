@@ -172,7 +172,13 @@ function SellerProfileInner({
               )}
             </div>
           </motion.div>
-          <div className="h-10 w-10" />
+          <Press
+            aria-label={t("common.more")}
+            onClick={() => setActionsOpen(true)}
+            className="h-10 w-10 rounded-full text-foreground"
+          >
+            <MoreHorizontal size={22} strokeWidth={2.2} />
+          </Press>
         </div>
       </motion.div>
 
