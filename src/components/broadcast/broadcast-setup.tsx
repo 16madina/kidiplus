@@ -1,20 +1,47 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
-import { COVER_POOL } from "@/lib/broadcast-mock";
 import { CATEGORIES } from "@/lib/live-mock";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
+import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
-  const [showCovers, setShowCovers] = useState(false);
+
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const urlTrackerRef = useRef(createObjectUrlTracker());
+
+  // Cleanup any blob URLs we created for the cover on unmount.
+  useEffect(() => {
+    const tracker = urlTrackerRef.current;
+    return () => tracker.disposeAll();
+  }, []);
+
+  const pickCover = () => {
+    // Direct programmatic click inside a user-gesture handler — required for
+    // the file dialog to open reliably across browsers, and NOT swallowed by
+    // Press/motion whileTap animations.
+    coverInputRef.current?.click();
+  };
+
+  const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = urlTrackerRef.current.track(URL.createObjectURL(file));
+    // Revoke previously chosen cover if it was one of ours.
+    if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
+    b.setCover(url);
+    // Reset so selecting the same file again still fires onChange.
+    e.target.value = "";
+    haptic.selection();
+  };
 
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
 
