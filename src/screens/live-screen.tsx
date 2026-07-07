@@ -14,6 +14,7 @@ import { haptic } from "@/lib/haptics";
 import { useState } from "react";
 
 export function LiveScreen() {
+  const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
 
