@@ -25,6 +25,8 @@ export type LiveStream = {
   thumbnail: string;
   viewers: number;
   category: Exclude<Category, "For You">;
+  /** LiveKit room name — when present, viewer subscribes to real video. */
+  roomName?: string;
 };
 
 // Unsplash source images per category (stable IDs, hot-linkable).

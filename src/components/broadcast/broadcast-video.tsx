@@ -1,138 +1,279 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Camera } from "lucide-react";
 import { useAppActive } from "@/lib/app-state";
+import {
+  Room,
+  RoomEvent,
+  Track,
+  createLocalVideoTrack,
+  connectRoom,
+  getToken,
+  disconnectRoom,
+  type LocalVideoTrack,
+} from "@/lib/livekit";
 
 /**
- * Single swappable video layer for the broadcast experience.
+ * Video layer for the broadcaster (host) side.
  *
- * TODO(LiveKit): This component is the ONLY place that should talk to the
- * video pipeline. When wiring LiveKit, replace the getUserMedia block with:
+ * Two modes:
+ *   - Preview mode (no `livekit` prop): plain getUserMedia self-preview,
+ *     used in BroadcastSetup before going live.
+ *   - LiveKit host mode (`livekit` prop given): connects to the LiveKit
+ *     room, publishes camera + mic, and shows the local video track.
  *
- *   const room = new Room();
- *   await room.connect(LK_URL, accessToken);
- *   const track = await createLocalVideoTrack({ facingMode: facing });
- *   await room.localParticipant.publishTrack(track);
- *
- * The exported imperative hooks below (startBroadcast / stopBroadcast /
- * publishCamera / switchCamera) are the integration surface — keep their
- * signatures stable so the UI never needs to change.
+ * The imperative handle exposes switchCamera / setMic / setCam so the
+ * live UI can wire toggles without touching the room directly.
  */
 
-export type BroadcastVideoProps = {
-  /** "user" = front camera (mirrored), "environment" = back camera. */
-  facing: "user" | "environment";
-  /** When false, tear down the camera and show the placeholder. */
-  enabled: boolean;
-  /** Optional cover image shown behind the video (during setup / fallback). */
-  fallbackImage?: string | null;
+export type BroadcastVideoLK = {
+  room: string;
+  identity: string;
+  name?: string;
 };
 
-// --- LiveKit integration stubs -------------------------------------------
-// TODO(LiveKit): implement these against @livekit/client. The UI already
-// calls them via imperative refs — see BroadcastLive / BroadcastSetup.
+export type BroadcastVideoProps = {
+  facing: "user" | "environment";
+  enabled: boolean;
+  fallbackImage?: string | null;
+  /** When set, use LiveKit host publishing instead of local preview. */
+  livekit?: BroadcastVideoLK;
+  micEnabled?: boolean;
+  onStatus?: (s: BroadcastStatus) => void;
+};
 
-export async function startBroadcast(_opts: {
-  roomName: string;
-  token: string;
-}): Promise<void> {
-  // TODO(LiveKit): room.connect(...)
-}
+export type BroadcastStatus =
+  | "idle"
+  | "connecting"
+  | "granted"
+  | "denied"
+  | "unsupported"
+  | "error";
 
-export async function stopBroadcast(): Promise<void> {
-  // TODO(LiveKit): room.disconnect()
-}
+export type BroadcastVideoHandle = {
+  switchCamera: (facing: "user" | "environment") => Promise<void>;
+};
 
-export async function publishCamera(_facing: "user" | "environment"): Promise<void> {
-  // TODO(LiveKit): create + publish LocalVideoTrack
-}
+export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
+  function BroadcastVideo(
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, onStatus },
+    ref,
+  ) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const roomRef = useRef<Room | null>(null);
+    const localVideoTrackRef = useRef<LocalVideoTrack | null>(null);
+    const [state, setState] = useState<BroadcastStatus>("idle");
+    const appActive = useAppActive();
 
-export async function switchCamera(_facing: "user" | "environment"): Promise<void> {
-  // TODO(LiveKit): replaceTrack with new facingMode
-}
-// -------------------------------------------------------------------------
+    const shouldRun = enabled && appActive;
 
-export function BroadcastVideo({
-  facing,
-  enabled,
-  fallbackImage,
-}: BroadcastVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [state, setState] = useState<"idle" | "granted" | "denied" | "unsupported">(
-    "idle",
-  );
-  const appActive = useAppActive();
+    // Report status upward.
+    useEffect(() => {
+      onStatus?.(state);
+    }, [state, onStatus]);
 
-  // Effectively-enabled gate: also release the camera when the app is
-  // backgrounded so the OS indicator/light doesn't stay on.
-  const shouldRun = enabled && appActive;
+    // Imperative API for the live UI.
+    useImperativeHandle(ref, () => ({
+      switchCamera: async (nextFacing) => {
+        const room = roomRef.current;
+        if (!room) return;
+        const oldTrack = localVideoTrackRef.current;
+        try {
+          const newTrack = await createLocalVideoTrack({
+            facingMode: nextFacing,
+          });
+          if (oldTrack) {
+            await room.localParticipant.unpublishTrack(oldTrack, true);
+          }
+          await room.localParticipant.publishTrack(newTrack);
+          localVideoTrackRef.current = newTrack;
+          if (videoRef.current) {
+            newTrack.attach(videoRef.current);
+          }
+        } catch {
+          /* keep old track */
+        }
+      },
+    }));
 
-  useEffect(() => {
-    let cancelled = false;
+    // --- Preview mode (getUserMedia) --------------------------------------
+    useEffect(() => {
+      if (livekit) return; // handled by LK effect below
+      let cancelled = false;
 
-    async function acquire() {
-      if (!shouldRun) {
-        teardown();
-        return;
-      }
-      if (
-        typeof navigator === "undefined" ||
-        !navigator.mediaDevices?.getUserMedia
-      ) {
-        setState("unsupported");
-        return;
-      }
-      teardown();
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facing } },
-          audio: false,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+      async function acquire() {
+        if (!shouldRun) return teardown();
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setState("unsupported");
           return;
         }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
+        teardown();
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facing } },
+            audio: false,
+          });
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+          setState("granted");
+        } catch {
+          if (!cancelled) setState("denied");
         }
-        setState("granted");
-      } catch {
-        if (!cancelled) setState("denied");
       }
-    }
 
-    function teardown() {
-      const s = streamRef.current;
-      if (s) {
-        s.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
+      function teardown() {
+        const s = streamRef.current;
+        if (s) {
+          s.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
+        if (videoRef.current) videoRef.current.srcObject = null;
       }
-      if (videoRef.current) videoRef.current.srcObject = null;
-    }
 
-    void acquire();
-    return () => {
-      cancelled = true;
-      teardown();
-    };
-  }, [facing, shouldRun]);
+      void acquire();
+      return () => {
+        cancelled = true;
+        teardown();
+      };
+    }, [facing, shouldRun, livekit]);
 
-  const showVideo = shouldRun && state === "granted";
-  const mirrored = facing === "user";
+    // --- LiveKit host mode ------------------------------------------------
+    useEffect(() => {
+      if (!livekit) return;
+      let cancelled = false;
 
-  return (
-    <div className="absolute inset-0 overflow-hidden bg-neutral-900">
-      {fallbackImage && !showVideo && (
-        <img
-          src={fallbackImage}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-70"
-          style={{ filter: "blur(4px) brightness(0.55)" }}
-        />
-      )}
-      {showVideo && (
+      async function start() {
+        if (!shouldRun) return teardown();
+        setState("connecting");
+        try {
+          const { token, url } = await getToken(
+            livekit!.room,
+            livekit!.identity,
+            livekit!.name,
+            "host",
+          );
+          if (cancelled) return;
+          const room = await connectRoom(url, token);
+          if (cancelled) {
+            await disconnectRoom(room);
+            return;
+          }
+          roomRef.current = room;
+
+          // Publish camera + mic.
+          await room.localParticipant.setMicrophoneEnabled(micEnabled);
+          const track = await createLocalVideoTrack({
+            facingMode: livekit ? facing : "user",
+          });
+          if (cancelled) {
+            track.stop();
+            await disconnectRoom(room);
+            return;
+          }
+          await room.localParticipant.publishTrack(track);
+          localVideoTrackRef.current = track;
+          if (videoRef.current) track.attach(videoRef.current);
+          setState("granted");
+        } catch (err) {
+          console.error("[livekit host] failed", err);
+          if (!cancelled) {
+            const msg = String(err ?? "");
+            setState(
+              msg.toLowerCase().includes("permission") ||
+                msg.toLowerCase().includes("denied")
+                ? "denied"
+                : "error",
+            );
+            await teardown();
+          }
+        }
+      }
+
+      async function teardown() {
+        const t = localVideoTrackRef.current;
+        if (t) {
+          try {
+            t.detach();
+            t.stop();
+          } catch {}
+          localVideoTrackRef.current = null;
+        }
+        await disconnectRoom(roomRef.current);
+        roomRef.current = null;
+        if (videoRef.current) videoRef.current.srcObject = null;
+      }
+
+      void start();
+      return () => {
+        cancelled = true;
+        void teardown();
+      };
+      // Intentionally depend on room identity + gate; facing is applied via switchCamera.
+       
+    }, [livekit?.room, livekit?.identity, shouldRun]);
+
+    // Toggle camera (published track) without reconnecting.
+    useEffect(() => {
+      if (!livekit) return;
+      const room = roomRef.current;
+      if (!room) return;
+      void room.localParticipant.setCameraEnabled(enabled);
+    }, [enabled, livekit]);
+
+    // Toggle mic without reconnecting.
+    useEffect(() => {
+      if (!livekit) return;
+      const room = roomRef.current;
+      if (!room) return;
+      void room.localParticipant.setMicrophoneEnabled(micEnabled);
+    }, [micEnabled, livekit]);
+
+    // Apply facing change in LK mode by swapping the published track.
+    useEffect(() => {
+      if (!livekit) return;
+      const room = roomRef.current;
+      if (!room || !localVideoTrackRef.current) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const newTrack = await createLocalVideoTrack({ facingMode: facing });
+          if (cancelled) {
+            newTrack.stop();
+            return;
+          }
+          const old = localVideoTrackRef.current;
+          if (old) await room.localParticipant.unpublishTrack(old, true);
+          await room.localParticipant.publishTrack(newTrack);
+          localVideoTrackRef.current = newTrack;
+          if (videoRef.current) newTrack.attach(videoRef.current);
+        } catch {}
+      })();
+      return () => {
+        cancelled = true;
+      };
+       
+    }, [facing]);
+
+    const showVideo = shouldRun && state === "granted";
+    const mirrored = facing === "user";
+
+    return (
+      <div className="absolute inset-0 overflow-hidden bg-neutral-900">
+        {fallbackImage && !showVideo && (
+          <img
+            src={fallbackImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
+            style={{ filter: "blur(4px) brightness(0.55)" }}
+          />
+        )}
         <video
           ref={videoRef}
           playsInline
@@ -142,38 +283,45 @@ export function BroadcastVideo({
           style={{
             transform: mirrored ? "scaleX(-1)" : undefined,
             willChange: "transform",
+            display: showVideo ? "block" : "none",
           }}
         />
-      )}
-      {!showVideo && (
-        <div className="absolute inset-0 grid place-items-center">
-          <div
-            className="flex flex-col items-center gap-2 rounded-2xl px-5 py-4 text-white/90"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.35)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <Camera size={28} />
-            <p className="text-[13px] font-semibold">
-              {state === "denied"
-                ? "Autorise la caméra"
-                : state === "unsupported"
-                  ? "Caméra indisponible"
-                  : "Aperçu caméra"}
-            </p>
+        {!showVideo && (
+          <div className="absolute inset-0 grid place-items-center">
+            <div
+              className="flex flex-col items-center gap-2 rounded-2xl px-5 py-4 text-white/90"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.35)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <Camera size={28} />
+              <p className="text-[13px] font-semibold">
+                {state === "connecting"
+                  ? "Connexion au live…"
+                  : state === "denied"
+                    ? "Autorise la caméra"
+                    : state === "unsupported"
+                      ? "Caméra indisponible"
+                      : state === "error"
+                        ? "Connexion impossible"
+                        : "Aperçu caméra"}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-      {/* Soft top & bottom vignette for legibility of overlays */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%)",
-        }}
-      />
-    </div>
-  );
-}
+        )}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%)",
+          }}
+        />
+      </div>
+    );
+  },
+);
+
+// Re-export event type consumers may need.
+export { RoomEvent, Track };

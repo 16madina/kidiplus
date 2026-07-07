@@ -37,6 +37,26 @@ export function HomeScreen() {
     return () => clearTimeout(t);
   }, []);
 
+  // Test entry point: opening the app with ?live=<room> jumps straight
+  // into the viewer connected to that LiveKit room.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("live");
+    if (!room) return;
+    openStream({
+      id: `test_${room}`,
+      seller: "Seller",
+      avatar: "https://i.pravatar.cc/100?u=" + room,
+      title: "Live en direct",
+      thumbnail:
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70",
+      viewers: 1,
+      category: "Fashion",
+      roomName: room,
+    });
+  }, [openStream]);
+
   const filtered = useMemo(() => {
     if (category === "For You") return items;
     return items.filter((s) => s.category === category);
