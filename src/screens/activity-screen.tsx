@@ -124,7 +124,7 @@ export function ActivityScreen() {
               ) : orders.length === 0 ? (
                 <EmptyState
                   icon={<Package size={22} className="text-muted-foreground" />}
-                  message="Aucune commande pour l'instant"
+                  message={t("activity.empty.orders")}
                 />
               ) : (
                 orders.map((o, i) => (
