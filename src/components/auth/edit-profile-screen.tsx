@@ -36,6 +36,7 @@ export function EditProfileScreen({
   onClose: () => void;
 }) {
   const { profile, updateProfile, refreshProfile, user } = useAuth();
+  const { refresh: refreshWallet } = useWallet();
   const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
   const [bio, setBio] = useState("");
