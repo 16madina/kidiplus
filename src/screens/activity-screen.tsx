@@ -278,7 +278,7 @@ function NotifRow({
             </div>
             {n.unread && (
               <span
-                aria-label="Non lu"
+                aria-label={t("common.notifications")}
                 className="mt-2 h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: "oklch(0.6 0.2 250)" }}
               />
