@@ -360,6 +360,11 @@ export function RealLiveViewerScreen() {
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Share2 size={16} />
             </Press>
+            <Press aria-label="More" onClick={() => setMoreOpen(true)}
+              className="h-9 w-9 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+              <MoreVertical size={16} />
+            </Press>
             <Press aria-label={t("live.leave")} onClick={close}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
