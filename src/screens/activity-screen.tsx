@@ -396,7 +396,7 @@ function OrderCard({ order, index, onOpen }: { order: OrderRow; index: number; o
             <p className="mt-0.5 text-[12px] text-muted-foreground">
               {orderDateShort(new Date(order.created_at))}
             </p>
-            <p className="mt-0.5 text-[13px] font-bold">{formatEuro(Number(order.total))}</p>
+            <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
           </div>
         </div>
       </Press>
@@ -461,7 +461,7 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
             {orderDateShort(new Date(order.created_at))}
           </p>
           <div className="mt-1 flex items-center justify-between">
-            <span className="text-[14px] font-bold">{formatEuro(Number(order.total))}</span>
+            <span className="text-[14px] font-bold">{formatMoney(Number(order.total), order.currency)}</span>
             <span
               className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
               style={{ backgroundColor: meta.bg, color: meta.color }}
@@ -473,11 +473,11 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
       </div>
 
       <div className="rounded-2xl border border-border p-4">
-        <Row label={t("pay.item")} value={formatEuro(Number(order.amount))} />
-        <Row label={t("pay.platformFee")} value={formatEuro(Number(order.platform_fee))} />
-        <Row label={t("pay.processingFee")} value={formatEuro(Number(order.processing_fee))} />
+        <Row label={t("pay.item")} value={formatMoney(Number(order.amount), order.currency)} />
+        <Row label={t("pay.platformFee")} value={formatMoney(Number(order.platform_fee), order.currency)} />
+        <Row label={t("pay.processingFee")} value={formatMoney(Number(order.processing_fee), order.currency)} />
         <div className="my-2 h-px bg-border" />
-        <Row label={t("pay.total")} value={formatEuro(Number(order.total))} bold />
+        <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency)} bold />
       </div>
     </div>
   );
