@@ -285,7 +285,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative h-full w-full overflow-hidden bg-black"
     >
-      <BroadcastVideo facing={facing} enabled={cameraOn} fallbackImage={b.cover} />
+      <BroadcastVideo
+        facing={facing}
+        enabled={cameraOn}
+        micEnabled={micOn}
+        fallbackImage={b.cover}
+        livekit={
+          b.roomName
+            ? { room: b.roomName, identity: `host_${b.roomName}`, name: "Host" }
+            : undefined
+        }
+      />
+
 
       {/* Top bar */}
       <div
