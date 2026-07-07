@@ -1,5 +1,5 @@
 // WithdrawSheet — seller requests a payout from their available balance.
-// Steps: form → confirm → success. Method: Wave / Orange Money / Bank.
+// Steps: form → confirm → success. Method: Wave / Orange Money / PayPal / Bank.
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,12 +9,47 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
+const PAYPAL_BLUE = "#003087";
+const PAYPAL_BLUE_LIGHT = "#0070BA";
+
+// Basic RFC-ish email regex — good enough for input validation.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Method choices (and default) depend on the seller's wallet currency:
+ *  - XOF: mobile money first (Wave, Orange Money), then PayPal, then Virement.
+ *  - EUR / CAD: PayPal first, then Virement. Mobile-money options are hidden
+ *    to reduce noise (irrelevant for European / Canadian sellers). */
+function methodsForCurrency(currency: string): PayoutMethod[] {
+  const cur = normalizeCurrency(currency);
+  if (cur === "XOF") return ["wave", "orange_money", "paypal", "bank_transfer"];
+  return ["paypal", "bank_transfer"];
+}
+
+/** PayPal-brand square with a white italic "P". */
+function PaypalIcon() {
+  return (
+    <span
+      className="italic"
+      style={{
+        color: "white",
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        fontWeight: 900,
+        fontSize: 16,
+        lineHeight: 1,
+        letterSpacing: "-0.05em",
+        textShadow: `1px 0 0 ${PAYPAL_BLUE_LIGHT}`,
+      }}
+    >
+      P
+    </span>
+  );
+}
 
 export function WithdrawSheet({
   open,
