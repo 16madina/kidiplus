@@ -332,7 +332,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         {/* Launch */}
         <Press
           onClick={launch}
-          disabled={!canLaunch}
+          disabled={!canLaunch || launching}
           hapticOnTap={false}
           className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold text-white disabled:opacity-40"
           style={{
