@@ -363,13 +363,13 @@ export function SearchScreen() {
                 <div className="px-4 pt-3">
                   <div className="mb-1 flex items-center justify-between">
                     <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Recherches récentes
+                      {t("search.recent")}
                     </h2>
                     <Press
                       onClick={() => setRecent([])}
                       className="!min-h-8 text-[12px] font-semibold text-accent"
                     >
-                      Effacer
+                      {t("common.clear")}
                     </Press>
                   </div>
                   <ul>
