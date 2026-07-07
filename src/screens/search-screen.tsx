@@ -571,12 +571,7 @@ function TrendsRow({
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <LiveDot />
                   <span className="truncate text-[12px] text-muted-foreground">
-                    {t("units.viewers", {
-                      count: trend.viewers,
-                      defaultValue_one: `${formatCount(trend.viewers, lang)} viewer`,
-                      defaultValue_other: `${formatCount(trend.viewers, lang)} viewers`,
-                    })
-                      .replace(String(trend.viewers), formatCount(trend.viewers, lang))}
+                    {formatViewersLabel(trend.viewers, lang)}
                   </span>
                 </div>
               </div>
