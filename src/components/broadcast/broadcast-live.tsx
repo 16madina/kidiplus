@@ -584,6 +584,79 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </div>
       </div>
 
+      {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
+      <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={80}>
+        <div className="flex h-full flex-col px-4 pb-4">
+          <div className="flex items-center justify-between pb-2">
+            <h2 className="text-[18px] font-bold">{t("live.openProducts")}</h2>
+            <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ul className="flex flex-col gap-2">
+              {room.products.map((p) => {
+                const auctionActive = activeAuction?.productId === p.id;
+                const onSale = p.mode === "fixed" && p.status === "active";
+                const soldOut = p.mode === "auction"
+                  ? p.status === "sold"
+                  : p.stock <= 0 || p.status === "out";
+                return (
+                  <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
+                    {p.image_url && (
+                      <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-semibold">{p.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {p.mode === "auction"
+                          ? `${fmt(p.start_price)} · ${p.timer_seconds}s`
+                          : `${fmt(p.price)} · stock ${Math.max(0, p.stock)}`}
+                      </p>
+                    </div>
+                    {p.mode === "auction" ? (
+                      soldOut ? (
+                        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                          {t("live.sold")}
+                        </span>
+                      ) : auctionActive ? (
+                        <Press
+                          onClick={() => { void endAuctionNow(); }}
+                          className="!min-h-10 rounded-full px-4 text-[13px] font-bold text-white"
+                          style={{ backgroundColor: "oklch(0.62 0.24 20)" }}
+                        >
+                          {t("live.endAuction")}
+                        </Press>
+                      ) : (
+                        <Press
+                          onClick={() => { void startAuction(p); setProductsOpen(false); }}
+                          className="!min-h-10 rounded-full bg-foreground px-4 text-[13px] font-bold text-background"
+                        >
+                          {t("live.startAuction")}
+                        </Press>
+                      )
+                    ) : soldOut ? (
+                      <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                        {t("live.outOfStock")}
+                      </span>
+                    ) : (
+                      <Press
+                        onClick={() => { void toggleFixedSale(p); }}
+                        className="!min-h-10 rounded-full px-4 text-[13px] font-bold"
+                        style={{
+                          backgroundColor: onSale ? "oklch(0.72 0.2 145)" : "var(--foreground)",
+                          color: onSale ? "white" : "var(--background)",
+                        }}
+                      >
+                        {onSale ? "Arrêter" : t("live.listForSale")}
+                      </Press>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </BottomSheet>
+
       <BottomSheet open={confirmEnd} onClose={() => setConfirmEnd(false)} heightPercent={38}>
         <div className="flex h-full flex-col px-6 pb-4">
           <h2 className="text-[20px] font-bold">{t("live.confirmEnd")}</h2>
