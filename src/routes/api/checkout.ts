@@ -27,6 +27,7 @@ const ALLOWED_ORIGIN_SUFFIXES = [
   "lovableproject.com",
   "localhost",
   "127.0.0.1",
+  "kidiplus.com",
 ];
 
 function isAllowedOrigin(origin: string | null): boolean {
