@@ -47,42 +47,47 @@
   --card-foreground: oklch(0.14 0.02 285);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.14 0.02 285);
-  --primary: oklch(0.62 0.24 20);
-  --primary-foreground: oklch(0.99 0 0);
+  /* KiDi+ brand gold — rich metallic (approx #C9A227). Used for primary
+     CTAs, active states, links, highlights. Text-on-light uses a darker
+     shade via --primary-foreground pairings. */
+  --primary: oklch(0.68 0.14 82);
+  --primary-foreground: oklch(0.14 0.01 60);
   --secondary: oklch(0.96 0.005 285);
-  --secondary-foreground: oklch(0.2 0.02 285);
+  --secondary-foreground: oklch(0.14 0.01 60);
   --muted: oklch(0.96 0.005 285);
-  --muted-foreground: oklch(0.55 0.02 285);
-  --accent: oklch(0.62 0.24 20);
-  --accent-foreground: oklch(0.99 0 0);
+  --muted-foreground: oklch(0.5 0.01 60);
+  --accent: oklch(0.68 0.14 82);
+  --accent-foreground: oklch(0.14 0.01 60);
   --destructive: oklch(0.6 0.24 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.005 285);
-  --input: oklch(0.92 0.005 285);
-  --ring: oklch(0.62 0.24 20);
+  --border: oklch(0.92 0.005 60);
+  --input: oklch(0.92 0.005 60);
+  --ring: oklch(0.68 0.14 82);
+  /* LIVE stays red (universal broadcast convention). */
   --live: oklch(0.65 0.26 15);
 }
 
 .dark {
-  --background: oklch(0.09 0.01 285);
+  /* Deep near-black brand surface. */
+  --background: oklch(0.14 0.005 60);
   --foreground: oklch(0.98 0 0);
-  --card: oklch(0.14 0.01 285);
+  --card: oklch(0.18 0.005 60);
   --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.14 0.01 285);
+  --popover: oklch(0.18 0.005 60);
   --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.68 0.24 20);
-  --primary-foreground: oklch(0.09 0.01 285);
-  --secondary: oklch(0.2 0.01 285);
+  --primary: oklch(0.78 0.15 85);
+  --primary-foreground: oklch(0.12 0.005 60);
+  --secondary: oklch(0.22 0.005 60);
   --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.2 0.01 285);
-  --muted-foreground: oklch(0.65 0.02 285);
-  --accent: oklch(0.68 0.24 20);
-  --accent-foreground: oklch(0.09 0.01 285);
+  --muted: oklch(0.22 0.005 60);
+  --muted-foreground: oklch(0.68 0.01 60);
+  --accent: oklch(0.78 0.15 85);
+  --accent-foreground: oklch(0.12 0.005 60);
   --destructive: oklch(0.7 0.2 22);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.68 0.24 20);
+  --ring: oklch(0.78 0.15 85);
   --live: oklch(0.7 0.26 15);
 }
 

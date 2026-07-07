@@ -206,7 +206,7 @@ export function getSellerInfo(sellerName: string): SellerInfo {
     sales,
     rating,
     reviewCount,
-    bio: BIOS[cat] ?? "Vendeuse passionnée sur Shoplive.",
+    bio: BIOS[cat] ?? "Vendeuse passionnée sur KiDi+.",
     liveStream,
     products,
     scheduled,

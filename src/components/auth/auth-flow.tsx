@@ -70,16 +70,8 @@ function Welcome({
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_IOS }}
-          className="text-[44px] font-black tracking-tight"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.55 0.24 25))",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-          }}
         >
-          shoplive
+          <Logo size={56} />
         </motion.span>
         <motion.p
           initial={{ y: 12, opacity: 0 }}

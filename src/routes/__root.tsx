@@ -89,16 +89,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#ffffff" },
       { name: "format-detection", content: "telephone=no" },
-      { title: "Shoplive — Live Shopping" },
+      { title: "KiDi+ — Live Shopping & Enchères" },
       {
         name: "description",
         content:
-          "Watch live shows, shop in real time, and go live to sell to your audience.",
+          "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
       },
-      { property: "og:title", content: "Shoplive — Live Shopping" },
+      { property: "og:title", content: "KiDi+ — Live Shopping & Enchères" },
       {
         property: "og:description",
-        content: "Watch live shows and shop in real time.",
+        content: "Lives, enchères et shopping en temps réel sur KiDi+.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
