@@ -279,7 +279,7 @@ function SellerProfileInner({
                           animate={{ opacity: [1, 0.35, 1] }}
                           transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
                         />
-                        En direct
+                        {t("seller.liveNow")}
                       </span>
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-white/90">
                         <Eye size={11} /> {formatCompact(info.liveStream.viewers)}
