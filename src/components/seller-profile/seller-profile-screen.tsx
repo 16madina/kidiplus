@@ -134,6 +134,47 @@ function SellerProfileInner({
   }, [tab]);
 
   const [following, setFollowing] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+
+  const handleBlock = async () => {
+    if (blocking) return;
+    setBlocking(true);
+    haptic.medium();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setBlocking(false);
+      setActionsOpen(false);
+      toast.error(t("auth.mustSignIn", { defaultValue: "Connecte-toi pour continuer" }));
+      return;
+    }
+    const sellerId = await resolveSellerProfileId(info.name);
+    if (!sellerId) {
+      setBlocking(false);
+      setActionsOpen(false);
+      toast.error(t("block.failed"));
+      return;
+    }
+    if (sellerId === auth.user.id) {
+      setBlocking(false);
+      setActionsOpen(false);
+      toast.error(t("block.failed"));
+      return;
+    }
+    const r = await blockUser(sellerId);
+    setBlocking(false);
+    setActionsOpen(false);
+    if (r.ok) {
+      await refreshBlockedIds();
+      haptic.success();
+      toast.success(t("block.blocked"));
+      onBack();
+    } else {
+      haptic.warning();
+      toast.error(t("block.failed"));
+    }
+  };
 
   return (
     <>
