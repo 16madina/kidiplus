@@ -102,7 +102,7 @@ function SellerProfileInner({
     const el = stripRef.current;
     if (!el) return;
     const btns = el.querySelectorAll<HTMLButtonElement>("[data-tab]");
-    const idx = TABS.findIndex((t) => t.key === tab);
+    const idx = TAB_KEYS.indexOf(tab);
     const b = btns[idx];
     if (b) {
       setUX(b.offsetLeft);
