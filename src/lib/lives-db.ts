@@ -389,22 +389,40 @@ export async function stopFixedInDb(productId: string): Promise<void> {
   await supabase.from("live_products").update({ status: "upcoming" }).eq("id", productId);
 }
 
-/** Insert a bid AND bump the product price so realtime subscribers see it. */
+/** Insert a bid AND bump the product price so realtime subscribers see it.
+ *  Pass `amount` to place a custom bid; omit to let the server use current + step. */
 export async function placeBidInDb(args: {
   liveId: string;
   productId: string;
   bidderId: string;
   bidderName: string;
-  amount: number;
-}): Promise<{ ok: boolean; error?: string; amount?: number }> {
+  amount?: number;
+}): Promise<{
+  ok: boolean;
+  error?: string;
+  amount?: number;
+  currentPrice?: number;
+  minNext?: number;
+  maxAmount?: number;
+}> {
   const { data, error } = await supabase.rpc("place_live_bid", {
     _live_id: args.liveId,
     _product_id: args.productId,
     _bidder_name: args.bidderName,
-  });
+    ...(args.amount !== undefined ? { _amount: args.amount } : {}),
+  } as never);
   if (error) return { ok: false, error: error.message };
-  const result = data as { ok?: boolean; error?: string; amount?: number } | null;
-  if (!result?.ok) return { ok: false, error: result?.error ?? "bid_failed" };
+  const result = data as {
+    ok?: boolean; error?: string; amount?: number;
+    current_price?: number; min_next?: number; max_amount?: number;
+  } | null;
+  if (!result?.ok) return {
+    ok: false,
+    error: result?.error ?? "bid_failed",
+    currentPrice: result?.current_price !== undefined ? Number(result.current_price) : undefined,
+    minNext: result?.min_next !== undefined ? Number(result.min_next) : undefined,
+    maxAmount: result?.max_amount !== undefined ? Number(result.max_amount) : undefined,
+  };
   return { ok: true, amount: Number(result.amount) };
 }
 
