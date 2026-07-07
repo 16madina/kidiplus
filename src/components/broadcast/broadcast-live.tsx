@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle,
+  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle, Plus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
+import { AddProductSheet } from "./add-product-sheet";
 import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
-import { useBroadcast } from "@/lib/broadcast-context";
+import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
 import { formatMoney } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
@@ -19,8 +21,10 @@ import { useAppActive } from "@/lib/app-state";
 import { pushStatusBarLight } from "@/lib/native";
 import { useLiveRoom } from "@/lib/live-room";
 import { useImmersiveScope } from "@/lib/immersive-context";
+import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, endAuctionInDb, activateFixedInDb, stopFixedInDb,
+  createLiveProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
