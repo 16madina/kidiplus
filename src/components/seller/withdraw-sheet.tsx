@@ -64,49 +64,58 @@ export function WithdrawSheet({
 }) {
   const { t, i18n } = useTranslation();
   const min = payoutMinimumFor(currency);
+  const availableMethods = useMemo(() => methodsForCurrency(currency), [currency]);
+  const defaultMethod: PayoutMethod = availableMethods[0] ?? "paypal";
 
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
   const [amount, setAmount] = useState<number>(available);
-  const [method, setMethod] = useState<PayoutMethod>("wave");
+  const [method, setMethod] = useState<PayoutMethod>(defaultMethod);
   const [phone, setPhone] = useState("");
   const [iban, setIban] = useState("");
   const [holder, setHolder] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
       setStep("form");
       setAmount(available);
-      setMethod("wave");
+      setMethod(defaultMethod);
       setPhone("");
       setIban("");
       setHolder("");
+      setPaypalEmail("");
       setBusy(false);
     }
-  }, [open, available]);
+  }, [open, available, defaultMethod]);
 
   const destination = useMemo<Record<string, string>>(() => {
-    const d: Record<string, string> =
-      method === "bank_transfer"
-        ? { iban: iban.trim(), holder: holder.trim() }
-        : { phone: phone.trim() };
-    return d;
-  }, [method, phone, iban, holder]);
+    if (method === "bank_transfer") return { iban: iban.trim(), holder: holder.trim() };
+    if (method === "paypal") return { paypalEmail: paypalEmail.trim() };
+    return { phone: phone.trim() };
+  }, [method, phone, iban, holder, paypalEmail]);
 
+  const emailTrimmed = paypalEmail.trim();
+  const emailValid = EMAIL_RE.test(emailTrimmed) && emailTrimmed.length <= 254;
   const destinationValid =
     method === "bank_transfer"
       ? iban.trim().length >= 6 && holder.trim().length >= 2
-      : phone.trim().length >= 6;
+      : method === "paypal"
+        ? emailValid
+        : phone.trim().length >= 6;
   const belowMin = amount < min;
   const aboveAvailable = amount > available;
   const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
+  const invalidEmail = method === "paypal" && emailTrimmed.length > 0 && !emailValid;
   const disabledReason = belowMin
     ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
     : aboveAvailable
       ? t("payout.errors.aboveAvailable")
-      : !destinationValid
-        ? t("payout.errors.missingDestination")
-        : null;
+      : invalidEmail
+        ? t("payout.errors.invalidEmail")
+        : !destinationValid
+          ? t("payout.errors.missingDestination")
+          : null;
 
   const submit = async () => {
     setBusy(true);
