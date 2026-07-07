@@ -18,6 +18,7 @@ import {
   Check,
   Wallet as WalletIcon,
   Coins,
+  ShieldCheck,
 } from "lucide-react";
 
 import { toast } from "sonner";
