@@ -29,6 +29,8 @@ export type LiveStream = {
   roomName?: string;
   /** DB id (public.lives.id) when this stream is real. */
   liveId?: string;
+  /** Seller user id (profiles.id) — present on real DB-backed streams. */
+  sellerId?: string;
 };
 
 
