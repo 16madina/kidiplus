@@ -201,14 +201,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const endAuctionNow = async () => {
     if (!activeAuction || !activeProduct) return;
-    const winner = room.lastBid && room.lastBid.productId === activeAuction.productId
-      ? room.lastBid.bidderName
-      : null;
+    const lastBidMatches = room.lastBid && room.lastBid.productId === activeAuction.productId;
+    const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
+    const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
     await endAuctionInDb(activeAuction.productId, null, finalPrice);
     room.broadcastAuctionEnd({
       productId: activeAuction.productId,
-      winnerName: winner,
+      winnerId,
+      winnerName,
       finalPrice,
     });
   };
