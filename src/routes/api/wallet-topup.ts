@@ -12,7 +12,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
 import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
 
 const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
@@ -62,18 +62,18 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-        const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
+        const stripeCfg = getStripeConfig();
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!STRIPE_SECRET_KEY || !STRIPE_PUBLISHABLE_KEY) {
-          return json({ error: "stripe_not_configured" }, 503, origin);
+        if (!stripeCfg.ok) {
+          return json({ error: stripeCfg.reason ?? "stripe_not_configured" }, 503, origin);
         }
         if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
         }
+        const STRIPE_PUBLISHABLE_KEY = stripeCfg.publishableKey;
 
         const authHeader = request.headers.get("authorization") ?? "";
         const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -111,7 +111,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
         const amount = roundForCurrency(raw, currency);
         const amountMinor = toStripeMinor(amount, currency);
 
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
+        const stripe = createStripeClient();
         const intent = await stripe.paymentIntents.create({
           amount: amountMinor,
           currency: currency.toLowerCase(),

@@ -18,7 +18,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
 import { toStripeAmountFor } from "@/lib/fees";
 import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 
@@ -75,18 +75,18 @@ export const Route = createFileRoute("/api/checkout")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-        const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
+        const stripeCfg = getStripeConfig();
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!STRIPE_SECRET_KEY || !STRIPE_PUBLISHABLE_KEY) {
-          return json({ error: "stripe_not_configured" }, 503, origin);
+        if (!stripeCfg.ok) {
+          return json({ error: stripeCfg.reason ?? "stripe_not_configured" }, 503, origin);
         }
         if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
         }
+        const STRIPE_PUBLISHABLE_KEY = stripeCfg.publishableKey;
 
         // Verify caller identity via Supabase bearer token.
         const authHeader = request.headers.get("authorization") ?? "";
@@ -138,7 +138,7 @@ export const Route = createFileRoute("/api/checkout")({
         }
         // The `currency` const is already prepared above (lowercase).
 
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
+        const stripe = createStripeClient();
 
         // Reuse an existing intent if we already created one for this order.
         let intent;
