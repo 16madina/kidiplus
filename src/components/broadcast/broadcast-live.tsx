@@ -47,10 +47,37 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
+
+  // Local image fallback: if signing the storage path fails on the host, we
+  // still have the original File (or absolute URL) in the broadcast context.
+  // This guarantees the seller ALWAYS sees their own product images even if
+  // the storage signing request transiently 401s / times out.
+  const localImageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const bp of b.products) {
+      if (!bp.dbId) continue;
+      if (bp.imageFile) map.set(bp.dbId, URL.createObjectURL(bp.imageFile));
+      else if (bp.image && !isBlobUrl(bp.image)) map.set(bp.dbId, bp.image);
+    }
+    return map;
+  }, [b.products]);
+  useEffect(() => {
+    return () => {
+      for (const url of localImageMap.values()) {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      }
+    };
+  }, [localImageMap]);
+  const imgFor = useCallback(
+    (p: LiveProductRow) => p.image_url || localImageMap.get(p.id) || null,
+    [localImageMap],
+  );
 
   const room = useLiveRoom({
     liveId: b.liveId,
