@@ -30,6 +30,8 @@ type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 
 export function SearchScreen() {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const [focused, setFocused] = useState(false);
   const [rawQuery, setRawQuery] = useState("");
   const [query, setQuery] = useState("");
@@ -38,15 +40,15 @@ export function SearchScreen() {
     "jordan 4", "chanel", "iphone", "pokémon", "ysl",
   ]);
   const [browseLoading, setBrowseLoading] = useState(true);
-  const [sort, setSort] = useState<CategorySort>("Recommandés");
+  const [sort, setSort] = useState<CategorySort>("recommended");
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
 
   // Debounce 200ms
   useEffect(() => {
-    const t = setTimeout(() => setQuery(rawQuery.trim()), 200);
-    return () => clearTimeout(t);
+    const handle = setTimeout(() => setQuery(rawQuery.trim()), 200);
+    return () => clearTimeout(handle);
   }, [rawQuery]);
 
   // First-paint skeleton for the browse (Tendances + Catégories) section
