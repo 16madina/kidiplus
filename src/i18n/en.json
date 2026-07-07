@@ -561,5 +561,76 @@
     },
     "onlyAdmins": "Admins only.",
     "approxEurTotal": "≈ EUR (indicative)"
+  },
+  "legal": {
+    "appLegal": "Legal documents — KiDi+",
+    "lastUpdated": "Last updated",
+    "draftBanner": "Template — please have a lawyer review before final publication.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use",
+    "community": "Community Guidelines"
+  },
+  "consent": {
+    "checkbox": "I have read and accept the <t>Terms of Use</t> and the <p>Privacy Policy</p>",
+    "ageCheckbox": "I confirm I am at least 18 years old",
+    "required": "You must accept the terms and confirm you are 18+ to continue."
+  },
+  "report": {
+    "action": "Report",
+    "title": "Report",
+    "subtitle": "Pick a reason. Our team reviews every report.",
+    "submit": "Send report",
+    "sent": "Report sent, thank you.",
+    "failed": "Could not send the report. Try again.",
+    "notePh": "Details (optional)",
+    "reasons": {
+      "inappropriate": "Inappropriate content",
+      "fraud": "Scam / fraud",
+      "counterfeit": "Counterfeit",
+      "harassment": "Harassment",
+      "other": "Other"
+    }
+  },
+  "block": {
+    "action": "Block",
+    "unblock": "Unblock",
+    "confirm": "Block this user? Their lives and messages will be hidden.",
+    "blocked": "User blocked.",
+    "unblocked": "User unblocked.",
+    "failed": "Action failed.",
+    "listTitle": "Blocked users",
+    "empty": "No blocked users."
+  },
+  "account": {
+    "delete": {
+      "menuItem": "Delete my account",
+      "title": "Delete my account",
+      "warnTitle": "Permanent action",
+      "warnBody": "Deleting your account is permanent. This cannot be undone.",
+      "effect": {
+        "profile": "Your profile, avatar and bio will be removed.",
+        "lives": "Your active lives will be ended and removed from the feed.",
+        "messages": "Your chat messages will be deleted.",
+        "wallet": "Your remaining wallet balance will be lost if not withdrawn first.",
+        "orders": "Past orders and payments are kept anonymised for accounting."
+      },
+      "blockersTitle": "Cannot delete right now:",
+      "blockers": {
+        "wallet": "Positive wallet balance ({{amount}}) — withdraw or spend it first.",
+        "payouts": "One or more payouts are being processed.",
+        "orders": "You have orders still pending payment.",
+        "live": "A live is in progress — end it first."
+      },
+      "typeConfirmLabel": "Type DELETE to confirm",
+      "confirmBtn": "Permanently delete my account",
+      "unauthorized": "Session expired. Sign in again.",
+      "hasBlockers": "Deletion blocked: see the conditions.",
+      "failed": "Deletion failed. Try again.",
+      "done": "Account deleted."
+    }
+  },
+  "ageGate": {
+    "title": "Age confirmation",
+    "body": "KiDi+ is only for people aged 18 and over. You must confirm your age to continue."
   }
 }
