@@ -47,27 +47,32 @@ export function TopUpSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { balance, currency } = useWallet();
+  const cur = normalizeCurrency(currency);
+  const PRESETS = topUpPresets(cur);
+  const { min: MIN_AMOUNT, max: MAX_AMOUNT } = topUpLimits(cur);
+  const zeroDec = isZeroDecimal(cur);
 
   const [step, setStep] = useState<Step>({ kind: "amount" });
-  const [selected, setSelected] = useState<number>(10);
+  const [selected, setSelected] = useState<number>(PRESETS[1] ?? PRESETS[0]);
   const [custom, setCustom] = useState<string>("");
   const [confettiKey, setConfettiKey] = useState(0);
 
   useEffect(() => {
     if (open) {
       setStep({ kind: "amount" });
-      setSelected(10);
+      setSelected(PRESETS[1] ?? PRESETS[0]);
       setCustom("");
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cur]);
 
   const chosenAmount = useMemo(() => {
     const custN = Number(custom.replace(",", "."));
-    if (custom && Number.isFinite(custN) && custN > 0) return Math.round(custN * 100) / 100;
+    if (custom && Number.isFinite(custN) && custN > 0) return roundForCurrency(custN, cur);
     return selected;
-  }, [custom, selected]);
+  }, [custom, selected, cur]);
 
   const valid =
     Number.isFinite(chosenAmount) &&
