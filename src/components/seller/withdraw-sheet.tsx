@@ -52,8 +52,11 @@ export function WithdrawSheet({
   }, [open, available]);
 
   const destination = useMemo<Record<string, string>>(() => {
-    if (method === "bank_transfer") return { iban: iban.trim(), holder: holder.trim() };
-    return { phone: phone.trim() };
+    const d: Record<string, string> =
+      method === "bank_transfer"
+        ? { iban: iban.trim(), holder: holder.trim() }
+        : { phone: phone.trim() };
+    return d;
   }, [method, phone, iban, holder]);
 
   const canContinue =
