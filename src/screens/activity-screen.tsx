@@ -527,10 +527,7 @@ function OrderDetailBody({ order }: { order: Order }) {
 
       {/* Totals */}
       <div className="rounded-2xl border border-border p-4">
-        <Row label="Sous-total" value={formatEuro(order.price)} />
-        <Row label="Livraison" value="Offerte" />
-        <div className="my-2 h-px bg-border" />
-        <Row label="Total" value={formatEuro(order.price)} bold />
+        <Row label={t("live.buy_sheet.total")} value={formatEuro(order.price)} bold />
       </div>
     </div>
   );
