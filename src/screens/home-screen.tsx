@@ -3,9 +3,16 @@ import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-mo
 import { Bell, Share2, Loader2 } from "lucide-react";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
-import { CategoryPills } from "@/components/category-pills";
+import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
+import { FilterPills } from "@/components/filter-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
-import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
+import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import {
+  applyHomeCategory,
+  applyHomeFilter,
+  type HomeCategory,
+  type HomeFilter,
+} from "@/lib/home-categories";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
@@ -15,7 +22,8 @@ const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
 
 export function HomeScreen() {
-  const [category, setCategory] = useState<Category>("For You");
+  const [category, setCategory] = useState<HomeCategory>("Pour toi");
+  const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [items, setItems] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,7 +37,6 @@ export function HomeScreen() {
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
 
-  // Initial load (simulated).
   useEffect(() => {
     const t = setTimeout(() => {
       setItems(makeStreams(0, PAGE));
@@ -38,8 +45,6 @@ export function HomeScreen() {
     return () => clearTimeout(t);
   }, []);
 
-  // Test entry point: opening the app with ?live=<room> jumps straight
-  // into the viewer connected to that LiveKit room.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -59,9 +64,8 @@ export function HomeScreen() {
   }, [openStream]);
 
   const filtered = useMemo(() => {
-    if (category === "For You") return items;
-    return items.filter((s) => s.category === category);
-  }, [items, category]);
+    return applyHomeFilter(applyHomeCategory(items, category), filter);
+  }, [items, category, filter]);
 
   const doRefresh = useCallback(() => {
     setRefreshing(true);
@@ -82,7 +86,6 @@ export function HomeScreen() {
     }, 550);
   }, [loadingMore, loading]);
 
-  // Scroll listener: header solidify + infinite scroll sentinel
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -93,7 +96,6 @@ export function HomeScreen() {
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
-
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -109,7 +111,6 @@ export function HomeScreen() {
     return () => io.disconnect();
   }, [loadMore]);
 
-  // Pull-to-refresh gesture (only when scrolled to top).
   const dragStartY = useRef<number | null>(null);
   const pulling = useRef(false);
 
@@ -126,7 +127,6 @@ export function HomeScreen() {
       pullY.set(0);
       return;
     }
-    // rubber-band
     const eased = Math.min(PULL_MAX, dy * 0.55);
     pullY.set(eased);
   };
@@ -137,7 +137,6 @@ export function HomeScreen() {
     if (y >= PULL_TRIGGER && !refreshing) {
       doRefresh();
     }
-    // spring back
     const start = performance.now();
     const from = pullY.get();
     const anim = (t: number) => {
@@ -158,9 +157,7 @@ export function HomeScreen() {
           backgroundColor: scrolled
             ? "color-mix(in oklch, var(--background) 80%, transparent)"
             : "rgba(255,255,255,0)",
-          borderBottomColor: scrolled
-            ? "var(--border)"
-            : "rgba(0,0,0,0)",
+          borderBottomColor: scrolled ? "var(--border)" : "rgba(0,0,0,0)",
         }}
         transition={{ duration: 0.2, ease: EASE_IOS }}
         style={{
@@ -188,14 +185,13 @@ export function HomeScreen() {
             </Press>
           </div>
         </div>
-        <CategoryPills active={category} onChange={setCategory} />
       </motion.header>
 
       {/* Pull-to-refresh indicator */}
       <motion.div
         className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
         style={{
-          top: "calc(env(safe-area-inset-top) + 96px)",
+          top: "calc(env(safe-area-inset-top) + 56px)",
           y: pullY,
           opacity: pullOpacity,
         }}
@@ -233,16 +229,38 @@ export function HomeScreen() {
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
-        {/* spacer for header (title bar + pills) */}
+        {/* spacer for header only */}
         <div
           aria-hidden
-          style={{ height: "calc(env(safe-area-inset-top) + 100px)" }}
+          style={{ height: "calc(env(safe-area-inset-top) + 56px)" }}
         />
+
+        {/* ROW 2 — Large category tiles */}
+        <div className="pt-2">
+          {loading && items.length === 0 ? (
+            <CategoryTilesSkeleton />
+          ) : (
+            <CategoryTiles active={category} onChange={setCategory} />
+          )}
+        </div>
+
+        {/* ROW 3 — Filter pills */}
+        <div className="pt-3">
+          <FilterPills active={filter} onChange={setFilter} />
+        </div>
+
+        {/* Section title */}
+        <h2
+          className="px-4 pb-2 pt-5 text-left text-[20px] font-semibold"
+          style={{ letterSpacing: "-0.01em", color: "var(--foreground)" }}
+        >
+          Lives près de chez toi
+        </h2>
 
         <div className="px-4">
           <AnimatePresence mode="wait">
             <motion.div
-              key={category + (loading ? ":loading" : ":ready")}
+              key={category + ":" + filter + (loading ? ":loading" : ":ready")}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -265,7 +283,6 @@ export function HomeScreen() {
             </div>
           )}
 
-          {/* infinite scroll skeletons */}
           {!loading && loadingMore && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
