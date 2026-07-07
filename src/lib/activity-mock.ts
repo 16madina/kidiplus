@@ -120,12 +120,13 @@ export function initialOrders(): Order[] {
 }
 
 export function orderStatusMeta(s: OrderStatus): { label: string; color: string; bg: string } {
-  if (s === "paid") return { label: "Payé", color: "oklch(0.98 0 0)", bg: "oklch(0.55 0.18 250)" };
-  if (s === "shipped") return { label: "Expédié", color: "oklch(0.98 0 0)", bg: "oklch(0.7 0.17 55)" };
-  return { label: "Livré", color: "oklch(0.98 0 0)", bg: "oklch(0.6 0.17 155)" };
+  const t = i18n.t.bind(i18n);
+  if (s === "paid") return { label: t("activity.orderStatus.paid"), color: "oklch(0.98 0 0)", bg: "oklch(0.55 0.18 250)" };
+  if (s === "shipped") return { label: t("activity.orderStatus.shipped"), color: "oklch(0.98 0 0)", bg: "oklch(0.7 0.17 55)" };
+  return { label: t("activity.orderStatus.delivered"), color: "oklch(0.98 0 0)", bg: "oklch(0.6 0.17 155)" };
 }
 
 export function orderDateShort(d: Date): string {
-  const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  const lang = i18n.language?.startsWith("en") ? "en-GB" : "fr-FR";
+  return new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
