@@ -74,7 +74,7 @@ function Welcome({
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_IOS }}
         >
-          <Logo size={56} />
+          <Logo size={160} />
         </motion.span>
         <motion.p
           initial={{ y: 12, opacity: 0 }}
