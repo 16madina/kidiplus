@@ -486,10 +486,12 @@ function LivesTab({ info }: { info: SellerInfo }) {
 
 function AvisTab({ info }: { info: SellerInfo }) {
   const [barsVisible, setBarsVisible] = useState(false);
+  const { t } = useTranslation();
   useEffect(() => {
-    const t = setTimeout(() => setBarsVisible(true), 80);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setBarsVisible(true), 80);
+    return () => clearTimeout(tm);
   }, []);
+
 
   return (
     <div className="space-y-5">
