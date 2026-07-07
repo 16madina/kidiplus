@@ -28,20 +28,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
 import { useWallet } from "@/lib/wallet-context";
 import { payOrderWithWallet } from "@/lib/wallet-db";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
-
-function formatEuro(n: number): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-  }).format(n);
-}
 
 type CheckoutResp = {
   clientSecret?: string;
