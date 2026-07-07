@@ -857,6 +857,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </div>
         </div>
       </BottomSheet>
+
+      <AddProductSheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdd={(p) => { void onAddProductMidLive(p); }}
+      />
     </motion.div>
   );
 }
