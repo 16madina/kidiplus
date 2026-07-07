@@ -18,6 +18,7 @@ import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { IOSSwitch } from "@/components/ios-switch";
 import { EASE_IOS } from "@/lib/motion";
+import { usePush } from "@/lib/push";
 import { useSettings } from "@/lib/settings-context";
 
 export function ProfileScreen() {
@@ -165,6 +166,14 @@ function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
 
 function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { dark, setDark, notif, setNotif, sounds, setSounds } = useSettings();
+  const { status: pushStatus, requestWithPrePrompt, refresh } = usePush();
+
+  // Refresh permission when opening (user may have changed OS setting).
+  const wasOpen = useState(open)[0];
+  if (open && !wasOpen) void refresh();
+
+  const pushGranted = pushStatus === "granted";
+  const pushOn = pushGranted && notif;
 
   return (
     <PushScreen open={open} onClose={onClose} title="Paramètres" zIndex={65}>
@@ -177,12 +186,20 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
             icon={<BellRing size={16} />}
             tint="oklch(0.62 0.24 20)"
             label="Notifications push"
-            checked={notif}
-            onChange={(v) => {
+            checked={pushOn}
+            onChange={async (v) => {
               setNotif(v);
-              toast(v ? "Notifications activées" : "Notifications désactivées");
+              if (v && !pushGranted) {
+                const ok = await requestWithPrePrompt(
+                  "Active les notifications pour ne rater aucun live de tes vendeurs préférés 🔔",
+                );
+                if (!ok) setNotif(false);
+              } else {
+                toast(v ? "Notifications activées" : "Notifications désactivées");
+              }
             }}
           />
+
           <Sep />
           <ToggleRow
             icon={<Volume2 size={16} />}
