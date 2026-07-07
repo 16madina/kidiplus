@@ -202,12 +202,12 @@ function SellerProfileInner({
               </p>
 
               <div className="mt-3 flex items-center gap-6">
-                <Stat label="Abonnés" value={formatCompact(info.followers)} />
+                <Stat label={t("seller.stats.followers")} value={formatCompact(info.followers)} />
                 <Divider />
-                <Stat label="Ventes" value={formatCompact(info.sales)} />
+                <Stat label={t("seller.stats.sales")} value={formatCompact(info.sales)} />
                 <Divider />
                 <Stat
-                  label="Note"
+                  label={t("seller.stats.rating")}
                   value={
                     <span className="inline-flex items-center gap-0.5">
                       {info.rating.toFixed(1)}
@@ -215,6 +215,7 @@ function SellerProfileInner({
                     </span>
                   }
                 />
+
               </div>
 
               <Press
