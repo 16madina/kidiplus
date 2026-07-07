@@ -253,7 +253,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               style={{ borderColor: "rgba(255,255,255,0.5)" }}
             >
               <Plus size={20} />
-              <span className="text-[10px] font-semibold">Ajouter</span>
+              <span className="text-[10px] font-semibold">{t("common.add")}</span>
             </Press>
           </motion.div>
         </div>
