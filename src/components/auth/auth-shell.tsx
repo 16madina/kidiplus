@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 
@@ -13,6 +14,7 @@ export function AuthScreenShell({
   onBack?: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, x: 24 }}
@@ -25,7 +27,7 @@ export function AuthScreenShell({
         {onBack ? (
           <Press
             onClick={onBack}
-            aria-label="Retour"
+            aria-label={t("common.back")}
             className="!min-h-10 !min-w-10 h-10 w-10 rounded-full"
           >
             <ChevronLeft size={22} />
