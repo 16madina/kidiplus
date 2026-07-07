@@ -523,8 +523,8 @@ function TrendsRow({
   trends: Trend[];
   onTap: (t: Trend) => void;
 }) {
-  // 2-row horizontal scroll: use CSS grid with 2 rows and column-flow so
-  // items pack vertically first (col 1 top+bottom, col 2 top+bottom, ...).
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   return (
     <div
       className="overflow-x-auto px-4 pb-1"
@@ -541,9 +541,9 @@ function TrendsRow({
           gridAutoColumns: "260px",
         }}
       >
-        {trends.map((t, i) => (
+        {trends.map((trend, i) => (
           <motion.div
-            key={t.id}
+            key={trend.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -554,12 +554,12 @@ function TrendsRow({
             style={{ scrollSnapAlign: "start" }}
           >
             <Press
-              onClick={() => onTap(t)}
+              onClick={() => onTap(trend)}
               className="!min-h-0 flex w-full items-center gap-3 rounded-2xl bg-muted p-2 text-left"
               style={{ height: 64 }}
             >
               <img
-                src={t.image}
+                src={trend.image}
                 alt=""
                 loading="lazy"
                 onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
@@ -567,11 +567,16 @@ function TrendsRow({
                 draggable={false}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-bold">{t.name}</p>
+                <p className="truncate text-[14px] font-bold">{t(trend.nameKey)}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <LiveDot />
                   <span className="truncate text-[12px] text-muted-foreground">
-                    {formatViewersFr(t.viewers)} spectateurs
+                    {t("units.viewers", {
+                      count: trend.viewers,
+                      defaultValue_one: `${formatCount(trend.viewers, lang)} viewer`,
+                      defaultValue_other: `${formatCount(trend.viewers, lang)} viewers`,
+                    })
+                      .replace(String(trend.viewers), formatCount(trend.viewers, lang))}
                   </span>
                 </div>
               </div>
