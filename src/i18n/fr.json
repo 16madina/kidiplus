@@ -509,6 +509,57 @@
     "reject": "Rejeter",
     "confirmReject": "Rejeter cette demande ? Le montant sera recrédité au vendeur.",
     "markedPaid": "Marqué comme payé",
-    "markedRejected": "Demande rejetée"
+    "markedRejected": "Demande rejetée",
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "users": "Utilisateurs",
+      "payments": "Paiements",
+      "lives": "Lives"
+    },
+    "kpi": {
+      "gmv": "GMV",
+      "gmvMonth": "GMV ce mois",
+      "revenue": "Revenus plateforme",
+      "revenueMonth": "Revenus ce mois",
+      "walletFloat": "Flottant portefeuilles",
+      "sellerLiability": "Dû aux vendeurs",
+      "pendingPayouts": "Retraits en attente",
+      "users": "Utilisateurs",
+      "sellers": "Vendeurs",
+      "newUsersWeek": "Nouveaux (7j)",
+      "livesLive": "Lives en direct",
+      "livesTotal": "Lives (total)",
+      "ordersPaid": "Commandes payées",
+      "orders14d": "Commandes / GMV — 14 j"
+    },
+    "users": {
+      "searchPh": "Rechercher (nom, @handle, email)",
+      "empty": "Aucun utilisateur.",
+      "wallet": "Portefeuille",
+      "sellerBal": "Solde vendeur",
+      "purchases": "Achats",
+      "sales": "Ventes",
+      "joined": "Inscrit",
+      "detail": "Détail utilisateur",
+      "recentOrders": "Commandes récentes",
+      "recentLives": "Lives récents",
+      "walletTx": "Transactions portefeuille",
+      "earnings": "Gains",
+      "moderationSoon": "Modération (bloquer / avertir / message) — arrive bientôt."
+    },
+    "orders": {
+      "title": "Commandes récentes",
+      "filterAll": "Tout",
+      "empty": "Aucune commande."
+    },
+    "lives": {
+      "empty": "Aucun live.",
+      "live": "EN DIRECT",
+      "ended": "Terminé",
+      "viewers": "Spectateurs",
+      "gmv": "GMV"
+    },
+    "onlyAdmins": "Accès réservé aux administrateurs.",
+    "approxEurTotal": "≈ EUR (indicatif)"
   }
 }
