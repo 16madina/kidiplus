@@ -530,6 +530,9 @@
     "errors": {
       "insufficient": "Solde insuffisant",
       "belowMin": "Minimum: {{min}}",
+      "belowMinInline": "Montant inférieur au minimum ({{min}})",
+      "aboveAvailable": "Montant supérieur au solde disponible",
+      "missingDestination": "Renseigne les coordonnées de retrait",
       "generic": "Impossible de traiter la demande."
     }
   },

@@ -10,12 +10,11 @@ import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
+import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
-
-const MIN_BY_CURRENCY: Record<string, number> = { XOF: 5000, EUR: 10, CAD: 15 };
 
 export function WithdrawSheet({
   open,
@@ -29,7 +28,7 @@ export function WithdrawSheet({
   currency: string;
 }) {
   const { t, i18n } = useTranslation();
-  const min = MIN_BY_CURRENCY[currency] ?? 10;
+  const min = payoutMinimumFor(currency);
 
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
   const [amount, setAmount] = useState<number>(available);
@@ -59,10 +58,20 @@ export function WithdrawSheet({
     return d;
   }, [method, phone, iban, holder]);
 
-  const canContinue =
-    amount >= min &&
-    amount <= available &&
-    (method === "bank_transfer" ? iban.trim().length >= 6 && holder.trim().length >= 2 : phone.trim().length >= 6);
+  const destinationValid =
+    method === "bank_transfer"
+      ? iban.trim().length >= 6 && holder.trim().length >= 2
+      : phone.trim().length >= 6;
+  const belowMin = amount < min;
+  const aboveAvailable = amount > available;
+  const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
+  const disabledReason = belowMin
+    ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
+    : aboveAvailable
+      ? t("payout.errors.aboveAvailable")
+      : !destinationValid
+        ? t("payout.errors.missingDestination")
+        : null;
 
   const submit = async () => {
     setBusy(true);
@@ -154,8 +163,22 @@ export function WithdrawSheet({
                 onChange={(e) => setAmount(Number(e.target.value.replace(",", ".")) || 0)}
                 className="mt-1 h-12 w-full rounded-2xl border px-4 text-[16px] font-semibold tabular-nums"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t("payout.minHint", { min: formatMoney(min, currency, i18n.language) })}
+              <p
+                className="mt-1 text-[11px]"
+                style={{
+                  color: belowMin
+                    ? "oklch(0.6 0.24 25)"
+                    : "var(--muted-foreground)",
+                  fontWeight: belowMin ? 600 : 400,
+                }}
+              >
+                {belowMin
+                  ? t("payout.errors.belowMinInline", {
+                      min: formatMoney(min, currency, i18n.language),
+                    })
+                  : t("payout.minHint", {
+                      min: formatMoney(min, currency, i18n.language),
+                    })}
               </p>
 
               <p className="mt-4 mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -209,8 +232,17 @@ export function WithdrawSheet({
               )}
 
               <div className="mt-auto pt-4">
+                {!canContinue && disabledReason && (
+                  <p
+                    className="mb-2 text-center text-[12px] font-semibold"
+                    style={{ color: "oklch(0.6 0.24 25)" }}
+                  >
+                    {disabledReason}
+                  </p>
+                )}
                 <Press
                   onClick={canContinue ? () => setStep("confirm") : undefined}
+                  disabled={!canContinue}
                   className="w-full rounded-2xl py-3 text-[15px] font-bold"
                   style={{
                     backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
