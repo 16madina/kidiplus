@@ -183,7 +183,9 @@ function AppShellInner() {
         <ProfileScreen />
       </TabPane>
 
-      <BottomTabBar active={active} onChange={setActive} />
+      {!immersive && !liveStream && (
+        <BottomTabBar active={active} onChange={setActive} />
+      )}
 
       <AnimatePresence>
         {liveStream && <LiveViewerScreen />}
