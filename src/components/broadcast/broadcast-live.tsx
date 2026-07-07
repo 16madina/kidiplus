@@ -291,11 +291,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         micEnabled={micOn}
         fallbackImage={b.cover}
         livekit={
-          b.roomName
-            ? { room: b.roomName, identity: `host_${b.roomName}`, name: "Host" }
+          b.roomName && b.hostIdentity
+            ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
             : undefined
         }
       />
+
 
 
       {/* Top bar */}
