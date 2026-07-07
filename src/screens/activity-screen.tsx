@@ -492,7 +492,7 @@ function OrderDetailBody({ order }: { order: Order }) {
                   </motion.span>
                   <div className="min-h-7 pt-0.5">
                     <p className={`text-[14px] ${done ? "font-semibold" : "text-muted-foreground"}`}>
-                      {s.label}
+                      {t(s.labelKey)}
                     </p>
                     {i === activeIdx && (
                       <p className="text-[11px] text-muted-foreground">
