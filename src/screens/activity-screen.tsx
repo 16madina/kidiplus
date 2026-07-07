@@ -389,11 +389,11 @@ function OrderSkeletons() {
 
 /* ================= Order detail ================= */
 
-const STEPS: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: "ordered", label: "Commandé", icon: <Check size={12} strokeWidth={3} /> },
-  { key: "paid", label: "Payé", icon: <CreditCard size={12} strokeWidth={2.5} /> },
-  { key: "shipped", label: "Expédié", icon: <Truck size={12} strokeWidth={2.5} /> },
-  { key: "delivered", label: "Livré", icon: <Package size={12} strokeWidth={2.5} /> },
+const STEPS: { key: string; labelKey: string; icon: React.ReactNode }[] = [
+  { key: "ordered", labelKey: "activity.timeline.ordered", icon: <Check size={12} strokeWidth={3} /> },
+  { key: "paid", labelKey: "activity.orderStatus.paid", icon: <CreditCard size={12} strokeWidth={2.5} /> },
+  { key: "shipped", labelKey: "activity.timeline.shipped", icon: <Truck size={12} strokeWidth={2.5} /> },
+  { key: "delivered", labelKey: "activity.timeline.delivered", icon: <Package size={12} strokeWidth={2.5} /> },
 ];
 
 function statusIndex(s: Order["status"]): number {
