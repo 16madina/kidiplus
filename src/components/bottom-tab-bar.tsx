@@ -1,18 +1,19 @@
 import { Home, Search, Radio, Heart, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Press } from "./press";
 import type { TabKey } from "./app-shell";
 
 const tabs: {
   key: TabKey;
-  label: string;
+  labelKey: string;
   Icon: typeof Home;
 }[] = [
-  { key: "home", label: "Home", Icon: Home },
-  { key: "search", label: "Search", Icon: Search },
-  { key: "live", label: "Go Live", Icon: Radio },
-  { key: "activity", label: "Activity", Icon: Heart },
-  { key: "profile", label: "Profile", Icon: User },
+  { key: "home", labelKey: "tabs.home", Icon: Home },
+  { key: "search", labelKey: "tabs.search", Icon: Search },
+  { key: "live", labelKey: "tabs.live", Icon: Radio },
+  { key: "activity", labelKey: "tabs.activity", Icon: Heart },
+  { key: "profile", labelKey: "tabs.profile", Icon: User },
 ];
 
 export function BottomTabBar({
