@@ -609,13 +609,19 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       </div>
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
-      <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={80}>
-        <div className="flex h-full flex-col px-4 pb-4">
-          <div className="flex items-center justify-between pb-2">
+      <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={85}>
+        <div className="flex h-full min-h-0 flex-col px-4">
+          <div className="flex items-center justify-between pb-2 pt-1">
             <h2 className="text-[18px] font-bold">{t("live.openProducts")}</h2>
             <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
             <ul className="flex flex-col gap-2">
               {room.products.map((p) => {
                 const auctionActive = activeAuction?.productId === p.id;
