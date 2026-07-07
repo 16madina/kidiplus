@@ -15,8 +15,13 @@ export function AuthFlow() {
 
   return (
     <div
-      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
-      style={{ isolation: "isolate" }}
+      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden"
+      style={{
+        isolation: "isolate",
+        background:
+          "linear-gradient(180deg, #141B33 0%, #10162B 55%, #0C1122 100%)",
+        color: "white",
+      }}
     >
       <AnimatePresence mode="wait">
         {view === "welcome" && (
