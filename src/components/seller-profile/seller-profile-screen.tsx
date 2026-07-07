@@ -12,6 +12,8 @@ import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import { haptic } from "@/lib/haptics";
+import { usePush } from "@/lib/push";
 import {
   formatCompact,
   formatDate,
@@ -19,6 +21,7 @@ import {
   type SellerInfo,
 } from "@/lib/seller-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
+
 
 const HEADER_MAX = 260; // large header total height above nav
 const HEADER_MIN = 0;
