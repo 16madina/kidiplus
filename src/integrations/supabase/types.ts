@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_bids: {
         Row: {
           amount: number
@@ -322,6 +355,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age_confirmed_at: string | null
           avatar_url: string | null
           bio: string | null
           country: string | null
@@ -334,8 +368,11 @@ export type Database = {
           is_admin: boolean
           is_seller: boolean
           language: string
+          terms_accepted_at: string | null
+          terms_version: string | null
         }
         Insert: {
+          age_confirmed_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           country?: string | null
@@ -348,8 +385,11 @@ export type Database = {
           is_admin?: boolean
           is_seller?: boolean
           language?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Update: {
+          age_confirmed_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           country?: string | null
@@ -362,8 +402,54 @@ export type Database = {
           is_admin?: boolean
           is_seller?: boolean
           language?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          reason: string
+          reporter_id: string
+          status: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: string
+          reporter_id: string
+          status?: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seller_balances: {
         Row: {
@@ -522,6 +608,7 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      account_deletion_check: { Args: never; Returns: Json }
       admin_list_lives: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
@@ -544,12 +631,15 @@ export type Database = {
         Returns: Json
       }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
+      anonymize_my_account: { Args: never; Returns: Json }
+      block_user: { Args: { _blocked_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
         Returns: Json
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      list_my_blocks: { Args: never; Returns: Json }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
       purchase_fixed_price: {
         Args: { _buyer_identity: string; _product_id: string }
@@ -581,7 +671,17 @@ export type Database = {
         Args: { _amount: number; _destination: Json; _method: string }
         Returns: Json
       }
+      submit_report: {
+        Args: {
+          _note?: string
+          _reason: string
+          _target_id: string
+          _target_type: string
+        }
+        Returns: Json
+      }
       sync_my_wallet_currency: { Args: never; Returns: Json }
+      unblock_user: { Args: { _blocked_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

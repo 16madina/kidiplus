@@ -9,7 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as CommunityRouteImport } from './routes/community'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
@@ -17,10 +20,26 @@ import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -58,35 +77,52 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/community': typeof CommunityRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/community': typeof CommunityRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/community': typeof CommunityRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -94,51 +130,88 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/community'
+    | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/community'
+    | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   id:
     | '__root__'
     | '/'
+    | '/community'
+    | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CommunityRoute: typeof CommunityRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -190,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
     }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -219,11 +299,15 @@ const ApiWalletTopupRouteWithChildren = ApiWalletTopupRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CommunityRoute: CommunityRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

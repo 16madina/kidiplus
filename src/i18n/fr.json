@@ -561,5 +561,76 @@
     },
     "onlyAdmins": "Accès réservé aux administrateurs.",
     "approxEurTotal": "≈ EUR (indicatif)"
+  },
+  "legal": {
+    "appLegal": "Documents légaux — KiDi+",
+    "lastUpdated": "Dernière mise à jour",
+    "draftBanner": "Modèle — à faire relire par un juriste avant publication finale.",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "community": "Directives de la communauté"
+  },
+  "consent": {
+    "checkbox": "J'ai lu et j'accepte les <t>Conditions d'utilisation</t> et la <p>Politique de confidentialité</p>",
+    "ageCheckbox": "Je confirme avoir au moins 18 ans",
+    "required": "Tu dois accepter les conditions et confirmer avoir 18 ans pour continuer."
+  },
+  "report": {
+    "action": "Signaler",
+    "title": "Signaler",
+    "subtitle": "Choisis une raison. Notre équipe examine chaque signalement.",
+    "submit": "Envoyer le signalement",
+    "sent": "Signalement envoyé, merci.",
+    "failed": "Échec du signalement. Réessaie.",
+    "notePh": "Détails (optionnel)",
+    "reasons": {
+      "inappropriate": "Contenu inapproprié",
+      "fraud": "Arnaque / fraude",
+      "counterfeit": "Contrefaçon",
+      "harassment": "Harcèlement",
+      "other": "Autre"
+    }
+  },
+  "block": {
+    "action": "Bloquer",
+    "unblock": "Débloquer",
+    "confirm": "Bloquer cet utilisateur ? Ses lives et messages seront masqués.",
+    "blocked": "Utilisateur bloqué.",
+    "unblocked": "Utilisateur débloqué.",
+    "failed": "Action impossible.",
+    "listTitle": "Utilisateurs bloqués",
+    "empty": "Aucun utilisateur bloqué."
+  },
+  "account": {
+    "delete": {
+      "menuItem": "Supprimer mon compte",
+      "title": "Supprimer mon compte",
+      "warnTitle": "Action définitive",
+      "warnBody": "La suppression de ton compte est permanente. Cette action ne peut pas être annulée.",
+      "effect": {
+        "profile": "Ton profil, avatar et bio seront supprimés.",
+        "lives": "Tes lives en cours seront terminés et retirés du fil.",
+        "messages": "Tes messages de chat seront supprimés.",
+        "wallet": "Le solde restant de ton portefeuille sera perdu s'il n'est pas retiré avant.",
+        "orders": "Tes commandes et paiements passés sont conservés à des fins comptables (anonymisés)."
+      },
+      "blockersTitle": "Impossible de supprimer pour l'instant :",
+      "blockers": {
+        "wallet": "Solde portefeuille positif ({{amount}}) — retire ou dépense-le d'abord.",
+        "payouts": "Un ou plusieurs retraits sont en cours de traitement.",
+        "orders": "Des commandes sont encore en attente de paiement.",
+        "live": "Un live est en cours — termine-le d'abord."
+      },
+      "typeConfirmLabel": "Écris DELETE pour confirmer",
+      "confirmBtn": "Supprimer définitivement mon compte",
+      "unauthorized": "Session expirée. Reconnecte-toi.",
+      "hasBlockers": "Suppression bloquée : voir les conditions.",
+      "failed": "La suppression a échoué. Réessaie.",
+      "done": "Compte supprimé."
+    }
+  },
+  "ageGate": {
+    "title": "Confirmation d'âge",
+    "body": "KiDi+ est réservée aux personnes de 18 ans et plus. Tu dois confirmer ton âge pour continuer."
   }
 }

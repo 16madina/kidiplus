@@ -2,7 +2,7 @@
 // Chat / hearts / auction / buy are wired through Supabase Realtime + DB.
 import { motion, useMotionValue, animate } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye } from "lucide-react";
+import { Send, Heart, Plus, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -28,6 +28,8 @@ import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
@@ -250,7 +252,21 @@ export function RealLiveViewerScreen() {
 
   const dragY = useMotionValue(0);
 
+  // Moderation
+  const [reportOpen, setReportOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const blockedIds = useBlockedIds();
+  const doBlockSeller = async () => {
+    if (!active?.sellerId) return;
+    const r = await blockUser(active.sellerId);
+    if (r.ok) { await refreshBlockedIds(); toast.success(t("block.blocked")); close(); }
+    else toast.error(t("block.failed"));
+    setMoreOpen(false);
+  };
+
   if (!active) return null;
+  // If viewer already blocked this seller, close automatically.
+  if (active.sellerId && blockedIds.has(active.sellerId)) { close(); return null; }
   const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
 
@@ -261,7 +277,7 @@ export function RealLiveViewerScreen() {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0.4 }}
       transition={{ duration: 0.3, ease: EASE_IOS }}
-      className="fixed inset-0 z-[60] overflow-hidden bg-black"
+      className="fixed inset-y-0 left-1/2 z-[60] w-full max-w-xl -translate-x-1/2 overflow-hidden bg-black"
       style={{ y: dragY }}
     >
       {active.roomName ? (
@@ -343,6 +359,11 @@ export function RealLiveViewerScreen() {
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Share2 size={16} />
+            </Press>
+            <Press aria-label="More" onClick={() => setMoreOpen(true)}
+              className="h-9 w-9 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+              <MoreVertical size={16} />
             </Press>
             <Press aria-label={t("live.leave")} onClick={close}
               className="h-9 w-9 rounded-full text-white"
@@ -431,6 +452,24 @@ export function RealLiveViewerScreen() {
       />
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
 
+      {moreOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
+          <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <Press onClick={() => { setMoreOpen(false); setReportOpen(true); }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
+              <Flag size={18} /> {t("report.action")}
+            </Press>
+            <Press onClick={() => { if (confirm(t("block.confirm"))) void doBlockSeller(); }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive">
+              <UserX size={18} /> {t("block.action")}
+            </Press>
+          </div>
+        </div>
+      )}
+      {active?.liveId && (
+        <ReportSheet open={reportOpen} onClose={() => setReportOpen(false)} targetType="live" targetId={active.liveId} />
+      )}
     </motion.div>
   );
 }
