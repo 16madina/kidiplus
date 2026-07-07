@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, CreditCard, MapPin } from "lucide-react";
-import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
