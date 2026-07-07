@@ -1,10 +1,12 @@
 // Mock data for the Search "browse" default state.
-// - Trending topics (Tendances du jour): horizontal 2-row scroll
-// - Category grid (Catégories): 2-column floating-product cards
+// Each item exposes a `nameKey` (i18n key) — the display component reads it
+// through t(nameKey). `name` is kept as a French fallback / free-text search
+// term when tapping routes into the search results.
 
 export type Trend = {
   id: string;
   name: string;
+  nameKey: string;
   viewers: number;
   image: string;
 };
@@ -13,6 +15,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t1",
     name: "Bijoux en or",
+    nameKey: "search.trends.goldJewelry",
     viewers: 1100,
     image:
       "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=200&q=80&auto=format&fit=crop",
@@ -20,6 +23,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t2",
     name: "Sacs de luxe",
+    nameKey: "search.trends.luxuryBags",
     viewers: 1200,
     image:
       "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&q=80&auto=format&fit=crop",
@@ -27,6 +31,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t3",
     name: "Parfums",
+    nameKey: "search.trends.perfumes",
     viewers: 890,
     image:
       "https://images.unsplash.com/photo-1541643600914-78b084683601?w=200&q=80&auto=format&fit=crop",
@@ -34,6 +39,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t4",
     name: "Maillots",
+    nameKey: "search.trends.swimwear",
     viewers: 143,
     image:
       "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=200&q=80&auto=format&fit=crop",
@@ -41,6 +47,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t5",
     name: "Montres",
+    nameKey: "search.trends.watches",
     viewers: 25,
     image:
       "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=200&q=80&auto=format&fit=crop",
@@ -48,6 +55,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t6",
     name: "Sneakers",
+    nameKey: "search.trends.sneakers",
     viewers: 2100,
     image:
       "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&q=80&auto=format&fit=crop",
@@ -55,6 +63,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t7",
     name: "Cartes Pokémon",
+    nameKey: "search.trends.pokemonCards",
     viewers: 640,
     image:
       "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=200&q=80&auto=format&fit=crop",
@@ -62,6 +71,7 @@ export const TRENDS: Trend[] = [
   {
     id: "t8",
     name: "Manettes gaming",
+    nameKey: "search.trends.gamingControllers",
     viewers: 320,
     image:
       "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=200&q=80&auto=format&fit=crop",
@@ -71,6 +81,7 @@ export const TRENDS: Trend[] = [
 export type BrowseCategory = {
   id: string;
   name: string;
+  nameKey: string;
   viewers: number;
   image: string;
   /** Query term routed to the search results when the card is tapped. */
@@ -81,6 +92,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "beaute",
     name: "Beauté",
+    nameKey: "search.cats.beauty",
     viewers: 14200,
     query: "Beauty",
     image:
@@ -89,6 +101,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "mode-femme",
     name: "Mode femme",
+    nameKey: "search.cats.womenFashion",
     viewers: 8600,
     query: "Fashion",
     image:
@@ -97,6 +110,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "mode-homme",
     name: "Mode homme",
+    nameKey: "search.cats.menFashion",
     viewers: 5200,
     query: "Fashion",
     image:
@@ -105,6 +119,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "sacs",
     name: "Sacs & accessoires",
+    nameKey: "search.cats.bagsAccessories",
     viewers: 6100,
     query: "Fashion",
     image:
@@ -113,6 +128,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "parfums",
     name: "Parfums",
+    nameKey: "search.cats.perfumes",
     viewers: 3400,
     query: "Beauty",
     image:
@@ -121,6 +137,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "bijoux",
     name: "Bijoux",
+    nameKey: "search.cats.jewelry",
     viewers: 4800,
     query: "Jewelry",
     image:
@@ -129,6 +146,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "montres",
     name: "Montres",
+    nameKey: "search.cats.watches",
     viewers: 2200,
     query: "Jewelry",
     image:
@@ -137,6 +155,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "electronique",
     name: "Électronique",
+    nameKey: "search.cats.electronics",
     viewers: 7400,
     query: "Electronics",
     image:
@@ -145,6 +164,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "jeux-video",
     name: "Jeux vidéo",
+    nameKey: "search.cats.gaming",
     viewers: 3900,
     query: "Electronics",
     image:
@@ -153,6 +173,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "sneakers",
     name: "Sneakers",
+    nameKey: "search.cats.sneakers",
     viewers: 11500,
     query: "Sneakers",
     image:
@@ -161,6 +182,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "maison",
     name: "Maison",
+    nameKey: "search.cats.home",
     viewers: 1600,
     query: "Fashion",
     image:
@@ -169,6 +191,7 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
   {
     id: "destockage",
     name: "Déstockage & lots",
+    nameKey: "search.cats.destock",
     viewers: 980,
     query: "Fashion",
     image:
@@ -177,12 +200,9 @@ export const BROWSE_CATEGORIES: BrowseCategory[] = [
 ];
 
 /**
- * French number formatting for viewer counts.
- *  - 1100  -> "1,1 k"
- *  - 14200 -> "14,2 k"
- *  - 890   -> "890"
- * Uses a comma as the decimal separator (French convention) and drops
- * trailing ",0".
+ * Locale-aware viewer count. Kept named `formatViewersFr` for backwards
+ * compatibility; delegates to the shared locale formatter.
+ * @deprecated import { formatCount } from "@/i18n/format" and pass lang explicitly.
  */
 export function formatViewersFr(n: number): string {
   if (n >= 1000) {
