@@ -14,26 +14,18 @@ import {
 } from "@/lib/seller-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
 import { EASE_IOS } from "@/lib/motion";
-
-const CATEGORY_COVERS: { key: string; cover: string }[] = [
-  { key: "Beauty", cover: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=70" },
-  { key: "Sneakers", cover: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70" },
-  { key: "Fashion", cover: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=70" },
-  { key: "Cards", cover: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=600&q=70" },
-  { key: "Electronics", cover: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70" },
-  { key: "Jewelry", cover: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=600&q=70" },
-];
-
-const CATEGORY_LABEL_FR: Record<string, string> = {
-  Beauty: "Beauté",
-  Sneakers: "Sneakers",
-  Fashion: "Mode",
-  Cards: "Cartes",
-  Electronics: "Électro.",
-  Jewelry: "Bijoux",
-};
+import {
+  BROWSE_CATEGORIES,
+  TRENDS,
+  formatViewersFr,
+  type BrowseCategory,
+  type Trend,
+} from "@/lib/browse-mock";
 
 const ALL_STREAMS = makeStreams(0, 24);
+
+type CategorySort = "Recommandés" | "Populaires" | "A-Z";
+const CATEGORY_SORTS: CategorySort[] = ["Recommandés", "Populaires", "A-Z"];
 
 export function SearchScreen() {
   const [focused, setFocused] = useState(false);
@@ -43,6 +35,8 @@ export function SearchScreen() {
   const [recent, setRecent] = useState<string[]>([
     "jordan 4", "chanel", "iphone", "pokémon", "ysl",
   ]);
+  const [browseLoading, setBrowseLoading] = useState(true);
+  const [sort, setSort] = useState<CategorySort>("Recommandés");
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
@@ -52,6 +46,12 @@ export function SearchScreen() {
     const t = setTimeout(() => setQuery(rawQuery.trim()), 200);
     return () => clearTimeout(t);
   }, [rawQuery]);
+
+  // First-paint skeleton for the browse (Tendances + Catégories) section
+  useEffect(() => {
+    const t = setTimeout(() => setBrowseLoading(false), 450);
+    return () => clearTimeout(t);
+  }, []);
 
   const searching = query.length > 0;
   const q = query.toLowerCase();
@@ -105,6 +105,35 @@ export function SearchScreen() {
     setFocused(false);
     inputRef.current?.blur();
   };
+
+  const openCategory = (c: BrowseCategory) => {
+    commitRecent(c.name);
+    setRawQuery(c.query);
+    setQuery(c.query);
+    setFocused(true);
+    setTab(0);
+  };
+
+  const openTrend = (t: Trend) => {
+    commitRecent(t.name);
+    setRawQuery(t.name);
+    setQuery(t.name);
+    setFocused(true);
+    setTab(0);
+  };
+
+  const sortedCategories = useMemo(() => {
+    switch (sort) {
+      case "Recommandés":
+        return BROWSE_CATEGORIES;
+      case "Populaires":
+        return [...BROWSE_CATEGORIES].sort((a, b) => b.viewers - a.viewers);
+      case "A-Z":
+        return [...BROWSE_CATEGORIES].sort((a, b) =>
+          a.name.localeCompare(b.name, "fr"),
+        );
+    }
+  }, [sort]);
 
   const tabs: TabDef[] = [
     {
@@ -209,6 +238,11 @@ export function SearchScreen() {
     },
   ];
 
+  // The "results" pane covers both a typed query AND the focused-but-empty
+  // state (recent searches). Anything else is the default browse view.
+  const showResults = searching;
+  const showFocusedEmpty = focused && !searching;
+
   return (
     <div className="flex h-full flex-col">
       {/* Search bar header */}
@@ -239,7 +273,7 @@ export function SearchScreen() {
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
               onFocus={() => setFocused(true)}
-              placeholder="Rechercher des lives, vendeurs, produits..."
+              placeholder="Rechercher"
               className="h-10 w-full rounded-full bg-muted pl-9 pr-9 text-[14px] outline-none placeholder:text-muted-foreground/80"
               enterKeyHint="search"
               autoComplete="off"
@@ -293,7 +327,7 @@ export function SearchScreen() {
       {/* Body */}
       <div className="min-h-0 flex-1">
         <AnimatePresence mode="wait">
-          {searching ? (
+          {showResults ? (
             <motion.div
               key="results"
               initial={{ opacity: 0 }}
@@ -305,9 +339,9 @@ export function SearchScreen() {
             >
               <SwipeableTabs tabs={tabs} index={tab} onIndexChange={setTab} />
             </motion.div>
-          ) : (
+          ) : showFocusedEmpty ? (
             <motion.div
-              key="browse"
+              key="focused"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -319,53 +353,8 @@ export function SearchScreen() {
                 overscrollBehavior: "contain",
               }}
             >
-              <div className="px-4 pt-3">
-                <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Catégories
-                </h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {CATEGORY_COVERS.map((c, i) => (
-                    <motion.div
-                      key={c.key}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, ease: EASE_IOS, delay: i * 0.03 }}
-                    >
-                      <Press
-                        onClick={() => {
-                          setRawQuery(c.key);
-                          setQuery(c.key);
-                          setFocused(true);
-                        }}
-                        className="!block relative w-full overflow-hidden rounded-2xl p-0 text-left"
-                        style={{ aspectRatio: "16 / 10" }}
-                      >
-                        <img
-                          src={c.cover}
-                          alt=""
-                          className="absolute inset-0 h-full w-full object-cover"
-                          loading="lazy"
-                          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                          draggable={false}
-                        />
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundImage:
-                              "linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.1))",
-                          }}
-                        />
-                        <span className="absolute bottom-2 left-3 text-[15px] font-bold text-white">
-                          {CATEGORY_LABEL_FR[c.key] ?? c.key}
-                        </span>
-                      </Press>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
               {recent.length > 0 && (
-                <div className="px-4 pt-6">
+                <div className="px-4 pt-3">
                   <div className="mb-1 flex items-center justify-between">
                     <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Recherches récentes
@@ -389,7 +378,6 @@ export function SearchScreen() {
                           onClick={() => {
                             setRawQuery(r);
                             setQuery(r);
-                            setFocused(true);
                           }}
                           className="!min-h-11 flex w-full items-center justify-between rounded-lg px-2 text-left"
                         >
@@ -414,12 +402,291 @@ export function SearchScreen() {
                 </div>
               )}
             </motion.div>
+          ) : (
+            <motion.div
+              key="browse"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: EASE_IOS }}
+              className="h-full overflow-y-auto"
+              style={{
+                paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehavior: "contain",
+              }}
+            >
+              {/* Tendances du jour */}
+              <div className="pt-4">
+                <div className="flex items-end justify-between px-4">
+                  <h2
+                    className="text-[22px] font-bold"
+                    style={{ letterSpacing: "-0.01em" }}
+                  >
+                    Tendances du jour
+                  </h2>
+                  <Press
+                    className="!min-h-8 text-[13px] font-semibold text-muted-foreground"
+                    onClick={() => {}}
+                  >
+                    Tout afficher ›
+                  </Press>
+                </div>
+
+                <div className="pt-3">
+                  {browseLoading ? (
+                    <TrendsSkeleton />
+                  ) : (
+                    <TrendsRow trends={TRENDS} onTap={openTrend} />
+                  )}
+                </div>
+              </div>
+
+              {/* Catégories */}
+              <div className="pt-7">
+                <h2
+                  className="px-4 text-[26px] font-bold"
+                  style={{ letterSpacing: "-0.015em" }}
+                >
+                  Catégories
+                </h2>
+
+                <div
+                  className="flex gap-2 overflow-x-auto px-4 pt-3"
+                  style={{
+                    scrollSnapType: "x proximity",
+                    WebkitOverflowScrolling: "touch",
+                    overscrollBehaviorX: "contain",
+                  }}
+                >
+                  {CATEGORY_SORTS.map((s) => {
+                    const isActive = s === sort;
+                    return (
+                      <Press
+                        key={s}
+                        onClick={() => setSort(s)}
+                        className="!min-h-8 h-8 shrink-0 rounded-full px-3.5 text-[12.5px] font-semibold"
+                        style={{
+                          scrollSnapAlign: "start",
+                          backgroundColor: isActive
+                            ? "oklch(0.18 0.005 60)"
+                            : "var(--muted)",
+                          color: isActive ? "#fff" : "var(--foreground)",
+                          transition: "background-color 150ms, color 150ms",
+                        }}
+                      >
+                        {s}
+                      </Press>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 px-4 pt-3">
+                  {browseLoading
+                    ? Array.from({ length: 6 }).map((_, i) => (
+                        <div
+                          key={`csk-${i}`}
+                          className="skeleton"
+                          style={{ height: 180, borderRadius: 18 }}
+                        />
+                      ))
+                    : sortedCategories.map((c, i) => (
+                        <CategoryCard
+                          key={c.id}
+                          category={c}
+                          index={i}
+                          onTap={() => openCategory(c)}
+                        />
+                      ))}
+                </div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
   );
 }
+
+/* -------------------------------- Trends -------------------------------- */
+
+function TrendsRow({
+  trends,
+  onTap,
+}: {
+  trends: Trend[];
+  onTap: (t: Trend) => void;
+}) {
+  // 2-row horizontal scroll: use CSS grid with 2 rows and column-flow so
+  // items pack vertically first (col 1 top+bottom, col 2 top+bottom, ...).
+  return (
+    <div
+      className="overflow-x-auto px-4 pb-1"
+      style={{
+        scrollSnapType: "x mandatory",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehaviorX: "contain",
+      }}
+    >
+      <div
+        className="grid grid-flow-col grid-rows-2"
+        style={{
+          gap: 8,
+          gridAutoColumns: "260px",
+        }}
+      >
+        {trends.map((t, i) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.2,
+              ease: EASE_IOS,
+              delay: Math.min(i, 8) * 0.025,
+            }}
+            style={{ scrollSnapAlign: "start" }}
+          >
+            <Press
+              onClick={() => onTap(t)}
+              className="!min-h-0 flex w-full items-center gap-3 rounded-2xl bg-muted p-2 text-left"
+              style={{ height: 64 }}
+            >
+              <img
+                src={t.image}
+                alt=""
+                loading="lazy"
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                draggable={false}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-bold">{t.name}</p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <LiveDot />
+                  <span className="truncate text-[12px] text-muted-foreground">
+                    {formatViewersFr(t.viewers)} spectateurs
+                  </span>
+                </div>
+              </div>
+            </Press>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendsSkeleton() {
+  return (
+    <div
+      className="overflow-hidden px-4"
+      style={{ overscrollBehaviorX: "contain" }}
+    >
+      <div
+        className="grid grid-flow-col grid-rows-2"
+        style={{ gap: 8, gridAutoColumns: "260px" }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="skeleton"
+            style={{ height: 64, borderRadius: 18 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Category card ---------------------------- */
+
+function CategoryCard({
+  category,
+  index,
+  onTap,
+}: {
+  category: BrowseCategory;
+  index: number;
+  onTap: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.2,
+        ease: EASE_IOS,
+        delay: Math.min(index, 10) * 0.03,
+      }}
+    >
+      <Press
+        onClick={onTap}
+        className="!block relative w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
+        style={{ height: 180 }}
+      >
+        {/* Name — top-left, dark, bold */}
+        <span
+          className="absolute left-3 top-3 text-left text-[15px] font-extrabold leading-tight"
+          style={{
+            color: "var(--foreground)",
+            letterSpacing: "-0.01em",
+            maxWidth: "78%",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {category.name}
+        </span>
+
+        {/* Floating product image — centered */}
+        <img
+          src={category.image}
+          alt=""
+          loading="lazy"
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+          draggable={false}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "52%",
+            transform: "translate(-50%, -50%)",
+            width: 90,
+            height: 90,
+            objectFit: "cover",
+            borderRadius: 16,
+            boxShadow: "0 8px 20px rgba(0,0,0,0.14)",
+          }}
+        />
+
+        {/* Live dot + viewers — bottom-left */}
+        <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5">
+          <LiveDot />
+          <span className="truncate text-[12px] font-medium text-muted-foreground">
+            {formatViewersFr(category.viewers)} spectateurs
+          </span>
+        </div>
+      </Press>
+    </motion.div>
+  );
+}
+
+/* ------------------------------- Live dot -------------------------------- */
+
+function LiveDot() {
+  return (
+    <motion.span
+      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+      style={{ backgroundColor: "var(--live)" }}
+      animate={{ opacity: [1, 0.35, 1], scale: [1, 0.85, 1] }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+    />
+  );
+}
+
+/* -------------------------------- Sellers -------------------------------- */
 
 function SellerRow({
   info,
