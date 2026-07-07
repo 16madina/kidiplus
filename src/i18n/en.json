@@ -367,6 +367,27 @@
     "about": "About",
     "follow": "Follow",
     "following": "Following",
-    "message": "Message"
+    "message": "Message",
+    "tabs": {
+      "boutique": "Shop",
+      "lives": "Lives",
+      "avis": "Reviews"
+    },
+    "stats": {
+      "followers": "Followers",
+      "sales": "Sales",
+      "rating": "Rating"
+    },
+    "liveNow": "Live",
+    "pushFollow": "Turn on notifications so you never miss a live from {{name}} 🔔",
+    "pushReminder": "Turn on notifications to be alerted before \"{{title}}\" 🔔",
+    "reminderOn": "Reminder set",
+    "reminderOff": "Reminder removed",
+    "remindMe": "Remind me",
+    "activated": "On",
+    "ended": "Ended",
+    "reviewCount_one": "{{count}} review",
+    "reviewCount_other": "{{count}} reviews"
   }
 }
+
