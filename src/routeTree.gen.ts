@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 
@@ -22,6 +23,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,18 +61,30 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reset-password' | '/api/checkout' | '/api/livekit-token'
+  fullPaths:
+    | '/'
+    | '/reset-password'
+    | '/api/checkout'
+    | '/api/livekit-token'
+    | '/api/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reset-password' | '/api/checkout' | '/api/livekit-token'
+  to:
+    | '/'
+    | '/reset-password'
+    | '/api/checkout'
+    | '/api/livekit-token'
+    | '/api/stripe-webhook'
   id:
     | '__root__'
     | '/'
     | '/reset-password'
     | '/api/checkout'
     | '/api/livekit-token'
+    | '/api/stripe-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -72,6 +92,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiCheckoutRoute: typeof ApiCheckoutRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -88,6 +109,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/livekit-token': {
@@ -112,6 +140,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ApiCheckoutRoute: ApiCheckoutRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
