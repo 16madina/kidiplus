@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
+import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { BottomTabBar } from "./bottom-tab-bar";
@@ -19,25 +20,73 @@ import {
 } from "@/lib/seller-profile-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
+import { AuthFlow } from "./auth/auth-flow";
+import { EASE_IOS } from "@/lib/motion";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
 export function AppShell() {
   return (
-    <SettingsProvider>
-      <PushProvider>
-        <SellerProfileProvider>
-          <LiveViewerProvider>
-            <AppShellInner />
-          </LiveViewerProvider>
-        </SellerProfileProvider>
-      </PushProvider>
-    </SettingsProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <PushProvider>
+          <SellerProfileProvider>
+            <LiveViewerProvider>
+              <AuthGate />
+            </LiveViewerProvider>
+          </SellerProfileProvider>
+        </PushProvider>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }
+
+function AuthGate() {
+  const { loading, session } = useAuth();
+  if (loading) {
+    return (
+      <div
+        className="mx-auto flex h-[100dvh] w-full max-w-xl items-center justify-center bg-background"
+        style={{ isolation: "isolate" }}
+      >
+        <Loader2 className="animate-spin text-muted-foreground" size={22} />
+      </div>
+    );
+  }
+  return (
+    <AnimatePresence mode="wait">
+      {session ? (
+        <motion.div
+          key="app"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: EASE_IOS }}
+          className="h-full w-full"
+        >
+          <AppShellInner />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: EASE_IOS }}
+          className="h-full w-full"
+        >
+          <AuthFlow />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+
 
 
 function AppShellInner() {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronRight,
@@ -12,6 +12,8 @@ import {
   Volume2,
   BellRing,
   LogOut,
+  BadgeCheck,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -20,9 +22,34 @@ import { IOSSwitch } from "@/components/ios-switch";
 import { EASE_IOS } from "@/lib/motion";
 import { usePush } from "@/lib/push";
 import { useSettings } from "@/lib/settings-context";
+import { useAuth } from "@/lib/auth-context";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
+import { haptic } from "@/lib/haptics";
 
 export function ProfileScreen() {
+  const { profile, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return setAvatarUrl(null);
+    void resolveAvatarUrl(profile.avatar_url).then(setAvatarUrl);
+  }, [profile]);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      haptic.success();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  const initial = (profile?.display_name || "?").slice(0, 1).toUpperCase();
 
   return (
     <div className="flex h-full flex-col">
@@ -37,20 +64,42 @@ export function ProfileScreen() {
         {/* Header */}
         <div className="px-5 pb-4 pt-4">
           <div className="flex items-center gap-4">
-            <img
-              src="https://i.pravatar.cc/160?u=madina"
-              alt=""
-              className="h-[72px] w-[72px] rounded-full object-cover ring-2 ring-border"
-              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-              draggable={false}
-            />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                className="h-[72px] w-[72px] rounded-full object-cover ring-2 ring-border"
+                draggable={false}
+              />
+            ) : (
+              <div className="grid h-[72px] w-[72px] place-items-center rounded-full bg-muted text-[28px] font-bold text-muted-foreground ring-2 ring-border">
+                {initial}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[20px] font-bold tracking-tight">Madina</h1>
-              <p className="text-[13px] text-muted-foreground">@madina.d</p>
+              <h1 className="flex items-center gap-1.5 truncate text-[20px] font-bold tracking-tight">
+                {profile?.display_name ?? "…"}
+                {profile?.is_seller && (
+                  <BadgeCheck size={16} color="oklch(0.62 0.2 250)" />
+                )}
+              </h1>
+              <p className="text-[13px] text-muted-foreground">
+                @{profile?.handle ?? "…"}
+              </p>
+              {profile?.country && (
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  {profile.country}
+                </p>
+              )}
             </div>
           </div>
+          {profile?.bio && (
+            <p className="mt-3 text-[13px] leading-snug text-foreground/90">
+              {profile.bio}
+            </p>
+          )}
           <Press
-            onClick={() => toast("Modification du profil bientôt disponible")}
+            onClick={() => setEditOpen(true)}
             className="mt-3 h-10 w-full rounded-full text-[13px] font-semibold"
             style={{
               backgroundColor: "transparent",
@@ -62,27 +111,27 @@ export function ProfileScreen() {
           </Press>
         </div>
 
-        {/* Stats */}
+        {/* Stats (placeholders — real numbers wired in later) */}
         <div className="mx-4 mb-5 grid grid-cols-3 rounded-2xl border border-border py-3">
-          <Stat label="Abonnés" value="1 248" />
+          <Stat label="Abonnés" value="—" />
           <StatDivider />
-          <Stat label="Abonnements" value="86" />
+          <Stat label="Abonnements" value="—" />
           <StatDivider />
-          <Stat label="Achats" value="24" />
+          <Stat label="Achats" value="—" />
         </div>
 
         {/* Menu groups */}
         <MenuGroup
           items={[
-            { icon: <CreditCard size={16} />, label: "Paiements", tint: "oklch(0.6 0.2 250)", onClick: () => toast("Ouverture des paiements") },
-            { icon: <MapPin size={16} />, label: "Adresses", tint: "oklch(0.6 0.17 155)", onClick: () => toast("Ouverture des adresses") },
-            { icon: <ShoppingBag size={16} />, label: "Mes achats", tint: "oklch(0.7 0.17 55)", onClick: () => toast("Ouverture des achats") },
+            { icon: <CreditCard size={16} />, label: "Paiements", tint: "oklch(0.6 0.2 250)", onClick: () => toast("Bientôt disponible") },
+            { icon: <MapPin size={16} />, label: "Adresses", tint: "oklch(0.6 0.17 155)", onClick: () => toast("Bientôt disponible") },
+            { icon: <ShoppingBag size={16} />, label: "Mes achats", tint: "oklch(0.7 0.17 55)", onClick: () => toast("Bientôt disponible") },
           ]}
           index={0}
         />
         <MenuGroup
           items={[
-            { icon: <Bell size={16} />, label: "Notifications", tint: "oklch(0.62 0.24 20)", onClick: () => toast("Ouverture des notifications") },
+            { icon: <Bell size={16} />, label: "Notifications", tint: "oklch(0.62 0.24 20)", onClick: () => toast("Bientôt disponible") },
             { icon: <SettingsIcon size={16} />, label: "Paramètres", tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
             { icon: <HelpCircle size={16} />, label: "Aide", tint: "oklch(0.55 0.16 300)", onClick: () => toast("Centre d'aide") },
           ]}
@@ -90,7 +139,13 @@ export function ProfileScreen() {
         />
         <MenuGroup
           items={[
-            { icon: <LogOut size={16} />, label: "Se déconnecter", tint: "oklch(0.6 0.24 27)", danger: true, onClick: () => toast.success("À bientôt !") },
+            {
+              icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
+              label: signingOut ? "Déconnexion…" : "Se déconnecter",
+              tint: "oklch(0.6 0.24 27)",
+              danger: true,
+              onClick: signingOut ? undefined : handleSignOut,
+            },
           ]}
           index={2}
         />
@@ -99,6 +154,7 @@ export function ProfileScreen() {
       </div>
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 }
