@@ -254,7 +254,7 @@ export function HomeScreen() {
           className="px-4 pb-2 pt-5 text-left text-[20px] font-semibold"
           style={{ letterSpacing: "-0.01em", color: "var(--foreground)" }}
         >
-          Lives près de chez toi
+          {t("home.livesNearYou")}
         </h2>
 
         <div className="px-4">
@@ -279,7 +279,7 @@ export function HomeScreen() {
 
           {!loading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm text-muted-foreground">
-              Aucun live dans cette catégorie pour le moment.
+              {t("home.empty")}
             </div>
           )}
 
