@@ -5,6 +5,7 @@ import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { AuthInput } from "@/components/auth/auth-shell";
 import { useAuth, frenchAuthError, type Profile } from "@/lib/auth-context";
+import { useWallet } from "@/lib/wallet-context";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl, invalidateAvatar } from "@/lib/avatar-url";
 import { haptic } from "@/lib/haptics";
