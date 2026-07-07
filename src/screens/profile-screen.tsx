@@ -206,6 +206,13 @@ export function ProfileScreen() {
               danger: true,
               onClick: signingOut ? undefined : handleSignOut,
             },
+            {
+              icon: <Trash2 size={16} />,
+              label: t("account.delete.menuItem"),
+              tint: "oklch(0.55 0.22 27)",
+              danger: true,
+              onClick: () => setDeleteOpen(true),
+            },
           ]}
           index={3}
         />
