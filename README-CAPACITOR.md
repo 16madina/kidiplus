@@ -6,11 +6,11 @@ browser.
 
 ## Config
 
-- `appId`: `com.deedigital.liveshop` (placeholder — change before store submission)
-- `appName`: `LiveShop`
+- `appId`: `com.kidiplus.app` (iOS Bundle ID == Android package name)
+- `appName`: `KiDi+`
 - `webDir`: `dist`
 - Portrait-locked (set in the generated Xcode / Android Studio projects)
-- Splash: dark `#0B0B0F`, manually hidden with a short fade after boot
+- Splash: dark `#10162B`, manually hidden with a short fade after boot
 - Status bar: overlays webview, style follows dark/light theme; live viewer forces light content
 
 ## Plugins in use
