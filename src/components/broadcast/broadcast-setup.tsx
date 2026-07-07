@@ -149,7 +149,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           <input
             value={b.title}
             onChange={(e) => b.setTitle(e.target.value)}
-            placeholder="Titre du live..."
+            placeholder={t("broadcast.setup.titlePlaceholder")}
             maxLength={80}
             className="h-16 flex-1 rounded-xl px-3 text-[15px] font-medium text-white placeholder:text-white/60 outline-none"
             style={{
