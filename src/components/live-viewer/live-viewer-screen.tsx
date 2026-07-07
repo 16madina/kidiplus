@@ -25,6 +25,7 @@ import { AuctionCard } from "./auction-card";
 import { ProductsSheet } from "./products-sheet";
 import { BuySheet } from "./buy-sheet";
 import { Confetti } from "./confetti";
+import { ViewerLiveVideo } from "./viewer-live-video";
 
 const AUCTION_SECONDS = 45;
 
@@ -254,22 +255,33 @@ export function LiveViewerScreen() {
       className="fixed inset-0 z-[60] overflow-hidden bg-black"
       style={{ y: dragY }}
     >
-      {/* Background media */}
-      <motion.img
-        src={active.thumbnail.replace("w=600", "w=1200")}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        initial={{ scale: 1.05 }}
-        animate={{ scale: 1.12 }}
-        transition={{
-          duration: 14,
-          repeat: Infinity,
-          repeatType: "reverse",
-          ease: "linear",
-        }}
-        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-        draggable={false}
-      />
+      {/* Background media — real LiveKit video when a room is attached,
+          otherwise the mock cover thumbnail. */}
+      {active.roomName ? (
+        <ViewerLiveVideo
+          room={active.roomName}
+          identity={`viewer_${Math.random().toString(36).slice(2, 10)}`}
+          name="Viewer"
+          posterImage={active.thumbnail.replace("w=600", "w=1200")}
+        />
+      ) : (
+        <motion.img
+          src={active.thumbnail.replace("w=600", "w=1200")}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          initial={{ scale: 1.05 }}
+          animate={{ scale: 1.12 }}
+          transition={{
+            duration: 14,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "linear",
+          }}
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+          draggable={false}
+        />
+      )}
+
 
       {/* Double-tap capture layer */}
       <div
