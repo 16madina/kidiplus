@@ -101,9 +101,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>("Fashion");
   const [cover, setCover] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [products, setProducts] = useState<BProduct[]>([]);
   const [session, setSession] = useState<BroadcastSession>(emptySession());
   const [roomName, setRoomName] = useState<string | null>(null);
+  const [liveId, setLiveId] = useState<string | null>(null);
   const [hostIdentity, setHostIdentity] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string>("Host");
 
@@ -116,6 +118,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const removeProduct = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   }, []);
+  const setProductDbIds = useCallback((ids: string[]) => {
+    setProducts((prev) =>
+      prev.map((p, i) => (ids[i] ? { ...p, dbId: ids[i] } : p)),
+    );
+  }, []);
 
   const setHost = useCallback((identity: string, name: string) => {
     setHostIdentity(identity);
@@ -127,9 +134,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setTitle("");
     setCategory("Fashion");
     setCover(null);
+    setCoverFile(null);
     setProducts([]);
     setSession(emptySession());
     setRoomName(null);
+    setLiveId(null);
   }, []);
 
   const value = useMemo<Ctx>(
@@ -141,14 +150,17 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       title, setTitle,
       category, setCategory,
       cover, setCover,
-      products, addProduct, removeProduct,
+      coverFile, setCoverFile,
+      products, addProduct, removeProduct, setProductDbIds,
       session, setSession,
       roomName, setRoomName,
+      liveId, setLiveId,
       hostIdentity, hostName, setHost,
       reset,
     }),
-    [stage, title, category, cover, products, session, roomName, hostIdentity, hostName, setHost, addProduct, removeProduct, reset],
+    [stage, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, addProduct, removeProduct, setProductDbIds, reset],
   );
+
 
 
   return (
