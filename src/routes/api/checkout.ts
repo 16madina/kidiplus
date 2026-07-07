@@ -138,7 +138,7 @@ export const Route = createFileRoute("/api/checkout")({
         }
         // The `currency` const is already prepared above (lowercase).
 
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
+        const stripe = createStripeClient();
 
         // Reuse an existing intent if we already created one for this order.
         let intent;
