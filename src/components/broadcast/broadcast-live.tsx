@@ -12,6 +12,7 @@ import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
 import { formatMoney } from "@/lib/money";
@@ -576,13 +577,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <div className="relative mb-1">
-                {imgFor(featured) ? (
-                  <img src={imgFor(featured)!} alt="" className="h-14 w-full rounded-lg object-cover" />
-                ) : (
-                  <div className="grid h-14 w-full place-items-center rounded-lg bg-white/10">
-                    <Package size={16} className="text-white/60" />
-                  </div>
-                )}
+                <LiveProductImage
+                  src={imgFor(featured)}
+                  className="h-14 w-full rounded-lg object-cover"
+                  iconClassName="text-white/60"
+                />
                 <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
                   {t("live.featured")}
                 </span>
@@ -771,13 +770,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 const imgUrl = imgFor(p);
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {imgUrl ? (
-                      <img src={imgUrl} alt="" className="h-14 w-14 rounded-xl object-cover" />
-                    ) : (
-                      <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
-                        <Package size={18} className="text-muted-foreground" />
-                      </div>
-                    )}
+                    <LiveProductImage
+                      src={imgUrl}
+                      className="h-14 w-14 rounded-xl object-cover"
+                      placeholderClassName="bg-muted"
+                      iconClassName="text-muted-foreground"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{p.name}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -909,13 +907,11 @@ function SellerProductCard({
       }}
     >
       <button onClick={onFeature} className="relative h-20 w-full overflow-hidden text-left">
-        {product.image_url ? (
-          <img src={product.image_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full w-full place-items-center bg-white/10">
-            <Package size={20} className="text-white/60" />
-          </div>
-        )}
+        <LiveProductImage
+          src={product.image_url}
+          className="h-full w-full object-cover"
+          iconClassName="text-white/60"
+        />
         {featured && (
           <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]">
             {t("live.featured")}

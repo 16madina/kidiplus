@@ -1,6 +1,6 @@
 // Real live viewer screen — used when the tapped stream has a DB id.
 // Chat / hearts / auction / buy are wired through Supabase Realtime + DB.
-import { motion, useMotionValue, animate } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Heart, Plus, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
