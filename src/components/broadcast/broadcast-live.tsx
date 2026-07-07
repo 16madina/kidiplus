@@ -720,7 +720,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               return (
                 <SellerProductCard
                   key={p.id}
-                  product={p}
+                  product={{ ...p, image_url: imgFor(p) }}
                   currency={cur}
                   locale={i18n.language}
                   soldOut={soldOut}
