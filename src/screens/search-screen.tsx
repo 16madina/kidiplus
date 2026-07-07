@@ -128,16 +128,18 @@ export function SearchScreen() {
 
   const sortedCategories = useMemo(() => {
     switch (sort) {
-      case "Recommandés":
+      case "recommended":
         return BROWSE_CATEGORIES;
-      case "Populaires":
+      case "popular":
         return [...BROWSE_CATEGORIES].sort((a, b) => b.viewers - a.viewers);
-      case "A-Z":
+      case "alpha":
         return [...BROWSE_CATEGORIES].sort((a, b) =>
-          a.name.localeCompare(b.name, "fr"),
+          t(a.nameKey).localeCompare(t(b.nameKey), lang),
         );
+      default:
+        return BROWSE_CATEGORIES;
     }
-  }, [sort]);
+  }, [sort, t, lang]);
 
   const tabs: TabDef[] = [
     {
