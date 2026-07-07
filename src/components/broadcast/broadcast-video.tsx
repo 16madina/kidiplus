@@ -49,6 +49,8 @@ export type BroadcastStatus =
   | "granted"
   | "denied"
   | "unsupported"
+  | "token_failed"
+  | "connect_failed"
   | "error";
 
 export type BroadcastVideoHandle = {
