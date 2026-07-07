@@ -392,7 +392,7 @@ export function SearchScreen() {
                             {r}
                           </span>
                           <button
-                            aria-label={`Retirer ${r}`}
+                            aria-label={`${t("common.remove")} ${r}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRecent((rs) => rs.filter((x) => x !== r));
