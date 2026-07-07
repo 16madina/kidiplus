@@ -343,10 +343,24 @@ function NotifSkeletons() {
   );
 }
 
-/* ================= Orders ================= */
+/* ================= Orders (real, from DB) ================= */
 
-function OrderCard({ order, index, onOpen }: { order: Order; index: number; onOpen: () => void }) {
-  const meta = orderStatusMeta(order.status);
+function statusMeta(s: OrderStatus): { bg: string; color: string; labelKey: string } {
+  switch (s) {
+    case "paid":
+      return { bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)", labelKey: "orders.status.paid" };
+    case "failed":
+      return { bg: "oklch(0.94 0.06 27)", color: "oklch(0.45 0.18 27)", labelKey: "orders.status.failed" };
+    case "cancelled":
+      return { bg: "var(--muted)", color: "var(--muted-foreground)", labelKey: "orders.status.cancelled" };
+    default:
+      return { bg: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)", labelKey: "orders.status.pending" };
+  }
+}
+
+function OrderCard({ order, index, onOpen }: { order: OrderRow; index: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  const meta = statusMeta(order.status);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -359,27 +373,30 @@ function OrderCard({ order, index, onOpen }: { order: Order; index: number; onOp
         style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
       >
         <div className="flex items-center gap-3 p-3">
-          <img
-            src={order.image}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-xl object-cover"
-            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-            draggable={false}
-          />
+          {order.item_image ? (
+            <img
+              src={order.item_image}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-xl object-cover"
+              draggable={false}
+            />
+          ) : (
+            <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 truncate text-[14px] font-semibold">{order.product}</p>
+              <p className="min-w-0 truncate text-[14px] font-semibold">{order.item_name}</p>
               <span
                 className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                 style={{ backgroundColor: meta.bg, color: meta.color }}
               >
-                {meta.label}
+                {t(meta.labelKey)}
               </span>
             </div>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              @{order.seller} · {orderDateShort(order.date)}
+              {orderDateShort(new Date(order.created_at))}
             </p>
-            <p className="mt-0.5 text-[13px] font-bold">{formatEuro(order.price)}</p>
+            <p className="mt-0.5 text-[13px] font-bold">{formatEuro(Number(order.total))}</p>
           </div>
         </div>
       </Press>
@@ -404,147 +421,63 @@ function OrderSkeletons() {
   );
 }
 
-/* ================= Order detail ================= */
+/* ================= Order detail (real) ================= */
 
-const STEPS: { key: string; labelKey: string; icon: React.ReactNode }[] = [
-  { key: "ordered", labelKey: "activity.timeline.ordered", icon: <Check size={12} strokeWidth={3} /> },
-  { key: "paid", labelKey: "activity.orderStatus.paid", icon: <CreditCard size={12} strokeWidth={2.5} /> },
-  { key: "shipped", labelKey: "activity.timeline.shipped", icon: <Truck size={12} strokeWidth={2.5} /> },
-  { key: "delivered", labelKey: "activity.timeline.delivered", icon: <Package size={12} strokeWidth={2.5} /> },
-];
-
-function statusIndex(s: Order["status"]): number {
-  if (s === "paid") return 1;
-  if (s === "shipped") return 2;
-  return 3;
-}
-
-function OrderDetailScreen({ order, onClose }: { order: Order | null; onClose: () => void }) {
+function OrderDetailScreen({ order, onClose }: { order: OrderRow | null; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
-    <PushScreen open={!!order} onClose={onClose} title={order ? order.code : ""} zIndex={65}>
+    <PushScreen
+      open={!!order}
+      onClose={onClose}
+      title={order ? order.item_name : ""}
+      zIndex={65}
+    >
       {order && <OrderDetailBody order={order} />}
+      {!order && <div className="p-4 text-sm text-muted-foreground">{t("orders.empty")}</div>}
     </PushScreen>
   );
 }
 
-function OrderDetailBody({ order }: { order: Order }) {
+function OrderDetailBody({ order }: { order: OrderRow }) {
   const { t } = useTranslation();
-  const meta = orderStatusMeta(order.status);
-  const activeIdx = statusIndex(order.status);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const handle = setTimeout(() => setProgress(activeIdx), 120);
-    return () => clearTimeout(handle);
-  }, [activeIdx]);
+  const meta = statusMeta(order.status);
 
   return (
     <div className="space-y-4 px-4 py-4">
-      {/* Summary card */}
       <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
-        <img
-          src={order.image}
-          alt=""
-          className="h-16 w-16 shrink-0 rounded-xl object-cover"
-          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-          draggable={false}
-        />
+        {order.item_image ? (
+          <img
+            src={order.item_image}
+            alt=""
+            className="h-16 w-16 shrink-0 rounded-xl object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
+        )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-semibold">{order.product}</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">@{order.seller}</p>
+          <p className="truncate text-[14px] font-semibold">{order.item_name}</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            {orderDateShort(new Date(order.created_at))}
+          </p>
           <div className="mt-1 flex items-center justify-between">
-            <span className="text-[14px] font-bold">{formatEuro(order.price)}</span>
+            <span className="text-[14px] font-bold">{formatEuro(Number(order.total))}</span>
             <span
               className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
               style={{ backgroundColor: meta.bg, color: meta.color }}
             >
-              {meta.label}
+              {t(meta.labelKey)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Tracking timeline */}
       <div className="rounded-2xl border border-border p-4">
-        <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("activity.title")}
-        </h2>
-        <div className="relative pl-8">
-          {/* connector track */}
-          <div
-            className="absolute left-[13px] top-3 bottom-3 w-[2px] rounded-full"
-            style={{ backgroundColor: "var(--border)" }}
-          />
-          {/* animated progress (scaleY only) */}
-          <motion.div
-            className="absolute left-[13px] top-3 bottom-3 w-[2px] rounded-full"
-            style={{
-              backgroundColor: "oklch(0.6 0.17 155)",
-              transformOrigin: "top center",
-            }}
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: progress / (STEPS.length - 1) }}
-            transition={{ duration: 0.6, ease: EASE_IOS }}
-          />
-
-          <ul className="space-y-4">
-            {STEPS.map((s, i) => {
-              const done = i <= activeIdx;
-              const filled = i <= progress;
-              return (
-                <li key={s.key} className="relative">
-                  <motion.span
-                    className="absolute -left-8 top-0 grid h-7 w-7 place-items-center rounded-full"
-                    initial={false}
-                    animate={{
-                      backgroundColor: filled
-                        ? "oklch(0.6 0.17 155)"
-                        : "color-mix(in oklch, var(--muted) 100%, transparent)",
-                      color: filled ? "#fff" : "var(--muted-foreground)",
-                      scale: filled ? 1 : 0.9,
-                    }}
-                    transition={{ duration: 0.25, ease: EASE_IOS, delay: i * 0.06 }}
-                  >
-                    {s.icon}
-                  </motion.span>
-                  <div className="min-h-7 pt-0.5">
-                    <p className={`text-[14px] ${done ? "font-semibold" : "text-muted-foreground"}`}>
-                      {t(s.labelKey)}
-                    </p>
-                    {i === activeIdx && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {orderDateShort(order.date)}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-
-      {/* Address */}
-      <div className="rounded-2xl border border-border p-4">
-        <div className="mb-2 flex items-center gap-2">
-          <MapPin size={14} className="text-muted-foreground" />
-          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("profile.menu.addresses")}
-          </h2>
-        </div>
-        <p className="text-[14px] font-semibold">{order.address.name}</p>
-        <p className="text-[13px] text-muted-foreground">
-          {order.address.line1}
-          <br />
-          {order.address.zip} {order.address.city}
-          <br />
-          {order.address.country}
-        </p>
-      </div>
-
-      {/* Totals */}
-      <div className="rounded-2xl border border-border p-4">
-        <Row label={t("live.buy_sheet.total")} value={formatEuro(order.price)} bold />
+        <Row label={t("pay.item")} value={formatEuro(Number(order.amount))} />
+        <Row label={t("pay.platformFee")} value={formatEuro(Number(order.platform_fee))} />
+        <Row label={t("pay.processingFee")} value={formatEuro(Number(order.processing_fee))} />
+        <div className="my-2 h-px bg-border" />
+        <Row label={t("pay.total")} value={formatEuro(Number(order.total))} bold />
       </div>
     </div>
   );
