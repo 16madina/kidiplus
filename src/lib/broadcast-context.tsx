@@ -60,6 +60,10 @@ type Ctx = {
   // session (readonly-ish accessors are fine)
   session: BroadcastSession;
   setSession: (s: BroadcastSession) => void;
+  roomName: string | null;
+  setRoomName: (v: string | null) => void;
+
+
 
   reset: () => void;
 };
@@ -82,6 +86,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [cover, setCover] = useState<string | null>(null);
   const [products, setProducts] = useState<BProduct[]>([]);
   const [session, setSession] = useState<BroadcastSession>(emptySession());
+  const [roomName, setRoomName] = useState<string | null>(null);
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
@@ -100,6 +105,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setCover(null);
     setProducts([]);
     setSession(emptySession());
+    setRoomName(null);
   }, []);
 
   const value = useMemo<Ctx>(
@@ -113,9 +119,10 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       cover, setCover,
       products, addProduct, removeProduct,
       session, setSession,
+      roomName, setRoomName,
       reset,
     }),
-    [stage, title, category, cover, products, session, addProduct, removeProduct, reset],
+    [stage, title, category, cover, products, session, roomName, addProduct, removeProduct, reset],
   );
 
   return (
