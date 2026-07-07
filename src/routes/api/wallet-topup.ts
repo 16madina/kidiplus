@@ -12,7 +12,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
 import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
 
 const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
