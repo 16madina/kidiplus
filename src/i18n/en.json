@@ -176,7 +176,13 @@
     "openProducts": "Products",
     "hostRetry": "Retry connection",
     "hostConnectFailed": "Video connection failed",
-    "hostConnectFailedBody": "Check your internet connection and try again."
+    "hostConnectFailedBody": "Check your internet connection and try again.",
+    "hostCameraDeniedTitle": "Camera blocked",
+    "hostCameraDeniedBody": "Allow camera access in your browser settings, then try again.",
+    "hostTokenFailedTitle": "Authentication failed",
+    "hostTokenFailedBody": "Couldn't get a video token. Check your connection and try again.",
+    "hostConnectServerFailedTitle": "Video server unreachable",
+    "hostConnectServerFailedBody": "The video server isn't responding. Check your connection and try again."
   },
   "broadcast": {
     "becomeSellerTitle": "Become a seller",

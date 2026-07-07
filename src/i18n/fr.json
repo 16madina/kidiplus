@@ -176,7 +176,13 @@
     "openProducts": "Produits",
     "hostRetry": "Réessayer la connexion",
     "hostConnectFailed": "Connexion vidéo impossible",
-    "hostConnectFailedBody": "Vérifie ta connexion internet puis réessaie."
+    "hostConnectFailedBody": "Vérifie ta connexion internet puis réessaie.",
+    "hostCameraDeniedTitle": "Caméra bloquée",
+    "hostCameraDeniedBody": "Autorise la caméra dans les réglages du navigateur, puis réessaie.",
+    "hostTokenFailedTitle": "Authentification impossible",
+    "hostTokenFailedBody": "Impossible d'obtenir un jeton vidéo. Vérifie ta connexion et réessaie.",
+    "hostConnectServerFailedTitle": "Serveur vidéo injoignable",
+    "hostConnectServerFailedBody": "Le serveur vidéo ne répond pas. Vérifie ta connexion et réessaie."
   },
   "broadcast": {
     "becomeSellerTitle": "Deviens vendeur",

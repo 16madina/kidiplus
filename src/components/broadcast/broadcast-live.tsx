@@ -39,7 +39,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
-  const [videoStatus, setVideoStatus] = useState<"idle"|"connecting"|"granted"|"denied"|"unsupported"|"error">("idle");
+  const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,7 +178,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     if (autoEndFiredRef.current) return;
     if (videoStatus === "granted") return;
-    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied") return;
+    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied" && videoStatus !== "token_failed" && videoStatus !== "connect_failed") return;
     const timeout = setTimeout(() => {
       if (autoEndFiredRef.current) return;
       autoEndFiredRef.current = true;
@@ -392,7 +392,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       </div>
 
       {/* Video connection error overlay with retry */}
-      {(videoStatus === "error" || videoStatus === "denied") && (
+      {(videoStatus === "error" || videoStatus === "denied" || videoStatus === "token_failed" || videoStatus === "connect_failed") && (
         <div
           className="absolute left-1/2 z-40 -translate-x-1/2 rounded-2xl px-4 py-3 text-white shadow-lg"
           style={{
@@ -406,8 +406,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <div className="flex items-start gap-2">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-bold">{t("live.hostConnectFailed")}</p>
-              <p className="mt-0.5 text-[11.5px] opacity-90">{t("live.hostConnectFailedBody")}</p>
+              <p className="text-[13px] font-bold">
+                {videoStatus === "denied"
+                  ? t("live.hostCameraDeniedTitle", "Caméra bloquée")
+                  : videoStatus === "token_failed"
+                    ? t("live.hostTokenFailedTitle", "Authentification impossible")
+                    : videoStatus === "connect_failed"
+                      ? t("live.hostConnectServerFailedTitle", "Serveur vidéo injoignable")
+                      : t("live.hostConnectFailed")}
+              </p>
+              <p className="mt-0.5 text-[11.5px] opacity-90">
+                {videoStatus === "denied"
+                  ? t("live.hostCameraDeniedBody", "Autorise la caméra dans les réglages du navigateur, puis réessaie.")
+                  : videoStatus === "token_failed"
+                    ? t("live.hostTokenFailedBody", "Impossible d'obtenir un jeton vidéo. Vérifie ta connexion et réessaie.")
+                    : videoStatus === "connect_failed"
+                      ? t("live.hostConnectServerFailedBody", "Le serveur vidéo ne répond pas. Vérifie ta connexion et réessaie.")
+                      : t("live.hostConnectFailedBody")}
+              </p>
               <Press
                 onClick={retryConnection}
                 className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
@@ -484,8 +500,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               WebkitBackdropFilter: "blur(12px)",
             }}
           >
-            {featured.image_url && (
+            {featured.image_url ? (
               <img src={featured.image_url} alt="" className="mb-1.5 h-20 w-full rounded-lg object-cover" />
+            ) : (
+              <div className="mb-1.5 grid h-20 w-full place-items-center rounded-lg bg-white/10">
+                <Package size={20} className="text-white/60" />
+              </div>
             )}
             <div className="text-[10px] font-semibold text-white/70">{t("live.currentBid")}</div>
             <motion.div
@@ -601,8 +621,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                   : p.stock <= 0 || p.status === "out";
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {p.image_url && (
+                    {p.image_url ? (
                       <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    ) : (
+                      <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
+                        <Package size={18} className="text-muted-foreground" />
+                      </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{p.name}</p>
@@ -729,8 +753,12 @@ function SellerProductCard({
       }}
     >
       <button onClick={onFeature} className="relative h-20 w-full overflow-hidden text-left">
-        {product.image_url && (
+        {product.image_url ? (
           <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-white/10">
+            <Package size={20} className="text-white/60" />
+          </div>
         )}
         {featured && (
           <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]">

@@ -49,6 +49,8 @@ export type BroadcastStatus =
   | "granted"
   | "denied"
   | "unsupported"
+  | "token_failed"
+  | "connect_failed"
   | "error";
 
 export type BroadcastVideoHandle = {
@@ -154,6 +156,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       async function start() {
         if (!shouldRun) return teardown();
         setState("connecting");
+        let phase: "token" | "connect" | "camera" = "token";
         try {
           const { token, url } = await getToken(
             livekit!.room,
@@ -162,6 +165,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             "host",
           );
           if (cancelled) return;
+          phase = "connect";
           const room = await connectRoom(url, token);
           if (cancelled) {
             await disconnectRoom(room);
@@ -170,6 +174,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           roomRef.current = room;
 
           // Publish camera + mic.
+          phase = "camera";
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
           const track = await createLocalVideoTrack({
             facingMode: livekit ? facing : "user",
@@ -184,15 +189,18 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           if (videoRef.current) track.attach(videoRef.current);
           setState("granted");
         } catch (err) {
-          console.error("[livekit host] failed", err);
+          console.error("[livekit host] failed", { phase, err });
           if (!cancelled) {
-            const msg = String(err ?? "");
-            setState(
-              msg.toLowerCase().includes("permission") ||
-                msg.toLowerCase().includes("denied")
-                ? "denied"
-                : "error",
-            );
+            const msg = String(err ?? "").toLowerCase();
+            const isPermission =
+              msg.includes("permission") ||
+              msg.includes("denied") ||
+              msg.includes("notallowed");
+            if (phase === "camera" && isPermission) setState("denied");
+            else if (phase === "token") setState("token_failed");
+            else if (phase === "connect") setState("connect_failed");
+            else if (phase === "camera") setState("error");
+            else setState("error");
             await teardown();
           }
         }
