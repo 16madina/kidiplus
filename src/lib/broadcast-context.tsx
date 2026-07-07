@@ -63,10 +63,14 @@ type Ctx = {
   roomName: string | null;
   setRoomName: (v: string | null) => void;
 
-
+  // Host identity for LiveKit (populated from the signed-in profile).
+  hostIdentity: string | null;
+  hostName: string;
+  setHost: (identity: string, name: string) => void;
 
   reset: () => void;
 };
+
 
 const BroadcastContext = createContext<Ctx | null>(null);
 
