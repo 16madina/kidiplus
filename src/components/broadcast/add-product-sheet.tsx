@@ -135,7 +135,9 @@ export function AddProductSheet({
                 onClick={() => {
                   if (isBlobUrl(image)) urlTrackerRef.current.revoke(image);
                   setImage(src);
+                  setImageFile(null);
                 }}
+
                 className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
                 style={{
                   outline: active ? "2px solid var(--accent)" : "none",
