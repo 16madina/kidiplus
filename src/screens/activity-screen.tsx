@@ -38,7 +38,7 @@ export function ActivityScreen() {
 
   const removeNotif = (id: string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
-    toast("Notification supprimée");
+    toast(t("common.remove"));
   };
   const markRead = (id: string) => {
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
