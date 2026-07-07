@@ -552,54 +552,122 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       </AnimatePresence>
 
       {/* Featured / auction overlay — tap to open the products dock. */}
-      {featured && activeAuction && activeAuction.productId === featured.id && (
-        <button
-          type="button"
-          onClick={() => { haptic.selection(); setProductsOpen(true); }}
-          className="absolute right-3 z-30 text-left"
-          style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
-        >
-          <div
-            className="w-40 rounded-2xl p-2 text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
+      {/* Compact featured card (top-right). Always shown while a product is
+          queued; swaps in the next upcoming one automatically after a sale. */}
+      <AnimatePresence mode="wait">
+        {featured ? (
+          <motion.button
+            key={featured.id}
+            type="button"
+            onClick={() => { haptic.selection(); setProductsOpen(true); }}
+            initial={{ opacity: 0, y: -6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: EASE_IOS }}
+            className="absolute right-3 z-30 text-left"
+            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
           >
-            {featured.image_url ? (
-              <img src={featured.image_url} alt="" className="mb-1.5 h-20 w-full rounded-lg object-cover" />
-            ) : (
-              <div className="mb-1.5 grid h-20 w-full place-items-center rounded-lg bg-white/10">
-                <Package size={20} className="text-white/60" />
-              </div>
-            )}
-            <div className="text-[10px] font-semibold text-white/70">{t("live.currentBid")}</div>
-            <motion.div
-              key={featured.price}
-              initial={{ scale: 1.15 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.2, ease: EASE_IOS }}
-              className="text-[18px] font-bold tabular-nums"
+            <div
+              className="w-28 rounded-2xl p-1.5 text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
             >
-              {fmt(featured.price)}
-            </motion.div>
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-white/70">
-                {room.lastBid && room.lastBid.productId === featured.id
-                  ? `@${room.lastBid.bidderName}`
-                  : "—"}
-              </span>
-              <span
-                className="font-bold tabular-nums"
-                style={{ color: timeLeft <= 10 ? "oklch(0.75 0.2 25)" : "white" }}
-              >
-                {String(timeLeft).padStart(2, "0")}s
-              </span>
+              <div className="relative mb-1">
+                {imgFor(featured) ? (
+                  <img src={imgFor(featured)!} alt="" className="h-14 w-full rounded-lg object-cover" />
+                ) : (
+                  <div className="grid h-14 w-full place-items-center rounded-lg bg-white/10">
+                    <Package size={16} className="text-white/60" />
+                  </div>
+                )}
+                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
+                  {t("live.featured")}
+                </span>
+              </div>
+              <div className="truncate text-[10.5px] font-semibold leading-tight">
+                {featured.name}
+              </div>
+              {activeAuction && activeAuction.productId === featured.id ? (
+                <>
+                  <div className="mt-0.5 text-[8.5px] font-semibold uppercase tracking-wide text-white/60">
+                    {t("live.currentBid")}
+                  </div>
+                  <div className="flex items-baseline justify-between gap-1">
+                    <motion.span
+                      key={featured.price}
+                      initial={{ scale: 1.15 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2, ease: EASE_IOS }}
+                      className="text-[13px] font-bold tabular-nums"
+                    >
+                      {fmt(featured.price)}
+                    </motion.span>
+                    <span
+                      className="text-[10px] font-bold tabular-nums"
+                      style={{ color: timeLeft <= 10 ? "oklch(0.75 0.2 25)" : "white" }}
+                    >
+                      {String(timeLeft).padStart(2, "0")}s
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="truncate text-[10px] leading-tight text-white/70">
+                    {featured.mode === "auction"
+                      ? `${fmt(featured.start_price)} · ${featured.timer_seconds}s`
+                      : `${fmt(featured.price)} · stock ${Math.max(0, featured.stock)}`}
+                  </div>
+                  <Press
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (featured.mode === "auction") void startAuction(featured);
+                      else void toggleFixedSale(featured);
+                    }}
+                    hapticOnTap={false}
+                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+                  >
+                    {featured.mode === "auction"
+                      ? `${t("live.startAuction")} ▸`
+                      : t("live.listForSale")}
+                  </Press>
+                </>
+              )}
             </div>
-          </div>
-        </button>
-      )}
+          </motion.button>
+        ) : room.products.length > 0 ? (
+          <motion.div
+            key="all-done"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE_IOS }}
+            className="absolute right-3 z-30"
+            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+          >
+            <div
+              className="w-28 rounded-2xl p-2 text-center text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              <div className="text-[11px] font-semibold leading-snug">
+                {t("live.allDone", "Tous les articles sont passés ✨")}
+              </div>
+              <Press
+                onClick={() => { haptic.selection(); setAddOpen(true); }}
+                className="!min-h-7 mt-1.5 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+              >
+                {t("live.addProduct", "Ajouter")}
+              </Press>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Seller dock */}
       <div
