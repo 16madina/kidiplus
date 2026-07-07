@@ -57,7 +57,7 @@ export type BroadcastVideoHandle = {
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, onStatus },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus },
     ref,
   ) {
     const videoRef = useRef<HTMLVideoElement>(null);
