@@ -616,6 +616,8 @@ function CategoryCard({
   index: number;
   onTap: () => void;
 }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -631,7 +633,6 @@ function CategoryCard({
         className="!block relative w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
         style={{ height: 180 }}
       >
-        {/* Name — top-left, dark, bold */}
         <span
           className="absolute left-3 top-3 text-left text-[15px] font-extrabold leading-tight"
           style={{
@@ -644,10 +645,9 @@ function CategoryCard({
             overflow: "hidden",
           }}
         >
-          {category.name}
+          {t(category.nameKey)}
         </span>
 
-        {/* Floating product image — centered */}
         <img
           src={category.image}
           alt=""
@@ -667,11 +667,10 @@ function CategoryCard({
           }}
         />
 
-        {/* Live dot + viewers — bottom-left */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5">
           <LiveDot />
           <span className="truncate text-[12px] font-medium text-muted-foreground">
-            {formatViewersFr(category.viewers)} spectateurs
+            {formatViewersLabel(category.viewers, lang)}
           </span>
         </div>
       </Press>
@@ -703,6 +702,8 @@ function SellerRow({
   index: number;
   onOpen: () => void;
 }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const [following, setFollowing] = useState(false);
   return (
     <motion.li
@@ -725,7 +726,7 @@ function SellerRow({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold">{info.name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
-              {formatCompact(info.followers)} abonnés
+              {formatFollowersLabel(info.followers, lang)}
             </p>
           </div>
         </Press>
@@ -745,7 +746,7 @@ function SellerRow({
                 }
           }
         >
-          {following ? "Abonné" : "Suivre"}
+          {following ? t("live.following") : t("live.follow")}
         </Press>
       </div>
     </motion.li>
@@ -753,14 +754,16 @@ function SellerRow({
 }
 
 function EmptyResults({ query }: { query: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
         <SearchX size={22} className="text-muted-foreground" strokeWidth={1.8} />
       </div>
       <p className="mt-3 text-[14px] text-muted-foreground">
-        Aucun résultat pour <span className="font-semibold text-foreground">« {query} »</span>
+        {t("search.emptyResults", { query })}
       </p>
     </div>
   );
 }
+
