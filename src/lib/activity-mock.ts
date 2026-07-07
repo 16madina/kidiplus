@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import { makeStreams } from "./live-mock";
 
 export type NotifKind = "live" | "shipped" | "outbid" | "sold" | "follow" | "reminder";
@@ -14,17 +15,21 @@ export type Notification = {
 
 const STREAMS = makeStreams(0, 24);
 
-function relative(mins: number): string {
-  if (mins < 1) return "à l'instant";
-  if (mins < 60) return `il y a ${mins} min`;
-  const h = Math.floor(mins / 60);
-  if (h < 24) return `il y a ${h} h`;
-  const d = Math.floor(h / 24);
-  return `il y a ${d} j`;
-}
-
+/**
+ * Locale-aware relative time. Uses the currently active i18n language.
+ */
 export function formatRelative(mins: number): string {
-  return relative(mins);
+  const t = (k: string, opts?: Record<string, unknown>) => i18n.t(k, opts);
+  if (mins < 1) return t("time.now");
+  if (mins < 60) return t("time.minuteAgo", { count: mins });
+  const h = Math.floor(mins / 60);
+  if (h < 24) return t("time.hourAgo", { count: h });
+  const d = Math.floor(h / 24);
+  if (d < 7) return t("time.dayAgo", { count: d });
+  const w = Math.floor(d / 7);
+  if (w < 4) return t("time.weekAgo", { count: w });
+  const mo = Math.floor(d / 30);
+  return t("time.monthAgo", { count: mo });
 }
 
 export function initialNotifications(): Notification[] {
