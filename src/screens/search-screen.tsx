@@ -429,13 +429,13 @@ export function SearchScreen() {
                     className="text-[22px] font-bold"
                     style={{ letterSpacing: "-0.01em" }}
                   >
-                    Tendances du jour
+                    {t("search.trending")}
                   </h2>
                   <Press
                     className="!min-h-8 text-[13px] font-semibold text-muted-foreground"
                     onClick={() => {}}
                   >
-                    Tout afficher ›
+                    {t("common.seeAll")}
                   </Press>
                 </div>
 
@@ -454,7 +454,7 @@ export function SearchScreen() {
                   className="px-4 text-[26px] font-bold"
                   style={{ letterSpacing: "-0.015em" }}
                 >
-                  Catégories
+                  {t("search.categories")}
                 </h2>
 
                 <div
@@ -481,7 +481,7 @@ export function SearchScreen() {
                           transition: "background-color 150ms, color 150ms",
                         }}
                       >
-                        {s}
+                        {t(`search.sort.${s}`)}
                       </Press>
                     );
                   })}
