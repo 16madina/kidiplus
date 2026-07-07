@@ -225,8 +225,9 @@ function SellerProfileInner({
                     const next = !v;
                     if (next) {
                       void requestPush(
-                        `Active les notifications pour ne rater aucun live de ${info.name} 🔔`,
+                        t("seller.pushFollow", { name: info.name }),
                       );
+
                     }
                     return next;
                   });
