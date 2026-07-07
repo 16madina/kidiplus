@@ -19,7 +19,7 @@ export function AuthFlow() {
       style={{
         isolation: "isolate",
         background:
-          "linear-gradient(180deg, #141B33 0%, #10162B 55%, #0C1122 100%)",
+          "radial-gradient(120% 80% at 50% 0%, #2A3560 0%, #1E2749 40%, #141B33 100%)",
         color: "white",
       }}
     >
