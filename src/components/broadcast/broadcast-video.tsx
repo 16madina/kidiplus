@@ -38,6 +38,8 @@ export type BroadcastVideoProps = {
   /** When set, use LiveKit host publishing instead of local preview. */
   livekit?: BroadcastVideoLK;
   micEnabled?: boolean;
+  /** Bump this to force a fresh token + reconnect (host retry). */
+  retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
 };
 
