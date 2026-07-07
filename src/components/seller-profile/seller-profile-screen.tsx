@@ -6,7 +6,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, Bell, Eye } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, Bell, Eye, MoreHorizontal, Flag, Ban, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -23,6 +23,29 @@ import {
 import { formatMoney } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { formatShortDateTime } from "@/i18n/format";
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
+import { supabase } from "@/integrations/supabase/client";
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+async function resolveSellerProfileId(name: string): Promise<string | null> {
+  const handle = slugify(name);
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .or(`handle.eq.${handle},display_name.eq.${name}`)
+    .limit(1)
+    .maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
+}
 
 
 const HEADER_MAX = 260; // large header total height above nav
