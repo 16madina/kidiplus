@@ -334,7 +334,12 @@
     "preferences": "Préférences",
     "about": "À propos",
     "version": "Version",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "currency": "Devise",
+    "chooseCurrency": "Choisir la devise",
+    "currencyHint": "La devise du portefeuille ne peut changer que si le solde est à 0.",
+    "currencyUpdated": "Devise mise à jour",
+    "currencyWalletLocked": "Devise du profil mise à jour. Le portefeuille reste inchangé (solde non nul)."
   },
   "errors": {
     "generic": "Une erreur est survenue.",
@@ -444,6 +449,7 @@
       "purchase": "Achat",
       "refund": "Remboursement",
       "adjustment": "Ajustement"
-    }
+    },
+    "currencyMismatch": "Portefeuille en {{currency}}"
   }
 }
