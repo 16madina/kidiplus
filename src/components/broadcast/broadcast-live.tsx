@@ -500,8 +500,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               WebkitBackdropFilter: "blur(12px)",
             }}
           >
-            {featured.image_url && (
+            {featured.image_url ? (
               <img src={featured.image_url} alt="" className="mb-1.5 h-20 w-full rounded-lg object-cover" />
+            ) : (
+              <div className="mb-1.5 grid h-20 w-full place-items-center rounded-lg bg-white/10">
+                <Package size={20} className="text-white/60" />
+              </div>
             )}
             <div className="text-[10px] font-semibold text-white/70">{t("live.currentBid")}</div>
             <motion.div
