@@ -170,7 +170,7 @@ export function TopUpSheet({
               {/* Current balance card */}
               <div
                 className="mt-3 flex items-center gap-3 rounded-2xl p-3"
-                style={{ backgroundColor: "oklch(0.16 0.01 60)", color: "white" }}
+                style={{ backgroundColor: "oklch(0.19 0.06 265)", color: "white" }}
               >
                 <div
                   className="grid h-10 w-10 place-items-center rounded-full"

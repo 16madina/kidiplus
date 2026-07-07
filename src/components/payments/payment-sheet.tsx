@@ -332,7 +332,7 @@ function WalletMethodRow({
     >
       <div
         className="grid h-9 w-9 place-items-center rounded-xl"
-        style={{ backgroundColor: "oklch(0.16 0.01 60)" }}
+        style={{ backgroundColor: "oklch(0.19 0.06 265)" }}
       >
         <Wallet size={18} color="#c8a24a" />
       </div>

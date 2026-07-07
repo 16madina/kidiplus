@@ -51,7 +51,7 @@ export function WalletPill({
               border: "1px solid rgba(255,255,255,0.08)",
             }
           : {
-              backgroundColor: "oklch(0.16 0.01 60)",
+              backgroundColor: "oklch(0.19 0.06 265)",
               color: "white",
               border: "1px solid var(--border)",
             }
