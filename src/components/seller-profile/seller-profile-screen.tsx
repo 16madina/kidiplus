@@ -420,6 +420,57 @@ function SellerProfileInner({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Actions sheet */}
+      <AnimatePresence>
+        {actionsOpen && (
+          <motion.div
+            className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setActionsOpen(false)}
+          >
+            <motion.div
+              className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe"
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-[17px] font-bold">@{slugify(info.name)}</h2>
+                <Press onClick={() => setActionsOpen(false)} className="h-9 w-9 rounded-full">
+                  <X size={18} />
+                </Press>
+              </div>
+              <Press
+                onClick={() => { setActionsOpen(false); setReportOpen(true); }}
+                className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
+              >
+                <Flag size={20} />
+                {t("report.action")}
+              </Press>
+              <Press
+                onClick={handleBlock}
+                disabled={blocking}
+                className="mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
+              >
+                {blocking ? <Loader2 size={18} className="animate-spin" /> : <Ban size={20} />}
+                {t("block.action")}
+              </Press>
+              <p className="mt-2 px-3 text-[12px] text-muted-foreground">
+                {t("block.confirm")}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="user"
+        targetId={slugify(info.name)}
+      />
     </>
   );
 }
