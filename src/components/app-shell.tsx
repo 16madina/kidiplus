@@ -34,7 +34,22 @@ import { EASE_IOS } from "@/lib/motion";
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
 export function AppShell() {
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.sessionStorage.getItem("kp:splashShown") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const handleSplashDone = () => {
+    try {
+      window.sessionStorage.setItem("kp:splashShown", "1");
+    } catch {
+      /* ignore */
+    }
+    setSplashDone(true);
+  };
   return (
     <AuthProvider>
       <LanguageProvider>
@@ -46,7 +61,7 @@ export function AppShell() {
                   <AuthGate />
                   <AnimatePresence>
                     {!splashDone && (
-                      <SplashScreen onDone={() => setSplashDone(true)} />
+                      <SplashScreen onDone={handleSplashDone} />
                     )}
                   </AnimatePresence>
                 </LiveViewerProvider>
@@ -56,6 +71,7 @@ export function AppShell() {
         </SettingsProvider>
       </LanguageProvider>
     </AuthProvider>
+
 
   );
 }
