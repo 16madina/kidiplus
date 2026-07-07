@@ -37,6 +37,9 @@ import {
   readPendingOrder,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
+import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { mapPayErrorToI18n } from "@/lib/pay-errors";
+
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
@@ -111,10 +114,13 @@ export function PaymentSheet({
           setState({ kind: "not_configured" });
           return;
         }
-        if (!res.ok || !body.clientSecret || !body.publishableKey) {
+        const pubKey = resolvePublishableKey(body.publishableKey);
+        if (!res.ok || !body.clientSecret || !pubKey) {
           setState({
             kind: "error",
-            message: body.error ?? t("pay.errors.generic"),
+            message: !pubKey
+              ? t("pay.errors.notConfigured")
+              : mapPayErrorToI18n(t, body.error),
           });
           return;
         }
@@ -125,8 +131,9 @@ export function PaymentSheet({
         setState({
           kind: "ready",
           clientSecret: body.clientSecret,
-          stripePromise: loadStripe(body.publishableKey),
+          stripePromise: loadStripe(pubKey),
         });
+
       } catch {
         if (!cancelled) setState({ kind: "error", message: t("pay.errors.network") });
       }
@@ -549,10 +556,17 @@ function StripePayForm({
     });
     setBusy(false);
     if (error) {
-      setError(error.message ?? t("pay.errors.generic"));
+      const slug =
+        error.type === "card_error"
+          ? "card_declined"
+          : error.code === "amount_too_small" || error.code === "amount_too_large"
+            ? "invalid_amount"
+            : "stripe_error";
+      setError(error.message ?? mapPayErrorToI18n(t, slug));
       haptic.warning();
       return;
     }
+
     if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")) {
       onSuccess(paymentIntent.id);
     } else {

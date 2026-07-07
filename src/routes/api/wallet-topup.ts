@@ -12,8 +12,9 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
+import { createStripeClient, getStripeConfig, mapStripeError } from "@/lib/stripe.server";
 import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
+
 
 const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
 
@@ -112,18 +113,42 @@ export const Route = createFileRoute("/api/wallet-topup")({
         const amountMinor = toStripeMinor(amount, currency);
 
         const stripe = createStripeClient();
-        const intent = await stripe.paymentIntents.create({
-          amount: amountMinor,
-          currency: currency.toLowerCase(),
-          automatic_payment_methods: { enabled: true },
-          metadata: {
-            kind: "wallet_topup",
-            userId,
-            amount: String(amount),
+        let intent;
+        try {
+          intent = await stripe.paymentIntents.create({
+            amount: amountMinor,
+            currency: currency.toLowerCase(),
+            automatic_payment_methods: { enabled: true },
+            metadata: {
+              kind: "wallet_topup",
+              userId,
+              amount: String(amount),
+              currency,
+            },
+            description: `KiDi+ · Recharge portefeuille (${amount} ${currency})`,
+          });
+        } catch (e) {
+          const err = e as {
+            message?: string;
+            code?: string;
+            type?: string;
+            param?: string;
+            raw?: { message?: string; code?: string; type?: string; param?: string };
+          };
+          const rawMsg = err.raw?.message ?? err.message ?? "stripe_error";
+          const rawCode = err.raw?.code ?? err.code;
+          const rawType = err.raw?.type ?? err.type;
+          console.error("[wallet-topup] stripe_error", {
             currency,
-          },
-          description: `KiDi+ · Recharge portefeuille (${amount} ${currency})`,
-        });
+            amount,
+            code: rawCode,
+            type: rawType,
+            param: err.raw?.param ?? err.param,
+            message: rawMsg,
+          });
+          const code = mapStripeError(rawCode, rawType, rawMsg);
+          return json({ error: code, detail: rawMsg }, 502, origin);
+        }
 
         return json(
           {
@@ -135,6 +160,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
           200,
           origin,
         );
+
       },
     },
   },

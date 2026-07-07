@@ -403,8 +403,14 @@
       "title": "Payment failed",
       "generic": "Something went wrong. Please try again.",
       "network": "Could not reach the server.",
-      "notSignedIn": "Sign in to pay."
+      "notSignedIn": "Sign in to pay.",
+      "notConfigured": "Payments are not configured. Please contact support.",
+      "cardDeclined": "Card declined. Check the details or try another card.",
+      "currencyNotSupported": "Currency not supported by this payment method.",
+      "invalidAmount": "Invalid amount.",
+      "rateLimited": "Too many attempts. Please try again shortly."
     },
+
     "toasts": {
       "confirmed": "Payment confirmed 🎉"
     }

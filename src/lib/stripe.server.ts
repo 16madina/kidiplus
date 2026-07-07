@@ -107,3 +107,43 @@ export function createStripeClient(): Stripe {
 
   return new Stripe(legacySecret ?? "", opts);
 }
+
+// Map a raw Stripe error (code / type / message) to a stable slug the client
+// can use to look up a localized error message. Keep the set small — the
+// client's i18n table (`pay.errors.*`) must have a matching key.
+export function mapStripeError(
+  code?: string,
+  type?: string,
+  message?: string,
+): string {
+  const c = (code ?? "").toLowerCase();
+  const t = (type ?? "").toLowerCase();
+  const m = (message ?? "").toLowerCase();
+
+  if (
+    c === "card_declined" ||
+    c === "expired_card" ||
+    c === "incorrect_cvc" ||
+    c === "incorrect_number" ||
+    c === "invalid_cvc" ||
+    c === "invalid_expiry_month" ||
+    c === "invalid_expiry_year" ||
+    c === "processing_error" ||
+    t === "card_error"
+  ) {
+    return "card_declined";
+  }
+  if (
+    m.includes("currency") &&
+    (m.includes("not supported") || m.includes("invalid") || m.includes("not allowed"))
+  ) {
+    return "currency_not_supported";
+  }
+  if (c === "amount_too_small" || c === "amount_too_large") return "invalid_amount";
+  if (c === "rate_limit" || t === "rate_limit_error") return "rate_limited";
+  if (t === "authentication_error" || t === "api_error" || t === "invalid_request_error") {
+    return "stripe_error";
+  }
+  return "stripe_error";
+}
+

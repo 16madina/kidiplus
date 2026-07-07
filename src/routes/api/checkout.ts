@@ -18,7 +18,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
+import { createStripeClient, getStripeConfig, mapStripeError } from "@/lib/stripe.server";
 import { toStripeAmountFor } from "@/lib/fees";
 import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 
@@ -154,28 +154,52 @@ export const Route = createFileRoute("/api/checkout")({
         }
 
         if (!intent) {
-          intent = await stripe.paymentIntents.create({
-            amount: amountMinor,
-            currency,
-            automatic_payment_methods: { enabled: true },
-            metadata: {
+          try {
+            intent = await stripe.paymentIntents.create({
+              amount: amountMinor,
+              currency,
+              automatic_payment_methods: { enabled: true },
+              metadata: {
+                orderId: order.id,
+                buyerId: order.buyer_id,
+                sellerId: order.seller_id,
+                liveId: order.live_id ?? "",
+                productId: order.product_id ?? "",
+                kind: order.kind,
+                platformFee: String(order.platform_fee),
+                processingFee: String(order.processing_fee),
+              },
+              description: `KiDi+ · ${order.item_name}`,
+            });
+          } catch (e) {
+            const err = e as {
+              message?: string;
+              code?: string;
+              type?: string;
+              param?: string;
+              raw?: { message?: string; code?: string; type?: string; param?: string };
+            };
+            const rawMsg = err.raw?.message ?? err.message ?? "stripe_error";
+            const rawCode = err.raw?.code ?? err.code;
+            const rawType = err.raw?.type ?? err.type;
+            console.error("[checkout] stripe_error", {
               orderId: order.id,
-              buyerId: order.buyer_id,
-              sellerId: order.seller_id,
-              liveId: order.live_id ?? "",
-              productId: order.product_id ?? "",
-              kind: order.kind,
-              // Platform commission recorded on the order for later Connect split.
-              platformFee: String(order.platform_fee),
-              processingFee: String(order.processing_fee),
-            },
-            description: `KiDi+ · ${order.item_name}`,
-          });
+              currency,
+              amount: amountMinor,
+              code: rawCode,
+              type: rawType,
+              param: err.raw?.param ?? err.param,
+              message: rawMsg,
+            });
+            const code = mapStripeError(rawCode, rawType, rawMsg);
+            return json({ error: code, detail: rawMsg }, 502, origin);
+          }
           await admin
             .from("orders")
             .update({ stripe_payment_intent_id: intent.id })
             .eq("id", order.id);
         }
+
 
         return json(
           {
