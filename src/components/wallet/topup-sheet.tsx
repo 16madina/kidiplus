@@ -153,7 +153,7 @@ export function TopUpSheet({
               </motion.div>
               <p className="text-lg font-bold">{t("wallet.topup.success")}</p>
               <p className="text-sm text-muted-foreground">
-                {t("wallet.topup.credited", { amount: formatMoney(step.amount, currency) })}
+                {t("wallet.topup.credited", { amount: formatMoney(step.amount, cur, i18n.language) })}
               </p>
             </motion.div>
           ) : (
@@ -183,7 +183,7 @@ export function TopUpSheet({
                     {t("wallet.currentBalance")}
                   </p>
                   <p className="text-[20px] font-bold tabular-nums">
-                    {formatMoney(balance, currency)}
+                    {formatMoney(balance, cur, i18n.language)}
                   </p>
                 </div>
               </div>
@@ -208,7 +208,7 @@ export function TopUpSheet({
                             : "border-border"
                         }`}
                       >
-                        {formatMoney(p, currency)}
+                        {formatMoney(p, cur, i18n.language)}
                       </Press>
                     ))}
                   </div>
@@ -270,7 +270,7 @@ export function TopUpSheet({
                         <Loader2 className="mx-auto animate-spin" size={18} />
                       ) : (
                         t("wallet.topup.continueCta", {
-                          amount: formatMoney(chosenAmount, currency),
+                          amount: formatMoney(chosenAmount, cur, i18n.language),
                         })
                       )}
                     </Press>
@@ -285,7 +285,7 @@ export function TopUpSheet({
                 <StripeInline
                   clientSecret={step.clientSecret}
                   stripePromise={step.stripePromise}
-                  amountLabel={formatMoney(step.amount, currency)}
+                  amountLabel={formatMoney(step.amount, cur, i18n.language)}
                   onSuccess={() => handleSuccess(step.amount)}
                 />
               ) : null}
