@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Press } from "@/components/press";
+import { Logo } from "@/components/brand/logo";
 import { EASE_IOS } from "@/lib/motion";
 import { SignInScreen } from "./sign-in-screen";
 import { SignUpScreen } from "./sign-up-screen";

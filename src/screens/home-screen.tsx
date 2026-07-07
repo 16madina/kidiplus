@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Bell, Share2, Loader2 } from "lucide-react";
 import { Press } from "@/components/press";
+import { Logo } from "@/components/brand/logo";
 import { CategoryPills } from "@/components/category-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
 import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
