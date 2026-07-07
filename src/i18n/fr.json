@@ -151,7 +151,12 @@
       "success": "Achat confirmé !",
       "fail": "Le paiement a échoué. Réessaie."
     },
-    "chatIntro": "Sois respectueux dans le chat 💛"
+    "chatIntro": "Sois respectueux dans le chat 💛",
+    "danglingTitle_one": "{{count}} live toujours ouvert",
+    "danglingTitle_other": "{{count}} lives toujours ouverts",
+    "danglingBody": "Termine-les avant d'en lancer un nouveau.",
+    "danglingEndAll": "Tout terminer",
+    "danglingEnded": "Lives précédents terminés"
   },
   "broadcast": {
     "becomeSellerTitle": "Deviens vendeur",
@@ -390,4 +395,3 @@
     "reviewCount_other": "{{count}} avis"
   }
 }
-
