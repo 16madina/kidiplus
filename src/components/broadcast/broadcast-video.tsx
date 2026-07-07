@@ -117,9 +117,9 @@ export function BroadcastVideo({
       cancelled = true;
       teardown();
     };
-  }, [facing, enabled]);
+  }, [facing, shouldRun]);
 
-  const showVideo = enabled && state === "granted";
+  const showVideo = shouldRun && state === "granted";
   const mirrored = facing === "user";
 
   return (
