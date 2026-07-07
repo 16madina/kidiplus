@@ -238,25 +238,25 @@ export function WithdrawSheet({
                 {t("payout.method.label")}
               </p>
               <div className="flex flex-col gap-2">
-                <MethodPick
-                  active={method === "wave"}
-                  onClick={() => setMethod("wave")}
-                  color={WAVE}
-                  label="Wave"
-                />
-                <MethodPick
-                  active={method === "orange_money"}
-                  onClick={() => setMethod("orange_money")}
-                  color={ORANGE}
-                  label="Orange Money"
-                />
-                <MethodPick
-                  active={method === "bank_transfer"}
-                  onClick={() => setMethod("bank_transfer")}
-                  color="#10162B"
-                  label={t("payout.method.bank_transfer")}
-                  icon={<Building2 size={18} color="white" />}
-                />
+                {availableMethods.map((m) => {
+                  if (m === "wave") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={WAVE} label="Wave" />
+                  );
+                  if (m === "orange_money") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={ORANGE} label="Orange Money" />
+                  );
+                  if (m === "paypal") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={PAYPAL_BLUE} label="PayPal" icon={<PaypalIcon />} />
+                  );
+                  return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color="#10162B" label={t("payout.method.bank_transfer")}
+                      icon={<Building2 size={18} color="white" />} />
+                  );
+                })}
               </div>
 
               {method === "bank_transfer" ? (
@@ -273,6 +273,23 @@ export function WithdrawSheet({
                     onChange={(e) => setHolder(e.target.value)}
                     className="mt-2 h-12 w-full rounded-2xl border px-4 text-[14px]"
                   />
+                </>
+              ) : method === "paypal" ? (
+                <>
+                  <input
+                    placeholder={t("payout.paypalEmailPlaceholder")}
+                    inputMode="email"
+                    type="email"
+                    autoComplete="email"
+                    maxLength={254}
+                    value={paypalEmail}
+                    onChange={(e) => setPaypalEmail(e.target.value)}
+                    className="mt-3 h-12 w-full rounded-2xl border px-4 text-[14px]"
+                    style={invalidEmail ? { borderColor: "oklch(0.6 0.24 25)" } : undefined}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t("payout.paypalHint")}
+                  </p>
                 </>
               ) : (
                 <input
