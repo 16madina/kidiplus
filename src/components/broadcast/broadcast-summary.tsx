@@ -81,10 +81,35 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
 
         <div>
           <h2 className="mb-2 text-[15px] font-bold">{t("broadcast.summary.sales")}</h2>
-          {session.sales.length === 0 ? (
+          {salesCount === 0 ? (
             <div className="rounded-2xl bg-muted p-4 text-center text-[13px] text-muted-foreground">
               {t("home.empty")}
             </div>
+          ) : usingReal ? (
+            <motion.ul
+              variants={listContainer}
+              initial="hidden"
+              animate="show"
+              className="flex flex-col gap-1.5"
+            >
+              {realOrders!.map((o) => (
+                <motion.li
+                  key={o.id}
+                  variants={listItem}
+                  className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold">{o.item_name}</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {o.kind === "auction" ? t("pay.kind.auction") : t("pay.kind.fixed")}
+                    </p>
+                  </div>
+                  <span className="text-[15px] font-bold tabular-nums">
+                    {formatEuro(Number(o.amount))}
+                  </span>
+                </motion.li>
+              ))}
+            </motion.ul>
           ) : (
             <motion.ul
               variants={listContainer}
