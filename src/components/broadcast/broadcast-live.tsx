@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle,
+  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle, Plus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
+import { AddProductSheet } from "./add-product-sheet";
 import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
-import { useBroadcast } from "@/lib/broadcast-context";
+import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
 import { formatMoney } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
@@ -19,8 +21,10 @@ import { useAppActive } from "@/lib/app-state";
 import { pushStatusBarLight } from "@/lib/native";
 import { useLiveRoom } from "@/lib/live-room";
 import { useImmersiveScope } from "@/lib/immersive-context";
+import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, endAuctionInDb, activateFixedInDb, stopFixedInDb,
+  createLiveProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
@@ -43,10 +47,37 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
+
+  // Local image fallback: if signing the storage path fails on the host, we
+  // still have the original File (or absolute URL) in the broadcast context.
+  // This guarantees the seller ALWAYS sees their own product images even if
+  // the storage signing request transiently 401s / times out.
+  const localImageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const bp of b.products) {
+      if (!bp.dbId) continue;
+      if (bp.imageFile) map.set(bp.dbId, URL.createObjectURL(bp.imageFile));
+      else if (bp.image && !isBlobUrl(bp.image)) map.set(bp.dbId, bp.image);
+    }
+    return map;
+  }, [b.products]);
+  useEffect(() => {
+    return () => {
+      for (const url of localImageMap.values()) {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      }
+    };
+  }, [localImageMap]);
+  const imgFor = useCallback(
+    (p: LiveProductRow) => p.image_url || localImageMap.get(p.id) || null,
+    [localImageMap],
+  );
 
   const room = useLiveRoom({
     liveId: b.liveId,
@@ -83,10 +114,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured defaults to first product once loaded.
+  // Featured auto-advances: on load, and whenever the current featured is sold
+  // out or removed, jump to the next non-sold product (or clear if none left).
   useEffect(() => {
-    if (!featuredId && room.products.length > 0) {
-      setFeaturedId(room.products[0].id);
+    if (room.products.length === 0) {
+      if (featuredId) setFeaturedId("");
+      return;
+    }
+    const cur = room.products.find((p) => p.id === featuredId);
+    const done = cur && (cur.status === "sold" || cur.status === "out");
+    if (!cur || done) {
+      const next = room.products.find((p) => p.status !== "sold" && p.status !== "out");
+      setFeaturedId(next?.id ?? "");
     }
   }, [room.products, featuredId]);
 
@@ -288,7 +327,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     onEnd();
   };
 
-  // Adapt real chat -> ChatMsg for existing LiveChat.
+  const onAddProductMidLive = async (p: Omit<BProduct, "id">) => {
+    if (!b.liveId || !b.hostIdentity || addingProduct) return;
+    setAddingProduct(true);
+    const res = await createLiveProductInDb({
+      liveId: b.liveId,
+      userId: b.hostIdentity,
+      name: p.name,
+      imageFile: p.imageFile ?? null,
+      imageUrl: p.image,
+      mode: p.mode,
+      startPrice: p.startPrice,
+      price: p.price,
+      stock: p.stock,
+      timerSeconds: p.timerSec,
+    });
+    setAddingProduct(false);
+    if (!res.ok) {
+      toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+      return;
+    }
+    // Register in local context so the image-fallback map picks up this dbId.
+    b.addProduct({ ...p, dbId: res.id });
+    haptic.success();
+    toast.success(t("live.productAdded", "Produit ajouté"));
+  };
   const chatMessages: ChatMsg[] = room.chat.map((c) => ({
     id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
   }));
@@ -489,54 +552,122 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       </AnimatePresence>
 
       {/* Featured / auction overlay — tap to open the products dock. */}
-      {featured && activeAuction && activeAuction.productId === featured.id && (
-        <button
-          type="button"
-          onClick={() => { haptic.selection(); setProductsOpen(true); }}
-          className="absolute right-3 z-30 text-left"
-          style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
-        >
-          <div
-            className="w-40 rounded-2xl p-2 text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
+      {/* Compact featured card (top-right). Always shown while a product is
+          queued; swaps in the next upcoming one automatically after a sale. */}
+      <AnimatePresence mode="wait">
+        {featured ? (
+          <motion.button
+            key={featured.id}
+            type="button"
+            onClick={() => { haptic.selection(); setProductsOpen(true); }}
+            initial={{ opacity: 0, y: -6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: EASE_IOS }}
+            className="absolute right-3 z-30 text-left"
+            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
           >
-            {featured.image_url ? (
-              <img src={featured.image_url} alt="" className="mb-1.5 h-20 w-full rounded-lg object-cover" />
-            ) : (
-              <div className="mb-1.5 grid h-20 w-full place-items-center rounded-lg bg-white/10">
-                <Package size={20} className="text-white/60" />
-              </div>
-            )}
-            <div className="text-[10px] font-semibold text-white/70">{t("live.currentBid")}</div>
-            <motion.div
-              key={featured.price}
-              initial={{ scale: 1.15 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.2, ease: EASE_IOS }}
-              className="text-[18px] font-bold tabular-nums"
+            <div
+              className="w-28 rounded-2xl p-1.5 text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
             >
-              {fmt(featured.price)}
-            </motion.div>
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-white/70">
-                {room.lastBid && room.lastBid.productId === featured.id
-                  ? `@${room.lastBid.bidderName}`
-                  : "—"}
-              </span>
-              <span
-                className="font-bold tabular-nums"
-                style={{ color: timeLeft <= 10 ? "oklch(0.75 0.2 25)" : "white" }}
-              >
-                {String(timeLeft).padStart(2, "0")}s
-              </span>
+              <div className="relative mb-1">
+                {imgFor(featured) ? (
+                  <img src={imgFor(featured)!} alt="" className="h-14 w-full rounded-lg object-cover" />
+                ) : (
+                  <div className="grid h-14 w-full place-items-center rounded-lg bg-white/10">
+                    <Package size={16} className="text-white/60" />
+                  </div>
+                )}
+                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
+                  {t("live.featured")}
+                </span>
+              </div>
+              <div className="truncate text-[10.5px] font-semibold leading-tight">
+                {featured.name}
+              </div>
+              {activeAuction && activeAuction.productId === featured.id ? (
+                <>
+                  <div className="mt-0.5 text-[8.5px] font-semibold uppercase tracking-wide text-white/60">
+                    {t("live.currentBid")}
+                  </div>
+                  <div className="flex items-baseline justify-between gap-1">
+                    <motion.span
+                      key={featured.price}
+                      initial={{ scale: 1.15 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2, ease: EASE_IOS }}
+                      className="text-[13px] font-bold tabular-nums"
+                    >
+                      {fmt(featured.price)}
+                    </motion.span>
+                    <span
+                      className="text-[10px] font-bold tabular-nums"
+                      style={{ color: timeLeft <= 10 ? "oklch(0.75 0.2 25)" : "white" }}
+                    >
+                      {String(timeLeft).padStart(2, "0")}s
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="truncate text-[10px] leading-tight text-white/70">
+                    {featured.mode === "auction"
+                      ? `${fmt(featured.start_price)} · ${featured.timer_seconds}s`
+                      : `${fmt(featured.price)} · stock ${Math.max(0, featured.stock)}`}
+                  </div>
+                  <Press
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (featured.mode === "auction") void startAuction(featured);
+                      else void toggleFixedSale(featured);
+                    }}
+                    hapticOnTap={false}
+                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+                  >
+                    {featured.mode === "auction"
+                      ? `${t("live.startAuction")} ▸`
+                      : t("live.listForSale")}
+                  </Press>
+                </>
+              )}
             </div>
-          </div>
-        </button>
-      )}
+          </motion.button>
+        ) : room.products.length > 0 ? (
+          <motion.div
+            key="all-done"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE_IOS }}
+            className="absolute right-3 z-30"
+            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+          >
+            <div
+              className="w-28 rounded-2xl p-2 text-center text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              <div className="text-[11px] font-semibold leading-snug">
+                {t("live.allDone", "Tous les articles sont passés ✨")}
+              </div>
+              <Press
+                onClick={() => { haptic.selection(); setAddOpen(true); }}
+                className="!min-h-7 mt-1.5 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+              >
+                {t("live.addProduct", "Ajouter")}
+              </Press>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Seller dock */}
       <div
@@ -589,7 +720,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               return (
                 <SellerProductCard
                   key={p.id}
-                  product={p}
+                  product={{ ...p, image_url: imgFor(p) }}
                   currency={cur}
                   locale={i18n.language}
                   soldOut={soldOut}
@@ -613,7 +744,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         <div className="flex h-full min-h-0 flex-col px-4">
           <div className="flex items-center justify-between pb-2 pt-1">
             <h2 className="text-[18px] font-bold">{t("live.openProducts")}</h2>
-            <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+              <Press
+                onClick={() => { haptic.selection(); setProductsOpen(false); setAddOpen(true); }}
+                className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+              >
+                <Plus size={14} /> {t("live.addProduct", "Ajouter")}
+              </Press>
+            </div>
           </div>
           <div
             className="min-h-0 flex-1 overflow-y-auto"
@@ -629,10 +768,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 const soldOut = p.mode === "auction"
                   ? p.status === "sold"
                   : p.stock <= 0 || p.status === "out";
+                const imgUrl = imgFor(p);
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {p.image_url ? (
-                      <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    {imgUrl ? (
+                      <img src={imgUrl} alt="" className="h-14 w-14 rounded-xl object-cover" />
                     ) : (
                       <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
                         <Package size={18} className="text-muted-foreground" />
@@ -717,6 +857,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </div>
         </div>
       </BottomSheet>
+
+      <AddProductSheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdd={(p) => { void onAddProductMidLive(p); }}
+      />
     </motion.div>
   );
 }
