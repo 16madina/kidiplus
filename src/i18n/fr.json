@@ -403,8 +403,14 @@
       "title": "Paiement impossible",
       "generic": "Une erreur est survenue. Réessaie.",
       "network": "Impossible de contacter le serveur.",
-      "notSignedIn": "Connecte-toi pour payer."
+      "notSignedIn": "Connecte-toi pour payer.",
+      "notConfigured": "Paiement non configuré. Contacte le support.",
+      "cardDeclined": "Carte refusée. Vérifie les informations ou essaie une autre carte.",
+      "currencyNotSupported": "Devise non supportée par le mode de paiement.",
+      "invalidAmount": "Montant invalide.",
+      "rateLimited": "Trop de tentatives. Réessaie dans un instant."
     },
+
     "toasts": {
       "confirmed": "Paiement confirmé 🎉"
     }

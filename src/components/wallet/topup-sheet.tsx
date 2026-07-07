@@ -35,6 +35,9 @@ import {
   readPendingTopup,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
+import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { mapPayErrorToI18n } from "@/lib/pay-errors";
+
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
@@ -123,29 +126,35 @@ export function TopUpSheet({
         clientSecret?: string;
         publishableKey?: string;
         error?: string;
+        detail?: string;
       };
       if (res.status === 503 || body.error === "stripe_not_configured") {
         setStep({ kind: "not_configured" });
         return;
       }
-      if (!res.ok || !body.clientSecret || !body.publishableKey) {
-        setStep({ kind: "error", message: body.error ?? t("pay.errors.generic") });
+      const pubKey = resolvePublishableKey(body.publishableKey);
+      if (!res.ok || !body.clientSecret || !pubKey) {
+        setStep({
+          kind: "error",
+          message: !pubKey
+            ? t("pay.errors.notConfigured")
+            : mapPayErrorToI18n(t, body.error),
+        });
         return;
       }
-      // Store the PI id BEFORE Stripe confirms — so a page reload after
-      // Stripe success but before our confirm call can still recover.
       const pi = paymentIntentIdFromClientSecret(body.clientSecret);
       if (pi) markPendingTopup(pi);
       setStep({
         kind: "ready",
         clientSecret: body.clientSecret,
-        stripePromise: loadStripe(body.publishableKey),
+        stripePromise: loadStripe(pubKey),
         amount: chosenAmount,
       });
     } catch {
       setStep({ kind: "error", message: t("pay.errors.network") });
     }
   };
+
 
   const handleSuccess = async (amount: number, paymentIntentId: string) => {
     // Enter the verifying state — a spinner is shown while we ask our
@@ -458,10 +467,17 @@ function StripeInlineForm({
     });
     setBusy(false);
     if (error) {
-      setError(error.message ?? t("pay.errors.generic"));
+      const slug =
+        error.type === "card_error"
+          ? "card_declined"
+          : error.code === "amount_too_small" || error.code === "amount_too_large"
+            ? "invalid_amount"
+            : "stripe_error";
+      setError(error.message ?? mapPayErrorToI18n(t, slug));
       haptic.warning();
       return;
     }
+
     if (
       paymentIntent &&
       (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")
