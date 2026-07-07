@@ -39,6 +39,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
+  const [videoStatus, setVideoStatus] = useState<"idle"|"connecting"|"granted"|"denied"|"unsupported"|"error">("idle");
+  const [retryKey, setRetryKey] = useState(0);
+  const [productsOpen, setProductsOpen] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const room = useLiveRoom({
