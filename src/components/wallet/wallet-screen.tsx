@@ -48,7 +48,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           <Press
             onClick={() => setTopupOpen(true)}
             className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"
-            style={{ backgroundColor: "#c8a24a", color: "black" }}
+            style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
           >
             <span className="flex items-center justify-center gap-1.5">
               <Plus size={16} />
