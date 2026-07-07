@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff,
+  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
