@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 // KiDi+ native shell config. Adjust appId to your registered bundle before store submission.
 const config: CapacitorConfig = {
-  appId: "app.kidi.live",
+  appId: "com.kidiplus.app",
   appName: "KiDi+",
   webDir: "dist",
   bundledWebRuntime: false,
