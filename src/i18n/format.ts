@@ -62,3 +62,27 @@ export function relativeTimeParts(from: Date | number): {
   const year = Math.floor(day / 365);
   return { key: "time.yearAgo", count: year };
 }
+
+/**
+ * Localized "{formatted} viewers/spectateurs" string.
+ * Uses the units.viewers plural key with a pre-formatted count so we get
+ * "1,1 k spectateurs" / "1.1k viewers" instead of "1100 spectateurs".
+ */
+export function formatViewersLabel(n: number, lang: Lang): string {
+  const label = i18n.t("units.viewers", {
+    count: n,
+    lng: lang,
+    // Replace the interpolated number entirely with our formatted string.
+    postProcess: [],
+  });
+  return label.replace(String(n), formatCount(n, lang));
+}
+
+/**
+ * Localized followers label.
+ */
+export function formatFollowersLabel(n: number, lang: Lang): string {
+  const label = i18n.t("units.followers", { count: n, lng: lang });
+  return label.replace(String(n), formatCount(n, lang));
+}
+
