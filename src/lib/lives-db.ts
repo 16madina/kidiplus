@@ -230,6 +230,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     category,
     roomName: row.room_name,
     liveId: row.id,
+    sellerId: row.seller_id,
   };
 }
 

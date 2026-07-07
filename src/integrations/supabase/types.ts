@@ -175,6 +175,98 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          currency: string
+          id: string
+          item_image: string | null
+          item_name: string
+          kind: string
+          live_id: string | null
+          paid_at: string | null
+          payment_method: string
+          platform_fee: number
+          processing_fee: number
+          product_id: string | null
+          seller_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+          total: number
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          item_image?: string | null
+          item_name: string
+          kind: string
+          live_id?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          platform_fee?: number
+          processing_fee?: number
+          product_id?: string | null
+          seller_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total: number
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          item_image?: string | null
+          item_name?: string
+          kind?: string
+          live_id?: string | null
+          paid_at?: string | null
+          payment_method?: string
+          platform_fee?: number
+          processing_fee?: number
+          product_id?: string | null
+          seller_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

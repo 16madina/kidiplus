@@ -8,11 +8,29 @@ import { formatEuro, fmtDuration } from "@/lib/broadcast-mock";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
+import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
-  const { session, reset } = useBroadcast();
-  const revenue = session.sales.reduce((s, x) => s + x.price, 0);
+  const { session, reset, liveId } = useBroadcast();
+
+  // Real paid orders for this live (if any). Falls back to the mock sales
+  // recorded locally when the seller's live wasn't backed by a DB row.
+  const [realOrders, setRealOrders] = useState<OrderRow[] | null>(null);
+  useEffect(() => {
+    if (!liveId) return;
+    let alive = true;
+    void fetchOrdersForLive(liveId).then((rows) => {
+      if (alive) setRealOrders(rows.filter((r) => r.status === "paid"));
+    });
+    return () => { alive = false; };
+  }, [liveId]);
+
+  const usingReal = (realOrders?.length ?? 0) > 0;
+  const revenue = usingReal
+    ? (realOrders ?? []).reduce((s, o) => s + Number(o.amount), 0)
+    : session.sales.reduce((s, x) => s + x.price, 0);
+  const salesCount = usingReal ? realOrders!.length : session.sales.length;
 
   return (
     <motion.div
@@ -46,7 +64,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
         <div className="grid grid-cols-3 gap-2">
           <StatTile label={t("broadcast.summary.duration")} value={fmtDuration(session.durationSec)} />
           <StatTile label={t("broadcast.summary.peakViewers")} value={String(session.peakViewers)} />
-          <StatTile label={t("broadcast.summary.sales")} value={String(session.sales.length)} />
+          <StatTile label={t("broadcast.summary.sales")} value={String(salesCount)} />
         </div>
 
         <div
@@ -63,10 +81,35 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
 
         <div>
           <h2 className="mb-2 text-[15px] font-bold">{t("broadcast.summary.sales")}</h2>
-          {session.sales.length === 0 ? (
+          {salesCount === 0 ? (
             <div className="rounded-2xl bg-muted p-4 text-center text-[13px] text-muted-foreground">
               {t("home.empty")}
             </div>
+          ) : usingReal ? (
+            <motion.ul
+              variants={listContainer}
+              initial="hidden"
+              animate="show"
+              className="flex flex-col gap-1.5"
+            >
+              {realOrders!.map((o) => (
+                <motion.li
+                  key={o.id}
+                  variants={listItem}
+                  className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold">{o.item_name}</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {o.kind === "auction" ? t("pay.kind.auction") : t("pay.kind.fixed")}
+                    </p>
+                  </div>
+                  <span className="text-[15px] font-bold tabular-nums">
+                    {formatEuro(Number(o.amount))}
+                  </span>
+                </motion.li>
+              ))}
+            </motion.ul>
           ) : (
             <motion.ul
               variants={listContainer}

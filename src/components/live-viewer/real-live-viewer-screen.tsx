@@ -15,12 +15,13 @@ import { pushStatusBarLight } from "@/lib/native";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
+import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
 import { formatEuro, systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { ProductsSheet } from "./products-sheet";
-import { BuySheet } from "./buy-sheet";
+import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
 
@@ -101,7 +102,12 @@ export function RealLiveViewerScreen() {
     [localMessages, room.chat],
   );
 
+  // ---------- Payment sheet state ----------
+  // A single sheet handles both fixed-price purchases and auction wins.
+  const [pendingOrder, setPendingOrder] = useState<OrderRow | null>(null);
+
   // Sold celebration from server auction:end.
+  // If the current user is the winner, open the payment sheet to pay for the item.
   const [confettiKey, setConfettiKey] = useState(0);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
@@ -117,7 +123,33 @@ export function RealLiveViewerScreen() {
       ...prev,
       systemMessage(`${t("live.soldTo", { name: winner })} · ${formatEuro(evt.finalPrice)}`),
     ]);
-  }, [room.lastAuctionEnd, t]);
+
+    // If I won and this is a real live with a known seller, open the payment sheet.
+    if (
+      user &&
+      evt.winnerId === user.id &&
+      active?.liveId &&
+      active?.sellerId
+    ) {
+      const prod = room.products.find((p) => p.id === evt.productId);
+      if (prod) {
+        void (async () => {
+          const res = await createPendingOrder({
+            buyerId: user.id,
+            sellerId: active.sellerId!,
+            liveId: active.liveId!,
+            productId: prod.id,
+            kind: "auction",
+            itemName: prod.name,
+            itemImage: prod.image_url,
+            amount: evt.finalPrice,
+          });
+          if (res.ok) setPendingOrder(res.order);
+          else toast.error(res.error);
+        })();
+      }
+    }
+  }, [room.lastAuctionEnd, t, user, active, room.products]);
 
   // Warning haptic near auction end.
   useEffect(() => {
@@ -172,12 +204,27 @@ export function RealLiveViewerScreen() {
 
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
-  const [buyProduct, setBuyProduct] = useState<Product | null>(null);
-  const confirmBuy = async (): Promise<boolean> => {
-    if (!buyProduct || !user) return false;
-    const res = await purchaseFixedPriceRpc(buyProduct.id, user.id);
-    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return false; }
-    return true;
+
+  // Fixed-price flow: reserve stock atomically, then open the payment sheet.
+  // Note (phase 1): if the buyer abandons payment, stock is not automatically
+  // returned. A future phase should refund stock on payment_intent.canceled.
+  const startFixedPurchase = async (p: LiveProductRow) => {
+    if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!active?.liveId || !active?.sellerId) return;
+    const res = await purchaseFixedPriceRpc(p.id, user.id);
+    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
+    const order = await createPendingOrder({
+      buyerId: user.id,
+      sellerId: active.sellerId,
+      liveId: active.liveId,
+      productId: p.id,
+      kind: "fixed",
+      itemName: p.name,
+      itemImage: p.image_url,
+      amount: Number(p.price),
+    });
+    if (order.ok) setPendingOrder(order.order);
+    else toast.error(order.error);
   };
 
   // Composer
@@ -307,7 +354,10 @@ export function RealLiveViewerScreen() {
             }
             onBid={doBid}
             onOpenProducts={() => setShowProducts(true)}
-            onBuy={() => setBuyProduct(currentAsProduct)}
+            onBuy={() => {
+              if (!currentProduct) return;
+              void startFixedPurchase(currentProduct);
+            }}
           />
         </div>
       )}
@@ -352,9 +402,16 @@ export function RealLiveViewerScreen() {
         open={showProducts}
         onClose={() => setShowProducts(false)}
         products={productsForSheet}
-        onBuyFixed={(p) => { setShowProducts(false); setBuyProduct(p); }}
+        onBuyFixed={(p) => {
+          setShowProducts(false);
+          const row = room.products.find((r) => r.id === p.id);
+          if (row) void startFixedPurchase(row);
+        }}
       />
-      <BuySheet product={buyProduct} onClose={() => setBuyProduct(null)} onConfirm={confirmBuy} />
+      <PaymentSheet
+        order={pendingOrder}
+        onClose={() => setPendingOrder(null)}
+      />
     </motion.div>
   );
 }

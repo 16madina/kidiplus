@@ -393,5 +393,55 @@
     "ended": "Terminé",
     "reviewCount_one": "{{count}} avis",
     "reviewCount_other": "{{count}} avis"
+  },
+  "pay": {
+    "title": "Paiement",
+    "item": "Article",
+    "platformFee": "Frais de service",
+    "processingFee": "Frais de traitement",
+    "total": "Total",
+    "payNow": "Payer {{total}}",
+    "secure": "Paiement sécurisé par Stripe",
+    "doneHint": "Un email de confirmation te sera envoyé.",
+    "kind": {
+      "auction": "Enchère gagnée",
+      "fixed": "Achat direct"
+    },
+    "method": {
+      "title": "Méthode de paiement",
+      "card": "Carte bancaire",
+      "comingSoon": "Bientôt"
+    },
+    "notConfigured": {
+      "title": "Paiement non configuré",
+      "body": "Les clés Stripe ne sont pas encore renseignées côté serveur."
+    },
+    "errors": {
+      "title": "Paiement impossible",
+      "generic": "Une erreur est survenue. Réessaie.",
+      "network": "Impossible de contacter le serveur.",
+      "notSignedIn": "Connecte-toi pour payer."
+    },
+    "toasts": {
+      "confirmed": "Paiement confirmé 🎉"
+    }
+  },
+  "orders": {
+    "empty": "Aucune commande pour le moment.",
+    "status": {
+      "pending": "En attente",
+      "paid": "Payé",
+      "failed": "Échoué",
+      "cancelled": "Annulé"
+    }
+  },
+  "sales": {
+    "title": "Mes ventes",
+    "empty": "Aucune vente pour le moment.",
+    "revenue": "Chiffre d'affaires",
+    "buyer": "Acheteur"
+  },
+  "profile": {
+    "mySales": "Mes ventes"
   }
 }

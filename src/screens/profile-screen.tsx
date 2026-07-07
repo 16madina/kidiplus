@@ -28,6 +28,7 @@ import { useSettings } from "@/lib/settings-context";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
+import { SellerSalesScreen } from "@/components/seller-sales-screen";
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
 import type { Lang } from "@/i18n";
@@ -37,6 +38,7 @@ export function ProfileScreen() {
   const { profile, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -132,6 +134,14 @@ export function ProfileScreen() {
             { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
             { icon: <MapPin size={16} />, label: t("profile.menu.addresses"), tint: "oklch(0.6 0.17 155)", onClick: () => toast(soon) },
             { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
+            ...(profile?.is_seller
+              ? [{
+                  icon: <BadgeCheck size={16} />,
+                  label: t("profile.mySales"),
+                  tint: "oklch(0.65 0.16 60)",
+                  onClick: () => setSalesOpen(true),
+                }]
+              : []),
           ]}
           index={0}
         />
@@ -161,6 +171,7 @@ export function ProfileScreen() {
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
+      <SellerSalesScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
     </div>
   );
 }
