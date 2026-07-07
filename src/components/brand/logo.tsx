@@ -1,4 +1,6 @@
 import { useState } from "react";
+import logoAsset from "@/assets/logo.png.asset.json";
+
 
 /**
  * KiDi+ brand logo.
