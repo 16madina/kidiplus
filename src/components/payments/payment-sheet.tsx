@@ -184,17 +184,17 @@ export function PaymentSheet({
 
                 {/* Fee breakdown */}
                 <dl className="mt-4 space-y-2 text-sm">
-                  <Row label={t("pay.item")} value={formatEuro(Number(order.amount))} />
+                  <Row label={t("pay.item")} value={fmt(Number(order.amount))} />
                   <Row
                     label={t("pay.platformFee")}
-                    value={formatEuro(Number(order.platform_fee))}
+                    value={fmt(Number(order.platform_fee))}
                   />
                   <Row
                     label={t("pay.processingFee")}
-                    value={formatEuro(Number(order.processing_fee))}
+                    value={fmt(Number(order.processing_fee))}
                   />
                   <div className="my-2 h-px bg-border" />
-                  <Row label={t("pay.total")} value={formatEuro(Number(order.total))} bold />
+                  <Row label={t("pay.total")} value={fmt(Number(order.total))} bold />
                 </dl>
 
                 {/* Payment method selector */}
@@ -277,7 +277,7 @@ export function PaymentSheet({
                     <StripeCardForm
                       clientSecret={state.clientSecret}
                       stripePromise={state.stripePromise}
-                      totalLabel={formatEuro(Number(order.total))}
+                      totalLabel={fmt(Number(order.total))}
                       onSuccess={handleSuccess}
                     />
                   )}
