@@ -22,7 +22,7 @@ export type SellerEarning = {
   created_at: string;
 };
 
-export type PayoutMethod = "wave" | "orange_money" | "bank_transfer";
+export type PayoutMethod = "wave" | "orange_money" | "bank_transfer" | "paypal";
 export type PayoutStatus = "requested" | "processing" | "paid" | "rejected";
 
 export type PayoutRow = {

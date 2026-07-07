@@ -1,5 +1,5 @@
 // WithdrawSheet — seller requests a payout from their available balance.
-// Steps: form → confirm → success. Method: Wave / Orange Money / Bank.
+// Steps: form → confirm → success. Method: Wave / Orange Money / PayPal / Bank.
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,12 +9,47 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
+const PAYPAL_BLUE = "#003087";
+const PAYPAL_BLUE_LIGHT = "#0070BA";
+
+// Basic RFC-ish email regex — good enough for input validation.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Method choices (and default) depend on the seller's wallet currency:
+ *  - XOF: mobile money first (Wave, Orange Money), then PayPal, then Virement.
+ *  - EUR / CAD: PayPal first, then Virement. Mobile-money options are hidden
+ *    to reduce noise (irrelevant for European / Canadian sellers). */
+function methodsForCurrency(currency: string): PayoutMethod[] {
+  const cur = normalizeCurrency(currency);
+  if (cur === "XOF") return ["wave", "orange_money", "paypal", "bank_transfer"];
+  return ["paypal", "bank_transfer"];
+}
+
+/** PayPal-brand square with a white italic "P". */
+function PaypalIcon() {
+  return (
+    <span
+      className="italic"
+      style={{
+        color: "white",
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        fontWeight: 900,
+        fontSize: 16,
+        lineHeight: 1,
+        letterSpacing: "-0.05em",
+        textShadow: `1px 0 0 ${PAYPAL_BLUE_LIGHT}`,
+      }}
+    >
+      P
+    </span>
+  );
+}
 
 export function WithdrawSheet({
   open,
@@ -29,49 +64,65 @@ export function WithdrawSheet({
 }) {
   const { t, i18n } = useTranslation();
   const min = payoutMinimumFor(currency);
+  const availableMethods = useMemo(() => methodsForCurrency(currency), [currency]);
+  const defaultMethod: PayoutMethod = availableMethods[0] ?? "paypal";
 
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
   const [amount, setAmount] = useState<number>(available);
-  const [method, setMethod] = useState<PayoutMethod>("wave");
+  const [method, setMethod] = useState<PayoutMethod>(defaultMethod);
   const [phone, setPhone] = useState("");
   const [iban, setIban] = useState("");
   const [holder, setHolder] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
       setStep("form");
       setAmount(available);
-      setMethod("wave");
+      setMethod(defaultMethod);
       setPhone("");
       setIban("");
       setHolder("");
+      setPaypalEmail("");
       setBusy(false);
     }
-  }, [open, available]);
+  }, [open, available, defaultMethod]);
 
   const destination = useMemo<Record<string, string>>(() => {
-    const d: Record<string, string> =
-      method === "bank_transfer"
-        ? { iban: iban.trim(), holder: holder.trim() }
-        : { phone: phone.trim() };
+    if (method === "bank_transfer") {
+      const d: Record<string, string> = { iban: iban.trim(), holder: holder.trim() };
+      return d;
+    }
+    if (method === "paypal") {
+      const d: Record<string, string> = { paypalEmail: paypalEmail.trim() };
+      return d;
+    }
+    const d: Record<string, string> = { phone: phone.trim() };
     return d;
-  }, [method, phone, iban, holder]);
+  }, [method, phone, iban, holder, paypalEmail]);
 
+  const emailTrimmed = paypalEmail.trim();
+  const emailValid = EMAIL_RE.test(emailTrimmed) && emailTrimmed.length <= 254;
   const destinationValid =
     method === "bank_transfer"
       ? iban.trim().length >= 6 && holder.trim().length >= 2
-      : phone.trim().length >= 6;
+      : method === "paypal"
+        ? emailValid
+        : phone.trim().length >= 6;
   const belowMin = amount < min;
   const aboveAvailable = amount > available;
   const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
+  const invalidEmail = method === "paypal" && emailTrimmed.length > 0 && !emailValid;
   const disabledReason = belowMin
     ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
     : aboveAvailable
       ? t("payout.errors.aboveAvailable")
-      : !destinationValid
-        ? t("payout.errors.missingDestination")
-        : null;
+      : invalidEmail
+        ? t("payout.errors.invalidEmail")
+        : !destinationValid
+          ? t("payout.errors.missingDestination")
+          : null;
 
   const submit = async () => {
     setBusy(true);
@@ -130,6 +181,8 @@ export function WithdrawSheet({
                     <Row label="IBAN" value={iban} />
                     <Row label={t("payout.holder")} value={holder} />
                   </>
+                ) : method === "paypal" ? (
+                  <Row label={t("payout.paypalEmail")} value={paypalEmail} />
                 ) : (
                   <Row label={t("payout.phone")} value={phone} />
                 )}
@@ -185,25 +238,25 @@ export function WithdrawSheet({
                 {t("payout.method.label")}
               </p>
               <div className="flex flex-col gap-2">
-                <MethodPick
-                  active={method === "wave"}
-                  onClick={() => setMethod("wave")}
-                  color={WAVE}
-                  label="Wave"
-                />
-                <MethodPick
-                  active={method === "orange_money"}
-                  onClick={() => setMethod("orange_money")}
-                  color={ORANGE}
-                  label="Orange Money"
-                />
-                <MethodPick
-                  active={method === "bank_transfer"}
-                  onClick={() => setMethod("bank_transfer")}
-                  color="#10162B"
-                  label={t("payout.method.bank_transfer")}
-                  icon={<Building2 size={18} color="white" />}
-                />
+                {availableMethods.map((m) => {
+                  if (m === "wave") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={WAVE} label="Wave" />
+                  );
+                  if (m === "orange_money") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={ORANGE} label="Orange Money" />
+                  );
+                  if (m === "paypal") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color={PAYPAL_BLUE} label="PayPal" icon={<PaypalIcon />} />
+                  );
+                  return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color="#10162B" label={t("payout.method.bank_transfer")}
+                      icon={<Building2 size={18} color="white" />} />
+                  );
+                })}
               </div>
 
               {method === "bank_transfer" ? (
@@ -220,6 +273,23 @@ export function WithdrawSheet({
                     onChange={(e) => setHolder(e.target.value)}
                     className="mt-2 h-12 w-full rounded-2xl border px-4 text-[14px]"
                   />
+                </>
+              ) : method === "paypal" ? (
+                <>
+                  <input
+                    placeholder={t("payout.paypalEmailPlaceholder")}
+                    inputMode="email"
+                    type="email"
+                    autoComplete="email"
+                    maxLength={254}
+                    value={paypalEmail}
+                    onChange={(e) => setPaypalEmail(e.target.value)}
+                    className="mt-3 h-12 w-full rounded-2xl border px-4 text-[14px]"
+                    style={invalidEmail ? { borderColor: "oklch(0.6 0.24 25)" } : undefined}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t("payout.paypalHint")}
+                  </p>
                 </>
               ) : (
                 <input
