@@ -280,6 +280,9 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
   const { profile } = useAuth();
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
+  const [blockedOpen, setBlockedOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const wasOpen = useState(open)[0];
   if (open && !wasOpen) void refresh();
