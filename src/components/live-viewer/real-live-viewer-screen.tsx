@@ -22,6 +22,7 @@ import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
+import { CustomBidStepper } from "./custom-bid-stepper";
 import { ProductsSheet } from "./products-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
