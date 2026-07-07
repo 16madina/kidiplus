@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { Share2, Home, PartyPopper } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useBroadcast } from "@/lib/broadcast-context";
 import { formatEuro, fmtDuration } from "@/lib/broadcast-mock";
@@ -9,6 +10,7 @@ import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   const { session, reset } = useBroadcast();
   const revenue = session.sales.reduce((s, x) => s + x.price, 0);
 
@@ -35,16 +37,16 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           <PartyPopper size={30} color="white" />
         </motion.div>
         <div className="text-center">
-          <h1 className="text-[28px] font-bold tracking-tight">Live terminé 🎉</h1>
+          <h1 className="text-[28px] font-bold tracking-tight">{t("broadcast.summary.title")} 🎉</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">
-            {session.title || "Ton live"} · {session.category}
+            {session.title || "—"} · {session.category}
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <StatTile label="Durée" value={fmtDuration(session.durationSec)} />
-          <StatTile label="Spectateurs" value={String(session.peakViewers)} sub="pic" />
-          <StatTile label="Articles" value={String(session.sales.length)} />
+          <StatTile label={t("broadcast.summary.duration")} value={fmtDuration(session.durationSec)} />
+          <StatTile label={t("broadcast.summary.peakViewers")} value={String(session.peakViewers)} />
+          <StatTile label={t("broadcast.summary.sales")} value={String(session.sales.length)} />
         </div>
 
         <div
@@ -54,16 +56,16 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           }}
         >
           <div className="text-[12px] font-semibold uppercase tracking-wide opacity-80">
-            Chiffre d'affaires
+            {t("broadcast.summary.revenue")}
           </div>
           <RevenueCounter value={revenue} />
         </div>
 
         <div>
-          <h2 className="mb-2 text-[15px] font-bold">Ventes</h2>
+          <h2 className="mb-2 text-[15px] font-bold">{t("broadcast.summary.sales")}</h2>
           {session.sales.length === 0 ? (
             <div className="rounded-2xl bg-muted p-4 text-center text-[13px] text-muted-foreground">
-              Aucun article vendu cette session.
+              {t("home.empty")}
             </div>
           ) : (
             <motion.ul
@@ -93,19 +95,19 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           <Press
             onClick={() => {
               haptic.light();
-              toast.success("Récap copié dans le presse-papier");
+              toast.success(t("common.copied"));
             }}
             className="!min-h-12 h-12 w-full rounded-2xl bg-foreground text-[15px] font-semibold text-background"
           >
             <Share2 size={16} className="mr-2" />
-            Partager le récap
+            {t("common.share")}
           </Press>
           <Press
             onClick={() => { reset(); onDone(); }}
             className="!min-h-12 h-12 w-full rounded-2xl bg-muted text-[15px] font-semibold"
           >
             <Home size={16} className="mr-2" />
-            Retour à l'accueil
+            {t("broadcast.summary.close")}
           </Press>
         </div>
       </div>

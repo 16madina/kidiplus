@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Bell, Share2, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
@@ -22,6 +23,7 @@ const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
 
 export function HomeScreen() {
+  const { t } = useTranslation();
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [items, setItems] = useState<LiveStream[]>([]);
@@ -254,7 +256,7 @@ export function HomeScreen() {
           className="px-4 pb-2 pt-5 text-left text-[20px] font-semibold"
           style={{ letterSpacing: "-0.01em", color: "var(--foreground)" }}
         >
-          Lives près de chez toi
+          {t("home.livesNearYou")}
         </h2>
 
         <div className="px-4">
@@ -279,7 +281,7 @@ export function HomeScreen() {
 
           {!loading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm text-muted-foreground">
-              Aucun live dans cette catégorie pour le moment.
+              {t("home.empty")}
             </div>
           )}
 

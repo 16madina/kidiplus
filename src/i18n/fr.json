@@ -1,0 +1,372 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "continue": "Continuer",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "search": "Rechercher",
+    "share": "Partager",
+    "yes": "Oui",
+    "no": "Non",
+    "ok": "OK",
+    "seeAll": "Tout afficher ›",
+    "showMore": "Voir plus",
+    "showLess": "Voir moins",
+    "clear": "Effacer",
+    "remove": "Retirer",
+    "add": "Ajouter",
+    "send": "Envoyer",
+    "copy": "Copier",
+    "copied": "Copié",
+    "select": "Sélectionner",
+    "or": "ou",
+    "and": "et",
+    "notifications": "Notifications",
+    "settings": "Paramètres",
+    "help": "Aide"
+  },
+  "units": {
+    "viewers_one": "{{count}} spectateur",
+    "viewers_other": "{{count}} spectateurs",
+    "followers_one": "{{count}} abonné",
+    "followers_other": "{{count}} abonnés",
+    "following": "abonnements",
+    "products_one": "{{count}} produit",
+    "products_other": "{{count}} produits",
+    "sold_one": "{{count}} vendu",
+    "sold_other": "{{count}} vendus"
+  },
+  "time": {
+    "now": "à l'instant",
+    "minuteAgo": "il y a {{count}} min",
+    "hourAgo": "il y a {{count}} h",
+    "dayAgo": "il y a {{count}} j",
+    "weekAgo": "il y a {{count}} sem",
+    "monthAgo": "il y a {{count}} mois",
+    "yearAgo": "il y a {{count}} an"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "search": "Explorer",
+    "live": "Live",
+    "activity": "Activité",
+    "profile": "Profil"
+  },
+  "home": {
+    "categories": {
+      "forYou": "Pour toi",
+      "beauty": "Beauté",
+      "bagsAccessories": "Sacs & accessoires",
+      "perfumes": "Parfums",
+      "fashion": "Mode",
+      "jewelry": "Bijoux",
+      "electronics": "Électronique"
+    },
+    "filters": {
+      "filter": "Filtrer",
+      "recommended": "Recommandés",
+      "buyNow": "Achat immédiat",
+      "popular": "Populaires",
+      "new": "Nouveautés"
+    },
+    "livesNearYou": "Lives près de chez toi",
+    "empty": "Aucun live dans cette catégorie pour le moment."
+  },
+  "search": {
+    "placeholder": "Rechercher",
+    "trending": "Tendances du jour",
+    "categories": "Catégories",
+    "recent": "Recherches récentes",
+    "sort": {
+      "recommended": "Recommandés",
+      "popular": "Populaires",
+      "alpha": "A-Z"
+    },
+    "tabs": {
+      "lives": "Lives",
+      "sellers": "Vendeurs",
+      "products": "Produits"
+    },
+    "emptyResults": "Aucun résultat pour «{{query}}»",
+    "cats": {
+      "beauty": "Beauté",
+      "womenFashion": "Mode femme",
+      "menFashion": "Mode homme",
+      "bagsAccessories": "Sacs & accessoires",
+      "perfumes": "Parfums",
+      "jewelry": "Bijoux",
+      "watches": "Montres",
+      "electronics": "Électronique",
+      "gaming": "Jeux vidéo",
+      "sneakers": "Sneakers",
+      "home": "Maison",
+      "destock": "Déstockage & lots"
+    },
+    "trends": {
+      "goldJewelry": "Bijoux en or",
+      "luxuryBags": "Sacs de luxe",
+      "perfumes": "Parfums",
+      "swimwear": "Maillots",
+      "watches": "Montres",
+      "sneakers": "Sneakers",
+      "pokemonCards": "Cartes Pokémon",
+      "gamingControllers": "Manettes gaming"
+    }
+  },
+  "live": {
+    "liveBadge": "Live",
+    "en_direct": "EN DIRECT",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "chatPlaceholder": "Écris un message…",
+    "sendMessage": "Envoyer",
+    "bid": "Enchérir",
+    "bidAt": "Enchérir à {{amount}}",
+    "buy": "Acheter",
+    "buyNow": "Acheter maintenant",
+    "sold": "VENDU",
+    "soldTo": "Vendu à {{name}}",
+    "currentBid": "Enchère actuelle",
+    "startingPrice": "Prix de départ",
+    "auctionEnds": "Fin de l'enchère",
+    "products": "Produits",
+    "share": "Partager",
+    "leave": "Quitter",
+    "muteChat": "Masquer le chat",
+    "showChat": "Afficher le chat",
+    "buy_sheet": {
+      "title": "Confirmer l'achat",
+      "quantity": "Quantité",
+      "shipping": "Livraison",
+      "total": "Total",
+      "pay": "Payer {{amount}}",
+      "success": "Achat confirmé !",
+      "fail": "Le paiement a échoué. Réessaie."
+    },
+    "chatIntro": "Sois respectueux dans le chat 💛"
+  },
+  "broadcast": {
+    "becomeSellerTitle": "Deviens vendeur",
+    "becomeSellerBody": "Active le mode vendeur pour organiser tes propres lives et vendre en direct.",
+    "becomeSellerCta": "Activer le mode vendeur",
+    "setup": {
+      "titlePlaceholder": "Titre du live…",
+      "descriptionPlaceholder": "Décris ton live (optionnel)",
+      "cover": "Couverture",
+      "changeCover": "Changer la couverture",
+      "addCover": "Ajouter une couverture",
+      "category": "Catégorie",
+      "products": "Produits",
+      "addProduct": "Ajouter un produit",
+      "start": "Lancer le live",
+      "starting": "Démarrage…",
+      "readyHelp": "Ajoute au moins un produit pour lancer ton live.",
+      "productSheet": {
+        "title": "Ajouter un produit",
+        "name": "Nom du produit",
+        "namePlaceholder": "Ex: Sac Chanel Classic",
+        "type": "Type de vente",
+        "auction": "Enchère",
+        "fixedPrice": "Prix fixe",
+        "startingPrice": "Prix de départ",
+        "price": "Prix",
+        "stock": "Stock",
+        "photo": "Photo",
+        "addPhoto": "Ajouter une photo",
+        "changePhoto": "Changer",
+        "confirm": "Ajouter"
+      }
+    },
+    "live": {
+      "onAir": "EN DIRECT",
+      "viewers_one": "{{count}} spectateur",
+      "viewers_other": "{{count}} spectateurs",
+      "startAuction": "Démarrer l'enchère",
+      "endAuction": "Terminer l'enchère",
+      "listForSale": "Mettre en vente",
+      "outOfStock": "Rupture",
+      "endLive": "Terminer",
+      "confirmEnd": "Terminer ce live ?",
+      "confirmEndBody": "Tu ne pourras pas reprendre ce live une fois terminé.",
+      "nextAuction": "À suivre",
+      "startNext": "Démarrer ▸",
+      "featured": "En vedette",
+      "products": "Produits",
+      "chat": "Chat",
+      "muteMic": "Couper le micro",
+      "unmuteMic": "Réactiver le micro",
+      "flipCam": "Retourner la caméra"
+    },
+    "summary": {
+      "title": "Live terminé",
+      "duration": "Durée",
+      "peakViewers": "Pic de spectateurs",
+      "sales": "Ventes",
+      "revenue": "Chiffre d'affaires",
+      "newFollowers": "Nouveaux abonnés",
+      "close": "Fermer"
+    }
+  },
+  "profile": {
+    "editProfile": "Modifier le profil",
+    "signOut": "Se déconnecter",
+    "becomeSeller": "Devenir vendeur",
+    "menu": {
+      "payments": "Paiements",
+      "addresses": "Adresses",
+      "purchases": "Mes achats",
+      "notifications": "Notifications",
+      "settings": "Paramètres",
+      "help": "Aide"
+    },
+    "stats": {
+      "followers": "Abonnés",
+      "following": "Abonnements",
+      "sales": "Ventes"
+    },
+    "edit": {
+      "displayName": "Nom affiché",
+      "handle": "Identifiant",
+      "bio": "Bio",
+      "avatar": "Avatar",
+      "changeAvatar": "Changer l'avatar",
+      "country": "Pays",
+      "saved": "Profil enregistré",
+      "saveError": "Impossible d'enregistrer. Réessaie."
+    }
+  },
+  "activity": {
+    "title": "Activité",
+    "tabs": {
+      "notifications": "Notifications",
+      "orders": "Commandes"
+    },
+    "orderStatus": {
+      "paid": "Payé",
+      "shipped": "Expédié",
+      "delivered": "Livré",
+      "cancelled": "Annulé",
+      "refunded": "Remboursé"
+    },
+    "timeline": {
+      "ordered": "Commande confirmée",
+      "prepared": "En préparation",
+      "shipped": "Expédié",
+      "delivered": "Livré"
+    },
+    "empty": {
+      "notifications": "Aucune notification pour l'instant.",
+      "orders": "Aucune commande pour l'instant."
+    }
+  },
+  "auth": {
+    "welcome": {
+      "tagline": "Le shopping en direct, sans compromis.",
+      "signIn": "Se connecter",
+      "signUp": "Créer un compte"
+    },
+    "signIn": {
+      "title": "Bienvenue sur KiDi+",
+      "subtitle": "Connecte-toi pour continuer",
+      "email": "Email",
+      "emailPlaceholder": "ton@email.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Ton mot de passe",
+      "submit": "Se connecter",
+      "submitting": "Connexion…",
+      "forgot": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "createAccount": "Créer un compte"
+    },
+    "signUp": {
+      "title": "Créer ton compte",
+      "subtitle": "Rejoins la communauté KiDi+",
+      "displayName": "Nom affiché",
+      "displayNamePlaceholder": "Comment on t'appelle ?",
+      "email": "Email",
+      "password": "Mot de passe",
+      "passwordHint": "Au moins 8 caractères.",
+      "submit": "Créer mon compte",
+      "submitting": "Création…",
+      "haveAccount": "Déjà un compte ?",
+      "signIn": "Se connecter",
+      "checkEmail": "Vérifie tes emails",
+      "checkEmailBody": "On t'a envoyé un lien pour confirmer ton adresse.",
+      "terms": "En continuant, tu acceptes nos conditions et notre politique de confidentialité."
+    },
+    "forgot": {
+      "title": "Mot de passe oublié",
+      "subtitle": "On t'envoie un lien de réinitialisation.",
+      "email": "Email",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi…",
+      "sent": "Email envoyé. Vérifie ta boîte de réception.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "reset": {
+      "title": "Nouveau mot de passe",
+      "subtitle": "Choisis un mot de passe fort.",
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmer",
+      "submit": "Mettre à jour",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "success": "Mot de passe mis à jour."
+    },
+    "validation": {
+      "emailRequired": "Email requis.",
+      "emailInvalid": "Adresse email invalide.",
+      "passwordRequired": "Mot de passe requis.",
+      "passwordShort": "Le mot de passe doit contenir au moins 6 caractères.",
+      "nameRequired": "Nom requis."
+    },
+    "errors": {
+      "invalidCredentials": "Email ou mot de passe incorrect.",
+      "emailNotConfirmed": "Ton email n'est pas encore confirmé.",
+      "alreadyRegistered": "Cet email est déjà utilisé.",
+      "passwordShort": "Le mot de passe doit contenir au moins 6 caractères.",
+      "passwordPwned": "Ce mot de passe a été compromis. Choisis-en un autre.",
+      "passwordWeak": "Mot de passe trop faible. Utilise au moins 8 caractères mêlant lettres, chiffres et symboles.",
+      "rateLimit": "Trop de tentatives. Réessaie dans un instant.",
+      "invalidEmail": "Adresse email invalide.",
+      "network": "Connexion internet instable. Réessaie.",
+      "generic": "Une erreur est survenue."
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue / Language",
+    "languageSubtitle": "Change la langue de l'application",
+    "chooseLanguage": "Choisir la langue",
+    "french": "Français",
+    "english": "English",
+    "account": "Compte",
+    "preferences": "Préférences",
+    "about": "À propos",
+    "version": "Version",
+    "logout": "Se déconnecter"
+  },
+  "errors": {
+    "generic": "Une erreur est survenue.",
+    "network": "Connexion internet instable. Réessaie.",
+    "notFound": "Introuvable.",
+    "unauthorized": "Tu n'es pas autorisé à faire cette action.",
+    "tryAgain": "Réessayer"
+  },
+  "seller": {
+    "profile": "Profil vendeur",
+    "products": "Produits",
+    "reviews": "Avis",
+    "about": "À propos",
+    "follow": "Suivre",
+    "following": "Abonné",
+    "message": "Message"
+  }
+}

@@ -20,6 +20,7 @@ export type Profile = {
   bio: string | null;
   is_seller: boolean;
   country: string | null;
+  language: "fr" | "en";
   created_at: string;
 };
 
@@ -201,30 +202,32 @@ export function useAuth() {
   return ctx;
 }
 
-// French translation of common Supabase auth error messages.
+// i18n-aware Supabase auth error translator. `frenchAuthError` is kept as
+// a name for backwards compatibility but pulls its strings from i18n so it
+// respects the currently selected language.
+import i18nInstance from "@/i18n";
+
 export function frenchAuthError(err: unknown): string {
   const raw =
     err instanceof Error
       ? err.message
       : typeof err === "string"
         ? err
-        : "Une erreur est survenue.";
+        : i18nInstance.t("auth.errors.generic");
   const m = raw.toLowerCase();
-  if (m.includes("invalid login")) return "Email ou mot de passe incorrect.";
-  if (m.includes("email not confirmed"))
-    return "Ton email n'est pas encore confirmé.";
+  const T = (k: string) => i18nInstance.t(k);
+  if (m.includes("invalid login")) return T("auth.errors.invalidCredentials");
+  if (m.includes("email not confirmed")) return T("auth.errors.emailNotConfirmed");
   if (m.includes("already registered") || m.includes("already been registered"))
-    return "Cet email est déjà utilisé.";
-  if (m.includes("user already registered")) return "Cet email est déjà utilisé.";
+    return T("auth.errors.alreadyRegistered");
+  if (m.includes("user already registered")) return T("auth.errors.alreadyRegistered");
   if (m.includes("password should be at least"))
-    return "Le mot de passe doit contenir au moins 6 caractères.";
+    return T("auth.errors.passwordShort");
   if (m.includes("password") && m.includes("pwned"))
-    return "Ce mot de passe a été compromis. Choisis-en un autre.";
-  if (m.includes("weak password"))
-    return "Mot de passe trop faible. Utilise au moins 8 caractères mêlant lettres, chiffres et symboles.";
-  if (m.includes("rate limit")) return "Trop de tentatives. Réessaie dans un instant.";
-  if (m.includes("unable to validate email"))
-    return "Adresse email invalide.";
-  if (m.includes("network")) return "Connexion internet instable. Réessaie.";
+    return T("auth.errors.passwordPwned");
+  if (m.includes("weak password")) return T("auth.errors.passwordWeak");
+  if (m.includes("rate limit")) return T("auth.errors.rateLimit");
+  if (m.includes("unable to validate email")) return T("auth.errors.invalidEmail");
+  if (m.includes("network")) return T("auth.errors.network");
   return raw;
 }

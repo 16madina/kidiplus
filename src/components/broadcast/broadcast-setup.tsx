@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
@@ -11,6 +12,7 @@ import { haptic } from "@/lib/haptics";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
+  const { t } = useTranslation();
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
@@ -84,7 +86,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       >
         <Press
           onClick={onExit}
-          aria-label="Fermer"
+          aria-label={t("common.close")}
           className="!min-h-11 !min-w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.4)",
@@ -99,7 +101,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             haptic.selection();
             setFacing((f) => (f === "user" ? "environment" : "user"));
           }}
-          aria-label="Changer de caméra"
+          aria-label={t("broadcast.live.flipCam")}
           className="!min-h-11 !min-w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.4)",
@@ -126,7 +128,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             onClick={pickCover}
             className="!min-h-16 h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
             style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-            aria-label="Choisir une couverture"
+            aria-label={t("broadcast.setup.addCover")}
           >
             {b.cover ? (
               <motion.img
@@ -147,7 +149,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           <input
             value={b.title}
             onChange={(e) => b.setTitle(e.target.value)}
-            placeholder="Titre du live..."
+            placeholder={t("broadcast.setup.titlePlaceholder")}
             maxLength={80}
             className="h-16 flex-1 rounded-xl px-3 text-[15px] font-medium text-white placeholder:text-white/60 outline-none"
             style={{
@@ -198,7 +200,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-[12px] font-semibold text-white/80">
-              Produits du live ({b.products.length})
+              {t("broadcast.setup.products")} ({b.products.length})
             </span>
           </div>
           <motion.div
@@ -224,11 +226,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                           : "oklch(0.55 0.18 260)",
                     }}
                   >
-                    {p.mode === "auction" ? "ENCHÈRE" : "PRIX FIXE"}
+                    {p.mode === "auction"
+                      ? t("broadcast.setup.productSheet.auction").toUpperCase()
+                      : t("broadcast.setup.productSheet.fixedPrice").toUpperCase()}
                   </span>
                   <Press
                     onClick={() => b.removeProduct(p.id)}
-                    aria-label="Retirer"
+                    aria-label={t("common.remove")}
                     className="!min-h-7 !min-w-7 absolute right-1 top-1 h-7 w-7 rounded-full p-0 text-white"
                     style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
                   >
@@ -249,7 +253,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               style={{ borderColor: "rgba(255,255,255,0.5)" }}
             >
               <Plus size={20} />
-              <span className="text-[10px] font-semibold">Ajouter</span>
+              <span className="text-[10px] font-semibold">{t("common.add")}</span>
             </Press>
           </motion.div>
         </div>
@@ -266,7 +270,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             boxShadow: "0 8px 24px rgba(255, 40, 60, 0.35)",
           }}
         >
-          Lancer le live
+          {t("broadcast.setup.start")}
         </Press>
       </div>
 

@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
 import {
   HOME_CATEGORIES,
+  HOME_CATEGORY_LABEL_KEY,
   HOME_CATEGORY_META,
   type HomeCategory,
 } from "@/lib/home-categories";
@@ -45,6 +47,7 @@ export function CategoryTiles({
   onChange: (c: HomeCategory) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   return (
     <div
@@ -134,7 +137,7 @@ export function CategoryTiles({
                   textShadow: "0 1px 2px rgba(0,0,0,0.35)",
                 }}
               >
-                {c}
+                {t(HOME_CATEGORY_LABEL_KEY[c])}
               </span>
             </motion.div>
           </Press>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Clock, X, SearchX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
@@ -17,17 +18,20 @@ import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
   TRENDS,
-  formatViewersFr,
   type BrowseCategory,
   type Trend,
 } from "@/lib/browse-mock";
+import { formatCount, formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
+import { useLanguage } from "@/i18n/language-context";
 
 const ALL_STREAMS = makeStreams(0, 24);
 
-type CategorySort = "Recommandés" | "Populaires" | "A-Z";
-const CATEGORY_SORTS: CategorySort[] = ["Recommandés", "Populaires", "A-Z"];
+type CategorySort = "recommended" | "popular" | "alpha";
+const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 
 export function SearchScreen() {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const [focused, setFocused] = useState(false);
   const [rawQuery, setRawQuery] = useState("");
   const [query, setQuery] = useState("");
@@ -36,15 +40,15 @@ export function SearchScreen() {
     "jordan 4", "chanel", "iphone", "pokémon", "ysl",
   ]);
   const [browseLoading, setBrowseLoading] = useState(true);
-  const [sort, setSort] = useState<CategorySort>("Recommandés");
+  const [sort, setSort] = useState<CategorySort>("recommended");
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
 
   // Debounce 200ms
   useEffect(() => {
-    const t = setTimeout(() => setQuery(rawQuery.trim()), 200);
-    return () => clearTimeout(t);
+    const handle = setTimeout(() => setQuery(rawQuery.trim()), 200);
+    return () => clearTimeout(handle);
   }, [rawQuery]);
 
   // First-paint skeleton for the browse (Tendances + Catégories) section
@@ -124,21 +128,23 @@ export function SearchScreen() {
 
   const sortedCategories = useMemo(() => {
     switch (sort) {
-      case "Recommandés":
+      case "recommended":
         return BROWSE_CATEGORIES;
-      case "Populaires":
+      case "popular":
         return [...BROWSE_CATEGORIES].sort((a, b) => b.viewers - a.viewers);
-      case "A-Z":
+      case "alpha":
         return [...BROWSE_CATEGORIES].sort((a, b) =>
-          a.name.localeCompare(b.name, "fr"),
+          t(a.nameKey).localeCompare(t(b.nameKey), lang),
         );
+      default:
+        return BROWSE_CATEGORIES;
     }
-  }, [sort]);
+  }, [sort, t, lang]);
 
   const tabs: TabDef[] = [
     {
       key: "lives",
-      label: `Lives${liveResults.length ? ` (${liveResults.length})` : ""}`,
+      label: `${t("search.tabs.lives")}${liveResults.length ? ` (${liveResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
           {liveResults.length === 0 ? (
@@ -163,7 +169,7 @@ export function SearchScreen() {
     },
     {
       key: "vendeurs",
-      label: `Vendeurs${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
+      label: `${t("search.tabs.sellers")}${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
       content: (
         <div className="px-4 py-2">
           {sellerResults.length === 0 ? (
@@ -188,7 +194,7 @@ export function SearchScreen() {
     },
     {
       key: "produits",
-      label: `Produits${productResults.length ? ` (${productResults.length})` : ""}`,
+      label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
           {productResults.length === 0 ? (
@@ -273,7 +279,7 @@ export function SearchScreen() {
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
               onFocus={() => setFocused(true)}
-              placeholder="Rechercher"
+              placeholder={t("search.placeholder")}
               className="h-10 w-full rounded-full bg-muted pl-9 pr-9 text-[14px] outline-none placeholder:text-muted-foreground/80"
               enterKeyHint="search"
               autoComplete="off"
@@ -284,7 +290,7 @@ export function SearchScreen() {
               {rawQuery && (
                 <motion.button
                   type="button"
-                  aria-label="Effacer"
+                  aria-label={t("common.clear")}
                   onClick={() => {
                     setRawQuery("");
                     setQuery("");
@@ -316,7 +322,7 @@ export function SearchScreen() {
                   onClick={cancel}
                   className="!min-h-10 px-1 text-[14px] font-semibold text-accent"
                 >
-                  Annuler
+                  {t("common.cancel")}
                 </Press>
               </motion.div>
             )}
@@ -357,13 +363,13 @@ export function SearchScreen() {
                 <div className="px-4 pt-3">
                   <div className="mb-1 flex items-center justify-between">
                     <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Recherches récentes
+                      {t("search.recent")}
                     </h2>
                     <Press
                       onClick={() => setRecent([])}
                       className="!min-h-8 text-[12px] font-semibold text-accent"
                     >
-                      Effacer
+                      {t("common.clear")}
                     </Press>
                   </div>
                   <ul>
@@ -386,7 +392,7 @@ export function SearchScreen() {
                             {r}
                           </span>
                           <button
-                            aria-label={`Retirer ${r}`}
+                            aria-label={`${t("common.remove")} ${r}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRecent((rs) => rs.filter((x) => x !== r));
@@ -423,13 +429,13 @@ export function SearchScreen() {
                     className="text-[22px] font-bold"
                     style={{ letterSpacing: "-0.01em" }}
                   >
-                    Tendances du jour
+                    {t("search.trending")}
                   </h2>
                   <Press
                     className="!min-h-8 text-[13px] font-semibold text-muted-foreground"
                     onClick={() => {}}
                   >
-                    Tout afficher ›
+                    {t("common.seeAll")}
                   </Press>
                 </div>
 
@@ -448,7 +454,7 @@ export function SearchScreen() {
                   className="px-4 text-[26px] font-bold"
                   style={{ letterSpacing: "-0.015em" }}
                 >
-                  Catégories
+                  {t("search.categories")}
                 </h2>
 
                 <div
@@ -475,7 +481,7 @@ export function SearchScreen() {
                           transition: "background-color 150ms, color 150ms",
                         }}
                       >
-                        {s}
+                        {t(`search.sort.${s}`)}
                       </Press>
                     );
                   })}
@@ -517,8 +523,8 @@ function TrendsRow({
   trends: Trend[];
   onTap: (t: Trend) => void;
 }) {
-  // 2-row horizontal scroll: use CSS grid with 2 rows and column-flow so
-  // items pack vertically first (col 1 top+bottom, col 2 top+bottom, ...).
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   return (
     <div
       className="overflow-x-auto px-4 pb-1"
@@ -535,9 +541,9 @@ function TrendsRow({
           gridAutoColumns: "260px",
         }}
       >
-        {trends.map((t, i) => (
+        {trends.map((trend, i) => (
           <motion.div
-            key={t.id}
+            key={trend.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -548,12 +554,12 @@ function TrendsRow({
             style={{ scrollSnapAlign: "start" }}
           >
             <Press
-              onClick={() => onTap(t)}
+              onClick={() => onTap(trend)}
               className="!min-h-0 flex w-full items-center gap-3 rounded-2xl bg-muted p-2 text-left"
               style={{ height: 64 }}
             >
               <img
-                src={t.image}
+                src={trend.image}
                 alt=""
                 loading="lazy"
                 onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
@@ -561,11 +567,11 @@ function TrendsRow({
                 draggable={false}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-bold">{t.name}</p>
+                <p className="truncate text-[14px] font-bold">{t(trend.nameKey)}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <LiveDot />
                   <span className="truncate text-[12px] text-muted-foreground">
-                    {formatViewersFr(t.viewers)} spectateurs
+                    {formatViewersLabel(trend.viewers, lang)}
                   </span>
                 </div>
               </div>
@@ -610,6 +616,8 @@ function CategoryCard({
   index: number;
   onTap: () => void;
 }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -625,7 +633,6 @@ function CategoryCard({
         className="!block relative w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
         style={{ height: 180 }}
       >
-        {/* Name — top-left, dark, bold */}
         <span
           className="absolute left-3 top-3 text-left text-[15px] font-extrabold leading-tight"
           style={{
@@ -638,10 +645,9 @@ function CategoryCard({
             overflow: "hidden",
           }}
         >
-          {category.name}
+          {t(category.nameKey)}
         </span>
 
-        {/* Floating product image — centered */}
         <img
           src={category.image}
           alt=""
@@ -661,11 +667,10 @@ function CategoryCard({
           }}
         />
 
-        {/* Live dot + viewers — bottom-left */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5">
           <LiveDot />
           <span className="truncate text-[12px] font-medium text-muted-foreground">
-            {formatViewersFr(category.viewers)} spectateurs
+            {formatViewersLabel(category.viewers, lang)}
           </span>
         </div>
       </Press>
@@ -697,6 +702,8 @@ function SellerRow({
   index: number;
   onOpen: () => void;
 }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const [following, setFollowing] = useState(false);
   return (
     <motion.li
@@ -719,7 +726,7 @@ function SellerRow({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold">{info.name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
-              {formatCompact(info.followers)} abonnés
+              {formatFollowersLabel(info.followers, lang)}
             </p>
           </div>
         </Press>
@@ -739,7 +746,7 @@ function SellerRow({
                 }
           }
         >
-          {following ? "Abonné" : "Suivre"}
+          {following ? t("live.following") : t("live.follow")}
         </Press>
       </div>
     </motion.li>
@@ -747,14 +754,16 @@ function SellerRow({
 }
 
 function EmptyResults({ query }: { query: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
         <SearchX size={22} className="text-muted-foreground" strokeWidth={1.8} />
       </div>
       <p className="mt-3 text-[14px] text-muted-foreground">
-        Aucun résultat pour <span className="font-semibold text-foreground">« {query} »</span>
+        {t("search.emptyResults", { query })}
       </p>
     </div>
   );
 }
+

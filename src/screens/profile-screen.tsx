@@ -14,8 +14,11 @@ import {
   LogOut,
   BadgeCheck,
   Loader2,
+  Languages,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { IOSSwitch } from "@/components/ios-switch";
@@ -26,8 +29,11 @@ import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { haptic } from "@/lib/haptics";
+import { useLanguage } from "@/i18n/language-context";
+import type { Lang } from "@/i18n";
 
 export function ProfileScreen() {
+  const { t } = useTranslation();
   const { profile, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -50,6 +56,7 @@ export function ProfileScreen() {
   };
 
   const initial = (profile?.display_name || "?").slice(0, 1).toUpperCase();
+  const soon = t("common.loading");
 
   return (
     <div className="flex h-full flex-col">
@@ -107,33 +114,32 @@ export function ProfileScreen() {
               border: "1.5px solid var(--border)",
             }}
           >
-            Modifier le profil
+            {t("profile.editProfile")}
           </Press>
         </div>
 
-        {/* Stats (placeholders — real numbers wired in later) */}
+        {/* Stats */}
         <div className="mx-4 mb-5 grid grid-cols-3 rounded-2xl border border-border py-3">
-          <Stat label="Abonnés" value="—" />
+          <Stat label={t("profile.stats.followers")} value="—" />
           <StatDivider />
-          <Stat label="Abonnements" value="—" />
+          <Stat label={t("profile.stats.following")} value="—" />
           <StatDivider />
-          <Stat label="Achats" value="—" />
+          <Stat label={t("profile.stats.sales")} value="—" />
         </div>
 
-        {/* Menu groups */}
         <MenuGroup
           items={[
-            { icon: <CreditCard size={16} />, label: "Paiements", tint: "oklch(0.6 0.2 250)", onClick: () => toast("Bientôt disponible") },
-            { icon: <MapPin size={16} />, label: "Adresses", tint: "oklch(0.6 0.17 155)", onClick: () => toast("Bientôt disponible") },
-            { icon: <ShoppingBag size={16} />, label: "Mes achats", tint: "oklch(0.7 0.17 55)", onClick: () => toast("Bientôt disponible") },
+            { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
+            { icon: <MapPin size={16} />, label: t("profile.menu.addresses"), tint: "oklch(0.6 0.17 155)", onClick: () => toast(soon) },
+            { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
           ]}
           index={0}
         />
         <MenuGroup
           items={[
-            { icon: <Bell size={16} />, label: "Notifications", tint: "oklch(0.62 0.24 20)", onClick: () => toast("Bientôt disponible") },
-            { icon: <SettingsIcon size={16} />, label: "Paramètres", tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
-            { icon: <HelpCircle size={16} />, label: "Aide", tint: "oklch(0.55 0.16 300)", onClick: () => toast("Centre d'aide") },
+            { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
+            { icon: <SettingsIcon size={16} />, label: t("profile.menu.settings"), tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
+            { icon: <HelpCircle size={16} />, label: t("profile.menu.help"), tint: "oklch(0.55 0.16 300)", onClick: () => toast(soon) },
           ]}
           index={1}
         />
@@ -141,7 +147,7 @@ export function ProfileScreen() {
           items={[
             {
               icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
-              label: signingOut ? "Déconnexion…" : "Se déconnecter",
+              label: signingOut ? t("common.loading") : t("profile.signOut"),
               tint: "oklch(0.6 0.24 27)",
               danger: true,
               onClick: signingOut ? undefined : handleSignOut,
@@ -221,10 +227,12 @@ function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
 /* ================= Settings push screen ================= */
 
 function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const { dark, setDark, notif, setNotif, sounds, setSounds } = useSettings();
   const { status: pushStatus, requestWithPrePrompt, refresh } = usePush();
+  const { lang } = useLanguage();
+  const [languageOpen, setLanguageOpen] = useState(false);
 
-  // Refresh permission when opening (user may have changed OS setting).
   const wasOpen = useState(open)[0];
   if (open && !wasOpen) void refresh();
 
@@ -232,35 +240,32 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
   const pushOn = pushGranted && notif;
 
   return (
-    <PushScreen open={open} onClose={onClose} title="Paramètres" zIndex={65}>
+    <PushScreen open={open} onClose={onClose} title={t("settings.title")} zIndex={65}>
       <div className="px-4 py-4">
         <h2 className="mb-2 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Préférences
+          {t("settings.preferences")}
         </h2>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <ToggleRow
             icon={<BellRing size={16} />}
             tint="oklch(0.62 0.24 20)"
-            label="Notifications push"
+            label={t("profile.menu.notifications")}
             checked={pushOn}
             onChange={async (v) => {
               setNotif(v);
               if (v && !pushGranted) {
                 const ok = await requestWithPrePrompt(
-                  "Active les notifications pour ne rater aucun live de tes vendeurs préférés 🔔",
+                  t("profile.menu.notifications"),
                 );
                 if (!ok) setNotif(false);
-              } else {
-                toast(v ? "Notifications activées" : "Notifications désactivées");
               }
             }}
           />
-
           <Sep />
           <ToggleRow
             icon={<Volume2 size={16} />}
             tint="oklch(0.6 0.2 250)"
-            label="Sons"
+            label={t("common.notifications")}
             checked={sounds}
             onChange={setSounds}
           />
@@ -268,18 +273,22 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
           <ToggleRow
             icon={<Moon size={16} />}
             tint="oklch(0.35 0.02 285)"
-            label="Mode sombre"
+            label={lang === "fr" ? "Mode sombre" : "Dark mode"}
             checked={dark}
-            onChange={(v) => {
-              setDark(v);
-              toast(v ? "Mode sombre activé" : "Mode clair activé");
-            }}
+            onChange={setDark}
+          />
+          <Sep />
+          <NavRow
+            icon={<Languages size={16} />}
+            tint="oklch(0.55 0.16 210)"
+            label={t("settings.language")}
+            value={lang === "fr" ? t("settings.french") : t("settings.english")}
+            onClick={() => setLanguageOpen(true)}
           />
         </div>
-        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
-          Les préférences s'appliquent immédiatement à l'ensemble de l'application.
-        </p>
       </div>
+
+      <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
     </PushScreen>
   );
 }
@@ -310,6 +319,100 @@ function ToggleRow({
     </div>
   );
 }
+
+function NavRow({
+  icon,
+  tint,
+  label,
+  value,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  tint: string;
+  label: string;
+  value?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Press
+      onClick={onClick}
+      className="!block w-full !min-h-11 p-0 text-left"
+    >
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white"
+          style={{ backgroundColor: tint }}
+        >
+          {icon}
+        </span>
+        <span className="flex-1 text-[15px] font-medium">{label}</span>
+        {value && (
+          <span className="text-[13px] text-muted-foreground">{value}</span>
+        )}
+        <ChevronRight size={16} className="text-muted-foreground" />
+      </div>
+    </Press>
+  );
+}
+
 function Sep() {
   return <div className="ml-14 h-px bg-border" aria-hidden />;
+}
+
+/* ================= Language selector ================= */
+
+function LanguageSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { lang, setLang } = useLanguage();
+
+  const choose = async (l: Lang) => {
+    haptic.light();
+    await setLang(l);
+    onClose();
+  };
+
+  return (
+    <PushScreen open={open} onClose={onClose} title={t("settings.chooseLanguage")} zIndex={70}>
+      <div className="px-4 py-4">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <LangRow
+            label={t("settings.french")}
+            active={lang === "fr"}
+            onClick={() => void choose("fr")}
+          />
+          <Sep />
+          <LangRow
+            label={t("settings.english")}
+            active={lang === "en"}
+            onClick={() => void choose("en")}
+          />
+        </div>
+        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
+          {t("settings.languageSubtitle")}
+        </p>
+      </div>
+    </PushScreen>
+  );
+}
+
+function LangRow({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Press
+      onClick={onClick}
+      className="!block w-full !min-h-11 p-0 text-left"
+    >
+      <div className="flex items-center gap-3 px-3 py-3">
+        <span className="flex-1 text-[15px] font-medium">{label}</span>
+        {active && <Check size={18} color="var(--primary)" strokeWidth={2.4} />}
+      </div>
+    </Press>
+  );
 }

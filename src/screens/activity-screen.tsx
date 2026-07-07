@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, CreditCard, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
@@ -19,6 +20,7 @@ import { formatEuro } from "@/lib/live-viewer-mock";
 type Tab = "notifs" | "orders";
 
 export function ActivityScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<Notification[]>([]);
@@ -36,7 +38,7 @@ export function ActivityScreen() {
 
   const removeNotif = (id: string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
-    toast("Notification supprimée");
+    toast(t("common.remove"));
   };
   const markRead = (id: string) => {
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
@@ -54,13 +56,13 @@ export function ActivityScreen() {
         }}
       >
         <div className="px-4 pb-2 pt-2">
-          <h1 className="mb-2 text-[22px] font-bold tracking-tight">Activité</h1>
+          <h1 className="mb-2 text-[22px] font-bold tracking-tight">{t("activity.title")}</h1>
           <Segmented
             value={tab}
             onChange={setTab}
             options={[
-              { key: "notifs", label: "Notifications" },
-              { key: "orders", label: "Commandes" },
+              { key: "notifs", label: t("activity.tabs.notifications") },
+              { key: "orders", label: t("activity.tabs.orders") },
             ]}
           />
         </div>
@@ -90,7 +92,7 @@ export function ActivityScreen() {
               ) : notifs.length === 0 ? (
                 <EmptyState
                   icon={<Inbox size={22} className="text-muted-foreground" />}
-                  message="Aucune notification pour le moment"
+                  message={t("activity.empty.notifications")}
                 />
               ) : (
                 <ul>
@@ -122,7 +124,7 @@ export function ActivityScreen() {
               ) : orders.length === 0 ? (
                 <EmptyState
                   icon={<Package size={22} className="text-muted-foreground" />}
-                  message="Aucune commande pour l'instant"
+                  message={t("activity.empty.orders")}
                 />
               ) : (
                 orders.map((o, i) => (
@@ -198,6 +200,7 @@ function NotifRow({
   onDelete: () => void;
   onTap: () => void;
 }) {
+  const { t } = useTranslation();
   const x = useMotionValue(0);
   const [snapped, setSnapped] = useState(false);
 
@@ -220,7 +223,7 @@ function NotifRow({
           className="flex h-full w-full flex-col items-center justify-center gap-1 text-white"
         >
           <Trash2 size={18} strokeWidth={2.2} />
-          <span className="text-[11px] font-semibold">Supprimer</span>
+          <span className="text-[11px] font-semibold">{t("common.delete")}</span>
         </button>
       </div>
 
@@ -275,7 +278,7 @@ function NotifRow({
             </div>
             {n.unread && (
               <span
-                aria-label="Non lu"
+                aria-label={t("common.notifications")}
                 className="mt-2 h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: "oklch(0.6 0.2 250)" }}
               />
@@ -386,11 +389,11 @@ function OrderSkeletons() {
 
 /* ================= Order detail ================= */
 
-const STEPS: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: "ordered", label: "Commandé", icon: <Check size={12} strokeWidth={3} /> },
-  { key: "paid", label: "Payé", icon: <CreditCard size={12} strokeWidth={2.5} /> },
-  { key: "shipped", label: "Expédié", icon: <Truck size={12} strokeWidth={2.5} /> },
-  { key: "delivered", label: "Livré", icon: <Package size={12} strokeWidth={2.5} /> },
+const STEPS: { key: string; labelKey: string; icon: React.ReactNode }[] = [
+  { key: "ordered", labelKey: "activity.timeline.ordered", icon: <Check size={12} strokeWidth={3} /> },
+  { key: "paid", labelKey: "activity.orderStatus.paid", icon: <CreditCard size={12} strokeWidth={2.5} /> },
+  { key: "shipped", labelKey: "activity.timeline.shipped", icon: <Truck size={12} strokeWidth={2.5} /> },
+  { key: "delivered", labelKey: "activity.timeline.delivered", icon: <Package size={12} strokeWidth={2.5} /> },
 ];
 
 function statusIndex(s: Order["status"]): number {
@@ -408,13 +411,14 @@ function OrderDetailScreen({ order, onClose }: { order: Order | null; onClose: (
 }
 
 function OrderDetailBody({ order }: { order: Order }) {
+  const { t } = useTranslation();
   const meta = orderStatusMeta(order.status);
   const activeIdx = statusIndex(order.status);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const t = setTimeout(() => setProgress(activeIdx), 120);
-    return () => clearTimeout(t);
+    const handle = setTimeout(() => setProgress(activeIdx), 120);
+    return () => clearTimeout(handle);
   }, [activeIdx]);
 
   return (
@@ -446,7 +450,7 @@ function OrderDetailBody({ order }: { order: Order }) {
       {/* Tracking timeline */}
       <div className="rounded-2xl border border-border p-4">
         <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Suivi
+          {t("activity.title")}
         </h2>
         <div className="relative pl-8">
           {/* connector track */}
@@ -488,7 +492,7 @@ function OrderDetailBody({ order }: { order: Order }) {
                   </motion.span>
                   <div className="min-h-7 pt-0.5">
                     <p className={`text-[14px] ${done ? "font-semibold" : "text-muted-foreground"}`}>
-                      {s.label}
+                      {t(s.labelKey)}
                     </p>
                     {i === activeIdx && (
                       <p className="text-[11px] text-muted-foreground">
@@ -508,7 +512,7 @@ function OrderDetailBody({ order }: { order: Order }) {
         <div className="mb-2 flex items-center gap-2">
           <MapPin size={14} className="text-muted-foreground" />
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Livraison
+            {t("profile.menu.addresses")}
           </h2>
         </div>
         <p className="text-[14px] font-semibold">{order.address.name}</p>
@@ -523,10 +527,7 @@ function OrderDetailBody({ order }: { order: Order }) {
 
       {/* Totals */}
       <div className="rounded-2xl border border-border p-4">
-        <Row label="Sous-total" value={formatEuro(order.price)} />
-        <Row label="Livraison" value="Offerte" />
-        <div className="my-2 h-px bg-border" />
-        <Row label="Total" value={formatEuro(order.price)} bold />
+        <Row label={t("live.buy_sheet.total")} value={formatEuro(order.price)} bold />
       </div>
     </div>
   );

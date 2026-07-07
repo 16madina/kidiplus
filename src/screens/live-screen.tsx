@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Store } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
@@ -13,6 +14,7 @@ import { haptic } from "@/lib/haptics";
 import { useState } from "react";
 
 export function LiveScreen() {
+  const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
 
@@ -45,10 +47,9 @@ export function LiveScreen() {
         >
           <Store size={30} color="white" />
         </div>
-        <h1 className="text-[24px] font-bold">Deviens vendeur ✨</h1>
+        <h1 className="text-[24px] font-bold">{t("broadcast.becomeSellerTitle")} ✨</h1>
         <p className="mt-2 max-w-xs text-[14px] leading-snug text-muted-foreground">
-          Active ton mode vendeur pour lancer des lives, faire des enchères et
-          vendre à ta communauté en direct.
+          {t("broadcast.becomeSellerBody")}
         </p>
         <Press
           onClick={async () => {
@@ -56,7 +57,7 @@ export function LiveScreen() {
             try {
               await becomeSeller();
               haptic.success();
-              toast.success("Bienvenue parmi les vendeurs 🎉");
+              toast.success(t("broadcast.becomeSellerCta") + " 🎉");
             } catch (e) {
               haptic.error();
               toast.error(frenchAuthError(e));
@@ -74,15 +75,12 @@ export function LiveScreen() {
         >
           {flipping ? (
             <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> Activation…
+              <Loader2 size={16} className="animate-spin" /> {t("common.loading")}
             </span>
           ) : (
-            "Activer le mode vendeur"
+            t("broadcast.becomeSellerCta")
           )}
         </Press>
-        <p className="mt-4 max-w-xs text-[11px] text-muted-foreground">
-          La vérification vendeur avancée arrive bientôt.
-        </p>
       </motion.div>
     );
   }

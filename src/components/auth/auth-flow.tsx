@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { EASE_IOS } from "@/lib/motion";
@@ -55,6 +56,7 @@ function Welcome({
   onSignIn: () => void;
   onSignUp: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -80,9 +82,7 @@ function Welcome({
           transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.06 }}
           className="mt-3 max-w-xs text-[15px] leading-snug text-muted-foreground"
         >
-          Achète et vends en direct.
-          <br />
-          Des lives, des enchères, une communauté.
+          {t("auth.welcome.tagline")}
         </motion.p>
       </div>
 
@@ -100,7 +100,7 @@ function Welcome({
               "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
           }}
         >
-          Créer un compte
+          {t("auth.welcome.signUp")}
         </Press>
         <Press
           onClick={onSignIn}
@@ -111,10 +111,10 @@ function Welcome({
             border: "1.5px solid var(--border)",
           }}
         >
-          Se connecter
+          {t("auth.welcome.signIn")}
         </Press>
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
-          En continuant, tu acceptes nos conditions d'utilisation.
+          {t("auth.signUp.terms")}
         </p>
       </motion.div>
     </motion.div>

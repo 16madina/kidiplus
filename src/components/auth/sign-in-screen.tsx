@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
@@ -15,6 +15,7 @@ export function SignInScreen({
   onGoSignUp: () => void;
   onForgot: () => void;
 }) {
+  const { t } = useTranslation();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,14 +27,13 @@ export function SignInScreen({
     e.preventDefault();
     setError(null);
     if (!email.trim() || !password) {
-      setError("Renseigne ton email et ton mot de passe.");
+      setError(t("auth.validation.emailRequired"));
       return;
     }
     setLoading(true);
     try {
       await signIn(email.trim(), password);
       haptic.success();
-      // AuthProvider will swap the app to the tabs automatically.
     } catch (err) {
       haptic.error();
       setError(frenchAuthError(err));
@@ -43,26 +43,28 @@ export function SignInScreen({
   };
 
   return (
-    <AuthScreenShell title="Connexion" onBack={onBack}>
+    <AuthScreenShell title={t("auth.welcome.signIn")} onBack={onBack}>
       <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
-        <h2 className="text-[26px] font-bold leading-tight">Content de te revoir 👋</h2>
+        <h2 className="text-[26px] font-bold leading-tight">
+          {t("auth.signIn.title")}
+        </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
-          Connecte-toi pour retrouver tes lives et tes vendeurs préférés.
+          {t("auth.signIn.subtitle")}
         </p>
 
         <AuthInput
-          label="Email"
+          label={t("auth.signIn.email")}
           type="email"
           autoComplete="email"
           inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="toi@exemple.com"
+          placeholder={t("auth.signIn.emailPlaceholder")}
         />
 
         <div className="relative">
           <AuthInput
-            label="Mot de passe"
+            label={t("auth.signIn.password")}
             type={show ? "text" : "password"}
             autoComplete="current-password"
             value={password}
@@ -73,7 +75,7 @@ export function SignInScreen({
             type="button"
             onClick={() => setShow((s) => !s)}
             className="absolute right-3 top-[34px] grid h-10 w-10 place-items-center rounded-full text-muted-foreground"
-            aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            aria-label={show ? t("common.close") : t("common.select")}
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -91,7 +93,7 @@ export function SignInScreen({
             onClick={onForgot}
             className="text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:underline"
           >
-            Mot de passe oublié ?
+            {t("auth.signIn.forgot")}
           </button>
         </div>
 
@@ -107,25 +109,24 @@ export function SignInScreen({
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> Connexion…
+              <Loader2 size={16} className="animate-spin" />{" "}
+              {t("auth.signIn.submitting")}
             </span>
           ) : (
-            "Se connecter"
+            t("auth.signIn.submit")
           )}
         </Press>
 
         <p className="mt-4 text-center text-[13px] text-muted-foreground">
-          Pas encore de compte ?{" "}
+          {t("auth.signIn.noAccount")}{" "}
           <button
             type="button"
             onClick={onGoSignUp}
             className="font-bold text-foreground"
           >
-            Créer un compte
+            {t("auth.signIn.createAccount")}
           </button>
         </p>
-
-        <button type="button" onClick={() => toast("Bientôt disponible")} className="hidden" />
       </form>
     </AuthScreenShell>
   );

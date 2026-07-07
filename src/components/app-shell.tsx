@@ -21,6 +21,7 @@ import {
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { LanguageProvider } from "@/i18n/language-context";
 import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
@@ -32,15 +33,17 @@ export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 export function AppShell() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <PushProvider>
-          <SellerProfileProvider>
-            <LiveViewerProvider>
-              <AuthGate />
-            </LiveViewerProvider>
-          </SellerProfileProvider>
-        </PushProvider>
-      </SettingsProvider>
+      <LanguageProvider>
+        <SettingsProvider>
+          <PushProvider>
+            <SellerProfileProvider>
+              <LiveViewerProvider>
+                <AuthGate />
+              </LiveViewerProvider>
+            </SellerProfileProvider>
+          </PushProvider>
+        </SettingsProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

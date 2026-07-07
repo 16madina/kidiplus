@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Loader2, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 
 export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
+  const { t } = useTranslation();
   const { sendPasswordReset } = useAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
     e.preventDefault();
     setError(null);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Adresse email invalide.");
+      setError(t("auth.validation.emailInvalid"));
       return;
     }
     setLoading(true);
@@ -33,7 +35,7 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <AuthScreenShell title="Mot de passe oublié" onBack={onBack}>
+    <AuthScreenShell title={t("auth.forgot.title")} onBack={onBack}>
       {sent ? (
         <div className="flex h-full flex-col items-center justify-center text-center">
           <div
@@ -45,10 +47,9 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
           >
             <Mail size={28} color="oklch(0.5 0.24 20)" />
           </div>
-          <h2 className="text-[22px] font-bold">Email envoyé</h2>
+          <h2 className="text-[22px] font-bold">{t("auth.forgot.sent")}</h2>
           <p className="mt-2 max-w-xs text-[14px] text-muted-foreground">
-            Si un compte existe pour <b>{email}</b>, tu vas recevoir un lien pour
-            réinitialiser ton mot de passe.
+            <b>{email}</b>
           </p>
           <Press
             onClick={onBack}
@@ -58,20 +59,19 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
                 "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
             }}
           >
-            Retour à la connexion
+            {t("auth.forgot.backToSignIn")}
           </Press>
         </div>
       ) : (
         <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
           <h2 className="text-[24px] font-bold leading-tight">
-            Réinitialise ton mot de passe
+            {t("auth.forgot.title")}
           </h2>
           <p className="mb-3 text-[14px] text-muted-foreground">
-            Entre l'email associé à ton compte, on t'envoie un lien pour choisir
-            un nouveau mot de passe.
+            {t("auth.forgot.subtitle")}
           </p>
           <AuthInput
-            label="Email"
+            label={t("auth.forgot.email")}
             type="email"
             inputMode="email"
             autoComplete="email"
@@ -96,10 +96,11 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 size={16} className="animate-spin" /> Envoi…
+                <Loader2 size={16} className="animate-spin" />{" "}
+                {t("auth.forgot.submitting")}
               </span>
             ) : (
-              "Envoyer le lien"
+              t("auth.forgot.submit")
             )}
           </Press>
         </form>

@@ -1,7 +1,12 @@
 import { useRef } from "react";
 import { SlidersHorizontal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "./press";
-import { HOME_FILTERS, type HomeFilter } from "@/lib/home-categories";
+import {
+  HOME_FILTERS,
+  HOME_FILTER_LABEL_KEY,
+  type HomeFilter,
+} from "@/lib/home-categories";
 
 export function FilterPills({
   active,
@@ -13,6 +18,7 @@ export function FilterPills({
   onOpenFilters?: () => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   return (
     <div
@@ -35,7 +41,7 @@ export function FilterPills({
         }}
       >
         <SlidersHorizontal size={14} strokeWidth={2.2} />
-        Filtrer
+        {t("home.filters.filter")}
       </Press>
 
       {HOME_FILTERS.map((f) => {
@@ -54,7 +60,7 @@ export function FilterPills({
               transition: "background-color 150ms, color 150ms",
             }}
           >
-            {f}
+            {t(HOME_FILTER_LABEL_KEY[f])}
           </Press>
         );
       })}

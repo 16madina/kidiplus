@@ -1,0 +1,372 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "continue": "Continue",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "search": "Search",
+    "share": "Share",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "seeAll": "See all ›",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "clear": "Clear",
+    "remove": "Remove",
+    "add": "Add",
+    "send": "Send",
+    "copy": "Copy",
+    "copied": "Copied",
+    "select": "Select",
+    "or": "or",
+    "and": "and",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "units": {
+    "viewers_one": "{{count}} viewer",
+    "viewers_other": "{{count}} viewers",
+    "followers_one": "{{count}} follower",
+    "followers_other": "{{count}} followers",
+    "following": "following",
+    "products_one": "{{count}} product",
+    "products_other": "{{count}} products",
+    "sold_one": "{{count}} sold",
+    "sold_other": "{{count}} sold"
+  },
+  "time": {
+    "now": "just now",
+    "minuteAgo": "{{count}}m ago",
+    "hourAgo": "{{count}}h ago",
+    "dayAgo": "{{count}}d ago",
+    "weekAgo": "{{count}}w ago",
+    "monthAgo": "{{count}}mo ago",
+    "yearAgo": "{{count}}y ago"
+  },
+  "tabs": {
+    "home": "Home",
+    "search": "Explore",
+    "live": "Live",
+    "activity": "Activity",
+    "profile": "Profile"
+  },
+  "home": {
+    "categories": {
+      "forYou": "For you",
+      "beauty": "Beauty",
+      "bagsAccessories": "Bags & accessories",
+      "perfumes": "Perfumes",
+      "fashion": "Fashion",
+      "jewelry": "Jewelry",
+      "electronics": "Electronics"
+    },
+    "filters": {
+      "filter": "Filter",
+      "recommended": "Recommended",
+      "buyNow": "Buy now",
+      "popular": "Popular",
+      "new": "New"
+    },
+    "livesNearYou": "Lives near you",
+    "empty": "No lives in this category right now."
+  },
+  "search": {
+    "placeholder": "Search",
+    "trending": "Trending today",
+    "categories": "Categories",
+    "recent": "Recent searches",
+    "sort": {
+      "recommended": "Recommended",
+      "popular": "Popular",
+      "alpha": "A-Z"
+    },
+    "tabs": {
+      "lives": "Lives",
+      "sellers": "Sellers",
+      "products": "Products"
+    },
+    "emptyResults": "No results for “{{query}}”",
+    "cats": {
+      "beauty": "Beauty",
+      "womenFashion": "Women's fashion",
+      "menFashion": "Men's fashion",
+      "bagsAccessories": "Bags & accessories",
+      "perfumes": "Perfumes",
+      "jewelry": "Jewelry",
+      "watches": "Watches",
+      "electronics": "Electronics",
+      "gaming": "Gaming",
+      "sneakers": "Sneakers",
+      "home": "Home",
+      "destock": "Deals & lots"
+    },
+    "trends": {
+      "goldJewelry": "Gold jewelry",
+      "luxuryBags": "Luxury bags",
+      "perfumes": "Perfumes",
+      "swimwear": "Swimwear",
+      "watches": "Watches",
+      "sneakers": "Sneakers",
+      "pokemonCards": "Pokémon cards",
+      "gamingControllers": "Gaming controllers"
+    }
+  },
+  "live": {
+    "liveBadge": "Live",
+    "en_direct": "LIVE",
+    "follow": "Follow",
+    "following": "Following",
+    "chatPlaceholder": "Write a message…",
+    "sendMessage": "Send",
+    "bid": "Bid",
+    "bidAt": "Bid {{amount}}",
+    "buy": "Buy",
+    "buyNow": "Buy now",
+    "sold": "SOLD",
+    "soldTo": "Sold to {{name}}",
+    "currentBid": "Current bid",
+    "startingPrice": "Starting price",
+    "auctionEnds": "Auction ends",
+    "products": "Products",
+    "share": "Share",
+    "leave": "Leave",
+    "muteChat": "Hide chat",
+    "showChat": "Show chat",
+    "buy_sheet": {
+      "title": "Confirm purchase",
+      "quantity": "Quantity",
+      "shipping": "Shipping",
+      "total": "Total",
+      "pay": "Pay {{amount}}",
+      "success": "Purchase confirmed!",
+      "fail": "Payment failed. Try again."
+    },
+    "chatIntro": "Be respectful in the chat 💛"
+  },
+  "broadcast": {
+    "becomeSellerTitle": "Become a seller",
+    "becomeSellerBody": "Turn on seller mode to run your own lives and sell in real time.",
+    "becomeSellerCta": "Enable seller mode",
+    "setup": {
+      "titlePlaceholder": "Live title…",
+      "descriptionPlaceholder": "Describe your live (optional)",
+      "cover": "Cover",
+      "changeCover": "Change cover",
+      "addCover": "Add cover",
+      "category": "Category",
+      "products": "Products",
+      "addProduct": "Add product",
+      "start": "Go live",
+      "starting": "Starting…",
+      "readyHelp": "Add at least one product to go live.",
+      "productSheet": {
+        "title": "Add product",
+        "name": "Product name",
+        "namePlaceholder": "e.g. Chanel Classic Bag",
+        "type": "Sale type",
+        "auction": "Auction",
+        "fixedPrice": "Fixed price",
+        "startingPrice": "Starting price",
+        "price": "Price",
+        "stock": "Stock",
+        "photo": "Photo",
+        "addPhoto": "Add photo",
+        "changePhoto": "Change",
+        "confirm": "Add"
+      }
+    },
+    "live": {
+      "onAir": "LIVE",
+      "viewers_one": "{{count}} viewer",
+      "viewers_other": "{{count}} viewers",
+      "startAuction": "Start auction",
+      "endAuction": "End auction",
+      "listForSale": "List for sale",
+      "outOfStock": "Sold out",
+      "endLive": "End",
+      "confirmEnd": "End this live?",
+      "confirmEndBody": "You won't be able to resume this live once ended.",
+      "nextAuction": "Up next",
+      "startNext": "Start ▸",
+      "featured": "Featured",
+      "products": "Products",
+      "chat": "Chat",
+      "muteMic": "Mute mic",
+      "unmuteMic": "Unmute mic",
+      "flipCam": "Flip camera"
+    },
+    "summary": {
+      "title": "Live ended",
+      "duration": "Duration",
+      "peakViewers": "Peak viewers",
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "newFollowers": "New followers",
+      "close": "Close"
+    }
+  },
+  "profile": {
+    "editProfile": "Edit profile",
+    "signOut": "Sign out",
+    "becomeSeller": "Become a seller",
+    "menu": {
+      "payments": "Payments",
+      "addresses": "Addresses",
+      "purchases": "My purchases",
+      "notifications": "Notifications",
+      "settings": "Settings",
+      "help": "Help"
+    },
+    "stats": {
+      "followers": "Followers",
+      "following": "Following",
+      "sales": "Sales"
+    },
+    "edit": {
+      "displayName": "Display name",
+      "handle": "Handle",
+      "bio": "Bio",
+      "avatar": "Avatar",
+      "changeAvatar": "Change avatar",
+      "country": "Country",
+      "saved": "Profile saved",
+      "saveError": "Couldn't save. Try again."
+    }
+  },
+  "activity": {
+    "title": "Activity",
+    "tabs": {
+      "notifications": "Notifications",
+      "orders": "Orders"
+    },
+    "orderStatus": {
+      "paid": "Paid",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    },
+    "timeline": {
+      "ordered": "Order confirmed",
+      "prepared": "Being prepared",
+      "shipped": "Shipped",
+      "delivered": "Delivered"
+    },
+    "empty": {
+      "notifications": "No notifications yet.",
+      "orders": "No orders yet."
+    }
+  },
+  "auth": {
+    "welcome": {
+      "tagline": "Live shopping, no compromises.",
+      "signIn": "Sign in",
+      "signUp": "Create account"
+    },
+    "signIn": {
+      "title": "Welcome to KiDi+",
+      "subtitle": "Sign in to continue",
+      "email": "Email",
+      "emailPlaceholder": "you@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "forgot": "Forgot password?",
+      "noAccount": "No account yet?",
+      "createAccount": "Create account"
+    },
+    "signUp": {
+      "title": "Create your account",
+      "subtitle": "Join the KiDi+ community",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "What should we call you?",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "At least 8 characters.",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "checkEmail": "Check your email",
+      "checkEmailBody": "We sent you a link to confirm your address.",
+      "terms": "By continuing, you agree to our terms and privacy policy."
+    },
+    "forgot": {
+      "title": "Forgot password",
+      "subtitle": "We'll send you a reset link.",
+      "email": "Email",
+      "submit": "Send link",
+      "submitting": "Sending…",
+      "sent": "Email sent. Check your inbox.",
+      "backToSignIn": "Back to sign in"
+    },
+    "reset": {
+      "title": "New password",
+      "subtitle": "Choose a strong password.",
+      "password": "New password",
+      "confirm": "Confirm",
+      "submit": "Update",
+      "mismatch": "Passwords don't match.",
+      "success": "Password updated."
+    },
+    "validation": {
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Invalid email address.",
+      "passwordRequired": "Password is required.",
+      "passwordShort": "Password must be at least 6 characters.",
+      "nameRequired": "Name is required."
+    },
+    "errors": {
+      "invalidCredentials": "Wrong email or password.",
+      "emailNotConfirmed": "Your email isn't confirmed yet.",
+      "alreadyRegistered": "This email is already in use.",
+      "passwordShort": "Password must be at least 6 characters.",
+      "passwordPwned": "This password has been compromised. Choose another.",
+      "passwordWeak": "Password too weak. Use at least 8 characters mixing letters, numbers and symbols.",
+      "rateLimit": "Too many attempts. Try again in a moment.",
+      "invalidEmail": "Invalid email address.",
+      "network": "Unstable connection. Try again.",
+      "generic": "Something went wrong."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language / Langue",
+    "languageSubtitle": "Change the app language",
+    "chooseLanguage": "Choose language",
+    "french": "Français",
+    "english": "English",
+    "account": "Account",
+    "preferences": "Preferences",
+    "about": "About",
+    "version": "Version",
+    "logout": "Sign out"
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "network": "Unstable connection. Try again.",
+    "notFound": "Not found.",
+    "unauthorized": "You're not allowed to do this.",
+    "tryAgain": "Try again"
+  },
+  "seller": {
+    "profile": "Seller profile",
+    "products": "Products",
+    "reviews": "Reviews",
+    "about": "About",
+    "follow": "Follow",
+    "following": "Following",
+    "message": "Message"
+  }
+}
