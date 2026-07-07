@@ -116,24 +116,56 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     return () => clearInterval(t);
   }, [appActive]);
 
-  // ---- Auction tick + auto-bid ----
+  // ---- Auction tick (one interval per auction) ----
   useEffect(() => {
     if (!auction || !appActive) return;
     const t = setInterval(() => {
       setAuction((a) => {
         if (!a) return a;
-        const next = { ...a, timeLeft: a.timeLeft - 1 };
-        // warning haptic under 10s
-        if (next.timeLeft > 0 && next.timeLeft <= 10) haptic.warning();
-        if (next.timeLeft <= 0) return { ...a, timeLeft: 0 };
-        return next;
+        if (a.timeLeft <= 0) return a; // stable ref → no re-render, no more haptics
+        const nextLeft = a.timeLeft - 1;
+        if (nextLeft > 0 && nextLeft <= 10) haptic.warning();
+        return { ...a, timeLeft: Math.max(0, nextLeft) };
       });
     }, 1000);
     return () => clearInterval(t);
   }, [auction?.productId, appActive]);
 
+  // finalizeSale must be declared BEFORE effects that reference it.
+  const finalizeSale = useCallback(
+    (product: BProduct, buyer: string, price: number) => {
+      haptic.success();
+      const id = `sale-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const entry = { id, productId: product.id, productName: product.name, buyer, price };
+      setSoldList((prev) => [...prev, entry]);
+      setChat((prev) => [
+        ...prev,
+        systemMessage(`Vendu à @${buyer} — ${formatEuro(price)} 🎉`),
+      ]);
+      setLastSaleFlash(`Vendu à @${buyer} · ${formatEuro(price)}`);
+      setConfettiTrigger((n) => n + 1);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
+      // Advance featured to next non-sold product (use fresh soldList via ref).
+      if (product.mode === "auction") {
+        const soldIds = new Set([
+          ...soldListRef.current.map((s) => s.productId),
+          product.id,
+        ]);
+        const remaining = b.products.find(
+          (p) => p.id !== product.id && !soldIds.has(p.id),
+        );
+        if (remaining) setFeaturedId(remaining.id);
+      }
+    },
+    [b.products],
+  );
+
+  // Auto-bid: schedule ONE timeout per (auction lifecycle + bid change).
+  // Do NOT depend on timeLeft — otherwise the timeout gets cleared each tick
+  // and no bid ever fires.
   useEffect(() => {
-    if (!auction || !appActive || auction.timeLeft <= 0) return;
+    if (!auction || !appActive) return;
     const gap = 1600 + Math.random() * 2600;
     const t = setTimeout(() => {
       setAuction((a) => {
@@ -146,47 +178,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       });
     }, gap);
     return () => clearTimeout(t);
-  }, [auction?.currentBid, auction?.timeLeft, appActive]);
+  }, [auction?.productId, auction?.currentBid, appActive]);
 
   // Auto-close auction when timer hits 0
   useEffect(() => {
     if (!auction || auction.timeLeft > 0) return;
     const prod = b.products.find((p) => p.id === auction.productId);
-    if (!prod) return;
+    if (!prod) {
+      setAuction(null);
+      return;
+    }
     const buyer = auction.currentBidder ?? pickBidder();
     finalizeSale(prod, buyer, auction.currentBid);
     setAuction(null);
-  }, [auction?.timeLeft]);
+  }, [auction?.timeLeft, auction?.productId, auction?.currentBid, auction?.currentBidder, b.products, finalizeSale]);
 
-  const finalizeSale = useCallback(
-    (product: BProduct, buyer: string, price: number) => {
-      haptic.success();
-      const id = `sale-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
-      setSoldList((prev) => [
-        ...prev,
-        { id, productId: product.id, productName: product.name, buyer, price },
-      ]);
-      setChat((prev) => [
-        ...prev,
-        systemMessage(`Vendu à @${buyer} — ${formatEuro(price)} 🎉`),
-      ]);
-      setLastSaleFlash(`Vendu à @${buyer} · ${formatEuro(price)}`);
-      setConfettiTrigger((n) => n + 1);
-      setTimeout(() => setLastSaleFlash(null), 1800);
-      // Advance featured to next non-sold auction product if this was auction
-      if (product.mode === "auction") {
-        const remaining = b.products.find(
-          (p) =>
-            p.id !== product.id &&
-            !soldList.some((s) => s.productId === p.id),
-        );
-        if (remaining) setFeaturedId(remaining.id);
-      }
-    },
-    [b.products, soldList],
-  );
-
-  // Fixed price purchase simulator: when a product is "on sale" (in fixedStates and soldCount < stock)
+  // Fixed price purchase simulator
   useEffect(() => {
     if (!appActive) return;
     const onSaleIds = Object.keys(fixedStates);
@@ -206,6 +213,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }, 2600 + Math.random() * 2000);
     return () => clearInterval(t);
   }, [fixedStates, b.products, appActive, finalizeSale]);
+
+  // Clear any pending flash timeout on unmount.
+  useEffect(() => {
+    return () => {
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    };
+  }, []);
 
   // ---- Session totals ----
   const totalRevenue = useMemo(
