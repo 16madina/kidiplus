@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Image as ImageIcon } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -6,6 +6,7 @@ import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { PRODUCT_IMG_POOL } from "@/lib/broadcast-mock";
+import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
 import type { BProduct, SellMode } from "@/lib/broadcast-context";
 
 export function AddProductSheet({
