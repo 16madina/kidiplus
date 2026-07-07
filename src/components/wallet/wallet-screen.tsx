@@ -1,9 +1,10 @@
 // WalletScreen — full-screen "Mon portefeuille" view opened from Profile menu.
 // Shows animated balance, a Recharger CTA, and the transaction history feed.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -17,11 +18,30 @@ import { useWallet } from "@/lib/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { TopUpSheet } from "./topup-sheet";
 import type { WalletTxRow } from "@/lib/wallet-db";
+import { confirmWalletTopup, readPendingTopup, clearPendingTopup } from "@/lib/payment-confirm";
 
 export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation();
-  const { balance, currency, transactions } = useWallet();
+  const { balance, currency, transactions, refresh } = useWallet();
   const [topupOpen, setTopupOpen] = useState(false);
+
+  // Recovery: if a previous top-up succeeded on Stripe but our server
+  // never got the confirm call (network drop, page reload, webhook not
+  // yet configured), retry it when the wallet screen mounts.
+  useEffect(() => {
+    if (!open) return;
+    const pending = readPendingTopup();
+    if (!pending) return;
+    void (async () => {
+      const r = await confirmWalletTopup(pending);
+      if (r.ok) {
+        clearPendingTopup();
+        await refresh();
+        if (!r.duplicate) toast.success(t("wallet.topup.success"));
+      }
+    })();
+  }, [open, refresh, t]);
+
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("wallet.title")} zIndex={65}>

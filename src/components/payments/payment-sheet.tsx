@@ -30,6 +30,13 @@ import { useWallet } from "@/lib/wallet-context";
 import { payOrderWithWallet } from "@/lib/wallet-db";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
+import {
+  confirmOrderPayment,
+  markPendingOrder,
+  clearPendingOrder,
+  readPendingOrder,
+  paymentIntentIdFromClientSecret,
+} from "@/lib/payment-confirm";
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
@@ -60,6 +67,7 @@ export function PaymentSheet({
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null> }
+    | { kind: "verifying" }
     | { kind: "not_configured" }
     | { kind: "error"; message: string }
     | { kind: "done" }
@@ -71,6 +79,14 @@ export function PaymentSheet({
     if (!order) {
       setState({ kind: "loading" });
       return;
+    }
+    // Recovery: if a previous attempt left a pending PI for this order,
+    // try to confirm it once (idempotent).
+    const pending = readPendingOrder(order.id);
+    if (pending) {
+      void confirmOrderPayment(pending).then((r) => {
+        if (r.ok) clearPendingOrder(order.id);
+      });
     }
     let cancelled = false;
     (async () => {
@@ -102,6 +118,10 @@ export function PaymentSheet({
           });
           return;
         }
+        // Store PI id BEFORE the client confirms it, so a reload between
+        // Stripe success and our confirm call can still recover.
+        const pi = paymentIntentIdFromClientSecret(body.clientSecret);
+        if (pi && order) markPendingOrder(order.id, pi);
         setState({
           kind: "ready",
           clientSecret: body.clientSecret,
@@ -116,12 +136,30 @@ export function PaymentSheet({
     };
   }, [order, t]);
 
-  const handleSuccess = () => {
-    haptic.success();
-    setState({ kind: "done" });
-    toast.success(t("pay.toasts.confirmed"));
-    if (order) onPaid?.(order);
-    setTimeout(onClose, 1400);
+  const handleSuccess = async (paymentIntentId: string) => {
+    if (!order) return;
+    setState({ kind: "verifying" });
+    markPendingOrder(order.id, paymentIntentId);
+    const r = await confirmOrderPayment(paymentIntentId);
+    if (r.ok) {
+      clearPendingOrder(order.id);
+      haptic.success();
+      setState({ kind: "done" });
+      toast.success(t("pay.toasts.confirmed"));
+      onPaid?.(order);
+      setTimeout(onClose, 1400);
+    } else {
+      // Card succeeded on Stripe but our server couldn't confirm yet — the
+      // pending PI stays in localStorage; the webhook (or the next open of
+      // this sheet) will still credit the order. Show a reassuring message.
+      haptic.warning();
+      setState({
+        kind: "error",
+        message: t("pay.verifyingFailed", {
+          defaultValue: "Paiement accepté par la banque. Vérification en cours — votre commande sera confirmée sous peu.",
+        }),
+      });
+    }
   };
 
   return (
@@ -266,12 +304,25 @@ export function PaymentSheet({
                   {state.kind === "error" && (
                     <ErrorState message={state.message} onRetry={onClose} />
                   )}
+                  {state.kind === "verifying" && (
+                    <div className="mt-6 flex flex-col items-center justify-center gap-3 py-10 text-center">
+                      <Loader2 className="animate-spin" size={28} />
+                      <p className="text-[15px] font-semibold">
+                        {t("pay.verifying", { defaultValue: "Vérification du paiement…" })}
+                      </p>
+                      <p className="max-w-[260px] text-[12px] text-muted-foreground">
+                        {t("pay.verifyingHint", {
+                          defaultValue: "Confirmation en cours auprès de notre serveur.",
+                        })}
+                      </p>
+                    </div>
+                  )}
                   {state.kind === "ready" && (
                     <StripeCardForm
                       clientSecret={state.clientSecret}
                       stripePromise={state.stripePromise}
                       totalLabel={fmt(Number(order.total))}
-                      onSuccess={handleSuccess}
+                      onSuccess={(pi) => { void handleSuccess(pi); }}
                     />
                   )}
                 </div>
@@ -454,7 +505,7 @@ function StripeCardForm({
   clientSecret: string;
   stripePromise: Promise<StripeJs | null>;
   totalLabel: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
 }) {
   const options = useMemo(
     () => ({
@@ -478,7 +529,7 @@ function StripePayForm({
   onSuccess,
 }: {
   totalLabel: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
 }) {
   const { t } = useTranslation();
   const stripe = useStripe();
@@ -502,10 +553,8 @@ function StripePayForm({
       haptic.warning();
       return;
     }
-    if (paymentIntent && paymentIntent.status === "succeeded") {
-      onSuccess();
-    } else if (paymentIntent && paymentIntent.status === "processing") {
-      onSuccess(); // treat as success — webhook confirms shortly after
+    if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")) {
+      onSuccess(paymentIntent.id);
     } else {
       setError(t("pay.errors.generic"));
     }
