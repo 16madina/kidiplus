@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
 
-const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
+const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1", "kidiplus.com"];
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true;
   try {
