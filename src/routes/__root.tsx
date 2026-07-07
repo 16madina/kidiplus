@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "apple-mobile-web-app-status-bar-style",
         content: "black-translucent",
       },
-      { name: "theme-color", content: "#ffffff" },
+      { name: "theme-color", content: "#0B0B0F" },
       { name: "format-detection", content: "telephone=no" },
       { title: "KiDi+ — Live Shopping & Enchères" },
       {
