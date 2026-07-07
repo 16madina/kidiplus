@@ -450,7 +450,7 @@ function OrderDetailBody({ order }: { order: Order }) {
       {/* Tracking timeline */}
       <div className="rounded-2xl border border-border p-4">
         <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Suivi
+          {t("activity.title")}
         </h2>
         <div className="relative pl-8">
           {/* connector track */}
