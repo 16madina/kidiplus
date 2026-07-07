@@ -411,13 +411,14 @@ function OrderDetailScreen({ order, onClose }: { order: Order | null; onClose: (
 }
 
 function OrderDetailBody({ order }: { order: Order }) {
+  const { t } = useTranslation();
   const meta = orderStatusMeta(order.status);
   const activeIdx = statusIndex(order.status);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const t = setTimeout(() => setProgress(activeIdx), 120);
-    return () => clearTimeout(t);
+    const handle = setTimeout(() => setProgress(activeIdx), 120);
+    return () => clearTimeout(handle);
   }, [activeIdx]);
 
   return (
