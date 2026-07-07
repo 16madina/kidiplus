@@ -78,7 +78,7 @@ export type AdminPayoutRow = {
   seller_avatar: string | null;
   amount: number;
   currency: string;
-  method: "wave" | "orange_money" | "bank_transfer";
+  method: "wave" | "orange_money" | "bank_transfer" | "paypal";
   destination: Record<string, string>;
   status: "requested" | "processing" | "paid" | "rejected";
   note: string | null;
