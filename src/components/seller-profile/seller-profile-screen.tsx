@@ -448,7 +448,8 @@ function LivesTab({ info }: { info: SellerInfo }) {
               >
                 <Press
                   aria-label={on ? "Rappel activé" : "Me rappeler"}
-                  onClick={() => toggle(s.id)}
+                  onClick={() => toggle(s.id, s.title)}
+                  hapticOnTap={false}
                   className="h-10 rounded-full px-3 text-[12px] font-semibold"
                   style={
                     on
