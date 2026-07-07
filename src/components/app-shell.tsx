@@ -30,6 +30,7 @@ import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 import { AuthFlow } from "./auth/auth-flow";
 import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
+import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
@@ -99,7 +100,9 @@ function AuthGate() {
           transition={{ duration: 0.2, ease: EASE_IOS }}
           className="h-full w-full"
         >
-          <AppShellInner />
+          <ImmersiveProvider>
+            <AppShellInner />
+          </ImmersiveProvider>
         </motion.div>
       ) : (
         <motion.div
@@ -124,6 +127,7 @@ function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
   const { active: liveStream, close: closeLive } = useLiveViewer();
   const { activeSeller, close: closeSeller } = useSellerProfile();
+  const { immersive } = useImmersive();
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
   useEffect(() => {
@@ -179,7 +183,9 @@ function AppShellInner() {
         <ProfileScreen />
       </TabPane>
 
-      <BottomTabBar active={active} onChange={setActive} />
+      {!immersive && !liveStream && (
+        <BottomTabBar active={active} onChange={setActive} />
+      )}
 
       <AnimatePresence>
         {liveStream && <LiveViewerScreen />}
