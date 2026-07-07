@@ -165,6 +165,18 @@ export function nextBidAmount(currentPrice: number, currency: Currency): number 
   return roundForCurrency(currentPrice + step, currency);
 }
 
+/** Increment size for the given current price + currency (for stepper +/− buttons). */
+export function bidStepFor(currentPrice: number, currency: Currency): number {
+  const rules = bidRulesFor(currency);
+  return currentPrice < rules.threshold ? rules.smallStep : rules.step;
+}
+
+/** Sane upper cap: max(100× start price, currency floor). Mirrors server enforcement. */
+export function maxBidAmount(startPrice: number, currency: Currency): number {
+  const floor = currency === "XOF" ? 1_000_000 : currency === "CAD" ? 3000 : 2000;
+  return Math.max((startPrice || 0) * 100, floor);
+}
+
 export function topUpPresets(currency: Currency): number[] {
   switch (currency) {
     case "XOF": return [2000, 5000, 10000, 25000];
