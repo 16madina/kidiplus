@@ -73,7 +73,7 @@ export function CategoryTiles({
               width: TILE_W,
               height: TILE_H,
               scrollSnapAlign: "start",
-              backgroundColor: "oklch(0.2 0.01 60)",
+              backgroundColor: "oklch(0.25 0.07 265)",
               outline: isActive
                 ? "2px solid var(--primary)"
                 : "2px solid transparent",
