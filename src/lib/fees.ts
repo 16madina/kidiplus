@@ -13,6 +13,23 @@ import { normalizeCurrency, roundForCurrency, isZeroDecimal, type Currency } fro
 
 export const PLATFORM_FEE_PERCENT = 5;
 
+/**
+ * Minimum payout amount per currency. Single source of truth used by both
+ * the withdraw sheet (UI validation + hint text) and mirrored in the
+ * `request_payout` SQL function.
+ *
+ * TEST VALUE — restore XOF to 5000 before public launch.
+ */
+export const PAYOUT_MINIMUMS: Record<Currency, number> = {
+  XOF: 100, // TEST VALUE — restore to 5000 before public launch
+  EUR: 10,
+  CAD: 15,
+};
+
+export function payoutMinimumFor(currency: string | null | undefined): number {
+  return PAYOUT_MINIMUMS[normalizeCurrency(currency)];
+}
+
 export type FeeBreakdown = {
   amount: number;
   shipping: number;
