@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Bell, Share2, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
