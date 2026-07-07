@@ -206,8 +206,10 @@ export function PaymentSheet({
                     {/* Wallet method — first, with balance and insufficient-funds shortcut */}
                     <WalletMethodRow
                       balance={balance}
-                      currency={currency}
+                      walletCurrency={walletCurrency}
+                      orderCurrency={orderCurrency}
                       total={Number(order.total)}
+                      locale={i18n.language}
                       busy={walletBusy}
                       onPay={async () => {
                         if (walletBusy) return;
