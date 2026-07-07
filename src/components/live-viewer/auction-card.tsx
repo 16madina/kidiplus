@@ -147,12 +147,12 @@ export function AuctionCard({
         </div>
       </Press>
 
-      <div className="px-3 pb-3">
+      <div className="px-2.5 pb-2.5">
         {isAuction ? (
           <Press
             onClick={auctionActive && secondsLeft > 0 ? onBid : undefined}
             disabled={!auctionActive || secondsLeft <= 0}
-            className="w-full rounded-xl py-2.5 text-[14px] font-bold text-white disabled:opacity-50"
+            className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
             style={{
               background: auctionActive && secondsLeft > 0
                 ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
@@ -161,7 +161,7 @@ export function AuctionCard({
           >
             {auctionActive && secondsLeft > 0 ? (
               <>
-                <Gavel size={16} className="mr-1.5" />
+                <Gavel size={14} className="mr-1.5" />
                 Enchérir {formatMoney(nextBid, cur, locale)}
               </>
             ) : (
@@ -171,7 +171,7 @@ export function AuctionCard({
         ) : (
           <Press
             onClick={onBuy}
-            className="w-full rounded-xl py-2.5 text-[14px] font-bold text-white"
+            className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
             style={{
               background:
                 "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
