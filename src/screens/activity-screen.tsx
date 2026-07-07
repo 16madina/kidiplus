@@ -512,7 +512,7 @@ function OrderDetailBody({ order }: { order: Order }) {
         <div className="mb-2 flex items-center gap-2">
           <MapPin size={14} className="text-muted-foreground" />
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Livraison
+            {t("profile.menu.addresses")}
           </h2>
         </div>
         <p className="text-[14px] font-semibold">{order.address.name}</p>
