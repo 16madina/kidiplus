@@ -128,7 +128,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             onClick={pickCover}
             className="!min-h-16 h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
             style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-            aria-label="Choisir une couverture"
+            aria-label={t("broadcast.setup.addCover")}
           >
             {b.cover ? (
               <motion.img
