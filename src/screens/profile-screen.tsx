@@ -28,6 +28,7 @@ import { useSettings } from "@/lib/settings-context";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
+import { SellerSalesScreen } from "@/components/seller-sales-screen";
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
 import type { Lang } from "@/i18n";
