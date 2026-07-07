@@ -19,19 +19,19 @@ export const Route = createFileRoute("/api/stripe-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-        const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+        const stripeCfg = getStripeConfig();
+        const STRIPE_WEBHOOK_SECRET = stripeCfg.webhookSecret;
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET) {
+        if (!stripeCfg.ok || !STRIPE_WEBHOOK_SECRET) {
           return new Response("stripe_not_configured", { status: 503 });
         }
         if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
           return new Response("backend_not_configured", { status: 500 });
         }
 
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
+        const stripe = createStripeClient();
         const signature = request.headers.get("stripe-signature") ?? "";
         const rawBody = await request.text();
 
