@@ -23,6 +23,7 @@ export function BottomTabBar({
   active: TabKey;
   onChange: (k: TabKey) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <nav
       aria-label="Primary"
@@ -35,9 +36,10 @@ export function BottomTabBar({
       }}
     >
       <ul className="mx-auto flex h-14 max-w-xl items-stretch justify-around px-2">
-        {tabs.map(({ key, label, Icon }) => {
+        {tabs.map(({ key, labelKey, Icon }) => {
           const isLive = key === "live";
           const isActive = active === key;
+          const label = t(labelKey);
 
           if (isLive) {
             return (
