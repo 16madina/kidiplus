@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Clock, X, SearchX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
@@ -17,15 +18,16 @@ import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
   TRENDS,
-  formatViewersFr,
   type BrowseCategory,
   type Trend,
 } from "@/lib/browse-mock";
+import { formatCount } from "@/i18n/format";
+import { useLanguage } from "@/i18n/language-context";
 
 const ALL_STREAMS = makeStreams(0, 24);
 
-type CategorySort = "Recommandés" | "Populaires" | "A-Z";
-const CATEGORY_SORTS: CategorySort[] = ["Recommandés", "Populaires", "A-Z"];
+type CategorySort = "recommended" | "popular" | "alpha";
+const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 
 export function SearchScreen() {
   const [focused, setFocused] = useState(false);
