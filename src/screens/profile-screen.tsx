@@ -196,7 +196,8 @@ export function ProfileScreen() {
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
-      <SellerSalesScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
 
     </div>
