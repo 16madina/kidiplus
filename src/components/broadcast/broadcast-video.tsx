@@ -61,12 +61,17 @@ export function BroadcastVideo({
   const [state, setState] = useState<"idle" | "granted" | "denied" | "unsupported">(
     "idle",
   );
+  const appActive = useAppActive();
+
+  // Effectively-enabled gate: also release the camera when the app is
+  // backgrounded so the OS indicator/light doesn't stay on.
+  const shouldRun = enabled && appActive;
 
   useEffect(() => {
     let cancelled = false;
 
     async function acquire() {
-      if (!enabled) {
+      if (!shouldRun) {
         teardown();
         return;
       }
