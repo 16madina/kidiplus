@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import { ChevronLeft, Star, BadgeCheck, Bell, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
@@ -16,22 +17,20 @@ import { haptic } from "@/lib/haptics";
 import { usePush } from "@/lib/push";
 import {
   formatCompact,
-  formatDate,
   getSellerInfo,
   type SellerInfo,
 } from "@/lib/seller-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
+import { useLanguage } from "@/i18n/language-context";
+import { formatShortDateTime } from "@/i18n/format";
 
 
 const HEADER_MAX = 260; // large header total height above nav
 const HEADER_MIN = 0;
 
 type TabKey = "boutique" | "lives" | "avis";
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "boutique", label: "Boutique" },
-  { key: "lives", label: "Lives" },
-  { key: "avis", label: "Avis" },
-];
+const TAB_KEYS: TabKey[] = ["boutique", "lives", "avis"];
+
 
 export function SellerProfileScreen() {
   const { activeSeller, close } = useSellerProfile();
