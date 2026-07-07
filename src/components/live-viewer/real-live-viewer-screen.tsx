@@ -18,7 +18,7 @@ import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/
 import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
-import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
