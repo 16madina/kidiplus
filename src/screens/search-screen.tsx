@@ -21,7 +21,7 @@ import {
   type BrowseCategory,
   type Trend,
 } from "@/lib/browse-mock";
-import { formatCount } from "@/i18n/format";
+import { formatCount, formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
 import { useLanguage } from "@/i18n/language-context";
 
 const ALL_STREAMS = makeStreams(0, 24);
