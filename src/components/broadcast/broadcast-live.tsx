@@ -353,6 +353,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             {room.viewerCount}
           </div>
           <Press
+            onClick={() => { haptic.selection(); setProductsOpen(true); }}
+            aria-label={t("live.openProducts")}
+            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B] inline-flex items-center gap-1"
+            style={{ backgroundColor: "white" }}
+          >
+            <Package size={14} />
+            {t("live.openProducts")}
+            {room.products.length > 0 && (
+              <span className="ml-0.5 rounded-full bg-[#10162B] px-1.5 text-[10px] font-bold text-white">
+                {room.products.length}
+              </span>
+            )}
+          </Press>
+          <Press
             onClick={() => {
               haptic.selection();
               setFacing((f) => (f === "user" ? "environment" : "user"));
@@ -376,6 +390,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
       </div>
+
+      {/* Video connection error overlay with retry */}
+      {(videoStatus === "error" || videoStatus === "denied") && (
+        <div
+          className="absolute left-1/2 z-40 -translate-x-1/2 rounded-2xl px-4 py-3 text-white shadow-lg"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 110px)",
+            width: "min(92%, 320px)",
+            backgroundColor: "rgba(220, 30, 40, 0.95)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold">{t("live.hostConnectFailed")}</p>
+              <p className="mt-0.5 text-[11.5px] opacity-90">{t("live.hostConnectFailedBody")}</p>
+              <Press
+                onClick={retryConnection}
+                className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
+              >
+                {t("live.hostRetry")}
+              </Press>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Session stat strip */}
       <div
