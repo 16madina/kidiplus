@@ -25,6 +25,7 @@ export type Database = {
           handle: string
           id: string
           is_seller: boolean
+          language: string
         }
         Insert: {
           avatar_url?: string | null
@@ -36,6 +37,7 @@ export type Database = {
           handle: string
           id: string
           is_seller?: boolean
+          language?: string
         }
         Update: {
           avatar_url?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           handle?: string
           id?: string
           is_seller?: boolean
+          language?: string
         }
         Relationships: []
       }
