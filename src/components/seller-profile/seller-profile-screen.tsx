@@ -72,6 +72,8 @@ function SellerProfileInner({
   const scrollY = useMotionValue(0);
   const [tab, setTab] = useState<TabKey>("boutique");
   const { open: openLive } = useLiveViewer();
+  const { requestWithPrePrompt: requestPush } = usePush();
+
 
   // Collapsing header transforms — transform + opacity only
   const heroScale = useTransform(scrollY, [0, HEADER_MAX], [1, 0.85]);
@@ -394,12 +396,20 @@ function BoutiqueTab({ info }: { info: SellerInfo }) {
 function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
-  const toggle = (id: string) => {
+  const { requestWithPrePrompt: requestPush } = usePush();
+  const toggle = (id: string, title: string) => {
     const next = !reminders[id];
+    haptic.medium();
     setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
     toast(next ? "Rappel activé" : "Rappel désactivé");
+    if (next) {
+      void requestPush(
+        `Active les notifications pour être prévenu·e avant "${title}" 🔔`,
+      );
+    }
   };
+
   return (
     <div className="space-y-2">
       {info.scheduled.map((s, i) => {
