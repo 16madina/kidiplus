@@ -17,8 +17,17 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   fetchLiveProducts,
   updateLiveViewerCount,
+  resolveLiveImage,
   type LiveProductRow,
 } from "@/lib/lives-db";
+
+/** Resolve the stored image_url path (bucket path) into a signed/absolute URL. */
+async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
+  if (!row.image_url) return row;
+  if (/^https?:\/\//i.test(row.image_url)) return row;
+  const url = await resolveLiveImage("live-products", row.image_url);
+  return url ? { ...row, image_url: url } : row;
+}
 
 export type ChatEvt = {
   id: string;
