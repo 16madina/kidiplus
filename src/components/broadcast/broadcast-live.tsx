@@ -178,7 +178,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     if (autoEndFiredRef.current) return;
     if (videoStatus === "granted") return;
-    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied") return;
+    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied" && videoStatus !== "token_failed" && videoStatus !== "connect_failed") return;
     const timeout = setTimeout(() => {
       if (autoEndFiredRef.current) return;
       autoEndFiredRef.current = true;
