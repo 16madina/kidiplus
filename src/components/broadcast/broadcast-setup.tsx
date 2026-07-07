@@ -226,11 +226,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                           : "oklch(0.55 0.18 260)",
                     }}
                   >
-                    {p.mode === "auction" ? "ENCHÈRE" : "PRIX FIXE"}
+                    {p.mode === "auction"
+                      ? t("broadcast.setup.productSheet.auction").toUpperCase()
+                      : t("broadcast.setup.productSheet.fixedPrice").toUpperCase()}
                   </span>
                   <Press
                     onClick={() => b.removeProduct(p.id)}
-                    aria-label="Retirer"
+                    aria-label={t("common.remove")}
                     className="!min-h-7 !min-w-7 absolute right-1 top-1 h-7 w-7 rounded-full p-0 text-white"
                     style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
                   >
