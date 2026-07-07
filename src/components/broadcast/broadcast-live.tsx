@@ -273,8 +273,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       peakViewers: peak,
       sales: soldList,
     });
+    // Persist end-of-live to DB (fire and forget — UI shouldn't wait).
+    if (b.liveId) {
+      void import("@/lib/lives-db").then(({ endLiveInDb }) =>
+        endLiveInDb(b.liveId!).catch(() => {
+          /* non-fatal */
+        }),
+      );
+    }
     onEnd();
   };
+
 
   return (
     <motion.div
