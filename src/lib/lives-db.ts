@@ -27,7 +27,7 @@ export async function resolveLiveImage(
   value: string | null | undefined,
 ): Promise<string | null> {
   if (!value) return null;
-  if (/^https?:\/\//i.test(value)) return value;
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
 
   const key = `${bucket}::${value}`;
   const cached = signedCache.get(key);
@@ -36,7 +36,10 @@ export async function resolveLiveImage(
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(value, SIGN_TTL_SEC);
-  if (error || !data) return null;
+  if (error || !data) {
+    console.warn("[live-image] signed URL failed", bucket, value, error?.message);
+    return null;
+  }
   signedCache.set(key, {
     url: data.signedUrl,
     expiresAt: Date.now() + SIGN_TTL_SEC * 1000,
@@ -393,28 +396,16 @@ export async function placeBidInDb(args: {
   bidderId: string;
   bidderName: string;
   amount: number;
-}): Promise<{ ok: boolean; error?: string }> {
-  const { error: bidErr } = await supabase.from("live_bids").insert({
-    live_id: args.liveId,
-    product_id: args.productId,
-    bidder_id: args.bidderId,
-    bidder_name: args.bidderName,
-    amount: args.amount,
+}): Promise<{ ok: boolean; error?: string; amount?: number }> {
+  const { data, error } = await supabase.rpc("place_live_bid", {
+    _live_id: args.liveId,
+    _product_id: args.productId,
+    _bidder_name: args.bidderName,
   });
-  if (bidErr) return { ok: false, error: bidErr.message };
-  // Race-tolerant: only bump price if new amount is higher.
-  const { data: cur } = await supabase
-    .from("live_products")
-    .select("price")
-    .eq("id", args.productId)
-    .maybeSingle();
-  if (cur && args.amount > cur.price) {
-    await supabase
-      .from("live_products")
-      .update({ price: args.amount })
-      .eq("id", args.productId);
-  }
-  return { ok: true };
+  if (error) return { ok: false, error: error.message };
+  const result = data as { ok?: boolean; error?: string; amount?: number } | null;
+  if (!result?.ok) return { ok: false, error: result?.error ?? "bid_failed" };
+  return { ok: true, amount: Number(result.amount) };
 }
 
 export async function purchaseFixedPriceRpc(
