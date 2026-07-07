@@ -160,27 +160,53 @@ export function AuctionCard({
 
       <div className="px-2.5 pb-2.5">
         {isAuction ? (
-          <Press
-            onClick={canBid ? onBid : undefined}
-            disabled={!canBid}
-            className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
-            style={{
-              background: canBid
-                ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
-                : "rgba(255,255,255,0.14)",
-            }}
-          >
-            {isHighestBidder ? (
-              t("live.highestBidder")
-            ) : canBid ? (
-              <>
-                <Gavel size={14} className="mr-1.5" />
-                {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
-              </>
-            ) : (
-              disabled ? t("live.ended") : t("live.waitingForSeller")
-            )}
-          </Press>
+          <>
+            <div className="flex items-stretch gap-1.5">
+              <Press
+                onClick={canBid ? onBid : undefined}
+                disabled={!canBid}
+                className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
+                style={{
+                  background: canBid
+                    ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
+                    : "rgba(255,255,255,0.14)",
+                }}
+              >
+                {isHighestBidder ? (
+                  t("live.highestBidder")
+                ) : canBid ? (
+                  <>
+                    <Gavel size={14} className="mr-1.5" />
+                    {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
+                  </>
+                ) : (
+                  disabled ? t("live.ended") : t("live.waitingForSeller")
+                )}
+              </Press>
+              {onToggleCustom && (
+                <Press
+                  onClick={canBid ? onToggleCustom : undefined}
+                  disabled={!canBid}
+                  aria-label={t("bid.custom.open", "Enchère personnalisée")}
+                  className="w-11 shrink-0 rounded-xl text-white disabled:opacity-50"
+                  style={{
+                    background: canBid
+                      ? "rgba(255,255,255,0.14)"
+                      : "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <motion.span
+                    animate={{ rotate: customOpen ? 45 : 0 }}
+                    transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+                    className="inline-flex"
+                  >
+                    <Plus size={18} />
+                  </motion.span>
+                </Press>
+              )}
+            </div>
+            {customPanel}
+          </>
         ) : (
           <Press
             onClick={disabled ? undefined : onBuy}
