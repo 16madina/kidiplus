@@ -101,7 +101,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             haptic.selection();
             setFacing((f) => (f === "user" ? "environment" : "user"));
           }}
-          aria-label="Changer de caméra"
+          aria-label={t("broadcast.live.flipCam")}
           className="!min-h-11 !min-w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.4)",
