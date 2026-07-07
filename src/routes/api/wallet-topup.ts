@@ -62,18 +62,18 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-        const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
+        const stripeCfg = getStripeConfig();
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!STRIPE_SECRET_KEY || !STRIPE_PUBLISHABLE_KEY) {
-          return json({ error: "stripe_not_configured" }, 503, origin);
+        if (!stripeCfg.ok) {
+          return json({ error: stripeCfg.reason ?? "stripe_not_configured" }, 503, origin);
         }
         if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
         }
+        const STRIPE_PUBLISHABLE_KEY = stripeCfg.publishableKey;
 
         const authHeader = request.headers.get("authorization") ?? "";
         const token = authHeader.replace(/^Bearer\s+/i, "").trim();
