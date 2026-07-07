@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
 import { Press } from "./press";
@@ -9,8 +9,33 @@ import {
   type HomeCategory,
 } from "@/lib/home-categories";
 
-const TILE_W = 120;
-const TILE_H = 130;
+const TILE_W = 104;
+const TILE_H = 116;
+
+function TileImage({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {!loaded && (
+        <span
+          aria-hidden
+          className="absolute inset-0"
+          style={{ backgroundColor: "oklch(0.85 0.01 60)" }}
+        />
+      )}
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        data-loaded={loaded || undefined}
+        draggable={false}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </>
+  );
+}
 
 export function CategoryTiles({
   active,
@@ -35,16 +60,17 @@ export function CategoryTiles({
       {HOME_CATEGORIES.map((c) => {
         const meta = HOME_CATEGORY_META[c];
         const isActive = c === active;
+        const isPourToi = c === "Pour toi";
         return (
           <Press
             key={c}
             onClick={() => onChange(c)}
-            className="!min-h-0 relative shrink-0 overflow-hidden rounded-[18px] p-0"
+            className="!min-h-0 relative shrink-0 overflow-hidden rounded-2xl p-0"
             style={{
               width: TILE_W,
               height: TILE_H,
               scrollSnapAlign: "start",
-              background: meta.gradient,
+              backgroundColor: "oklch(0.2 0.01 60)",
               outline: isActive
                 ? "2px solid var(--primary)"
                 : "2px solid transparent",
@@ -56,58 +82,60 @@ export function CategoryTiles({
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="relative h-full w-full"
             >
-              {/* Category name — bold, dark, top-left */}
+              {isPourToi ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, oklch(0.22 0.01 60) 0%, oklch(0.14 0.005 60) 100%)",
+                    }}
+                  />
+                  <div
+                    className="absolute grid place-items-center rounded-full"
+                    style={{
+                      left: "50%",
+                      top: "40%",
+                      transform: "translate(-50%, -50%)",
+                      height: 44,
+                      width: 44,
+                      backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
+                      border: "1.5px solid var(--primary)",
+                    }}
+                  >
+                    <User size={22} strokeWidth={2} color="var(--primary)" />
+                  </div>
+                </>
+              ) : meta.image ? (
+                <TileImage src={meta.image} />
+              ) : null}
+
+              {/* Scrim for label legibility */}
               <span
-                className="absolute left-2.5 top-2.5 text-left text-[13px] font-extrabold leading-tight"
+                aria-hidden
+                className="absolute inset-0"
                 style={{
-                  color: "oklch(0.2 0.02 60)",
+                  background:
+                    "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.10) 45%, rgba(0,0,0,0) 100%)",
+                }}
+              />
+
+              {/* Label — bottom-left, white bold */}
+              <span
+                className="absolute left-2.5 bottom-2 text-left text-[12.5px] font-extrabold leading-tight text-white"
+                style={{
                   maxWidth: TILE_W - 20,
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                   letterSpacing: "-0.01em",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.35)",
                 }}
               >
                 {c}
               </span>
-
-              {/* Image or avatar in lower-right */}
-              {c === "Pour toi" ? (
-                <div
-                  className="absolute grid place-items-center rounded-full"
-                  style={{
-                    right: 10,
-                    bottom: 10,
-                    height: 56,
-                    width: 56,
-                    backgroundColor: "rgba(255,255,255,0.7)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                  }}
-                >
-                  <User size={30} strokeWidth={1.8} color="oklch(0.25 0.02 60)" />
-                </div>
-              ) : meta.image ? (
-                <img
-                  src={meta.image}
-                  alt=""
-                  loading="lazy"
-                  onLoad={(e) =>
-                    e.currentTarget.setAttribute("data-loaded", "true")
-                  }
-                  style={{
-                    position: "absolute",
-                    right: -6,
-                    bottom: -6,
-                    height: 66,
-                    width: 66,
-                    objectFit: "cover",
-                    borderRadius: 14,
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
-                  }}
-                  draggable={false}
-                />
-              ) : null}
             </motion.div>
           </Press>
         );
@@ -123,7 +151,7 @@ export function CategoryTilesSkeleton() {
         <div
           key={i}
           className="skeleton shrink-0"
-          style={{ width: TILE_W, height: TILE_H, borderRadius: 18 }}
+          style={{ width: TILE_W, height: TILE_H, borderRadius: 16 }}
         />
       ))}
     </div>
