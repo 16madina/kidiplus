@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
@@ -11,6 +12,7 @@ import { haptic } from "@/lib/haptics";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
+  const { t } = useTranslation();
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
