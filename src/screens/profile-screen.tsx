@@ -171,6 +171,7 @@ export function ProfileScreen() {
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
+      <SellerSalesScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
     </div>
   );
 }
