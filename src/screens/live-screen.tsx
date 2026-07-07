@@ -94,14 +94,17 @@ export function LiveScreen() {
 
 function BroadcastFlow() {
   const { t } = useTranslation();
-  const { stage, goSetup, goSummary, reset, setHost } = useBroadcast();
+  const { stage, goSetup, goSummary, reset, setHost, setCurrency } = useBroadcast();
   const { profile, user } = useAuth();
   const [dangling, setDangling] = useState<Array<{ id: string; title: string }>>([]);
   const [endingAll, setEndingAll] = useState(false);
 
   useEffect(() => {
-    if (user && profile) setHost(user.id, profile.display_name || profile.handle);
-  }, [user, profile, setHost]);
+    if (user && profile) {
+      setHost(user.id, profile.display_name || profile.handle);
+      if (profile.currency) setCurrency(profile.currency);
+    }
+  }, [user, profile, setHost, setCurrency]);
 
   useEffect(() => {
     if (!user || stage !== "setup") return;

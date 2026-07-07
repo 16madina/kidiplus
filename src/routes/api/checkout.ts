@@ -19,7 +19,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import { toStripeAmount } from "@/lib/fees";
+import { toStripeAmountFor } from "@/lib/fees";
+import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 
 const ALLOWED_ORIGIN_SUFFIXES = [
   "lovable.app",
@@ -127,11 +128,15 @@ export const Route = createFileRoute("/api/checkout")({
           return json({ error: "order_not_pending" }, 409, origin);
         }
 
-        const amountCents = toStripeAmount(Number(order.total));
-        if (!Number.isFinite(amountCents) || amountCents < 50) {
+        const currency = normalizeCurrency(order.currency).toLowerCase();
+        const amountMinor = toStripeAmountFor(Number(order.total), currency);
+        // Stripe requires a minimum charge of ~0.50 in the currency's *minor unit
+        // equivalent*. For XOF (zero-decimal, ≈655/EUR) the practical floor is
+        // handled by our topUpLimits — just guard against non-positive amounts.
+        if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
           return json({ error: "invalid_amount" }, 400, origin);
         }
-        const currency = (order.currency || "eur").toLowerCase();
+        // The `currency` const is already prepared above (lowercase).
 
         const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
 
@@ -150,7 +155,7 @@ export const Route = createFileRoute("/api/checkout")({
 
         if (!intent) {
           intent = await stripe.paymentIntents.create({
-            amount: amountCents,
+            amount: amountMinor,
             currency,
             automatic_payment_methods: { enabled: true },
             metadata: {

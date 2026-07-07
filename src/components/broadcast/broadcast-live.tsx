@@ -11,7 +11,8 @@ import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
-import { formatEuro, fmtDuration } from "@/lib/broadcast-mock";
+import { fmtDuration } from "@/lib/broadcast-mock";
+import { formatMoney } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { useAppActive } from "@/lib/app-state";
@@ -24,9 +25,11 @@ import {
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const b = useBroadcast();
   const appActive = useAppActive();
+  const cur = b.currency;
+  const fmt = (n: number) => formatMoney(n, cur, i18n.language);
 
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [cameraOn, setCameraOn] = useState(true);
@@ -137,8 +140,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
     const label = evt.winnerName
-      ? t("live.soldTo", { name: evt.winnerName }) + " · " + formatEuro(evt.finalPrice)
-      : `${t("live.sold")} · ${formatEuro(evt.finalPrice)}`;
+      ? t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice)
+      : `${t("live.sold")} · ${fmt(evt.finalPrice)}`;
     setLastSaleFlash(label);
     setConfettiTrigger((n) => n + 1);
     haptic.success();
@@ -196,7 +199,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       deadlineMs,
       timerSec: p.timer_seconds,
     });
-    room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${formatEuro(p.start_price)}`);
+    room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${fmt(p.start_price)}`);
   };
 
   const endAuctionNow = async () => {
@@ -223,7 +226,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       room.systemMessage(`Vente arrêtée — ${p.name}`);
     } else {
       await activateFixedInDb(p.id);
-      room.systemMessage(`${t("live.listForSale")} — ${p.name} · ${formatEuro(p.price)}`);
+      room.systemMessage(`${t("live.listForSale")} — ${p.name} · ${fmt(p.price)}`);
     }
   };
 
@@ -359,7 +362,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         >
           <div className="flex flex-col leading-tight">
             <span className="text-[9px] uppercase tracking-wide text-white/60">Ventes</span>
-            <AnimatedEuro value={totalRevenue} />
+            <AnimatedEuro value={totalRevenue} currency={cur} locale={i18n.language} />
           </div>
           <div className="h-6 w-px bg-white/20" />
           <div className="flex flex-col leading-tight">
@@ -415,7 +418,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               transition={{ duration: 0.2, ease: EASE_IOS }}
               className="text-[18px] font-bold tabular-nums"
             >
-              {formatEuro(featured.price)}
+              {fmt(featured.price)}
             </motion.div>
             <div className="flex items-center justify-between text-[10px]">
               <span className="text-white/70">
@@ -486,6 +489,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 <SellerProductCard
                   key={p.id}
                   product={p}
+                  currency={cur}
+                  locale={i18n.language}
                   soldOut={soldOut}
                   featured={isFeatured}
                   auctionActive={auctionActive}
@@ -534,6 +539,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
 function SellerProductCard({
   product, featured, auctionActive, isNextAuction, onSale, soldOut,
+  currency = "EUR", locale = "fr",
   onStartAuction, onEndAuction, onToggleFixed, onFeature,
 }: {
   product: LiveProductRow;
@@ -542,12 +548,15 @@ function SellerProductCard({
   isNextAuction: boolean;
   onSale: boolean;
   soldOut: boolean;
+  currency?: string;
+  locale?: string;
   onStartAuction: () => void;
   onEndAuction: () => void;
   onToggleFixed: () => void;
   onFeature: () => void;
 }) {
   const { t } = useTranslation();
+  const fmt = (n: number) => formatMoney(n, currency, locale);
   const ringColor = auctionActive
     ? "oklch(0.62 0.24 20)"
     : featured ? "white"
@@ -596,7 +605,7 @@ function SellerProductCard({
         {product.mode === "auction" ? (
           <>
             <span className="text-[10px] leading-tight text-white/70">
-              {formatEuro(product.start_price)} · {product.timer_seconds}s
+              {fmt(product.start_price)} · {product.timer_seconds}s
             </span>
             {!soldOut && (
               auctionActive ? (
@@ -625,7 +634,7 @@ function SellerProductCard({
         ) : (
           <>
             <span className="text-[10px] leading-tight text-white/70">
-              {formatEuro(product.price)} · stock {Math.max(0, product.stock)}
+              {fmt(product.price)} · stock {Math.max(0, product.stock)}
             </span>
             {soldOut ? (
               <div className="mt-1 grid h-8 place-items-center rounded-full bg-white/10 text-[11px] font-bold text-white/70">
@@ -651,7 +660,7 @@ function SellerProductCard({
   );
 }
 
-function AnimatedEuro({ value }: { value: number }) {
+function AnimatedEuro({ value, currency = "EUR", locale = "fr" }: { value: number; currency?: string; locale?: string }) {
   const mv = useMotionValue(0);
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -662,5 +671,6 @@ function AnimatedEuro({ value }: { value: number }) {
     });
     return () => ctrl.stop();
   }, [value, mv]);
-  return <span className="text-[14px] font-bold tabular-nums">{formatEuro(display)}</span>;
+  return <span className="text-[14px] font-bold tabular-nums">{formatMoney(display, currency, locale)}</span>;
 }
+

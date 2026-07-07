@@ -31,6 +31,8 @@ export type LiveStream = {
   liveId?: string;
   /** Seller user id (profiles.id) — present on real DB-backed streams. */
   sellerId?: string;
+  /** Live currency (defaults to EUR when unspecified). */
+  currency?: "XOF" | "EUR" | "CAD";
 };
 
 

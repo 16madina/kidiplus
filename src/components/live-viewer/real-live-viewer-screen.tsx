@@ -16,7 +16,9 @@ import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
 import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
-import { formatEuro, systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
+import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
+import { useWallet } from "@/lib/wallet-context";
+import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
@@ -50,11 +52,14 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
 }
 
 export function RealLiveViewerScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { active, close } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
   const { requestWithPrePrompt } = usePush();
+  const { currency: walletCurrency } = useWallet();
+  const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
+  const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
   useEffect(() => {
     let restore: (() => void) | null = null;
@@ -126,7 +131,7 @@ export function RealLiveViewerScreen() {
     const winner = evt.winnerName ?? "—";
     setLocalMessages((prev) => [
       ...prev,
-      systemMessage(`${t("live.soldTo", { name: winner })} · ${formatEuro(evt.finalPrice)}`),
+      systemMessage(`${t("live.soldTo", { name: winner })} · ${formatLive(evt.finalPrice)}`),
     ]);
 
     // If I won and this is a real live with a known seller, open the payment sheet.
@@ -148,6 +153,7 @@ export function RealLiveViewerScreen() {
             itemName: prod.name,
             itemImage: prod.image_url,
             amount: evt.finalPrice,
+            currency: liveCurrency,
           });
           if (res.ok) setPendingOrder(res.order);
           else toast.error(res.error);
@@ -196,7 +202,7 @@ export function RealLiveViewerScreen() {
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
     if (secondsLeft <= 0) return;
     haptic.medium();
-    const nextAmount = Number(currentProduct.price) + 1;
+    const nextAmount = nextBidAmount(Number(currentProduct.price), liveCurrency);
     const res = await placeBidInDb({
       liveId: active!.liveId!,
       productId: currentProduct.id,
@@ -227,6 +233,7 @@ export function RealLiveViewerScreen() {
       itemName: p.name,
       itemImage: p.image_url,
       amount: Number(p.price),
+      currency: liveCurrency,
     });
     if (order.ok) setPendingOrder(order.order);
     else toast.error(order.error);
@@ -355,6 +362,8 @@ export function RealLiveViewerScreen() {
           <AuctionCard
             product={currentAsProduct}
             secondsLeft={secondsLeft}
+            currency={liveCurrency}
+            viewerCurrency={walletCurrency}
             lastBidder={
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
@@ -409,6 +418,7 @@ export function RealLiveViewerScreen() {
         open={showProducts}
         onClose={() => setShowProducts(false)}
         products={productsForSheet}
+        currency={liveCurrency}
         onBuyFixed={(p) => {
           setShowProducts(false);
           const row = room.products.find((r) => r.id === p.id);

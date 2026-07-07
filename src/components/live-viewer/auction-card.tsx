@@ -1,13 +1,23 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Gavel, Timer, ChevronUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
-import { formatEuro, type Product } from "@/lib/live-viewer-mock";
+import { type Product } from "@/lib/live-viewer-mock";
+import {
+  approxLabel,
+  formatMoney,
+  nextBidAmount,
+  normalizeCurrency,
+  type Currency,
+} from "@/lib/money";
 
 export function AuctionCard({
   product,
   secondsLeft,
   lastBidder,
+  currency = "EUR",
+  viewerCurrency,
   onBid,
   onOpenProducts,
   onBuy,
@@ -15,20 +25,26 @@ export function AuctionCard({
   product: Product;
   secondsLeft: number;
   lastBidder?: string;
+  currency?: string;
+  viewerCurrency?: string;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
 }) {
+  const { i18n } = useTranslation();
   const [bidPulse, setBidPulse] = useState(0);
   useEffect(() => {
     setBidPulse((v) => v + 1);
   }, [product.price]);
 
+  const cur: Currency = normalizeCurrency(currency);
+  const locale = i18n.language;
   const isAuction = product.mode === "auction";
   const urgent = secondsLeft <= 10;
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
-  const nextBid = product.price + 1;
+  const nextBid = nextBidAmount(product.price, cur);
+  const convHint = viewerCurrency ? approxLabel(product.price, cur, viewerCurrency, locale) : "";
 
   return (
     <motion.div
@@ -73,7 +89,7 @@ export function AuctionCard({
                   transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
                   className="text-[15px] font-bold text-white"
                 >
-                  {formatEuro(product.price)}
+                  {formatMoney(product.price, cur, locale)}
                 </motion.span>
                 <AnimatePresence>
                   {lastBidder && (
@@ -92,7 +108,12 @@ export function AuctionCard({
               </div>
             ) : (
               <div className="mt-0.5 text-[15px] font-bold text-white">
-                {formatEuro(product.price)}
+                {formatMoney(product.price, cur, locale)}
+              </div>
+            )}
+            {convHint && (
+              <div className="mt-0.5 text-[10.5px] text-white/60 tabular-nums">
+                {convHint}
               </div>
             )}
           </div>
@@ -135,7 +156,7 @@ export function AuctionCard({
             }}
           >
             <Gavel size={16} className="mr-1.5" />
-            Enchérir {formatEuro(nextBid)}
+            Enchérir {formatMoney(nextBid, cur, locale)}
           </Press>
         ) : (
           <Press
@@ -146,7 +167,7 @@ export function AuctionCard({
                 "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
             }}
           >
-            Acheter {formatEuro(product.price)}
+            Acheter {formatMoney(product.price, cur, locale)}
           </Press>
         )}
       </div>

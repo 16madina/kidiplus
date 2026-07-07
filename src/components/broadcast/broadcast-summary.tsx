@@ -4,15 +4,17 @@ import { Share2, Home, PartyPopper } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useBroadcast } from "@/lib/broadcast-context";
-import { formatEuro, fmtDuration } from "@/lib/broadcast-mock";
+import { fmtDuration } from "@/lib/broadcast-mock";
+import { formatMoney } from "@/lib/money";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
-  const { t } = useTranslation();
-  const { session, reset, liveId } = useBroadcast();
+  const { t, i18n } = useTranslation();
+  const { session, reset, liveId, currency } = useBroadcast();
+  const fmt = (n: number, cur: string = currency) => formatMoney(n, cur, i18n.language);
 
   // Real paid orders for this live (if any). Falls back to the mock sales
   // recorded locally when the seller's live wasn't backed by a DB row.
@@ -105,7 +107,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
                     </p>
                   </div>
                   <span className="text-[15px] font-bold tabular-nums">
-                    {formatEuro(Number(o.amount))}
+                    {fmt(Number(o.amount), o.currency)}
                   </span>
                 </motion.li>
               ))}
@@ -127,7 +129,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
                     <p className="truncate text-[14px] font-semibold">{s.productName}</p>
                     <p className="text-[12px] text-muted-foreground">@{s.buyer}</p>
                   </div>
-                  <span className="text-[15px] font-bold tabular-nums">{formatEuro(s.price)}</span>
+                  <span className="text-[15px] font-bold tabular-nums">{fmt(s.price)}</span>
                 </motion.li>
               ))}
             </motion.ul>

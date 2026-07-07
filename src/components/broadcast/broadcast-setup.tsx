@@ -17,6 +17,7 @@ import {
   createLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
+import { formatMoney } from "@/lib/money";
 
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
@@ -122,6 +123,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         category: b.category,
         coverPath,
         roomName: room,
+        currency: b.currency,
         products: productsForDb,
       });
 
@@ -314,7 +316,9 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   {p.name}
                 </span>
                 <span className="text-[10px] text-white/70">
-                  {p.mode === "auction" ? `dès ${p.startPrice} €` : `${p.price} € · stock ${p.stock}`}
+                  {p.mode === "auction"
+                    ? `dès ${formatMoney(p.startPrice, b.currency, "fr")}`
+                    : `${formatMoney(p.price, b.currency, "fr")} · stock ${p.stock}`}
                 </span>
               </motion.div>
             ))}

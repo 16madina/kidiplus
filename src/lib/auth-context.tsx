@@ -20,6 +20,7 @@ export type Profile = {
   bio: string | null;
   is_seller: boolean;
   country: string | null;
+  currency: "XOF" | "EUR" | "CAD";
   language: "fr" | "en";
   created_at: string;
 };

@@ -5,9 +5,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { computeFees } from "@/lib/fees";
 
-export type OrderStatus = "pending" | "paid" | "failed" | "cancelled";
+export type OrderStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
 export type OrderKind = "auction" | "fixed";
-export type PaymentMethod = "card" | "wave" | "orange_money";
+export type PaymentMethod = "card" | "wave" | "orange_money" | "wallet";
 
 export type OrderRow = {
   id: string;
@@ -38,18 +38,21 @@ export type CreatePendingOrderInput = {
   kind: OrderKind;
   itemName: string;
   itemImage: string | null;
-  amount: number; // item price in EUR
+  amount: number; // item price expressed in the live/order currency
+  /** Currency of the live (falls back to EUR). Order & fees use this. */
+  currency?: string;
 };
 
 /**
- * Insert a pending order for the current user.
- * Fee math is derived from src/lib/fees.ts so the checkout summary and DB
- * numbers stay in lockstep.
+ * Insert a pending order for the current user. Fee math is derived from
+ * src/lib/fees.ts in the order's currency so the checkout summary and DB
+ * numbers stay in lockstep. A DB trigger also stamps the live's currency
+ * on insert as a belt-and-braces safety.
  */
 export async function createPendingOrder(
   input: CreatePendingOrderInput,
 ): Promise<{ ok: true; order: OrderRow } | { ok: false; error: string }> {
-  const fees = computeFees(input.amount, 0);
+  const fees = computeFees(input.amount, 0, input.currency ?? "EUR");
   const { data, error } = await supabase
     .from("orders")
     .insert({

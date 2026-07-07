@@ -80,6 +80,10 @@ type Ctx = {
   hostName: string;
   setHost: (identity: string, name: string) => void;
 
+  /** Seller's currency (mirrors profile.currency). One live = one currency. */
+  currency: "XOF" | "EUR" | "CAD";
+  setCurrency: (c: "XOF" | "EUR" | "CAD") => void;
+
   reset: () => void;
 };
 
@@ -108,6 +112,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [hostIdentity, setHostIdentity] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string>("Host");
+  const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
@@ -156,9 +161,10 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       roomName, setRoomName,
       liveId, setLiveId,
       hostIdentity, hostName, setHost,
+      currency, setCurrency,
       reset,
     }),
-    [stage, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, addProduct, removeProduct, setProductDbIds, reset],
+    [stage, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, addProduct, removeProduct, setProductDbIds, reset],
   );
 
 
