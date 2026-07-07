@@ -4,6 +4,7 @@ import { Gavel, Timer, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { type Product } from "@/lib/live-viewer-mock";
+import { LiveProductImage } from "./live-product-image";
 import {
   approxLabel,
   formatMoney,
@@ -19,6 +20,8 @@ export function AuctionCard({
   currency = "EUR",
   viewerCurrency,
   auctionActive = false,
+  isHighestBidder = false,
+  disabled = false,
   onBid,
   onOpenProducts,
   onBuy,
@@ -29,6 +32,8 @@ export function AuctionCard({
   currency?: string;
   viewerCurrency?: string;
   auctionActive?: boolean;
+  isHighestBidder?: boolean;
+  disabled?: boolean;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
@@ -47,6 +52,7 @@ export function AuctionCard({
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const nextBid = nextBidAmount(product.price, cur);
   const convHint = viewerCurrency ? approxLabel(product.price, cur, viewerCurrency, locale) : "";
+  const canBid = auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled;
 
   return (
     <motion.div
@@ -65,11 +71,10 @@ export function AuctionCard({
         aria-label="Voir tous les produits"
       >
         <div className="flex items-center gap-2.5">
-          <img
+          <LiveProductImage
             src={product.image}
             alt=""
             className="h-11 w-11 shrink-0 rounded-lg object-cover"
-            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
             draggable={false}
           />
           <div className="min-w-0 flex-1">
@@ -150,27 +155,30 @@ export function AuctionCard({
       <div className="px-2.5 pb-2.5">
         {isAuction ? (
           <Press
-            onClick={auctionActive && secondsLeft > 0 ? onBid : undefined}
-            disabled={!auctionActive || secondsLeft <= 0}
+            onClick={canBid ? onBid : undefined}
+            disabled={!canBid}
             className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
             style={{
-              background: auctionActive && secondsLeft > 0
+              background: canBid
                 ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
                 : "rgba(255,255,255,0.14)",
             }}
           >
-            {auctionActive && secondsLeft > 0 ? (
+            {isHighestBidder ? (
+              t("live.highestBidder")
+            ) : canBid ? (
               <>
                 <Gavel size={14} className="mr-1.5" />
-                Enchérir {formatMoney(nextBid, cur, locale)}
+                {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
               </>
             ) : (
-              t("live.waitingForSeller")
+              disabled ? t("live.ended") : t("live.waitingForSeller")
             )}
           </Press>
         ) : (
           <Press
-            onClick={onBuy}
+            onClick={disabled ? undefined : onBuy}
+            disabled={disabled}
             className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
             style={{
               background:

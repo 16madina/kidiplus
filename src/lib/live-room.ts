@@ -27,19 +27,19 @@ import {
  *  the UI shows a placeholder rather than a broken <img>. */
 async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   if (!row.image_url) return row;
-  if (/^https?:\/\//i.test(row.image_url)) return row;
+  if (/^(https?:|blob:|data:)/i.test(row.image_url)) return row;
   const path = row.image_url;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const url = await resolveLiveImage("live-products", path);
       if (url) return { ...row, image_url: url };
     } catch (err) {
       console.warn("[live-room] hydrateImage error", err, path);
     }
-    if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+    if (attempt < 3) await new Promise((r) => setTimeout(r, attempt === 0 ? 700 : 1400));
   }
   console.warn("[live-room] failed to sign product image after retry", path);
-  return { ...row, image_url: null };
+  return row;
 }
 
 export type ChatEvt = {
@@ -69,6 +69,7 @@ export type LiveRoomState = {
   chat: ChatEvt[];
   heartTick: number;
   products: LiveProductRow[];
+  liveStatus: "live" | "ended" | null;
   auctionStart: AuctionStartEvt | null;
   lastAuctionEnd: AuctionEndEvt | null;
   lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
@@ -109,6 +110,7 @@ export function useLiveRoom(params: {
   const [chat, setChat] = useState<ChatEvt[]>([]);
   const [heartTick, setHeartTick] = useState(0);
   const [products, setProducts] = useState<LiveProductRow[]>([]);
+  const [liveStatus, setLiveStatus] = useState<"live" | "ended" | null>(null);
   const [auctionStart, setAuctionStart] = useState<AuctionStartEvt | null>(null);
   const [lastAuctionEnd, setLastAuctionEnd] = useState<AuctionEndEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
@@ -119,10 +121,33 @@ export function useLiveRoom(params: {
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
-    fetchLiveProducts(liveId).then(async (p) => {
+    void (async () => {
+      const [p, liveRes, bidRes] = await Promise.all([
+        fetchLiveProducts(liveId),
+        supabase.from("lives").select("status").eq("id", liveId).maybeSingle(),
+        supabase
+          .from("live_bids")
+          .select("product_id, bidder_id, bidder_name, amount")
+          .eq("live_id", liveId)
+          .order("amount", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
       const hydrated = await Promise.all(p.map(hydrateImage));
-      if (alive) setProducts(hydrated);
-    });
+      if (!alive) return;
+      setProducts(hydrated);
+      setLiveStatus((liveRes.data?.status as "live" | "ended" | undefined) ?? null);
+      if (bidRes.data) {
+        setLastBid({
+          productId: bidRes.data.product_id,
+          bidderId: bidRes.data.bidder_id,
+          bidderName: bidRes.data.bidder_name,
+          amount: Number(bidRes.data.amount),
+          ts: Date.now(),
+        });
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -133,6 +158,14 @@ export function useLiveRoom(params: {
     if (!liveId) return;
     const ch = supabase
       .channel(`live-db:${liveId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "lives", filter: `id=eq.${liveId}` },
+        (payload) => {
+          const row = payload.new as { status?: "live" | "ended" };
+          setLiveStatus(row.status ?? null);
+        },
+      )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
@@ -246,6 +279,7 @@ export function useLiveRoom(params: {
       chat,
       heartTick,
       products,
+      liveStatus,
       auctionStart,
       lastAuctionEnd,
       lastBid,
@@ -281,7 +315,7 @@ export function useLiveRoom(params: {
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, auctionStart, lastAuctionEnd, lastBid,
+      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastBid,
       identity, displayName,
     ],
   );

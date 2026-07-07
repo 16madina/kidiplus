@@ -641,6 +641,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       list_my_blocks: { Args: never; Returns: Json }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
+      place_live_bid: {
+        Args: { _bidder_name: string; _live_id: string; _product_id: string }
+        Returns: Json
+      }
       purchase_fixed_price: {
         Args: { _buyer_identity: string; _product_id: string }
         Returns: {

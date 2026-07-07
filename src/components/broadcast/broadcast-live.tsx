@@ -12,6 +12,7 @@ import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
 import { formatMoney } from "@/lib/money";
@@ -44,6 +45,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
+  const [lastBidFlash, setLastBidFlash] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
@@ -167,7 +169,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    void endAuctionInDb(activeAuction.productId, null, finalPrice);
+    void endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
     room.broadcastAuctionEnd({
       productId: activeAuction.productId,
       winnerId,
@@ -195,6 +197,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
   }, [room.lastAuctionEnd, room.products, t, room]);
+
+  // Host-visible bid flash for every new realtime bid.
+  const seenBidRef = useRef<number | null>(null);
+  useEffect(() => {
+    const bid = room.lastBid;
+    if (!bid || seenBidRef.current === bid.ts) return;
+    seenBidRef.current = bid.ts;
+    const prod = room.products.find((p) => p.id === bid.productId);
+    setLastBidFlash(`${bid.bidderName} · ${fmt(bid.amount)}${prod ? ` — ${prod.name}` : ""}`);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
+  }, [room.lastBid, room.products]);
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
   const seenSoldOutRef = useRef<Set<string>>(new Set());
@@ -279,7 +293,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    await endAuctionInDb(activeAuction.productId, null, finalPrice);
+    await endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
     room.broadcastAuctionEnd({
       productId: activeAuction.productId,
       winnerId,
@@ -301,7 +315,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
   };
 
-  const endLive = () => {
+  const endLive = async () => {
     haptic.success();
     b.setSession({
       title: b.title,
@@ -320,9 +334,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         })),
     });
     if (b.liveId) {
-      void import("@/lib/lives-db").then(({ endLiveInDb }) =>
-        endLiveInDb(b.liveId!).catch(() => {}),
-      );
+      const { endLiveInDb } = await import("@/lib/lives-db");
+      await endLiveInDb(b.liveId).catch(() => {});
     }
     onEnd();
   };
@@ -551,6 +564,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         )}
       </AnimatePresence>
 
+      {/* New bid flash */}
+      <AnimatePresence>
+        {lastBidFlash && !lastSaleFlash && (
+          <motion.div
+            key={lastBidFlash}
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.22, ease: EASE_IOS }}
+            className="absolute left-1/2 top-24 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-[13px] font-bold text-white"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.7 0.2 55), oklch(0.62 0.2 35))",
+              boxShadow: "0 8px 24px rgba(255,130,30,0.28)",
+            }}
+          >
+            {lastBidFlash}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Featured / auction overlay — tap to open the products dock. */}
       {/* Compact featured card (top-right). Always shown while a product is
           queued; swaps in the next upcoming one automatically after a sale. */}
@@ -576,13 +609,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <div className="relative mb-1">
-                {imgFor(featured) ? (
-                  <img src={imgFor(featured)!} alt="" className="h-14 w-full rounded-lg object-cover" />
-                ) : (
-                  <div className="grid h-14 w-full place-items-center rounded-lg bg-white/10">
-                    <Package size={16} className="text-white/60" />
-                  </div>
-                )}
+                <LiveProductImage
+                  src={imgFor(featured)}
+                  className="h-14 w-full rounded-lg object-cover"
+                  iconClassName="text-white/60"
+                />
                 <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
                   {t("live.featured")}
                 </span>
@@ -771,13 +802,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 const imgUrl = imgFor(p);
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {imgUrl ? (
-                      <img src={imgUrl} alt="" className="h-14 w-14 rounded-xl object-cover" />
-                    ) : (
-                      <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
-                        <Package size={18} className="text-muted-foreground" />
-                      </div>
-                    )}
+                    <LiveProductImage
+                      src={imgUrl}
+                      className="h-14 w-14 rounded-xl object-cover"
+                      placeholderClassName="bg-muted"
+                      iconClassName="text-muted-foreground"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{p.name}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -840,7 +870,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <div className="flex-1" />
           <div className="flex flex-col gap-2">
             <Press
-              onClick={endLive}
+              onClick={() => { void endLive(); }}
               className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
               style={{
                 background: "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
@@ -909,13 +939,11 @@ function SellerProductCard({
       }}
     >
       <button onClick={onFeature} className="relative h-20 w-full overflow-hidden text-left">
-        {product.image_url ? (
-          <img src={product.image_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full w-full place-items-center bg-white/10">
-            <Package size={20} className="text-white/60" />
-          </div>
-        )}
+        <LiveProductImage
+          src={product.image_url}
+          className="h-full w-full object-cover"
+          iconClassName="text-white/60"
+        />
         {featured && (
           <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]">
             {t("live.featured")}

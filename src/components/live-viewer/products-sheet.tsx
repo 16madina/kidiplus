@@ -4,6 +4,7 @@ import { type Product } from "@/lib/live-viewer-mock";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { LiveProductImage } from "./live-product-image";
 
 export function ProductsSheet({
   open,
@@ -11,12 +12,14 @@ export function ProductsSheet({
   products,
   currency = "EUR",
   onBuyFixed,
+  disabled = false,
 }: {
   open: boolean;
   onClose: () => void;
   products: Product[];
   currency?: string;
   onBuyFixed: (p: Product) => void;
+  disabled?: boolean;
 }) {
   const { i18n } = useTranslation();
   const cur = normalizeCurrency(currency);
@@ -35,6 +38,7 @@ export function ProductsSheet({
                 currency={cur}
                 locale={i18n.language}
                 onBuyFixed={onBuyFixed}
+                disabled={disabled}
               />
             </li>
           ))}
@@ -49,11 +53,13 @@ function ProductRow({
   currency,
   locale,
   onBuyFixed,
+  disabled,
 }: {
   product: Product;
   currency: string;
   locale: string;
   onBuyFixed: (p: Product) => void;
+  disabled: boolean;
 }) {
   const sold = product.status === "sold";
   const current = product.status === "current";
@@ -73,12 +79,10 @@ function ProductRow({
       }}
     >
       <div className="relative">
-        <img
+        <LiveProductImage
           src={product.image}
           alt=""
           className="h-16 w-16 rounded-xl object-cover"
-          style={{ filter: sold ? "grayscale(1)" : undefined }}
-          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
           draggable={false}
         />
         {sold && (
@@ -102,7 +106,8 @@ function ProductRow({
         <span className="text-sm font-bold">{formatMoney(product.price, currency, locale)}</span>
         {product.mode === "fixed" && !sold && (
           <Press
-            onClick={() => onBuyFixed(product)}
+            onClick={disabled ? undefined : () => onBuyFixed(product)}
+            disabled={disabled}
             className="!min-h-8 rounded-full bg-primary px-3 text-[12px] font-semibold text-primary-foreground"
           >
             Acheter
