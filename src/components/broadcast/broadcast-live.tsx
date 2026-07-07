@@ -621,8 +621,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                   : p.stock <= 0 || p.status === "out";
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {p.image_url && (
+                    {p.image_url ? (
                       <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    ) : (
+                      <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
+                        <Package size={18} className="text-muted-foreground" />
+                      </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{p.name}</p>
