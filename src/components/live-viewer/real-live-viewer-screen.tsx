@@ -227,7 +227,16 @@ export function RealLiveViewerScreen() {
   }, [room.viewerCount, viewerMotion]);
 
   // Bidding
-  const doBid = async () => {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customMinOverride, setCustomMinOverride] = useState<number | null>(null);
+
+  // Close custom panel when the active auction changes or ends.
+  useEffect(() => {
+    setCustomOpen(false);
+    setCustomMinOverride(null);
+  }, [currentProduct?.id, room.auctionStart?.deadlineMs, liveEnded]);
+
+  const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
@@ -242,10 +251,30 @@ export function RealLiveViewerScreen() {
       productId: currentProduct.id,
       bidderId: user.id,
       bidderName: displayName,
-      amount: nextBidAmount(Number(currentProduct.price), liveCurrency),
+      amount: customAmount,
     });
     if (!res.ok) {
+      if (res.error === "price_changed" && res.minNext !== undefined) {
+        setCustomMinOverride(res.minNext);
+        toast(t("bid.custom.priceChanged", {
+          defaultValue: "Le prix a changé — nouvelle enchère min : {{amount}}",
+          amount: formatLive(res.minNext),
+        }));
+        return;
+      }
+      if (res.error === "above_cap" && res.maxAmount !== undefined) {
+        toast.error(t("bid.custom.aboveCap", {
+          defaultValue: "Max {{amount}}",
+          amount: formatLive(res.maxAmount),
+        }));
+        return;
+      }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
+      return;
+    }
+    if (customAmount !== undefined) {
+      setCustomOpen(false);
+      setCustomMinOverride(null);
     }
   };
 
