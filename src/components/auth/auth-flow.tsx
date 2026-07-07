@@ -118,11 +118,10 @@ function Welcome({
         </Press>
         <Press
           onClick={onSignIn}
-          className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold"
+          className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold text-white"
           style={{
             backgroundColor: "transparent",
-            color: "var(--foreground)",
-            border: "1.5px solid var(--border)",
+            border: "1.5px solid rgba(255,255,255,0.25)",
           }}
         >
           {t("auth.welcome.signIn")}
