@@ -181,17 +181,9 @@ export function PaymentSheet({
                   </div>
                 </div>
 
-                {/* Fee breakdown */}
+                {/* Total (buyer pays exactly item price) */}
                 <dl className="mt-4 space-y-2 text-sm">
                   <Row label={t("pay.item")} value={fmt(Number(order.amount))} />
-                  <Row
-                    label={t("pay.platformFee")}
-                    value={fmt(Number(order.platform_fee))}
-                  />
-                  <Row
-                    label={t("pay.processingFee")}
-                    value={fmt(Number(order.processing_fee))}
-                  />
                   <div className="my-2 h-px bg-border" />
                   <Row label={t("pay.total")} value={fmt(Number(order.total))} bold />
                 </dl>
