@@ -85,10 +85,11 @@ export function BuySheet({
                 <div className="mt-auto pt-6">
                   <Press
                     onClick={confirm}
-                    className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground"
+                    className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
                   >
-                    Confirmer et payer {formatEuro(total)}
+                    {busy ? "…" : `Confirmer et payer ${formatEuro(total)}`}
                   </Press>
+
                   <Press
                     onClick={onClose}
                     className="mt-2 w-full rounded-2xl py-3 text-[14px] font-semibold text-muted-foreground"
