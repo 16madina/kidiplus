@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { Gavel, Timer, ChevronUp } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Gavel, Timer, ChevronUp, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { type Product } from "@/lib/live-viewer-mock";
