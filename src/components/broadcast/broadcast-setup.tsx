@@ -45,15 +45,16 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = urlTrackerRef.current.track(URL.createObjectURL(file));
-    // Revoke previously chosen cover if it was one of ours.
     if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
     b.setCover(url);
-    // Reset so selecting the same file again still fires onChange.
+    b.setCoverFile(file);
     e.target.value = "";
     haptic.selection();
   };
 
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
+  const [launching, setLaunching] = useState(false);
+
 
   const launch = () => {
     if (!canLaunch) return;
