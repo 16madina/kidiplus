@@ -18,6 +18,7 @@ import { haptic } from "@/lib/haptics";
 import { useAppActive } from "@/lib/app-state";
 import { pushStatusBarLight } from "@/lib/native";
 import { useLiveRoom } from "@/lib/live-room";
+import { useImmersiveScope } from "@/lib/immersive-context";
 import {
   startAuctionInDb, endAuctionInDb, activateFixedInDb, stopFixedInDb,
   type LiveProductRow,
