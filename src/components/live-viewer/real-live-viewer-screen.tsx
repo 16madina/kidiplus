@@ -463,12 +463,27 @@ export function RealLiveViewerScreen() {
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
             }
-            onBid={doBid}
+            onBid={() => { void doBid(); }}
             onOpenProducts={() => setShowProducts(true)}
             onBuy={() => {
               if (!currentProduct) return;
               void startFixedPurchase(currentProduct);
             }}
+            onToggleCustom={() => { haptic.light(); setCustomOpen((v) => !v); setCustomMinOverride(null); }}
+            customOpen={customOpen}
+            customPanel={
+              currentProduct && currentProduct.mode === "auction" ? (
+                <CustomBidStepper
+                  open={customOpen}
+                  onClose={() => setCustomOpen(false)}
+                  currentPrice={Number(currentProduct.price)}
+                  startPrice={Number(currentProduct.start_price)}
+                  currency={liveCurrency}
+                  minOverride={customMinOverride}
+                  onConfirm={(amount) => doBid(amount)}
+                />
+              ) : null
+            }
           />
         </div>
       )}
