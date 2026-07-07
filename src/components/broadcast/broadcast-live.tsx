@@ -56,6 +56,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   >([]);
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
 
+  // Refs to avoid stale closures + track pending timers for cleanup.
+  const soldListRef = useRef(soldList);
+  useEffect(() => { soldListRef.current = soldList; }, [soldList]);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Force light status bar icons during broadcast
   useEffect(() => {
     let cleanup: (() => void) | undefined;
