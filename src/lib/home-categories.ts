@@ -30,14 +30,6 @@ export const HOME_CATEGORY_LABEL_KEY: Record<HomeCategory, string> = {
   "Électronique": "home.categories.electronics",
 };
 
-/** i18n key per home filter id. */
-export const HOME_FILTER_LABEL_KEY: Record<HomeFilter, string> = {
-  "Recommandés": "home.filters.recommended",
-  "Achat immédiat": "home.filters.buyNow",
-  "Populaires": "home.filters.popular",
-  "Nouveautés": "home.filters.new",
-};
-
 type Meta = {
   /** Underlying stream categories to include when this tile is active. */
   match: Array<Exclude<Category, "For You">> | "all";
