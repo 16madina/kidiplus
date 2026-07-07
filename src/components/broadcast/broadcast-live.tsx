@@ -45,6 +45,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [productsOpen, setProductsOpen] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Hide the app's bottom tab bar while the host is on-air.
+  useImmersiveScope(true);
+
   const room = useLiveRoom({
     liveId: b.liveId,
     identity: b.hostIdentity ?? "host",
