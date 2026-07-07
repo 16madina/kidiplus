@@ -20,6 +20,7 @@ import { formatEuro } from "@/lib/live-viewer-mock";
 type Tab = "notifs" | "orders";
 
 export function ActivityScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<Notification[]>([]);
