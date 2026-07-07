@@ -354,7 +354,10 @@ export function RealLiveViewerScreen() {
             }
             onBid={doBid}
             onOpenProducts={() => setShowProducts(true)}
-            onBuy={() => setBuyProduct(currentAsProduct)}
+            onBuy={() => {
+              if (!currentProduct) return;
+              void startFixedPurchase(currentProduct);
+            }}
           />
         </div>
       )}
