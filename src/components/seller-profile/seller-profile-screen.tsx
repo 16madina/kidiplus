@@ -439,8 +439,9 @@ function LivesTab({ info }: { info: SellerInfo }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-semibold">{s.title}</p>
               <p className="text-[12px] text-muted-foreground">
-                {s.past ? "Terminé · " : ""}{formatDate(s.date)}
+                {s.past ? `${t("seller.ended")} · ` : ""}{formatShortDateTime(s.date, lang)}
               </p>
+
             </div>
             {!s.past && (
               <motion.div
