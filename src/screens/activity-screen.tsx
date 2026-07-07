@@ -12,7 +12,7 @@ import {
   orderDateShort,
   type Notification,
 } from "@/lib/activity-mock";
-import { formatEuro } from "@/lib/live-viewer-mock";
+import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/auth-context";
 import {
   fetchMyOrders,
