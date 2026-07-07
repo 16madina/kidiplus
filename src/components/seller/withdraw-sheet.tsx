@@ -90,9 +90,16 @@ export function WithdrawSheet({
   }, [open, available, defaultMethod]);
 
   const destination = useMemo<Record<string, string>>(() => {
-    if (method === "bank_transfer") return { iban: iban.trim(), holder: holder.trim() };
-    if (method === "paypal") return { paypalEmail: paypalEmail.trim() };
-    return { phone: phone.trim() };
+    if (method === "bank_transfer") {
+      const d: Record<string, string> = { iban: iban.trim(), holder: holder.trim() };
+      return d;
+    }
+    if (method === "paypal") {
+      const d: Record<string, string> = { paypalEmail: paypalEmail.trim() };
+      return d;
+    }
+    const d: Record<string, string> = { phone: phone.trim() };
+    return d;
   }, [method, phone, iban, holder, paypalEmail]);
 
   const emailTrimmed = paypalEmail.trim();
