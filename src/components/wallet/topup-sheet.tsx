@@ -218,8 +218,10 @@ export function TopUpSheet({
                     </span>
                     <input
                       value={custom}
-                      onChange={(e) => setCustom(e.target.value.replace(/[^0-9.,]/g, ""))}
-                      inputMode="decimal"
+                      onChange={(e) => setCustom(
+                        e.target.value.replace(zeroDec ? /[^0-9]/g : /[^0-9.,]/g, ""),
+                      )}
+                      inputMode={zeroDec ? "numeric" : "decimal"}
                       placeholder={`${MIN_AMOUNT}–${MAX_AMOUNT}`}
                       className="flex-1 bg-transparent text-right text-[15px] font-bold outline-none tabular-nums"
                     />
