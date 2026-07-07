@@ -61,6 +61,19 @@ export function SignUpScreen({
         displayName: displayName.trim(),
       });
       haptic.success();
+      // Best-effort: persist acceptance timestamps on the profile.
+      const now = new Date().toISOString();
+      void (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          await (supabase as any).from("profiles").update({
+            terms_accepted_at: now,
+            terms_version: TERMS_VERSION,
+            age_confirmed_at: now,
+          }).eq("id", user.id);
+        } catch { /* ignore */ }
+      })();
       if (needsEmailConfirmation) {
         setNeedsConfirm(email.trim());
       }
