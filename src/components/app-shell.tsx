@@ -33,15 +33,17 @@ export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 export function AppShell() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <PushProvider>
-          <SellerProfileProvider>
-            <LiveViewerProvider>
-              <AuthGate />
-            </LiveViewerProvider>
-          </SellerProfileProvider>
-        </PushProvider>
-      </SettingsProvider>
+      <LanguageProvider>
+        <SettingsProvider>
+          <PushProvider>
+            <SellerProfileProvider>
+              <LiveViewerProvider>
+                <AuthGate />
+              </LiveViewerProvider>
+            </SellerProfileProvider>
+          </PushProvider>
+        </SettingsProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }
