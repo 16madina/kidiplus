@@ -29,11 +29,11 @@ export function Logo({
       <img
         src={logoAsset.url}
         alt="KiDi+"
-
+        onLoad={() => setLoaded(true)}
         onError={() => setImgFailed(true)}
-        style={{ height: size, width: "auto", display: "block" }}
-        className={className}
+        className={`${className} ${loaded ? "is-loaded" : ""}`}
         draggable={false}
+        style={{ height: size, width: "auto", display: "block" }}
       />
     );
   }
