@@ -94,14 +94,43 @@ export function AddProductSheet({
           </Press>
         </div>
 
-        {/* Image picker */}
+        {/* Image picker: chosen preview + import button + preset quick-picks. */}
         <div className="flex gap-2 overflow-x-auto pb-3">
+          <Press
+            onClick={pickImage}
+            hapticOnTap={false}
+            className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
+            style={{ outline: "2px solid var(--accent)", outlineOffset: 2 }}
+            aria-label="Photo actuelle du produit"
+          >
+            <motion.img
+              key={image}
+              src={image}
+              alt=""
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, ease: EASE_IOS }}
+              className="h-full w-full object-cover"
+            />
+          </Press>
+          <Press
+            onClick={pickImage}
+            hapticOnTap={false}
+            className="!min-h-16 grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-dashed"
+            style={{ borderColor: "var(--border)" }}
+            aria-label="Importer une image"
+          >
+            <ImageIcon size={20} className="text-muted-foreground" />
+          </Press>
           {PRODUCT_IMG_POOL.map((src) => {
             const active = src === image;
             return (
               <Press
                 key={src}
-                onClick={() => setImage(src)}
+                onClick={() => {
+                  if (isBlobUrl(image)) urlTrackerRef.current.revoke(image);
+                  setImage(src);
+                }}
                 className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
                 style={{
                   outline: active ? "2px solid var(--accent)" : "none",
@@ -112,14 +141,15 @@ export function AddProductSheet({
               </Press>
             );
           })}
-          <Press
-            className="!min-h-16 grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-dashed"
-            style={{ borderColor: "var(--border)" }}
-            aria-label="Importer une image"
-          >
-            <ImageIcon size={20} className="text-muted-foreground" />
-          </Press>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFile}
+          />
         </div>
+
 
         {/* Name */}
         <label className="text-[12px] font-semibold text-muted-foreground">
