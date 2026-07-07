@@ -9,32 +9,49 @@ import { EASE_IOS } from "@/lib/motion";
 import {
   formatRelative,
   initialNotifications,
-  initialOrders,
   orderDateShort,
-  orderStatusMeta,
   type Notification,
-  type Order,
 } from "@/lib/activity-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
+import { useAuth } from "@/lib/auth-context";
+import {
+  fetchMyOrders,
+  subscribeOrders,
+  type OrderRow,
+  type OrderStatus,
+} from "@/lib/orders-db";
 
 type Tab = "notifs" | "orders";
 
 export function ActivityScreen() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<Notification[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [openOrder, setOpenOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
+
+  // Notifs still mocked; orders come from the DB.
+  useEffect(() => {
+    const to = setTimeout(() => {
+      setNotifs(initialNotifications());
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(to);
+  }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setNotifs(initialNotifications());
-      setOrders(initialOrders());
-      setLoading(false);
-    }, 450);
-    return () => clearTimeout(t);
-  }, []);
+    if (!user) { setOrders([]); return; }
+    let alive = true;
+    const load = async () => {
+      const rows = await fetchMyOrders(user.id);
+      if (alive) setOrders(rows);
+    };
+    void load();
+    const unsub = subscribeOrders({ buyerId: user.id }, () => { void load(); });
+    return () => { alive = false; unsub(); };
+  }, [user]);
 
   const removeNotif = (id: string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
