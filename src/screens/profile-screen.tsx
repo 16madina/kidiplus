@@ -19,6 +19,10 @@ import {
   Wallet as WalletIcon,
   Coins,
   ShieldCheck,
+  FileText,
+  ShieldAlert,
+  UserX,
+  Trash2,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -35,6 +39,9 @@ import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
+import { LegalScreen } from "@/components/legal/legal-screen";
+import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
+import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
