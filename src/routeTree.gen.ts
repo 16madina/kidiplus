@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
+import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -28,34 +29,48 @@ const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
   path: '/api/livekit-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
+  id: '/api/checkout',
+  path: '/api/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/checkout': typeof ApiCheckoutRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reset-password' | '/api/livekit-token'
+  fullPaths: '/' | '/reset-password' | '/api/checkout' | '/api/livekit-token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reset-password' | '/api/livekit-token'
-  id: '__root__' | '/' | '/reset-password' | '/api/livekit-token'
+  to: '/' | '/reset-password' | '/api/checkout' | '/api/livekit-token'
+  id:
+    | '__root__'
+    | '/'
+    | '/reset-password'
+    | '/api/checkout'
+    | '/api/livekit-token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiCheckoutRoute: typeof ApiCheckoutRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
 }
 
@@ -82,12 +97,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLivekitTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/checkout': {
+      id: '/api/checkout'
+      path: '/api/checkout'
+      fullPath: '/api/checkout'
+      preLoaderRoute: typeof ApiCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiCheckoutRoute: ApiCheckoutRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
 }
 export const routeTree = rootRouteImport
