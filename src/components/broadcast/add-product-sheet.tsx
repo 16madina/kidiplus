@@ -163,7 +163,7 @@ export function AddProductSheet({
         />
 
         {/* Mode toggle */}
-        <div className="mt-4 flex rounded-full bg-muted p-1">
+        <div className="relative mt-4 flex rounded-full bg-muted p-1">
           {(["auction", "fixed"] as SellMode[]).map((m) => {
             const active = m === mode;
             return (
@@ -173,21 +173,28 @@ export function AddProductSheet({
                   haptic.selection();
                   setMode(m);
                 }}
+                type="button"
                 className="relative h-9 flex-1 rounded-full text-[13px] font-semibold"
-                style={{ color: active ? "white" : "var(--foreground)" }}
+                style={{
+                  color: active ? "white" : "var(--foreground)",
+                  transition: "color 0.2s",
+                }}
               >
                 {active && (
                   <motion.span
                     layoutId="mode-pill"
-                    className="absolute inset-0 -z-10 rounded-full bg-foreground"
+                    className="absolute inset-0 rounded-full bg-foreground"
                     transition={{ duration: 0.2, ease: EASE_IOS }}
                   />
                 )}
-                {m === "auction" ? "Enchère" : "Prix fixe"}
+                <span className="relative z-10">
+                  {m === "auction" ? "Enchère" : "Prix fixe"}
+                </span>
               </Press>
             );
           })}
         </div>
+
 
         {/* Mode-specific fields */}
         {mode === "auction" ? (
