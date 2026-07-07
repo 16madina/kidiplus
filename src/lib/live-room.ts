@@ -22,20 +22,24 @@ import {
 } from "@/lib/lives-db";
 
 /** Resolve the stored image_url path (bucket path) into a signed/absolute URL.
- *  If resolution fails, null out image_url so the UI can render a placeholder
- *  instead of a broken <img> pointing at a raw storage path. */
+ *  Signing can transiently fail (auth not yet attached / network warmup); we
+ *  retry once before giving up. If it still fails, keep image_url = null so
+ *  the UI shows a placeholder rather than a broken <img>. */
 async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   if (!row.image_url) return row;
   if (/^https?:\/\//i.test(row.image_url)) return row;
-  try {
-    const url = await resolveLiveImage("live-products", row.image_url);
-    if (url) return { ...row, image_url: url };
-    console.warn("[live-room] failed to sign product image", row.image_url);
-    return { ...row, image_url: null };
-  } catch (err) {
-    console.warn("[live-room] hydrateImage error", err, row.image_url);
-    return { ...row, image_url: null };
+  const path = row.image_url;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const url = await resolveLiveImage("live-products", path);
+      if (url) return { ...row, image_url: url };
+    } catch (err) {
+      console.warn("[live-room] hydrateImage error", err, path);
+    }
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
   }
+  console.warn("[live-room] failed to sign product image after retry", path);
+  return { ...row, image_url: null };
 }
 
 export type ChatEvt = {
