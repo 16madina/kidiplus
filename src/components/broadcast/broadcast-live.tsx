@@ -315,7 +315,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
   };
 
-  const endLive = () => {
+  const endLive = async () => {
     haptic.success();
     b.setSession({
       title: b.title,
@@ -334,9 +334,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         })),
     });
     if (b.liveId) {
-      void import("@/lib/lives-db").then(({ endLiveInDb }) =>
-        endLiveInDb(b.liveId!).catch(() => {}),
-      );
+      const { endLiveInDb } = await import("@/lib/lives-db");
+      await endLiveInDb(b.liveId).catch(() => {});
     }
     onEnd();
   };
@@ -871,7 +870,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <div className="flex-1" />
           <div className="flex flex-col gap-2">
             <Press
-              onClick={endLive}
+              onClick={() => { void endLive(); }}
               className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
               style={{
                 background: "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
