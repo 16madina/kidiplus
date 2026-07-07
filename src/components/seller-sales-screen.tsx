@@ -78,7 +78,7 @@ export function SellerSalesScreen({
             {t("sales.revenue")}
           </div>
           <div className="mt-1 text-[32px] font-bold tabular-nums leading-none">
-            {formatEuro(revenue)}
+            {formatMoney(revenue, revenueCurrency)}
           </div>
         </div>
 
