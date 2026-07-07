@@ -114,10 +114,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured defaults to first product once loaded.
+  // Featured auto-advances: on load, and whenever the current featured is sold
+  // out or removed, jump to the next non-sold product (or clear if none left).
   useEffect(() => {
-    if (!featuredId && room.products.length > 0) {
-      setFeaturedId(room.products[0].id);
+    if (room.products.length === 0) {
+      if (featuredId) setFeaturedId("");
+      return;
+    }
+    const cur = room.products.find((p) => p.id === featuredId);
+    const done = cur && (cur.status === "sold" || cur.status === "out");
+    if (!cur || done) {
+      const next = room.products.find((p) => p.status !== "sold" && p.status !== "out");
+      setFeaturedId(next?.id ?? "");
     }
   }, [room.products, featuredId]);
 
