@@ -487,37 +487,48 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
 
-        {/* Product control dock — compact, right-aligned so it doesn't
-            cover the chat column on the left. */}
+        {/* Product control dock — right-aligned so it doesn't cover the chat.
+            The next auction product gets a highlight ring so the host always
+            knows which "Démarrer" button to tap next. */}
         <div
-          className="flex justify-end gap-2 overflow-x-auto pl-[45%] pr-3 pb-1"
+          className="flex justify-end gap-2 overflow-x-auto pl-[30%] pr-3 pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {b.products.map((p) => {
-            const soldOut = p.mode === "auction"
-              ? soldList.some((s) => s.productId === p.id)
-              : (fixedStates[p.id]?.soldCount ?? 0) >= p.stock;
-            const auctionActive = auction?.productId === p.id;
-            const onSale = p.mode === "fixed" && !!fixedStates[p.id];
-            const soldCount = fixedStates[p.id]?.soldCount ?? 0;
-            const isFeatured = p.id === featuredId;
-            return (
-              <SellerProductCard
-                key={p.id}
-                product={p}
-                soldOut={soldOut}
-                featured={isFeatured}
-                auctionActive={auctionActive}
-                onSale={onSale}
-                soldCount={soldCount}
-                onStartAuction={() => startAuction(p)}
-                onEndAuction={endAuctionNow}
-                onToggleFixed={() => toggleFixedSale(p)}
-                onFeature={() => { haptic.selection(); setFeaturedId(p.id); }}
-              />
-            );
-          })}
+          {(() => {
+            const nextAuctionId = !auction
+              ? b.products.find(
+                  (p) => p.mode === "auction" && !soldList.some((s) => s.productId === p.id),
+                )?.id ?? null
+              : null;
+            return b.products.map((p) => {
+              const soldOut = p.mode === "auction"
+                ? soldList.some((s) => s.productId === p.id)
+                : (fixedStates[p.id]?.soldCount ?? 0) >= p.stock;
+              const auctionActive = auction?.productId === p.id;
+              const onSale = p.mode === "fixed" && !!fixedStates[p.id];
+              const soldCount = fixedStates[p.id]?.soldCount ?? 0;
+              const isFeatured = p.id === featuredId;
+              const isNextAuction = p.id === nextAuctionId;
+              return (
+                <SellerProductCard
+                  key={p.id}
+                  product={p}
+                  soldOut={soldOut}
+                  featured={isFeatured}
+                  auctionActive={auctionActive}
+                  isNextAuction={isNextAuction}
+                  onSale={onSale}
+                  soldCount={soldCount}
+                  onStartAuction={() => startAuction(p)}
+                  onEndAuction={endAuctionNow}
+                  onToggleFixed={() => toggleFixedSale(p)}
+                  onFeature={() => { haptic.selection(); setFeaturedId(p.id); }}
+                />
+              );
+            });
+          })()}
         </div>
+
 
       </div>
 
@@ -553,12 +564,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 }
 
 function SellerProductCard({
-  product, featured, auctionActive, onSale, soldOut, soldCount,
+  product, featured, auctionActive, isNextAuction, onSale, soldOut, soldCount,
   onStartAuction, onEndAuction, onToggleFixed, onFeature,
 }: {
   product: BProduct;
   featured: boolean;
   auctionActive: boolean;
+  isNextAuction: boolean;
   onSale: boolean;
   soldOut: boolean;
   soldCount: number;
@@ -567,30 +579,48 @@ function SellerProductCard({
   onToggleFixed: () => void;
   onFeature: () => void;
 }) {
+  const ringColor = auctionActive
+    ? "oklch(0.62 0.24 20)"
+    : featured
+      ? "white"
+      : isNextAuction
+        ? "oklch(0.85 0.18 90)"
+        : "transparent";
   return (
     <motion.div
       layout
-      className="relative flex w-28 shrink-0 flex-col overflow-hidden rounded-xl text-white"
+      animate={isNextAuction && !auctionActive ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+      transition={isNextAuction && !auctionActive
+        ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
+        : { duration: 0.2 }}
+      className="relative flex w-32 shrink-0 flex-col overflow-hidden rounded-xl text-white"
       style={{
         backgroundColor: "rgba(0,0,0,0.55)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        outline: featured ? "2px solid white" : "none",
+        outline: `2px solid ${ringColor}`,
         outlineOffset: -2,
+        opacity: soldOut ? 0.7 : 1,
       }}
     >
       <button
         onClick={onFeature}
-        className="relative h-14 w-full overflow-hidden text-left"
+        className="relative h-20 w-full overflow-hidden text-left"
       >
         <img src={product.image} alt="" className="h-full w-full object-cover" />
         {featured && (
-          <span className="absolute left-1 top-1 rounded-full bg-white px-1 py-0.5 text-[8px] font-bold text-black">
+          <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-black">
             À l'écran
           </span>
         )}
+        {isNextAuction && !featured && (
+          <span className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-black"
+            style={{ backgroundColor: "oklch(0.85 0.18 90)" }}>
+            À suivre
+          </span>
+        )}
         {soldOut && (
-          <div className="absolute inset-0 grid place-items-center bg-black/60 text-[11px] font-bold">
+          <div className="absolute inset-0 grid place-items-center bg-black/60 text-[12px] font-bold">
             VENDU
           </div>
         )}
@@ -600,14 +630,14 @@ function SellerProductCard({
         <span className="truncate text-[11px] font-semibold leading-tight">{product.name}</span>
         {product.mode === "auction" ? (
           <>
-            <span className="text-[9px] leading-tight text-white/70">
+            <span className="text-[10px] leading-tight text-white/70">
               {formatEuro(product.startPrice)} · {product.timerSec}s
             </span>
             {!soldOut && (
               auctionActive ? (
                 <Press
                   onClick={onEndAuction}
-                  className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold text-white"
+                  className="!min-h-8 mt-1 h-8 rounded-full text-[11px] font-bold text-white"
                   style={{ backgroundColor: "oklch(0.62 0.24 20)" }}
                 >
                   Stop enchère
@@ -616,28 +646,31 @@ function SellerProductCard({
                 <Press
                   onClick={onStartAuction}
                   hapticOnTap={false}
-                  className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold text-black"
-                  style={{ backgroundColor: "white" }}
+                  className="!min-h-8 mt-1 h-8 rounded-full text-[11px] font-bold"
+                  style={{
+                    backgroundColor: isNextAuction ? "oklch(0.85 0.18 90)" : "white",
+                    color: "black",
+                  }}
                 >
-                  Démarrer
+                  {isNextAuction ? "Démarrer ▸" : "Démarrer"}
                 </Press>
               )
             )}
           </>
         ) : (
           <>
-            <span className="text-[9px] leading-tight text-white/70">
+            <span className="text-[10px] leading-tight text-white/70">
               {formatEuro(product.price)} · {Math.max(0, product.stock - soldCount)}/{product.stock}
             </span>
             {soldOut ? (
-              <div className="mt-1 grid h-7 place-items-center rounded-full bg-white/10 text-[10px] font-bold text-white/70">
+              <div className="mt-1 grid h-8 place-items-center rounded-full bg-white/10 text-[11px] font-bold text-white/70">
                 Rupture
               </div>
             ) : (
               <Press
                 onClick={onToggleFixed}
                 hapticOnTap={false}
-                className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold"
+                className="!min-h-8 mt-1 h-8 rounded-full text-[11px] font-bold"
                 style={{
                   backgroundColor: onSale ? "oklch(0.72 0.2 145)" : "white",
                   color: onSale ? "white" : "black",
@@ -652,6 +685,7 @@ function SellerProductCard({
     </motion.div>
   );
 }
+
 
 
 function AnimatedEuro({ value }: { value: number }) {
