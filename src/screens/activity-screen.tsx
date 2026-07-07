@@ -223,7 +223,7 @@ function NotifRow({
           className="flex h-full w-full flex-col items-center justify-center gap-1 text-white"
         >
           <Trash2 size={18} strokeWidth={2.2} />
-          <span className="text-[11px] font-semibold">Supprimer</span>
+          <span className="text-[11px] font-semibold">{t("common.delete")}</span>
         </button>
       </div>
 
