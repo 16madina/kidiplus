@@ -86,7 +86,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       >
         <Press
           onClick={onExit}
-          aria-label="Fermer"
+          aria-label={t("common.close")}
           className="!min-h-11 !min-w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.4)",
