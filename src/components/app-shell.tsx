@@ -26,11 +26,13 @@ import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 import { AuthFlow } from "./auth/auth-flow";
+import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
 export function AppShell() {
+  const [splashDone, setSplashDone] = useState(false);
   return (
     <AuthProvider>
       <LanguageProvider>
@@ -39,6 +41,11 @@ export function AppShell() {
             <SellerProfileProvider>
               <LiveViewerProvider>
                 <AuthGate />
+                <AnimatePresence>
+                  {!splashDone && (
+                    <SplashScreen onDone={() => setSplashDone(true)} />
+                  )}
+                </AnimatePresence>
               </LiveViewerProvider>
             </SellerProfileProvider>
           </PushProvider>
