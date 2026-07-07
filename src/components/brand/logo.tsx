@@ -1,8 +1,10 @@
 import { useState } from "react";
+import logoAsset from "@/assets/logo.png.asset.json";
+
 
 /**
  * KiDi+ brand logo.
- * Renders /logo.png (drop the file at public/logo.png) if available,
+ * Renders the uploaded brand mark from Lovable Assets by default,
  * otherwise falls back to a bold wordmark with a gold "+".
  *
  * Gold accent token: var(--primary) (brand gold).
@@ -19,17 +21,19 @@ export function Logo({
   className?: string;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const showImage = variant !== "wordmark" && !imgFailed;
 
   if (showImage) {
     return (
       <img
-        src="/logo.png"
+        src={logoAsset.url}
         alt="KiDi+"
+        onLoad={() => setLoaded(true)}
         onError={() => setImgFailed(true)}
-        style={{ height: size, width: "auto", display: "block" }}
-        className={className}
+        className={`${className} ${loaded ? "is-loaded" : ""}`}
         draggable={false}
+        style={{ height: size, width: "auto", display: "block" }}
       />
     );
   }
