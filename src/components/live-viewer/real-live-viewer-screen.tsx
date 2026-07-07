@@ -1,7 +1,7 @@
 // Real live viewer screen — used when the tapped stream has a DB id.
 // Chat / hearts / auction / buy are wired through Supabase Realtime + DB.
 import { motion, useMotionValue, animate } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Heart, Plus, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -27,7 +27,7 @@ import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
-import { ViewerLiveVideo } from "./viewer-live-video";
+import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 
@@ -78,6 +78,28 @@ export function RealLiveViewerScreen() {
     displayName,
     isHost: false,
   });
+  const [viewerVideoStatus, setViewerVideoStatus] = useState<ViewerStatus>("connecting");
+  const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
+  const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
+
+  useEffect(() => {
+    if (room.liveStatus === "ended") {
+      setHostDisconnectEnded(false);
+      return;
+    }
+    if (viewerVideoStatus !== "ended") {
+      setHostDisconnectEnded(false);
+      return;
+    }
+    const t = setTimeout(() => setHostDisconnectEnded(true), 20_000);
+    return () => clearTimeout(t);
+  }, [viewerVideoStatus, room.liveStatus]);
+
+  useEffect(() => {
+    if (!liveEnded) return;
+    const t = setTimeout(() => close(), 10_000);
+    return () => clearTimeout(t);
+  }, [liveEnded, close]);
 
   // Featured product: server auction pick, else first non-sold.
   const activeAuctionId = room.auctionStart?.productId ?? null;
@@ -172,6 +194,7 @@ export function RealLiveViewerScreen() {
   // Hearts / video tap
   const lastTap = useRef(0);
   const onVideoTap = () => {
+    if (liveEnded) return;
     const nowT = Date.now();
     if (nowT - lastTap.current < 300) {
       room.sendHeart();
@@ -181,7 +204,11 @@ export function RealLiveViewerScreen() {
     }
     lastTap.current = nowT;
   };
-  const fireHeart = () => { haptic.medium(); room.sendHeart(); };
+  const fireHeart = () => {
+    if (liveEnded) return;
+    haptic.medium();
+    room.sendHeart();
+  };
 
   // Follow (local)
   const [following, setFollowing] = useState(false);
@@ -200,19 +227,25 @@ export function RealLiveViewerScreen() {
 
   // Bidding
   const doBid = async () => {
+    if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
     if (secondsLeft <= 0) return;
+    if (room.lastBid?.productId === currentProduct.id && room.lastBid.bidderId === user.id) {
+      toast(t("live.highestBidder"));
+      return;
+    }
     haptic.medium();
-    const nextAmount = nextBidAmount(Number(currentProduct.price), liveCurrency);
     const res = await placeBidInDb({
       liveId: active!.liveId!,
       productId: currentProduct.id,
       bidderId: user.id,
       bidderName: displayName,
-      amount: nextAmount,
+      amount: nextBidAmount(Number(currentProduct.price), liveCurrency),
     });
-    if (!res.ok) toast.error(res.error ?? "Erreur enchère");
+    if (!res.ok) {
+      toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
+    }
   };
 
   // Sheets
@@ -222,6 +255,7 @@ export function RealLiveViewerScreen() {
   // Note (phase 1): if the buyer abandons payment, stock is not automatically
   // returned. A future phase should refund stock on payment_intent.canceled.
   const startFixedPurchase = async (p: LiveProductRow) => {
+    if (liveEnded) return;
     if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
     if (!active?.liveId || !active?.sellerId) return;
     const res = await purchaseFixedPriceRpc(p.id, user.id);
@@ -244,6 +278,7 @@ export function RealLiveViewerScreen() {
   // Composer
   const [draft, setDraft] = useState("");
   const send = () => {
+    if (liveEnded) return;
     const txt = draft.trim();
     if (!txt) return;
     room.sendChat(txt);
@@ -251,6 +286,7 @@ export function RealLiveViewerScreen() {
   };
 
   const dragY = useMotionValue(0);
+  const handleVideoStatus = useCallback((s: ViewerStatus) => setViewerVideoStatus(s), []);
 
   // Moderation
   const [reportOpen, setReportOpen] = useState(false);
@@ -286,6 +322,7 @@ export function RealLiveViewerScreen() {
           identity={`viewer_${identity.slice(0, 8)}`}
           name={displayName}
           posterImage={active.thumbnail.replace("w=600", "w=1200")}
+            onStatus={handleVideoStatus}
         />
       ) : (
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -386,8 +423,12 @@ export function RealLiveViewerScreen() {
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
             auctionActive={
-              !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
+              !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
             }
+            isHighestBidder={
+              !!user && room.lastBid?.productId === currentAsProduct.id && room.lastBid.bidderId === user.id
+            }
+            disabled={liveEnded}
             lastBidder={
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
@@ -409,6 +450,7 @@ export function RealLiveViewerScreen() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={t("live.chatPlaceholder")}
+            disabled={liveEnded}
             className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
             style={{
               backgroundColor: "rgba(0,0,0,0.5)",
@@ -418,12 +460,12 @@ export function RealLiveViewerScreen() {
             }}
           />
         </form>
-        <Press onClick={send} aria-label={t("live.sendMessage")}
+        <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
           className="h-11 w-11 rounded-full text-white"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Send size={17} />
         </Press>
-        <Press onClick={fireHeart} aria-label="Cœur"
+        <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
           className="h-11 w-11 rounded-full text-white"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Heart size={17} fill="currentColor" />
@@ -444,10 +486,12 @@ export function RealLiveViewerScreen() {
         products={productsForSheet}
         currency={liveCurrency}
         onBuyFixed={(p) => {
+          if (liveEnded) return;
           setShowProducts(false);
           const row = room.products.find((r) => r.id === p.id);
           if (row) void startFixedPurchase(row);
         }}
+        disabled={liveEnded}
       />
       <PaymentSheet
         order={pendingOrder}
@@ -473,6 +517,29 @@ export function RealLiveViewerScreen() {
       {active?.liveId && (
         <ReportSheet open={reportOpen} onClose={() => setReportOpen(false)} targetType="live" targetId={active.liveId} />
       )}
+      <AnimatePresence>
+        {liveEnded && (
+          <motion.div
+            key="live-ended"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[80] grid place-items-center bg-black/85 px-6 text-center text-white"
+          >
+            <div className="flex max-w-xs flex-col items-center">
+              <img src={active.avatar} alt="" className="h-16 w-16 rounded-full object-cover ring-2 ring-white/80" />
+              <h2 className="mt-4 text-[24px] font-black leading-tight">{t("live.endedTitle")}</h2>
+              <p className="mt-2 text-[14px] text-white/75">{active.seller}</p>
+              <Press
+                onClick={close}
+                className="!min-h-12 mt-6 h-12 rounded-full bg-white px-6 text-[15px] font-bold text-black"
+              >
+                {t("live.backHome")}
+              </Press>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
