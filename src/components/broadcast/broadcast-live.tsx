@@ -487,8 +487,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
 
+        {/* Product control dock — compact, right-aligned so it doesn't
+            cover the chat column on the left. */}
         <div
-          className="flex gap-2.5 overflow-x-auto px-4 pb-1"
+          className="flex justify-end gap-2 overflow-x-auto pl-[45%] pr-3 pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {b.products.map((p) => {
@@ -516,6 +518,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             );
           })}
         </div>
+
       </div>
 
       {/* End confirm sheet */}
@@ -567,7 +570,7 @@ function SellerProductCard({
   return (
     <motion.div
       layout
-      className="relative flex w-40 shrink-0 flex-col overflow-hidden rounded-2xl text-white"
+      className="relative flex w-28 shrink-0 flex-col overflow-hidden rounded-xl text-white"
       style={{
         backgroundColor: "rgba(0,0,0,0.55)",
         backdropFilter: "blur(12px)",
@@ -578,68 +581,69 @@ function SellerProductCard({
     >
       <button
         onClick={onFeature}
-        className="relative h-20 w-full overflow-hidden text-left"
+        className="relative h-14 w-full overflow-hidden text-left"
       >
         <img src={product.image} alt="" className="h-full w-full object-cover" />
         {featured && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-black">
+          <span className="absolute left-1 top-1 rounded-full bg-white px-1 py-0.5 text-[8px] font-bold text-black">
             À l'écran
           </span>
         )}
         {soldOut && (
-          <div className="absolute inset-0 grid place-items-center bg-black/60 text-[12px] font-bold">
+          <div className="absolute inset-0 grid place-items-center bg-black/60 text-[11px] font-bold">
             VENDU
           </div>
         )}
       </button>
-      <div className="flex flex-1 flex-col gap-1 p-2">
-        <span className="truncate text-[12px] font-semibold">{product.name}</span>
+
+      <div className="flex flex-1 flex-col gap-0.5 p-1.5">
+        <span className="truncate text-[11px] font-semibold leading-tight">{product.name}</span>
         {product.mode === "auction" ? (
           <>
-            <span className="text-[10px] text-white/70">
-              Départ {formatEuro(product.startPrice)} · {product.timerSec}s
+            <span className="text-[9px] leading-tight text-white/70">
+              {formatEuro(product.startPrice)} · {product.timerSec}s
             </span>
             {!soldOut && (
               auctionActive ? (
                 <Press
                   onClick={onEndAuction}
-                  className="!min-h-9 mt-1 h-9 rounded-full text-[12px] font-bold text-white"
+                  className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold text-white"
                   style={{ backgroundColor: "oklch(0.62 0.24 20)" }}
                 >
-                  Terminer l'enchère
+                  Stop enchère
                 </Press>
               ) : (
                 <Press
                   onClick={onStartAuction}
                   hapticOnTap={false}
-                  className="!min-h-9 mt-1 h-9 rounded-full text-[12px] font-bold text-black"
+                  className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold text-black"
                   style={{ backgroundColor: "white" }}
                 >
-                  Démarrer l'enchère
+                  Démarrer
                 </Press>
               )
             )}
           </>
         ) : (
           <>
-            <span className="text-[10px] text-white/70">
-              {formatEuro(product.price)} · {Math.max(0, product.stock - soldCount)}/{product.stock} restants
+            <span className="text-[9px] leading-tight text-white/70">
+              {formatEuro(product.price)} · {Math.max(0, product.stock - soldCount)}/{product.stock}
             </span>
             {soldOut ? (
-              <div className="mt-1 grid h-9 place-items-center rounded-full bg-white/10 text-[12px] font-bold text-white/70">
+              <div className="mt-1 grid h-7 place-items-center rounded-full bg-white/10 text-[10px] font-bold text-white/70">
                 Rupture
               </div>
             ) : (
               <Press
                 onClick={onToggleFixed}
                 hapticOnTap={false}
-                className="!min-h-9 mt-1 h-9 rounded-full text-[12px] font-bold"
+                className="!min-h-7 mt-1 h-7 rounded-full text-[10px] font-bold"
                 style={{
                   backgroundColor: onSale ? "oklch(0.72 0.2 145)" : "white",
                   color: onSale ? "white" : "black",
                 }}
               >
-                {onSale ? "Arrêter la vente" : "Mettre en vente"}
+                {onSale ? "Arrêter" : "Vendre"}
               </Press>
             )}
           </>
@@ -648,6 +652,7 @@ function SellerProductCard({
     </motion.div>
   );
 }
+
 
 function AnimatedEuro({ value }: { value: number }) {
   const mv = useMotionValue(0);
