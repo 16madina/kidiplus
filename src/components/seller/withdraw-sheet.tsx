@@ -28,7 +28,7 @@ export function WithdrawSheet({
   currency: string;
 }) {
   const { t, i18n } = useTranslation();
-  const min = MIN_BY_CURRENCY[currency] ?? 10;
+  const min = payoutMinimumFor(currency);
 
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
   const [amount, setAmount] = useState<number>(available);
