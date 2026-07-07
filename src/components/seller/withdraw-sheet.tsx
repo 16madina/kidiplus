@@ -10,12 +10,11 @@ import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
+import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
-
-const MIN_BY_CURRENCY: Record<string, number> = { XOF: 5000, EUR: 10, CAD: 15 };
 
 export function WithdrawSheet({
   open,
