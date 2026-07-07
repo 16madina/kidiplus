@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
@@ -12,6 +13,7 @@ export function SignUpScreen({
   onBack: () => void;
   onGoSignIn: () => void;
 }) {
+  const { t } = useTranslation();
   const { signUp } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,13 +25,13 @@ export function SignUpScreen({
 
   const validate = () => {
     if (!displayName.trim() || displayName.trim().length < 2) {
-      return "Ton nom doit contenir au moins 2 caractères.";
+      return t("auth.validation.nameRequired");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return "Adresse email invalide.";
+      return t("auth.validation.emailInvalid");
     }
     if (password.length < 8) {
-      return "Le mot de passe doit contenir au moins 8 caractères.";
+      return t("auth.errors.passwordWeak");
     }
     return null;
   };
@@ -53,7 +55,6 @@ export function SignUpScreen({
       if (needsEmailConfirmation) {
         setNeedsConfirm(email.trim());
       }
-      // Otherwise AuthProvider will detect the session and swap to the app.
     } catch (err) {
       haptic.error();
       setError(frenchAuthError(err));
@@ -75,13 +76,11 @@ export function SignUpScreen({
           >
             <Mail size={28} color="oklch(0.5 0.24 20)" />
           </div>
-          <h2 className="text-[24px] font-bold">Vérifie tes emails 📩</h2>
+          <h2 className="text-[24px] font-bold">{t("auth.signUp.checkEmail")} 📩</h2>
           <p className="mt-2 max-w-xs text-[14px] text-muted-foreground">
-            On vient d'envoyer un lien de confirmation à
+            {t("auth.signUp.checkEmailBody")}
             <br />
             <span className="font-semibold text-foreground">{needsConfirm}</span>
-            <br />
-            Clique dessus pour activer ton compte.
           </p>
           <Press
             onClick={onGoSignIn}
@@ -91,7 +90,7 @@ export function SignUpScreen({
                 "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
             }}
           >
-            J'ai confirmé, me connecter
+            {t("auth.welcome.signIn")}
           </Press>
         </div>
       </AuthScreenShell>
@@ -99,26 +98,26 @@ export function SignUpScreen({
   }
 
   return (
-    <AuthScreenShell title="Créer un compte" onBack={onBack}>
+    <AuthScreenShell title={t("auth.welcome.signUp")} onBack={onBack}>
       <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
         <h2 className="text-[26px] font-bold leading-tight">
-          Bienvenue sur KiDi+ ✨
+          {t("auth.signUp.title")} ✨
         </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
-          Crée ton compte en 30 secondes.
+          {t("auth.signUp.subtitle")}
         </p>
 
         <AuthInput
-          label="Nom affiché"
+          label={t("auth.signUp.displayName")}
           type="text"
           autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="Ton prénom ou pseudo"
+          placeholder={t("auth.signUp.displayNamePlaceholder")}
           maxLength={40}
         />
         <AuthInput
-          label="Email"
+          label={t("auth.signUp.email")}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -129,18 +128,18 @@ export function SignUpScreen({
 
         <div className="relative">
           <AuthInput
-            label="Mot de passe"
+            label={t("auth.signUp.password")}
             type={show ? "text" : "password"}
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Au moins 8 caractères"
+            placeholder={t("auth.signUp.passwordHint")}
           />
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
             className="absolute right-3 top-[34px] grid h-10 w-10 place-items-center rounded-full text-muted-foreground"
-            aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            aria-label={show ? t("common.close") : t("common.select")}
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -164,21 +163,22 @@ export function SignUpScreen({
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> Création…
+              <Loader2 size={16} className="animate-spin" />{" "}
+              {t("auth.signUp.submitting")}
             </span>
           ) : (
-            "Créer mon compte"
+            t("auth.signUp.submit")
           )}
         </Press>
 
         <p className="mt-4 text-center text-[13px] text-muted-foreground">
-          Déjà un compte ?{" "}
+          {t("auth.signUp.haveAccount")}{" "}
           <button
             type="button"
             onClick={onGoSignIn}
             className="font-bold text-foreground"
           >
-            Se connecter
+            {t("auth.signUp.signIn")}
           </button>
         </p>
       </form>
