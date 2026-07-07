@@ -192,7 +192,9 @@ export function HomeScreen() {
         }}
       >
         <div className="flex items-center justify-between px-4 py-2.5">
-          <Logo size={56} />
+          <div className="relative flex h-14 items-center justify-center overflow-visible">
+            <Logo size={92} />
+          </div>
           <div className="flex items-center gap-1">
             <Press
               aria-label="Notifications"
