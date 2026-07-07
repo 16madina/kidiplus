@@ -7,6 +7,7 @@ import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
 import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
+import { dismissKeyboard } from "@/lib/native";
 
 const PAGE = 12;
 const PULL_TRIGGER = 72;
@@ -64,10 +65,14 @@ export function HomeScreen() {
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const onScroll = () => setScrolled(el.scrollTop > 10);
+    const onScroll = () => {
+      setScrolled(el.scrollTop > 10);
+      void dismissKeyboard();
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
+
 
   useEffect(() => {
     const el = sentinelRef.current;

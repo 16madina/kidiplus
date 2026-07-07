@@ -5,6 +5,10 @@ import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
+import { haptic } from "@/lib/haptics";
+import { pushStatusBarLight } from "@/lib/native";
+import { useAppActive } from "@/lib/app-state";
+import { usePush } from "@/lib/push";
 import {
   bidStep,
   formatEuro,
@@ -27,14 +31,29 @@ const AUCTION_SECONDS = 45;
 export function LiveViewerScreen() {
   const { active, close } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
+  const appActive = useAppActive();
+  const { requestWithPrePrompt } = usePush();
 
-  // === Chat ===
+  // Force light status-bar content while the viewer is mounted (dark background).
+  useEffect(() => {
+    let restore: (() => void) | null = null;
+    void pushStatusBarLight().then((fn) => {
+      restore = fn;
+    });
+    return () => {
+      restore?.();
+    };
+  }, []);
+
+
+  // === Chat === (paused when app is backgrounded)
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   useEffect(() => {
     if (!active) return;
     setMessages([
       systemMessage(`Bienvenue dans le live de ${active.seller} 👋`),
     ]);
+    if (!appActive) return;
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
@@ -49,22 +68,27 @@ export function LiveViewerScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [active]);
+  }, [active, appActive]);
+
 
   // === Hearts ===
   const [heartTrigger, setHeartTrigger] = useState(0);
-  const fireHeart = () => setHeartTrigger((v) => v + 1);
+  const fireHeart = () => {
+    haptic.medium();
+    setHeartTrigger((v) => v + 1);
+  };
   const lastTap = useRef(0);
   const onVideoTap = () => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
       // double tap -> multiple hearts
       fireHeart();
-      setTimeout(fireHeart, 80);
-      setTimeout(fireHeart, 160);
+      setTimeout(() => setHeartTrigger((v) => v + 1), 80);
+      setTimeout(() => setHeartTrigger((v) => v + 1), 160);
     }
     lastTap.current = now;
   };
+
 
   // === Products & Auction ===
   const [products, setProducts] = useState<Product[]>(() => makeProducts());
@@ -82,18 +106,26 @@ export function LiveViewerScreen() {
     setLastBidder(undefined);
   }, [active]);
 
-  // countdown tick
+  // countdown tick (paused when app is backgrounded)
   useEffect(() => {
     if (!active || !currentProduct || currentProduct.mode !== "auction") return;
+    if (!appActive) return;
     const id = window.setInterval(() => {
       setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
     return () => clearInterval(id);
-  }, [active, currentProduct?.id, currentProduct?.mode]);
+  }, [active, appActive, currentProduct?.id, currentProduct?.mode]);
 
-  // AI bids
+  // Warning haptic when the auction crosses into the last 10 seconds.
+  useEffect(() => {
+    if (!currentProduct || currentProduct.mode !== "auction") return;
+    if (secondsLeft === 10) haptic.warning();
+  }, [secondsLeft, currentProduct?.id, currentProduct?.mode]);
+
+  // AI bids (paused when backgrounded)
   useEffect(() => {
     if (!active || !currentProduct || currentProduct.mode !== "auction") return;
+    if (!appActive) return;
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
@@ -115,7 +147,8 @@ export function LiveViewerScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [active, currentProduct?.id, currentProduct?.mode]);
+  }, [active, appActive, currentProduct?.id, currentProduct?.mode]);
+
 
   // Countdown hits zero -> sold, advance to next product
   useEffect(() => {
@@ -127,7 +160,9 @@ export function LiveViewerScreen() {
       ...prev,
       systemMessage(`Vendu à @${winner} 🎉 ${formatEuro(currentProduct.price)}`),
     ]);
+    haptic.success();
     setConfettiKey((k) => k + 1);
+
     setTimeout(() => {
       setProducts((prev) => {
         const idx = prev.findIndex((p) => p.id === currentProduct.id);
@@ -175,11 +210,13 @@ export function LiveViewerScreen() {
   // Manual bid
   const doBid = () => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
+    haptic.medium();
     setProducts((prev) =>
       prev.map((p) =>
         p.id === currentProduct.id ? { ...p, price: p.price + 1 } : p,
       ),
     );
+
     setLastBidder("toi");
     setSecondsLeft((s) => (s < 6 ? s + 3 : s));
   };
@@ -307,7 +344,19 @@ export function LiveViewerScreen() {
             </Press>
             <motion.div whileTap={{ scale: 0.94 }}>
               <Press
-                onClick={() => setFollowing((v) => !v)}
+                onClick={() => {
+                  haptic.medium();
+                  setFollowing((v) => {
+                    const next = !v;
+                    if (next && active) {
+                      void requestWithPrePrompt(
+                        `Active les notifications pour ne rater aucun live de ${active.seller} 🔔`,
+                      );
+                    }
+                    return next;
+                  });
+                }}
+                hapticOnTap={false}
                 className="!min-h-8 ml-1 rounded-full px-3 text-[12px] font-bold"
                 style={
                   following

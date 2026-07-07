@@ -12,6 +12,8 @@ import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import { haptic } from "@/lib/haptics";
+import { usePush } from "@/lib/push";
 import {
   formatCompact,
   formatDate,
@@ -19,6 +21,7 @@ import {
   type SellerInfo,
 } from "@/lib/seller-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
+
 
 const HEADER_MAX = 260; // large header total height above nav
 const HEADER_MIN = 0;
@@ -69,6 +72,8 @@ function SellerProfileInner({
   const scrollY = useMotionValue(0);
   const [tab, setTab] = useState<TabKey>("boutique");
   const { open: openLive } = useLiveViewer();
+  const { requestWithPrePrompt: requestPush } = usePush();
+
 
   // Collapsing header transforms — transform + opacity only
   const heroScale = useTransform(scrollY, [0, HEADER_MAX], [1, 0.85]);
@@ -211,7 +216,19 @@ function SellerProfileInner({
               </div>
 
               <Press
-                onClick={() => setFollowing((v) => !v)}
+                onClick={() => {
+                  haptic.medium();
+                  setFollowing((v) => {
+                    const next = !v;
+                    if (next) {
+                      void requestPush(
+                        `Active les notifications pour ne rater aucun live de ${info.name} 🔔`,
+                      );
+                    }
+                    return next;
+                  });
+                }}
+                hapticOnTap={false}
                 className="mt-4 h-11 w-full rounded-full text-[14px] font-bold"
                 style={
                   following
@@ -379,12 +396,20 @@ function BoutiqueTab({ info }: { info: SellerInfo }) {
 function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
-  const toggle = (id: string) => {
+  const { requestWithPrePrompt: requestPush } = usePush();
+  const toggle = (id: string, title: string) => {
     const next = !reminders[id];
+    haptic.medium();
     setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
     toast(next ? "Rappel activé" : "Rappel désactivé");
+    if (next) {
+      void requestPush(
+        `Active les notifications pour être prévenu·e avant "${title}" 🔔`,
+      );
+    }
   };
+
   return (
     <div className="space-y-2">
       {info.scheduled.map((s, i) => {
@@ -423,7 +448,8 @@ function LivesTab({ info }: { info: SellerInfo }) {
               >
                 <Press
                   aria-label={on ? "Rappel activé" : "Me rappeler"}
-                  onClick={() => toggle(s.id)}
+                  onClick={() => toggle(s.id, s.title)}
+                  hapticOnTap={false}
                   className="h-10 rounded-full px-3 text-[12px] font-semibold"
                   style={
                     on

@@ -4,7 +4,9 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { BottomSheet } from "./bottom-sheet";
 import { Press } from "@/components/press";
+import { haptic } from "@/lib/haptics";
 import { formatEuro, type Product } from "@/lib/live-viewer-mock";
+
 
 export function BuySheet({
   product,
@@ -24,9 +26,11 @@ export function BuySheet({
 
   const confirm = () => {
     setDone(true);
+    haptic.success();
     if (product) toast.success(`Commande confirmée : ${product.name}`);
     setTimeout(onClose, 1200);
   };
+
 
   return (
     <BottomSheet open={!!product} onClose={onClose} heightPercent={62}>
