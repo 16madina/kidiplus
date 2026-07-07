@@ -18,6 +18,7 @@ export function AuctionCard({
   lastBidder,
   currency = "EUR",
   viewerCurrency,
+  auctionActive = false,
   onBid,
   onOpenProducts,
   onBuy,
@@ -27,11 +28,12 @@ export function AuctionCard({
   lastBidder?: string;
   currency?: string;
   viewerCurrency?: string;
+  auctionActive?: boolean;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [bidPulse, setBidPulse] = useState(0);
   useEffect(() => {
     setBidPulse((v) => v + 1);
