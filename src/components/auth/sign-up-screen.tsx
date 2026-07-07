@@ -167,6 +167,34 @@ export function SignUpScreen({
           </button>
         </div>
 
+        <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+          />
+          <span>
+            <Trans
+              i18nKey="consent.checkbox"
+              components={{
+                t: <button type="button" onClick={() => setOpenLegal("terms")} className="font-bold underline underline-offset-2" />,
+                p: <button type="button" onClick={() => setOpenLegal("privacy")} className="font-bold underline underline-offset-2" />,
+              }}
+            />
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
+          <input
+            type="checkbox"
+            checked={confirmAge}
+            onChange={(e) => setConfirmAge(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+          />
+          <span>{t("consent.ageCheckbox")}</span>
+        </label>
+
         {error && (
           <div className="rounded-xl bg-[oklch(0.95_0.05_20)] px-3 py-2 text-[13px] font-medium text-[oklch(0.45_0.2_25)]">
             {error}
@@ -175,12 +203,12 @@ export function SignUpScreen({
 
         <Press
           type="submit"
-          disabled={loading}
+          disabled={loading || !acceptTerms || !confirmAge}
           className="!min-h-12 mt-2 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
           style={{
             background:
               "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            opacity: loading ? 0.7 : 1,
+            opacity: loading || !acceptTerms || !confirmAge ? 0.5 : 1,
           }}
         >
           {loading ? (
@@ -204,6 +232,9 @@ export function SignUpScreen({
           </button>
         </p>
       </form>
+
+      <LegalScreen open={openLegal === "terms"}   onClose={() => setOpenLegal(null)} kind="terms" />
+      <LegalScreen open={openLegal === "privacy"} onClose={() => setOpenLegal(null)} kind="privacy" />
     </AuthScreenShell>
   );
 }
