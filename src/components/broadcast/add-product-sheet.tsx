@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Image as ImageIcon } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -6,6 +6,7 @@ import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { PRODUCT_IMG_POOL } from "@/lib/broadcast-mock";
+import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
 import type { BProduct, SellMode } from "@/lib/broadcast-context";
 
 export function AddProductSheet({
@@ -25,9 +26,35 @@ export function AddProductSheet({
   const [price, setPrice] = useState(29);
   const [stock, setStock] = useState(5);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const urlTrackerRef = useRef(createObjectUrlTracker());
+
+  useEffect(() => {
+    const tracker = urlTrackerRef.current;
+    return () => tracker.disposeAll();
+  }, []);
+
+  const pickImage = () => {
+    // Synchronous programmatic click inside the Press onClick — must stay
+    // inside the user gesture so mobile Safari opens the picker.
+    fileInputRef.current?.click();
+  };
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = urlTrackerRef.current.track(URL.createObjectURL(file));
+    if (isBlobUrl(image)) urlTrackerRef.current.revoke(image);
+    setImage(url);
+    e.target.value = "";
+    haptic.selection();
+  };
+
   const reset = () => {
     setMode("auction");
     setName("");
+    // Keep any tracked blob URLs alive — they may now belong to a saved
+    // product. disposeAll runs only on unmount.
     setImage(PRODUCT_IMG_POOL[0]);
     setStartPrice(10);
     setTimerSec(45);
@@ -67,14 +94,43 @@ export function AddProductSheet({
           </Press>
         </div>
 
-        {/* Image picker */}
+        {/* Image picker: chosen preview + import button + preset quick-picks. */}
         <div className="flex gap-2 overflow-x-auto pb-3">
+          <Press
+            onClick={pickImage}
+            hapticOnTap={false}
+            className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
+            style={{ outline: "2px solid var(--accent)", outlineOffset: 2 }}
+            aria-label="Photo actuelle du produit"
+          >
+            <motion.img
+              key={image}
+              src={image}
+              alt=""
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, ease: EASE_IOS }}
+              className="h-full w-full object-cover"
+            />
+          </Press>
+          <Press
+            onClick={pickImage}
+            hapticOnTap={false}
+            className="!min-h-16 grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-dashed"
+            style={{ borderColor: "var(--border)" }}
+            aria-label="Importer une image"
+          >
+            <ImageIcon size={20} className="text-muted-foreground" />
+          </Press>
           {PRODUCT_IMG_POOL.map((src) => {
             const active = src === image;
             return (
               <Press
                 key={src}
-                onClick={() => setImage(src)}
+                onClick={() => {
+                  if (isBlobUrl(image)) urlTrackerRef.current.revoke(image);
+                  setImage(src);
+                }}
                 className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
                 style={{
                   outline: active ? "2px solid var(--accent)" : "none",
@@ -85,14 +141,15 @@ export function AddProductSheet({
               </Press>
             );
           })}
-          <Press
-            className="!min-h-16 grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-dashed"
-            style={{ borderColor: "var(--border)" }}
-            aria-label="Importer une image"
-          >
-            <ImageIcon size={20} className="text-muted-foreground" />
-          </Press>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFile}
+          />
         </div>
+
 
         {/* Name */}
         <label className="text-[12px] font-semibold text-muted-foreground">
