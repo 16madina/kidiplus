@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as CommunityRouteImport } from './routes/community'
@@ -26,6 +27,11 @@ import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delet
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SafetyRoute = SafetyRouteImport.update({
+  id: '/safety',
+  path: '/safety',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/privacy'
     | '/reset-password'
+    | '/safety'
     | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/privacy'
     | '/reset-password'
+    | '/safety'
     | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/privacy'
     | '/reset-password'
+    | '/safety'
     | '/terms'
     | '/api/checkout'
     | '/api/livekit-token'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SafetyRoute: typeof SafetyRoute
   TermsRoute: typeof TermsRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/safety': {
+      id: '/safety'
+      path: '/safety'
+      fullPath: '/safety'
+      preLoaderRoute: typeof SafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SafetyRoute: SafetyRoute,
   TermsRoute: TermsRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
@@ -333,13 +354,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
