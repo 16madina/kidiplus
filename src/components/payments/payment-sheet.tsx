@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, CreditCard, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { Check, CreditCard, ShieldCheck, AlertCircle, Loader2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
@@ -26,6 +26,11 @@ import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
+import { useWallet } from "@/lib/wallet-context";
+import { payOrderWithWallet } from "@/lib/wallet-db";
+import { formatMoney } from "@/lib/money";
+import { TopUpSheet } from "@/components/wallet/topup-sheet";
+
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
@@ -54,6 +59,9 @@ export function PaymentSheet({
   onPaid?: (order: OrderRow) => void;
 }) {
   const { t } = useTranslation();
+  const { balance, currency } = useWallet();
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [walletBusy, setWalletBusy] = useState(false);
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null> }
@@ -61,6 +69,7 @@ export function PaymentSheet({
     | { kind: "error"; message: string }
     | { kind: "done" }
   >({ kind: "loading" });
+
 
   // Reset on order change
   useEffect(() => {
@@ -198,6 +207,35 @@ export function PaymentSheet({
                     {t("pay.method.title")}
                   </p>
                   <div className="flex flex-col gap-2">
+                    {/* Wallet method — first, with balance and insufficient-funds shortcut */}
+                    <WalletMethodRow
+                      balance={balance}
+                      currency={currency}
+                      total={Number(order.total)}
+                      busy={walletBusy}
+                      onPay={async () => {
+                        if (walletBusy) return;
+                        setWalletBusy(true);
+                        haptic.medium();
+                        const r = await payOrderWithWallet(order.id);
+                        setWalletBusy(false);
+                        if (r.ok) {
+                          haptic.success();
+                          setState({ kind: "done" });
+                          toast.success(t("wallet.paidWithWallet"));
+                          onPaid?.(order);
+                          setTimeout(onClose, 1400);
+                        } else {
+                          haptic.warning();
+                          toast.error(
+                            r.error === "insufficient_funds"
+                              ? t("wallet.insufficient")
+                              : t("pay.errors.generic"),
+                          );
+                        }
+                      }}
+                      onTopUp={() => setTopupOpen(true)}
+                    />
                     <MethodRow
                       active
                       icon={<CreditCard size={20} />}
@@ -210,6 +248,7 @@ export function PaymentSheet({
                         </div>
                       }
                     />
+
                     <MethodRow
                       disabled
                       brandColor={WAVE_BLUE}
@@ -257,9 +296,69 @@ export function PaymentSheet({
           </AnimatePresence>
         </div>
       )}
+      <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
     </BottomSheet>
   );
 }
+
+function WalletMethodRow({
+  balance,
+  currency,
+  total,
+  busy,
+  onPay,
+  onTopUp,
+}: {
+  balance: number;
+  currency: string;
+  total: number;
+  busy: boolean;
+  onPay: () => void;
+  onTopUp: () => void;
+}) {
+  const { t } = useTranslation();
+  const enough = balance >= total;
+  return (
+    <button
+      type="button"
+      onClick={enough && !busy ? onPay : onTopUp}
+      disabled={busy}
+      className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
+        enough ? "border-primary bg-primary/5" : "border-border"
+      }`}
+    >
+      <div
+        className="grid h-9 w-9 place-items-center rounded-xl"
+        style={{ backgroundColor: "oklch(0.16 0.01 60)" }}
+      >
+        <Wallet size={18} color="#c8a24a" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
+        <div className="text-[11px] text-muted-foreground tabular-nums">
+          {formatMoney(balance, currency)}
+        </div>
+      </div>
+      {busy ? (
+        <Loader2 className="animate-spin" size={16} />
+      ) : enough ? (
+        <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
+          {t("pay.payNow", { total: formatMoney(total, currency) })}
+        </span>
+      ) : (
+        <span className="flex flex-col items-end gap-0.5">
+          <span className="text-[10px] font-bold text-destructive">
+            {t("wallet.insufficient")}
+          </span>
+          <span className="text-[11px] font-semibold text-primary">
+            {t("wallet.topupCta")}
+          </span>
+        </span>
+      )}
+    </button>
+  );
+}
+
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (

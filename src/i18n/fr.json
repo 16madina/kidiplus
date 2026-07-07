@@ -221,31 +221,9 @@
     }
   },
   "profile": {
-    "editProfile": "Modifier le profil",
-    "signOut": "Se déconnecter",
-    "becomeSeller": "Devenir vendeur",
+    "mySales": "Mes ventes",
     "menu": {
-      "payments": "Paiements",
-      "addresses": "Adresses",
-      "purchases": "Mes achats",
-      "notifications": "Notifications",
-      "settings": "Paramètres",
-      "help": "Aide"
-    },
-    "stats": {
-      "followers": "Abonnés",
-      "following": "Abonnements",
-      "sales": "Ventes"
-    },
-    "edit": {
-      "displayName": "Nom affiché",
-      "handle": "Identifiant",
-      "bio": "Bio",
-      "avatar": "Avatar",
-      "changeAvatar": "Changer l'avatar",
-      "country": "Pays",
-      "saved": "Profil enregistré",
-      "saveError": "Impossible d'enregistrer. Réessaie."
+      "wallet": "Mon portefeuille"
     }
   },
   "activity": {
@@ -441,7 +419,31 @@
     "revenue": "Chiffre d'affaires",
     "buyer": "Acheteur"
   },
-  "profile": {
-    "mySales": "Mes ventes"
+  "wallet": {
+    "title": "Mon portefeuille",
+    "currentBalance": "Solde actuel",
+    "topupCta": "Recharger",
+    "history": "Historique",
+    "emptyTitle": "Aucun mouvement",
+    "emptyBody": "Recharge ton portefeuille pour acheter en un clin d'œil pendant les lives.",
+    "insufficient": "Solde insuffisant",
+    "paidWithWallet": "Payé avec le solde",
+    "method": "Solde KiDi+",
+    "topup": {
+      "title": "Recharger mon solde",
+      "chooseAmount": "Choisis un montant",
+      "other": "Autre",
+      "continueCta": "Recharger {{amount}}",
+      "confirmCta": "Payer {{amount}}",
+      "range": "Entre {{min}} € et {{max}} €",
+      "success": "Rechargement réussi 🎉",
+      "credited": "{{amount}} crédités sur ton solde"
+    },
+    "tx": {
+      "topup": "Rechargement",
+      "purchase": "Achat",
+      "refund": "Remboursement",
+      "adjustment": "Ajustement"
+    }
   }
 }

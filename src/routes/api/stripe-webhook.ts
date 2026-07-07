@@ -55,30 +55,47 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         try {
           if (event.type === "payment_intent.succeeded") {
             const intent = event.data.object as Stripe.PaymentIntent;
-            const orderId = intent.metadata?.orderId;
-            const q = admin
-              .from("orders")
-              .update({ status: "paid", paid_at: new Date().toISOString() })
-              .eq("stripe_payment_intent_id", intent.id)
-              .neq("status", "paid");
-            if (orderId) {
-              await q.eq("id", orderId);
+            const kind = intent.metadata?.kind;
+
+            if (kind === "wallet_topup") {
+              // Wallet top-up: credit the user's balance atomically + idempotently.
+              const userId = intent.metadata?.userId;
+              const amountStr = intent.metadata?.amount;
+              const amount = amountStr ? Number(amountStr) : intent.amount_received / 100;
+              if (userId && Number.isFinite(amount) && amount > 0) {
+                await admin.rpc("credit_wallet_topup", {
+                  _user_id: userId,
+                  _amount: amount,
+                  _payment_intent_id: intent.id,
+                });
+              }
             } else {
-              await q;
+              // Regular order payment
+              const orderId = intent.metadata?.orderId;
+              const q = admin
+                .from("orders")
+                .update({ status: "paid", paid_at: new Date().toISOString() })
+                .eq("stripe_payment_intent_id", intent.id)
+                .neq("status", "paid");
+              if (orderId) await q.eq("id", orderId);
+              else await q;
             }
           } else if (
             event.type === "payment_intent.payment_failed" ||
             event.type === "payment_intent.canceled"
           ) {
             const intent = event.data.object as Stripe.PaymentIntent;
-            const nextStatus =
-              event.type === "payment_intent.canceled" ? "cancelled" : "failed";
-            await admin
-              .from("orders")
-              .update({ status: nextStatus })
-              .eq("stripe_payment_intent_id", intent.id)
-              .eq("status", "pending");
+            if (intent.metadata?.kind !== "wallet_topup") {
+              const nextStatus =
+                event.type === "payment_intent.canceled" ? "cancelled" : "failed";
+              await admin
+                .from("orders")
+                .update({ status: nextStatus })
+                .eq("stripe_payment_intent_id", intent.id)
+                .eq("status", "pending");
+            }
           }
+
           // Other event types are silently acknowledged.
         } catch {
           // Never throw back to Stripe — return 200 so it doesn't retry

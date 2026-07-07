@@ -16,7 +16,9 @@ import {
   Loader2,
   Languages,
   Check,
+  Wallet as WalletIcon,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -39,6 +41,8 @@ export function ProfileScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
+
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -131,6 +135,12 @@ export function ProfileScreen() {
 
         <MenuGroup
           items={[
+            {
+              icon: <WalletIcon size={16} />,
+              label: t("wallet.title"),
+              tint: "oklch(0.68 0.14 75)",
+              onClick: () => setWalletOpen(true),
+            },
             { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
             { icon: <MapPin size={16} />, label: t("profile.menu.addresses"), tint: "oklch(0.6 0.17 155)", onClick: () => toast(soon) },
             { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
@@ -145,6 +155,7 @@ export function ProfileScreen() {
           ]}
           index={0}
         />
+
         <MenuGroup
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
@@ -172,6 +183,8 @@ export function ProfileScreen() {
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
       <SellerSalesScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
+
     </div>
   );
 }
