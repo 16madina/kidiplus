@@ -258,13 +258,20 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
   const { dark, setDark, notif, setNotif, sounds, setSounds } = useSettings();
   const { status: pushStatus, requestWithPrePrompt, refresh } = usePush();
   const { lang } = useLanguage();
+  const { profile } = useAuth();
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
 
   const wasOpen = useState(open)[0];
   if (open && !wasOpen) void refresh();
 
   const pushGranted = pushStatus === "granted";
   const pushOn = pushGranted && notif;
+
+  const currencyLabel =
+    profile?.currency === "XOF" ? "🇨🇮 FCFA (XOF)"
+    : profile?.currency === "CAD" ? "🇨🇦 CAD"
+    : "🇪🇺 EUR";
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("settings.title")} zIndex={65}>
@@ -312,10 +319,19 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
             value={lang === "fr" ? t("settings.french") : t("settings.english")}
             onClick={() => setLanguageOpen(true)}
           />
+          <Sep />
+          <NavRow
+            icon={<Coins size={16} />}
+            tint="oklch(0.68 0.14 75)"
+            label={t("settings.currency")}
+            value={currencyLabel}
+            onClick={() => setCurrencyOpen(true)}
+          />
         </div>
       </div>
 
       <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
     </PushScreen>
   );
 }
