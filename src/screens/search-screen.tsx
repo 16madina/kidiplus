@@ -13,7 +13,7 @@ import {
   getSellerInfo,
   type SellerProduct,
 } from "@/lib/seller-mock";
-import { formatEuro } from "@/lib/live-viewer-mock";
+import { formatMoney } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
@@ -231,7 +231,7 @@ export function SearchScreen() {
                         <span className="truncate text-[11px] text-muted-foreground">
                           @{p.seller}
                         </span>
-                        <span className="text-[13px] font-bold">{formatEuro(p.price)}</span>
+                        <span className="text-[13px] font-bold">{formatMoney(p.price, "EUR")}</span>
                       </div>
                     </div>
                   </Press>
