@@ -46,6 +46,7 @@ export function ProfileScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
