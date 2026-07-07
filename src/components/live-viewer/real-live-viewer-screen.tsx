@@ -252,7 +252,21 @@ export function RealLiveViewerScreen() {
 
   const dragY = useMotionValue(0);
 
+  // Moderation
+  const [reportOpen, setReportOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const blockedIds = useBlockedIds();
+  const doBlockSeller = async () => {
+    if (!active?.sellerId) return;
+    const r = await blockUser(active.sellerId);
+    if (r.ok) { await refreshBlockedIds(); toast.success(t("block.blocked")); close(); }
+    else toast.error(t("block.failed"));
+    setMoreOpen(false);
+  };
+
   if (!active) return null;
+  // If viewer already blocked this seller, close automatically.
+  if (active.sellerId && blockedIds.has(active.sellerId)) { close(); return null; }
   const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
 
