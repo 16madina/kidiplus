@@ -669,5 +669,19 @@
   "ageGate": {
     "title": "Age confirmation",
     "body": "KiDi+ is only for people aged 18 and over. You must confirm your age to continue."
+  },
+  "bid": {
+    "custom": {
+      "title": "Custom bid",
+      "open": "Custom bid",
+      "close": "Close",
+      "decrease": "Decrease",
+      "increase": "Increase",
+      "editAmount": "Edit amount",
+      "min": "min",
+      "confirm": "Bid {{amount}}",
+      "priceChanged": "Price changed — new min bid: {{amount}}",
+      "aboveCap": "Max {{amount}}"
+    }
   }
 }
