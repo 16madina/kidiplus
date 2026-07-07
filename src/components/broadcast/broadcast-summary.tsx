@@ -172,7 +172,7 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function RevenueCounter({ value }: { value: number }) {
+function RevenueCounter({ value, currency = "EUR", locale = "fr" }: { value: number; currency?: string; locale?: string }) {
   const mv = useMotionValue(0);
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -185,7 +185,7 @@ function RevenueCounter({ value }: { value: number }) {
   }, [value, mv]);
   return (
     <div className="mt-1 text-[36px] font-bold tabular-nums leading-none">
-      {formatEuro(display)}
+      {formatMoney(display, currency, locale)}
     </div>
   );
 }
