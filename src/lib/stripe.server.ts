@@ -77,7 +77,7 @@ export function createStripeClient(): Stripe {
       : process.env.STRIPE_SANDBOX_API_KEY;
   const legacySecret = process.env.STRIPE_SECRET_KEY;
 
-  const opts: Stripe.StripeConfig = { apiVersion: "2026-06-24.dahlia" };
+  const opts = { apiVersion: "2026-06-24.dahlia" as const };
 
   if (gatewayKey) {
     const lovableApiKey = process.env.LOVABLE_API_KEY ?? "";
