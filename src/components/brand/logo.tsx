@@ -26,8 +26,9 @@ export function Logo({
   if (showImage) {
     return (
       <img
-        src="/logo.png"
+        src={logoAsset.url}
         alt="KiDi+"
+
         onError={() => setImgFailed(true)}
         style={{ height: size, width: "auto", display: "block" }}
         className={className}
