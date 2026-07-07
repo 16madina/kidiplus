@@ -33,7 +33,7 @@ import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
-import { AdminPayoutsScreen } from "@/components/admin/admin-payouts-screen";
+import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 
 import { haptic } from "@/lib/haptics";

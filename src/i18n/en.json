@@ -509,6 +509,57 @@
     "reject": "Reject",
     "confirmReject": "Reject this request? The amount will be credited back to the seller.",
     "markedPaid": "Marked as paid",
-    "markedRejected": "Request rejected"
+    "markedRejected": "Request rejected",
+    "tabs": {
+      "overview": "Overview",
+      "users": "Users",
+      "payments": "Payments",
+      "lives": "Lives"
+    },
+    "kpi": {
+      "gmv": "GMV",
+      "gmvMonth": "GMV this month",
+      "revenue": "Platform revenue",
+      "revenueMonth": "Revenue this month",
+      "walletFloat": "Wallet float",
+      "sellerLiability": "Owed to sellers",
+      "pendingPayouts": "Pending payouts",
+      "users": "Users",
+      "sellers": "Sellers",
+      "newUsersWeek": "New (7d)",
+      "livesLive": "Live now",
+      "livesTotal": "Lives (total)",
+      "ordersPaid": "Paid orders",
+      "orders14d": "Orders / GMV — 14d"
+    },
+    "users": {
+      "searchPh": "Search (name, @handle, email)",
+      "empty": "No users.",
+      "wallet": "Wallet",
+      "sellerBal": "Seller balance",
+      "purchases": "Purchases",
+      "sales": "Sales",
+      "joined": "Joined",
+      "detail": "User detail",
+      "recentOrders": "Recent orders",
+      "recentLives": "Recent lives",
+      "walletTx": "Wallet transactions",
+      "earnings": "Earnings",
+      "moderationSoon": "Moderation (block / warn / message) — coming soon."
+    },
+    "orders": {
+      "title": "Recent orders",
+      "filterAll": "All",
+      "empty": "No orders."
+    },
+    "lives": {
+      "empty": "No lives.",
+      "live": "LIVE",
+      "ended": "Ended",
+      "viewers": "Viewers",
+      "gmv": "GMV"
+    },
+    "onlyAdmins": "Admins only.",
+    "approxEurTotal": "≈ EUR (indicative)"
   }
 }

@@ -521,10 +521,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _assert_admin: { Args: never; Returns: undefined }
+      admin_list_lives: {
+        Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
+      admin_list_orders: {
+        Args: { _limit?: number; _offset?: number; _status?: string }
+        Returns: Json
+      }
+      admin_list_payouts: {
+        Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
+      admin_list_users: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: Json
+      }
+      admin_overview_stats: { Args: never; Returns: Json }
       admin_process_payout: {
         Args: { _action: string; _note?: string; _payout_id: string }
         Returns: Json
       }
+      admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
