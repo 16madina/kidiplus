@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
@@ -10,6 +11,13 @@ import { CATEGORIES } from "@/lib/live-mock";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
+import { makeRoomName } from "@/lib/livekit";
+import {
+  blobUrlToFile,
+  createLiveInDb,
+  uploadLiveImage,
+} from "@/lib/lives-db";
+
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const { t } = useTranslation();
