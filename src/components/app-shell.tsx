@@ -26,6 +26,7 @@ import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 import { AuthFlow } from "./auth/auth-flow";
+import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
