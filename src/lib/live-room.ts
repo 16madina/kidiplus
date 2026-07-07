@@ -17,8 +17,17 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   fetchLiveProducts,
   updateLiveViewerCount,
+  resolveLiveImage,
   type LiveProductRow,
 } from "@/lib/lives-db";
+
+/** Resolve the stored image_url path (bucket path) into a signed/absolute URL. */
+async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
+  if (!row.image_url) return row;
+  if (/^https?:\/\//i.test(row.image_url)) return row;
+  const url = await resolveLiveImage("live-products", row.image_url);
+  return url ? { ...row, image_url: url } : row;
+}
 
 export type ChatEvt = {
   id: string;
@@ -97,8 +106,9 @@ export function useLiveRoom(params: {
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
-    fetchLiveProducts(liveId).then((p) => {
-      if (alive) setProducts(p);
+    fetchLiveProducts(liveId).then(async (p) => {
+      const hydrated = await Promise.all(p.map(hydrateImage));
+      if (alive) setProducts(hydrated);
     });
     return () => {
       alive = false;
@@ -115,7 +125,9 @@ export function useLiveRoom(params: {
         { event: "UPDATE", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
         (payload) => {
           const row = payload.new as LiveProductRow;
-          setProducts((prev) => prev.map((p) => (p.id === row.id ? row : p)));
+          void hydrateImage(row).then((r) =>
+            setProducts((prev) => prev.map((p) => (p.id === r.id ? r : p))),
+          );
         },
       )
       .on(
@@ -123,8 +135,10 @@ export function useLiveRoom(params: {
         { event: "INSERT", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
         (payload) => {
           const row = payload.new as LiveProductRow;
-          setProducts((prev) =>
-            prev.some((p) => p.id === row.id) ? prev : [...prev, row].sort((a, b) => a.position - b.position),
+          void hydrateImage(row).then((r) =>
+            setProducts((prev) =>
+              prev.some((p) => p.id === r.id) ? prev : [...prev, r].sort((a, b) => a.position - b.position),
+            ),
           );
         },
       )

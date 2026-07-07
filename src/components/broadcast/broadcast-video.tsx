@@ -38,6 +38,8 @@ export type BroadcastVideoProps = {
   /** When set, use LiveKit host publishing instead of local preview. */
   livekit?: BroadcastVideoLK;
   micEnabled?: boolean;
+  /** Bump this to force a fresh token + reconnect (host retry). */
+  retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
 };
 
@@ -55,7 +57,7 @@ export type BroadcastVideoHandle = {
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, onStatus },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus },
     ref,
   ) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -217,7 +219,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       };
       // Intentionally depend on room identity + gate; facing is applied via switchCamera.
        
-    }, [livekit?.room, livekit?.identity, shouldRun]);
+    }, [livekit?.room, livekit?.identity, shouldRun, retryKey]);
 
     // Toggle camera (published track) without reconnecting.
     useEffect(() => {

@@ -26,6 +26,13 @@ if (!i18n.isInitialized) {
     interpolation: { escapeValue: false },
     returnNull: false,
     returnEmptyString: false,
+    saveMissing: import.meta.env.DEV,
+    missingKeyHandler: (lngs, ns, key) => {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(`[i18n] missing key "${key}" for ${JSON.stringify(lngs)}`);
+      }
+    },
   });
 }
 

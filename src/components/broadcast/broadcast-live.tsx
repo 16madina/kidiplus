@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff,
+  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -39,6 +39,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
+  const [videoStatus, setVideoStatus] = useState<"idle"|"connecting"|"granted"|"denied"|"unsupported"|"error">("idle");
+  const [retryKey, setRetryKey] = useState(0);
+  const [productsOpen, setProductsOpen] = useState(false);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const room = useLiveRoom({
@@ -169,6 +172,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
   }, []);
 
+  // If the host video connection never comes up for 90s, auto-end the live so
+  // it stops appearing in the public feed while the host figures things out.
+  const autoEndFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoEndFiredRef.current) return;
+    if (videoStatus === "granted") return;
+    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied") return;
+    const timeout = setTimeout(() => {
+      if (autoEndFiredRef.current) return;
+      autoEndFiredRef.current = true;
+      if (b.liveId) {
+        void import("@/lib/lives-db").then(({ endLiveInDb }) =>
+          endLiveInDb(b.liveId!).catch(() => {}),
+        );
+      }
+    }, 90_000);
+    return () => clearTimeout(timeout);
+  }, [videoStatus, b.liveId]);
+
+  const retryConnection = () => {
+    autoEndFiredRef.current = false;
+    setRetryKey((k) => k + 1);
+    haptic.medium();
+  };
+
   // Totals from finalized sales.
   const totalRevenue = useMemo(
     () => room.products.reduce((sum, p) => {
@@ -275,6 +303,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         enabled={cameraOn}
         micEnabled={micOn}
         fallbackImage={b.cover}
+        retryKey={retryKey}
+        onStatus={setVideoStatus}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
@@ -323,6 +353,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             {room.viewerCount}
           </div>
           <Press
+            onClick={() => { haptic.selection(); setProductsOpen(true); }}
+            aria-label={t("live.openProducts")}
+            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B] inline-flex items-center gap-1"
+            style={{ backgroundColor: "white" }}
+          >
+            <Package size={14} />
+            {t("live.openProducts")}
+            {room.products.length > 0 && (
+              <span className="ml-0.5 rounded-full bg-[#10162B] px-1.5 text-[10px] font-bold text-white">
+                {room.products.length}
+              </span>
+            )}
+          </Press>
+          <Press
             onClick={() => {
               haptic.selection();
               setFacing((f) => (f === "user" ? "environment" : "user"));
@@ -346,6 +390,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
       </div>
+
+      {/* Video connection error overlay with retry */}
+      {(videoStatus === "error" || videoStatus === "denied") && (
+        <div
+          className="absolute left-1/2 z-40 -translate-x-1/2 rounded-2xl px-4 py-3 text-white shadow-lg"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 110px)",
+            width: "min(92%, 320px)",
+            backgroundColor: "rgba(220, 30, 40, 0.95)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold">{t("live.hostConnectFailed")}</p>
+              <p className="mt-0.5 text-[11.5px] opacity-90">{t("live.hostConnectFailedBody")}</p>
+              <Press
+                onClick={retryConnection}
+                className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
+              >
+                {t("live.hostRetry")}
+              </Press>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Session stat strip */}
       <div
@@ -396,9 +468,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* Featured / auction overlay */}
+      {/* Featured / auction overlay — tap to open the products dock. */}
       {featured && activeAuction && activeAuction.productId === featured.id && (
-        <div className="absolute right-3 z-30" style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}>
+        <button
+          type="button"
+          onClick={() => { haptic.selection(); setProductsOpen(true); }}
+          className="absolute right-3 z-30 text-left"
+          style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+        >
           <div
             className="w-40 rounded-2xl p-2 text-white"
             style={{
@@ -434,7 +511,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               </span>
             </div>
           </div>
-        </div>
+        </button>
       )}
 
       {/* Seller dock */}
@@ -506,6 +583,79 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           })()}
         </div>
       </div>
+
+      {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
+      <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={80}>
+        <div className="flex h-full flex-col px-4 pb-4">
+          <div className="flex items-center justify-between pb-2">
+            <h2 className="text-[18px] font-bold">{t("live.openProducts")}</h2>
+            <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ul className="flex flex-col gap-2">
+              {room.products.map((p) => {
+                const auctionActive = activeAuction?.productId === p.id;
+                const onSale = p.mode === "fixed" && p.status === "active";
+                const soldOut = p.mode === "auction"
+                  ? p.status === "sold"
+                  : p.stock <= 0 || p.status === "out";
+                return (
+                  <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
+                    {p.image_url && (
+                      <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-semibold">{p.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {p.mode === "auction"
+                          ? `${fmt(p.start_price)} · ${p.timer_seconds}s`
+                          : `${fmt(p.price)} · stock ${Math.max(0, p.stock)}`}
+                      </p>
+                    </div>
+                    {p.mode === "auction" ? (
+                      soldOut ? (
+                        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                          {t("live.sold")}
+                        </span>
+                      ) : auctionActive ? (
+                        <Press
+                          onClick={() => { void endAuctionNow(); }}
+                          className="!min-h-10 rounded-full px-4 text-[13px] font-bold text-white"
+                          style={{ backgroundColor: "oklch(0.62 0.24 20)" }}
+                        >
+                          {t("live.endAuction")}
+                        </Press>
+                      ) : (
+                        <Press
+                          onClick={() => { void startAuction(p); setProductsOpen(false); }}
+                          className="!min-h-10 rounded-full bg-foreground px-4 text-[13px] font-bold text-background"
+                        >
+                          {t("live.startAuction")}
+                        </Press>
+                      )
+                    ) : soldOut ? (
+                      <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                        {t("live.outOfStock")}
+                      </span>
+                    ) : (
+                      <Press
+                        onClick={() => { void toggleFixedSale(p); }}
+                        className="!min-h-10 rounded-full px-4 text-[13px] font-bold"
+                        style={{
+                          backgroundColor: onSale ? "oklch(0.72 0.2 145)" : "var(--foreground)",
+                          color: onSale ? "white" : "var(--background)",
+                        }}
+                      >
+                        {onSale ? "Arrêter" : t("live.listForSale")}
+                      </Press>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={confirmEnd} onClose={() => setConfirmEnd(false)} heightPercent={38}>
         <div className="flex h-full flex-col px-6 pb-4">

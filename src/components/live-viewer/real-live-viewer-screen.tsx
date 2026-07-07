@@ -385,6 +385,9 @@ export function RealLiveViewerScreen() {
             secondsLeft={secondsLeft}
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
+            auctionActive={
+              !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
+            }
             lastBidder={
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined

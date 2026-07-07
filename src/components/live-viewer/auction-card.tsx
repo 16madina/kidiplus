@@ -18,6 +18,7 @@ export function AuctionCard({
   lastBidder,
   currency = "EUR",
   viewerCurrency,
+  auctionActive = false,
   onBid,
   onOpenProducts,
   onBuy,
@@ -27,11 +28,12 @@ export function AuctionCard({
   lastBidder?: string;
   currency?: string;
   viewerCurrency?: string;
+  auctionActive?: boolean;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [bidPulse, setBidPulse] = useState(0);
   useEffect(() => {
     setBidPulse((v) => v + 1);
@@ -148,15 +150,23 @@ export function AuctionCard({
       <div className="px-3 pb-3">
         {isAuction ? (
           <Press
-            onClick={onBid}
-            className="w-full rounded-xl py-2.5 text-[14px] font-bold text-white"
+            onClick={auctionActive && secondsLeft > 0 ? onBid : undefined}
+            disabled={!auctionActive || secondsLeft <= 0}
+            className="w-full rounded-xl py-2.5 text-[14px] font-bold text-white disabled:opacity-50"
             style={{
-              background:
-                "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
+              background: auctionActive && secondsLeft > 0
+                ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
+                : "rgba(255,255,255,0.14)",
             }}
           >
-            <Gavel size={16} className="mr-1.5" />
-            Enchérir {formatMoney(nextBid, cur, locale)}
+            {auctionActive && secondsLeft > 0 ? (
+              <>
+                <Gavel size={16} className="mr-1.5" />
+                Enchérir {formatMoney(nextBid, cur, locale)}
+              </>
+            ) : (
+              t("live.waitingForSeller")
+            )}
           </Press>
         ) : (
           <Press
