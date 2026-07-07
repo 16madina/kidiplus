@@ -451,5 +451,58 @@
       "adjustment": "Adjustment"
     },
     "currencyMismatch": "Wallet in {{currency}}"
+  },
+  "gains": {
+    "title": "My earnings",
+    "available": "Available balance",
+    "withdraw": "Withdraw earnings",
+    "price": "Price",
+    "net": "Net",
+    "tabs": {
+      "sales": "Sales",
+      "payouts": "Withdrawals"
+    }
+  },
+  "payout": {
+    "title": "Withdraw earnings",
+    "available": "Available",
+    "amount": "Amount",
+    "minHint": "Minimum: {{min}}",
+    "phone": "Mobile money number",
+    "phonePlaceholder": "+225 …",
+    "holder": "Account holder",
+    "submit": "Confirm request",
+    "confirmTitle": "Confirm withdrawal",
+    "successTitle": "Request sent ✅",
+    "successBody": "Processed within 48h.",
+    "emptyHistory": "No withdrawals yet.",
+    "method": {
+      "label": "Method",
+      "wave": "Wave",
+      "orange_money": "Orange Money",
+      "bank_transfer": "Bank transfer"
+    },
+    "status": {
+      "requested": "Requested",
+      "processing": "Processing",
+      "paid": "Paid",
+      "rejected": "Rejected"
+    },
+    "errors": {
+      "insufficient": "Insufficient balance",
+      "belowMin": "Minimum: {{min}}",
+      "generic": "Could not process the request."
+    }
+  },
+  "admin": {
+    "title": "Administration",
+    "pending": "Pending",
+    "paidThisMonth": "Paid this month",
+    "empty": "No requests.",
+    "markPaid": "Mark paid",
+    "reject": "Reject",
+    "confirmReject": "Reject this request? The amount will be credited back to the seller.",
+    "markedPaid": "Marked as paid",
+    "markedRejected": "Request rejected"
   }
 }

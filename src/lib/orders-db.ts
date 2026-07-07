@@ -21,6 +21,7 @@ export type OrderRow = {
   amount: number;
   platform_fee: number;
   processing_fee: number;
+  seller_net: number;
   total: number;
   currency: string;
   status: OrderStatus;
@@ -65,12 +66,13 @@ export async function createPendingOrder(
       item_image: input.itemImage,
       amount: fees.amount,
       platform_fee: fees.platformFee,
-      processing_fee: fees.processingFee,
+      processing_fee: 0,
+      seller_net: fees.sellerNet,
       total: fees.total,
       currency: fees.currency,
       status: "pending",
       payment_method: "card",
-    })
+    } as never)
     .select("*")
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? "insert failed" };

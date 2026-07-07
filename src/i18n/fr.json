@@ -451,5 +451,58 @@
       "adjustment": "Ajustement"
     },
     "currencyMismatch": "Portefeuille en {{currency}}"
+  },
+  "gains": {
+    "title": "Mes gains",
+    "available": "Solde disponible",
+    "withdraw": "Retirer mes gains",
+    "price": "Prix",
+    "net": "Net",
+    "tabs": {
+      "sales": "Ventes",
+      "payouts": "Retraits"
+    }
+  },
+  "payout": {
+    "title": "Retirer mes gains",
+    "available": "Disponible",
+    "amount": "Montant",
+    "minHint": "Minimum: {{min}}",
+    "phone": "Numéro mobile money",
+    "phonePlaceholder": "+225 …",
+    "holder": "Titulaire du compte",
+    "submit": "Confirmer la demande",
+    "confirmTitle": "Confirmer le retrait",
+    "successTitle": "Demande envoyée ✅",
+    "successBody": "Traitement sous 48h.",
+    "emptyHistory": "Aucun retrait pour le moment.",
+    "method": {
+      "label": "Méthode",
+      "wave": "Wave",
+      "orange_money": "Orange Money",
+      "bank_transfer": "Virement bancaire"
+    },
+    "status": {
+      "requested": "Demandé",
+      "processing": "En traitement",
+      "paid": "Payé",
+      "rejected": "Refusé"
+    },
+    "errors": {
+      "insufficient": "Solde insuffisant",
+      "belowMin": "Minimum: {{min}}",
+      "generic": "Impossible de traiter la demande."
+    }
+  },
+  "admin": {
+    "title": "Administration",
+    "pending": "En attente",
+    "paidThisMonth": "Payés ce mois",
+    "empty": "Aucune demande.",
+    "markPaid": "Marquer payé",
+    "reject": "Rejeter",
+    "confirmReject": "Rejeter cette demande ? Le montant sera recrédité au vendeur.",
+    "markedPaid": "Marqué comme payé",
+    "markedRejected": "Demande rejetée"
   }
 }

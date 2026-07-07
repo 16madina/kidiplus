@@ -18,6 +18,7 @@ import {
   Check,
   Wallet as WalletIcon,
   Coins,
+  ShieldCheck,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -31,7 +32,8 @@ import { useSettings } from "@/lib/settings-context";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
-import { SellerSalesScreen } from "@/components/seller-sales-screen";
+import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
+import { AdminPayoutsScreen } from "@/components/admin/admin-payouts-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 
 import { haptic } from "@/lib/haptics";
@@ -44,6 +46,7 @@ export function ProfileScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -150,9 +153,17 @@ export function ProfileScreen() {
             ...(profile?.is_seller
               ? [{
                   icon: <BadgeCheck size={16} />,
-                  label: t("profile.mySales"),
+                  label: t("gains.title"),
                   tint: "oklch(0.65 0.16 60)",
                   onClick: () => setSalesOpen(true),
+                }]
+              : []),
+            ...(profile?.is_admin
+              ? [{
+                  icon: <ShieldCheck size={16} />,
+                  label: t("admin.title"),
+                  tint: "oklch(0.3 0.06 265)",
+                  onClick: () => setAdminOpen(true),
                 }]
               : []),
           ]}
@@ -185,7 +196,8 @@ export function ProfileScreen() {
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
-      <SellerSalesScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
 
     </div>

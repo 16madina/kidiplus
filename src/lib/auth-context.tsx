@@ -19,6 +19,7 @@ export type Profile = {
   avatar_url: string | null;
   bio: string | null;
   is_seller: boolean;
+  is_admin: boolean;
   country: string | null;
   currency: "XOF" | "EUR" | "CAD";
   language: "fr" | "en";
