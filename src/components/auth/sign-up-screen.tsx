@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
+import { supabase } from "@/integrations/supabase/client";
+import { LegalScreen } from "@/components/legal/legal-screen";
+import { TERMS_VERSION } from "@/lib/legal-content";
 
 export function SignUpScreen({
   onBack,
@@ -22,6 +25,9 @@ export function SignUpScreen({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConfirm, setNeedsConfirm] = useState<string | null>(null);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [confirmAge, setConfirmAge] = useState(false);
+  const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
 
   const validate = () => {
     if (!displayName.trim() || displayName.trim().length < 2) {
@@ -32,6 +38,9 @@ export function SignUpScreen({
     }
     if (password.length < 8) {
       return t("auth.errors.passwordWeak");
+    }
+    if (!acceptTerms || !confirmAge) {
+      return t("consent.required");
     }
     return null;
   };
