@@ -29,6 +29,7 @@ export function HomeScreen() {
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [items, setItems] = useState<LiveStream[]>([]);
+  const [realLives, setRealLives] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -41,6 +42,7 @@ export function HomeScreen() {
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
 
+  // Initial paint: mock filler while real lives load in parallel.
   useEffect(() => {
     const t = setTimeout(() => {
       setItems(makeStreams(0, PAGE));
@@ -48,6 +50,20 @@ export function HomeScreen() {
     }, 600);
     return () => clearTimeout(t);
   }, []);
+
+  // Real lives feed + realtime subscription.
+  const refreshRealLives = useCallback(async () => {
+    const rows = await fetchActiveLives(60);
+    setRealLives(rows);
+  }, []);
+  useEffect(() => {
+    void refreshRealLives();
+    const unsub = subscribeToLivesFeed(() => {
+      void refreshRealLives();
+    });
+    return unsub;
+  }, [refreshRealLives]);
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;
