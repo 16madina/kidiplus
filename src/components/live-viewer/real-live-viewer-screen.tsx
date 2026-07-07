@@ -399,9 +399,16 @@ export function RealLiveViewerScreen() {
         open={showProducts}
         onClose={() => setShowProducts(false)}
         products={productsForSheet}
-        onBuyFixed={(p) => { setShowProducts(false); setBuyProduct(p); }}
+        onBuyFixed={(p) => {
+          setShowProducts(false);
+          const row = room.products.find((r) => r.id === p.id);
+          if (row) void startFixedPurchase(row);
+        }}
       />
-      <BuySheet product={buyProduct} onClose={() => setBuyProduct(null)} onConfirm={confirmBuy} />
+      <PaymentSheet
+        order={pendingOrder}
+        onClose={() => setPendingOrder(null)}
+      />
     </motion.div>
   );
 }
