@@ -21,6 +21,7 @@ export type OrderRow = {
   amount: number;
   platform_fee: number;
   processing_fee: number;
+  seller_net: number;
   total: number;
   currency: string;
   status: OrderStatus;
