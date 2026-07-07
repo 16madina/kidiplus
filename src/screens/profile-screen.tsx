@@ -153,9 +153,17 @@ export function ProfileScreen() {
             ...(profile?.is_seller
               ? [{
                   icon: <BadgeCheck size={16} />,
-                  label: t("profile.mySales"),
+                  label: t("gains.title"),
                   tint: "oklch(0.65 0.16 60)",
                   onClick: () => setSalesOpen(true),
+                }]
+              : []),
+            ...(profile?.is_admin
+              ? [{
+                  icon: <ShieldCheck size={16} />,
+                  label: t("admin.title"),
+                  tint: "oklch(0.3 0.06 265)",
+                  onClick: () => setAdminOpen(true),
                 }]
               : []),
           ]}
