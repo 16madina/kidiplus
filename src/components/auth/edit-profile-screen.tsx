@@ -5,6 +5,7 @@ import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { AuthInput } from "@/components/auth/auth-shell";
 import { useAuth, frenchAuthError, type Profile } from "@/lib/auth-context";
+import { useWallet } from "@/lib/wallet-context";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl, invalidateAvatar } from "@/lib/avatar-url";
 import { haptic } from "@/lib/haptics";
@@ -35,6 +36,7 @@ export function EditProfileScreen({
   onClose: () => void;
 }) {
   const { profile, updateProfile, refreshProfile, user } = useAuth();
+  const { refresh: refreshWallet } = useWallet();
   const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
   const [bio, setBio] = useState("");
@@ -123,6 +125,10 @@ export function EditProfileScreen({
       }
       await updateProfile(patch);
       await refreshProfile();
+      // The DB trigger sync_currency_on_profile_change syncs wallet +
+      // seller_balances when balance is 0; refresh so the UI (pill,
+      // top-up presets) picks up the new currency immediately.
+      await refreshWallet();
       haptic.success();
       toast.success("Profil mis à jour");
       onClose();

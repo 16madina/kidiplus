@@ -28,6 +28,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
 import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal } from "@/lib/money";
+import {
+  confirmWalletTopup,
+  markPendingTopup,
+  clearPendingTopup,
+  readPendingTopup,
+  paymentIntentIdFromClientSecret,
+} from "@/lib/payment-confirm";
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
@@ -36,6 +43,7 @@ type Step =
   | { kind: "amount" }
   | { kind: "loading" }
   | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null>; amount: number }
+  | { kind: "verifying"; amount: number }
   | { kind: "done"; amount: number }
   | { kind: "not_configured" }
   | { kind: "error"; message: string };
@@ -48,7 +56,7 @@ export function TopUpSheet({
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { balance, currency } = useWallet();
+  const { balance, currency, refresh } = useWallet();
   const cur = normalizeCurrency(currency);
   const PRESETS = topUpPresets(cur);
   const { min: MIN_AMOUNT, max: MAX_AMOUNT } = topUpLimits(cur);
@@ -64,6 +72,20 @@ export function TopUpSheet({
       setStep({ kind: "amount" });
       setSelected(PRESETS[1] ?? PRESETS[0]);
       setCustom("");
+      // Recovery: if a previous attempt left a pending PI in localStorage,
+      // try to confirm it now (idempotent). Silent — if it fails we just
+      // leave the PI in localStorage for a later retry.
+      const pending = readPendingTopup();
+      if (pending) {
+        void (async () => {
+          const r = await confirmWalletTopup(pending);
+          if (r.ok) {
+            clearPendingTopup();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cur]);
@@ -110,6 +132,10 @@ export function TopUpSheet({
         setStep({ kind: "error", message: body.error ?? t("pay.errors.generic") });
         return;
       }
+      // Store the PI id BEFORE Stripe confirms — so a page reload after
+      // Stripe success but before our confirm call can still recover.
+      const pi = paymentIntentIdFromClientSecret(body.clientSecret);
+      if (pi) markPendingTopup(pi);
       setStep({
         kind: "ready",
         clientSecret: body.clientSecret,
@@ -121,12 +147,33 @@ export function TopUpSheet({
     }
   };
 
-  const handleSuccess = (amount: number) => {
-    haptic.success();
-    setConfettiKey((k) => k + 1);
-    setStep({ kind: "done", amount });
-    toast.success(t("wallet.topup.success"));
-    setTimeout(onClose, 1500);
+  const handleSuccess = async (amount: number, paymentIntentId: string) => {
+    // Enter the verifying state — a spinner is shown while we ask our
+    // server to credit the wallet (fallback path if the webhook is slow
+    // or unreachable). The credit RPC is idempotent so the webhook can
+    // safely fire too.
+    setStep({ kind: "verifying", amount });
+    markPendingTopup(paymentIntentId);
+    const r = await confirmWalletTopup(paymentIntentId);
+    if (r.ok) {
+      clearPendingTopup();
+      await refresh();
+      haptic.success();
+      setConfettiKey((k) => k + 1);
+      setStep({ kind: "done", amount });
+      toast.success(t("wallet.topup.success"));
+      setTimeout(onClose, 1500);
+    } else {
+      // Leave the PI in localStorage — WalletScreen / next open of this
+      // sheet will retry. Show a soft error but do not lose the credit.
+      haptic.warning();
+      setStep({
+        kind: "error",
+        message: t("wallet.topup.verifyingFailed", {
+          defaultValue: "Paiement confirmé par la banque. Vérification en cours — votre solde sera crédité sous peu.",
+        }),
+      });
+    }
   };
 
   return (
@@ -288,8 +335,20 @@ export function TopUpSheet({
                   clientSecret={step.clientSecret}
                   stripePromise={step.stripePromise}
                   amountLabel={formatMoney(step.amount, cur, i18n.language)}
-                  onSuccess={() => handleSuccess(step.amount)}
+                  onSuccess={(pi) => { void handleSuccess(step.amount, pi); }}
                 />
+              ) : step.kind === "verifying" ? (
+                <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <Loader2 className="animate-spin" size={28} />
+                  <p className="text-[15px] font-semibold">
+                    {t("wallet.topup.verifying", { defaultValue: "Vérification du paiement…" })}
+                  </p>
+                  <p className="max-w-[260px] text-[12px] text-muted-foreground">
+                    {t("wallet.topup.verifyingHint", {
+                      defaultValue: "Nous créditons votre portefeuille. Cela prend quelques secondes.",
+                    })}
+                  </p>
+                </div>
               ) : null}
             </motion.div>
           )}
@@ -355,7 +414,7 @@ function StripeInline({
   clientSecret: string;
   stripePromise: Promise<StripeJs | null>;
   amountLabel: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
 }) {
   const options = useMemo(
     () => ({
@@ -379,7 +438,7 @@ function StripeInlineForm({
   onSuccess,
 }: {
   amountLabel: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
 }) {
   const { t } = useTranslation();
   const stripe = useStripe();
@@ -407,7 +466,7 @@ function StripeInlineForm({
       paymentIntent &&
       (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")
     ) {
-      onSuccess();
+      onSuccess(paymentIntent.id);
     } else {
       setError(t("pay.errors.generic"));
     }

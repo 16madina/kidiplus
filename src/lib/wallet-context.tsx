@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchMyWallet,
   fetchMyWalletTransactions,
@@ -36,7 +37,7 @@ type WalletCtx = {
 const Ctx = createContext<WalletCtx | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [wallet, setWallet] = useState<WalletRow | null>(null);
   const [transactions, setTransactions] = useState<WalletTxRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +72,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
     return () => unsub();
   }, [userId, refresh]);
+
+  // Safety sync: whenever the profile currency changes AND the wallet
+  // balance is 0 but the wallet currency lags behind, force a server-side
+  // sync via the sync_my_wallet_currency RPC then refresh. Idempotent.
+  useEffect(() => {
+    if (!userId || !profile) return;
+    const target = profile.currency;
+    if (!target) return;
+    if (wallet && Number(wallet.balance) === 0 && (wallet.currency ?? "").toUpperCase() !== target.toUpperCase()) {
+      void (async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).rpc("sync_my_wallet_currency", {});
+        await refresh();
+      })();
+    }
+  }, [userId, profile, wallet, refresh]);
 
   const value = useMemo<WalletCtx>(
     () => ({

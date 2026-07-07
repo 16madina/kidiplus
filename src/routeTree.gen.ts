@@ -15,6 +15,8 @@ import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
+import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -46,31 +48,47 @@ const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
   path: '/api/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => ApiWalletTopupRoute,
+} as any)
+const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => ApiCheckoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
-  '/api/wallet-topup': typeof ApiWalletTopupRoute
+  '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
-  '/api/wallet-topup': typeof ApiWalletTopupRoute
+  '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/api/checkout': typeof ApiCheckoutRoute
+  '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
-  '/api/wallet-topup': typeof ApiWalletTopupRoute
+  '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +99,8 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/checkout/confirm'
+    | '/api/wallet-topup/confirm'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +109,8 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/checkout/confirm'
+    | '/api/wallet-topup/confirm'
   id:
     | '__root__'
     | '/'
@@ -97,15 +119,17 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/checkout/confirm'
+    | '/api/wallet-topup/confirm'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiCheckoutRoute: typeof ApiCheckoutRoute
+  ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
-  ApiWalletTopupRoute: typeof ApiWalletTopupRoute
+  ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -152,16 +176,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/wallet-topup/confirm': {
+      id: '/api/wallet-topup/confirm'
+      path: '/confirm'
+      fullPath: '/api/wallet-topup/confirm'
+      preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
+      parentRoute: typeof ApiWalletTopupRoute
+    }
+    '/api/checkout/confirm': {
+      id: '/api/checkout/confirm'
+      path: '/confirm'
+      fullPath: '/api/checkout/confirm'
+      preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
+      parentRoute: typeof ApiCheckoutRoute
+    }
   }
 }
+
+interface ApiCheckoutRouteChildren {
+  ApiCheckoutConfirmRoute: typeof ApiCheckoutConfirmRoute
+}
+
+const ApiCheckoutRouteChildren: ApiCheckoutRouteChildren = {
+  ApiCheckoutConfirmRoute: ApiCheckoutConfirmRoute,
+}
+
+const ApiCheckoutRouteWithChildren = ApiCheckoutRoute._addFileChildren(
+  ApiCheckoutRouteChildren,
+)
+
+interface ApiWalletTopupRouteChildren {
+  ApiWalletTopupConfirmRoute: typeof ApiWalletTopupConfirmRoute
+}
+
+const ApiWalletTopupRouteChildren: ApiWalletTopupRouteChildren = {
+  ApiWalletTopupConfirmRoute: ApiWalletTopupConfirmRoute,
+}
+
+const ApiWalletTopupRouteWithChildren = ApiWalletTopupRoute._addFileChildren(
+  ApiWalletTopupRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiCheckoutRoute: ApiCheckoutRoute,
+  ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
-  ApiWalletTopupRoute: ApiWalletTopupRoute,
+  ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

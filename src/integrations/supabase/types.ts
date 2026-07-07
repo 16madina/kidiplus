@@ -562,6 +562,7 @@ export type Database = {
         Args: { _amount: number; _destination: Json; _method: string }
         Returns: Json
       }
+      sync_my_wallet_currency: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never
