@@ -150,7 +150,7 @@ export function ProfileScreen() {
           index={2}
         />
 
-        <p className="mt-4 text-center text-[11px] text-muted-foreground">Shoplive v1.0.0</p>
+        <p className="mt-4 text-center text-[11px] text-muted-foreground">KiDi+ v1.0.0</p>
       </div>
 
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />

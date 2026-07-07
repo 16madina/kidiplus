@@ -102,7 +102,7 @@ export function SignUpScreen({
     <AuthScreenShell title="Créer un compte" onBack={onBack}>
       <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
         <h2 className="text-[26px] font-bold leading-tight">
-          Bienvenue sur shoplive ✨
+          Bienvenue sur KiDi+ ✨
         </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
           Crée ton compte en 30 secondes.

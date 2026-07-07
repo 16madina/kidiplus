@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// NOTE: appId is a placeholder — replace before submitting to app stores.
+// KiDi+ native shell config. Adjust appId to your registered bundle before store submission.
 const config: CapacitorConfig = {
-  appId: "com.deedigital.liveshop",
-  appName: "LiveShop",
+  appId: "app.kidi.live",
+  appName: "KiDi+",
   webDir: "dist",
   bundledWebRuntime: false,
   // Local dev: point the native shell at the Vite dev server on your LAN.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Bell, Share2, Loader2 } from "lucide-react";
 import { Press } from "@/components/press";
+import { Logo } from "@/components/brand/logo";
 import { CategoryPills } from "@/components/category-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
 import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
@@ -169,18 +170,7 @@ export function HomeScreen() {
         }}
       >
         <div className="flex items-center justify-between px-4 py-2.5">
-          <span
-            className="text-[22px] font-black tracking-tight"
-            style={{
-              background:
-                "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.55 0.24 25))",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            shoplive
-          </span>
+          <Logo size={26} />
           <div className="flex items-center gap-1">
             <Press
               aria-label="Notifications"
