@@ -200,7 +200,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-[12px] font-semibold text-white/80">
-              Produits du live ({b.products.length})
+              {t("broadcast.setup.products")} ({b.products.length})
             </span>
           </div>
           <motion.div
