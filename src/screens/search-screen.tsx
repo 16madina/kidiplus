@@ -322,7 +322,7 @@ export function SearchScreen() {
                   onClick={cancel}
                   className="!min-h-10 px-1 text-[14px] font-semibold text-accent"
                 >
-                  Annuler
+                  {t("common.cancel")}
                 </Press>
               </motion.div>
             )}
