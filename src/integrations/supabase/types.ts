@@ -195,6 +195,7 @@ export type Database = {
           processing_fee: number
           product_id: string | null
           seller_id: string
+          seller_net: number
           status: string
           stripe_payment_intent_id: string | null
           total: number
@@ -215,6 +216,7 @@ export type Database = {
           processing_fee?: number
           product_id?: string | null
           seller_id: string
+          seller_net?: number
           status?: string
           stripe_payment_intent_id?: string | null
           total: number
@@ -235,6 +237,7 @@ export type Database = {
           processing_fee?: number
           product_id?: string | null
           seller_id?: string
+          seller_net?: number
           status?: string
           stripe_payment_intent_id?: string | null
           total?: number
@@ -270,6 +273,53 @@ export type Database = {
           },
         ]
       }
+      payouts: {
+        Row: {
+          amount: number
+          currency: string
+          destination: Json
+          id: string
+          method: string
+          note: string | null
+          processed_at: string | null
+          requested_at: string
+          seller_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          currency: string
+          destination: Json
+          id?: string
+          method: string
+          note?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          seller_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          currency?: string
+          destination?: Json
+          id?: string
+          method?: string
+          note?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          seller_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -281,6 +331,7 @@ export type Database = {
           email: string
           handle: string
           id: string
+          is_admin: boolean
           is_seller: boolean
           language: string
         }
@@ -294,6 +345,7 @@ export type Database = {
           email: string
           handle: string
           id: string
+          is_admin?: boolean
           is_seller?: boolean
           language?: string
         }
@@ -307,10 +359,82 @@ export type Database = {
           email?: string
           handle?: string
           id?: string
+          is_admin?: boolean
           is_seller?: boolean
           language?: string
         }
         Relationships: []
+      }
+      seller_balances: {
+        Row: {
+          available: number
+          currency: string
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          available?: number
+          currency?: string
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          available?: number
+          currency?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_balances_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_earnings: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          id: string
+          order_id: string
+          seller_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          id?: string
+          order_id: string
+          seller_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_earnings_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_transactions: {
         Row: {
@@ -397,10 +521,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_process_payout: {
+        Args: { _action: string; _note?: string; _payout_id: string }
+        Returns: Json
+      }
+      credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
         Returns: Json
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
       purchase_fixed_price: {
         Args: { _buyer_identity: string; _product_id: string }
@@ -427,6 +557,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      request_payout: {
+        Args: { _amount: number; _destination: Json; _method: string }
+        Returns: Json
       }
     }
     Enums: {
