@@ -555,8 +555,9 @@ function AvisTab({ info }: { info: SellerInfo }) {
               <div className="flex items-center gap-2">
                 <span className="truncate text-[13px] font-semibold">@{r.user}</span>
                 <span className="text-[11px] text-muted-foreground">
-                  · il y a {r.daysAgo}j
+                  · {t("time.dayAgo", { count: r.daysAgo })}
                 </span>
+
               </div>
               <div className="mt-0.5 flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, k) => (
