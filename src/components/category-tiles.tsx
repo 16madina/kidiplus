@@ -47,6 +47,7 @@ export function CategoryTiles({
   onChange: (c: HomeCategory) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   return (
     <div
