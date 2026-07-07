@@ -172,6 +172,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
   }, []);
 
+  // If the host video connection never comes up for 90s, auto-end the live so
+  // it stops appearing in the public feed while the host figures things out.
+  const autoEndFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoEndFiredRef.current) return;
+    if (videoStatus === "granted") return;
+    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied") return;
+    const timeout = setTimeout(() => {
+      if (autoEndFiredRef.current) return;
+      autoEndFiredRef.current = true;
+      if (b.liveId) {
+        void import("@/lib/lives-db").then(({ endLiveInDb }) =>
+          endLiveInDb(b.liveId!).catch(() => {}),
+        );
+      }
+    }, 90_000);
+    return () => clearTimeout(timeout);
+  }, [videoStatus, b.liveId]);
+
+  const retryConnection = () => {
+    autoEndFiredRef.current = false;
+    setRetryKey((k) => k + 1);
+    haptic.medium();
+  };
+
   // Totals from finalized sales.
   const totalRevenue = useMemo(
     () => room.products.reduce((sum, p) => {
