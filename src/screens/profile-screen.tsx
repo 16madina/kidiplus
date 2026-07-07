@@ -228,6 +228,8 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
+      <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+
 
     </div>
   );
