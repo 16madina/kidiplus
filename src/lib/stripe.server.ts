@@ -49,7 +49,10 @@ export function getStripeConfig(): {
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
-  const webhookSecret = managedWebhook ?? legacyWebhook ?? "";
+  // Prefer the manually-configured STRIPE_WEBHOOK_SECRET (user's own endpoint
+  // pointed at /api/stripe-webhook) over the Lovable-managed webhook secret,
+  // which is bound to a different endpoint URL and won't match our signatures.
+  const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
   const haveApi = !!(gatewayKey || legacySecret);
   if (!haveApi || !publishableKey) {
