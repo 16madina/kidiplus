@@ -95,6 +95,14 @@ export const HOME_FILTERS: HomeFilter[] = [
   "Nouveautés",
 ];
 
+/** i18n key per home filter id. */
+export const HOME_FILTER_LABEL_KEY: Record<HomeFilter, string> = {
+  "Recommandés": "home.filters.recommended",
+  "Achat immédiat": "home.filters.buyNow",
+  "Populaires": "home.filters.popular",
+  "Nouveautés": "home.filters.new",
+};
+
 export function applyHomeCategory(
   streams: LiveStream[],
   category: HomeCategory,
