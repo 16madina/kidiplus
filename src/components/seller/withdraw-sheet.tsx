@@ -58,10 +58,20 @@ export function WithdrawSheet({
     return d;
   }, [method, phone, iban, holder]);
 
-  const canContinue =
-    amount >= min &&
-    amount <= available &&
-    (method === "bank_transfer" ? iban.trim().length >= 6 && holder.trim().length >= 2 : phone.trim().length >= 6);
+  const destinationValid =
+    method === "bank_transfer"
+      ? iban.trim().length >= 6 && holder.trim().length >= 2
+      : phone.trim().length >= 6;
+  const belowMin = amount < min;
+  const aboveAvailable = amount > available;
+  const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
+  const disabledReason = belowMin
+    ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
+    : aboveAvailable
+      ? t("payout.errors.aboveAvailable")
+      : !destinationValid
+        ? t("payout.errors.missingDestination")
+        : null;
 
   const submit = async () => {
     setBusy(true);
