@@ -45,6 +45,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
+  const [lastBidFlash, setLastBidFlash] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
@@ -168,7 +169,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    void endAuctionInDb(activeAuction.productId, null, finalPrice);
+    void endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
     room.broadcastAuctionEnd({
       productId: activeAuction.productId,
       winnerId,
@@ -196,6 +197,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
   }, [room.lastAuctionEnd, room.products, t, room]);
+
+  // Host-visible bid flash for every new realtime bid.
+  const seenBidRef = useRef<number | null>(null);
+  useEffect(() => {
+    const bid = room.lastBid;
+    if (!bid || seenBidRef.current === bid.ts) return;
+    seenBidRef.current = bid.ts;
+    const prod = room.products.find((p) => p.id === bid.productId);
+    setLastBidFlash(`${bid.bidderName} · ${fmt(bid.amount)}${prod ? ` — ${prod.name}` : ""}`);
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
+  }, [room.lastBid, room.products]);
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
   const seenSoldOutRef = useRef<Set<string>>(new Set());
@@ -280,7 +293,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    await endAuctionInDb(activeAuction.productId, null, finalPrice);
+    await endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
     room.broadcastAuctionEnd({
       productId: activeAuction.productId,
       winnerId,
@@ -548,6 +561,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             }}
           >
             {lastSaleFlash}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* New bid flash */}
+      <AnimatePresence>
+        {lastBidFlash && !lastSaleFlash && (
+          <motion.div
+            key={lastBidFlash}
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.22, ease: EASE_IOS }}
+            className="absolute left-1/2 top-24 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-[13px] font-bold text-white"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.7 0.2 55), oklch(0.62 0.2 35))",
+              boxShadow: "0 8px 24px rgba(255,130,30,0.28)",
+            }}
+          >
+            {lastBidFlash}
           </motion.div>
         )}
       </AnimatePresence>
