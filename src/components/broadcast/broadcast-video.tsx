@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera } from "lucide-react";
+import { useAppActive } from "@/lib/app-state";
 
 /**
  * Single swappable video layer for the broadcast experience.
