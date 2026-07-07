@@ -100,7 +100,9 @@ function AuthGate() {
           transition={{ duration: 0.2, ease: EASE_IOS }}
           className="h-full w-full"
         >
-          <AppShellInner />
+          <ImmersiveProvider>
+            <AppShellInner />
+          </ImmersiveProvider>
         </motion.div>
       ) : (
         <motion.div
