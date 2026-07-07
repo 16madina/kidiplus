@@ -454,7 +454,7 @@ function LivesTab({ info }: { info: SellerInfo }) {
                 transition={{ duration: 0.35, ease: EASE_IOS }}
               >
                 <Press
-                  aria-label={on ? "Rappel activé" : "Me rappeler"}
+                  aria-label={on ? t("seller.reminderOn") : t("seller.remindMe")}
                   onClick={() => toggle(s.id, s.title)}
                   hapticOnTap={false}
                   className="h-10 rounded-full px-3 text-[12px] font-semibold"
@@ -472,8 +472,9 @@ function LivesTab({ info }: { info: SellerInfo }) {
                   }
                 >
                   <Bell size={14} className="mr-1" fill={on ? "currentColor" : "none"} />
-                  {on ? "Activé" : "Me rappeler"}
+                  {on ? t("seller.activated") : t("seller.remindMe")}
                 </Press>
+
               </motion.div>
             )}
           </motion.div>
