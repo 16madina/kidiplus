@@ -410,7 +410,6 @@
       "invalidAmount": "Invalid amount.",
       "rateLimited": "Too many attempts. Please try again shortly."
     },
-
     "toasts": {
       "confirmed": "Payment confirmed 🎉"
     }
@@ -599,7 +598,11 @@
     "unblocked": "User unblocked.",
     "failed": "Action failed.",
     "listTitle": "Blocked users",
-    "empty": "No blocked users."
+    "empty": "No blocked users.",
+    "unblockConfirmTitle": "Unblock this user?",
+    "unblockConfirmBody": "They will be able to see your lives and message you again.",
+    "unblockConfirmCta": "Unblock",
+    "cancel": "Cancel"
   },
   "account": {
     "delete": {

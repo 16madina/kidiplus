@@ -410,7 +410,6 @@
       "invalidAmount": "Montant invalide.",
       "rateLimited": "Trop de tentatives. Réessaie dans un instant."
     },
-
     "toasts": {
       "confirmed": "Paiement confirmé 🎉"
     }
@@ -599,7 +598,11 @@
     "unblocked": "Utilisateur débloqué.",
     "failed": "Action impossible.",
     "listTitle": "Utilisateurs bloqués",
-    "empty": "Aucun utilisateur bloqué."
+    "empty": "Aucun utilisateur bloqué.",
+    "unblockConfirmTitle": "Débloquer cet utilisateur ?",
+    "unblockConfirmBody": "Il pourra à nouveau te voir en live et t'envoyer des messages.",
+    "unblockConfirmCta": "Débloquer",
+    "cancel": "Annuler"
   },
   "account": {
     "delete": {
