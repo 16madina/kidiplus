@@ -511,7 +511,7 @@ function AvisTab({ info }: { info: SellerInfo }) {
               />
             ))}
           </div>
-          <span className="mt-0.5 text-[11px] text-muted-foreground">{info.reviewCount} avis</span>
+          <span className="mt-0.5 text-[11px] text-muted-foreground">{t("seller.reviewCount", { count: info.reviewCount })}</span>
         </div>
         <div className="flex-1 space-y-1.5">
           {info.ratingBreakdown.map((pct, i) => {
