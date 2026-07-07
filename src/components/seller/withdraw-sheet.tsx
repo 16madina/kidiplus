@@ -232,8 +232,17 @@ export function WithdrawSheet({
               )}
 
               <div className="mt-auto pt-4">
+                {!canContinue && disabledReason && (
+                  <p
+                    className="mb-2 text-center text-[12px] font-semibold"
+                    style={{ color: "oklch(0.6 0.24 25)" }}
+                  >
+                    {disabledReason}
+                  </p>
+                )}
                 <Press
                   onClick={canContinue ? () => setStep("confirm") : undefined}
+                  disabled={!canContinue}
                   className="w-full rounded-2xl py-3 text-[15px] font-bold"
                   style={{
                     backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
