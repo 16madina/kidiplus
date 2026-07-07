@@ -278,6 +278,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         enabled={cameraOn}
         micEnabled={micOn}
         fallbackImage={b.cover}
+        retryKey={retryKey}
+        onStatus={setVideoStatus}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
