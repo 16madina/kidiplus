@@ -12,7 +12,8 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import type Stripe from "stripe";
+import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
 
 export const Route = createFileRoute("/api/stripe-webhook")({
   server: {
