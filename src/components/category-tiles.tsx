@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
 import {
   HOME_CATEGORIES,
+  HOME_CATEGORY_LABEL_KEY,
   HOME_CATEGORY_META,
   type HomeCategory,
 } from "@/lib/home-categories";
