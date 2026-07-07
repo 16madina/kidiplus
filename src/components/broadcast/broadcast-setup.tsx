@@ -108,13 +108,21 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         {/* Cover + title row */}
         <div className="flex items-start gap-3">
           <Press
-            onClick={() => setShowCovers((v) => !v)}
+            onClick={pickCover}
             className="!min-h-16 h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
             style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
             aria-label="Choisir une couverture"
           >
             {b.cover ? (
-              <img src={b.cover} alt="" className="h-full w-full object-cover" />
+              <motion.img
+                key={b.cover}
+                src={b.cover}
+                alt=""
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2, ease: EASE_IOS }}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="grid h-full w-full place-items-center text-white/80">
                 <ImageIcon size={22} />
@@ -133,36 +141,17 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               WebkitBackdropFilter: "blur(10px)",
             }}
           />
+          {/* Hidden native file input — click() is dispatched from pickCover
+              inside a genuine user gesture so the OS dialog opens. */}
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onCoverFile}
+          />
         </div>
 
-        {showCovers && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: EASE_IOS }}
-            className="flex gap-2 overflow-x-auto"
-          >
-            {COVER_POOL.map((c) => {
-              const active = c === b.cover;
-              return (
-                <Press
-                  key={c}
-                  onClick={() => {
-                    b.setCover(c);
-                    setShowCovers(false);
-                  }}
-                  className="!min-h-14 h-14 w-14 shrink-0 overflow-hidden rounded-lg p-0"
-                  style={{
-                    outline: active ? "2px solid white" : "none",
-                    outlineOffset: 2,
-                  }}
-                >
-                  <img src={c} alt="" className="h-full w-full object-cover" />
-                </Press>
-              );
-            })}
-          </motion.div>
-        )}
 
         {/* Category pills */}
         <div
