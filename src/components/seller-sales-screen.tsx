@@ -39,7 +39,8 @@ export function SellerSalesScreen({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const revenueCurrency = profile?.currency ?? "EUR";
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [buyers, setBuyers] = useState<BuyerMap>({});
 
