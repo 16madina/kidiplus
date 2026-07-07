@@ -91,6 +91,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<BProduct[]>([]);
   const [session, setSession] = useState<BroadcastSession>(emptySession());
   const [roomName, setRoomName] = useState<string | null>(null);
+  const [hostIdentity, setHostIdentity] = useState<string | null>(null);
+  const [hostName, setHostName] = useState<string>("Host");
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
@@ -100,6 +102,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   }, []);
   const removeProduct = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const setHost = useCallback((identity: string, name: string) => {
+    setHostIdentity(identity);
+    setHostName(name || "Host");
   }, []);
 
   const reset = useCallback(() => {
@@ -124,10 +131,12 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       products, addProduct, removeProduct,
       session, setSession,
       roomName, setRoomName,
+      hostIdentity, hostName, setHost,
       reset,
     }),
-    [stage, title, category, cover, products, session, roomName, addProduct, removeProduct, reset],
+    [stage, title, category, cover, products, session, roomName, hostIdentity, hostName, setHost, addProduct, removeProduct, reset],
   );
+
 
   return (
     <BroadcastContext.Provider value={value}>
