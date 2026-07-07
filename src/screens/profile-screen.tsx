@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronRight,
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
@@ -42,6 +43,7 @@ import { WalletScreen } from "@/components/wallet/wallet-screen";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
+import { getAdminStatus } from "@/lib/admin.functions";
 
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
@@ -60,6 +62,26 @@ export function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [serverAdmin, setServerAdmin] = useState<boolean | null>(null);
+  const fetchAdminStatus = useServerFn(getAdminStatus);
+
+  useEffect(() => {
+    if (!profile) {
+      setServerAdmin(null);
+      return;
+    }
+    let alive = true;
+    fetchAdminStatus()
+      .then((res) => {
+        if (!alive) return;
+        setServerAdmin(res.isAdmin);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setServerAdmin(false);
+      });
+    return () => { alive = false; };
+  }, [profile, fetchAdminStatus]);
 
   useEffect(() => {
     if (!profile) return setAvatarUrl(null);
@@ -167,7 +189,7 @@ export function ProfileScreen() {
                   onClick: () => setSalesOpen(true),
                 }]
               : []),
-            ...(profile?.is_admin
+            ...(serverAdmin === true
               ? [{
                   icon: <ShieldCheck size={16} />,
                   label: t("admin.title"),
