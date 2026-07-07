@@ -95,19 +95,19 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           <Press
             onClick={() => {
               haptic.light();
-              toast.success("Récap copié dans le presse-papier");
+              toast.success(t("common.copied"));
             }}
             className="!min-h-12 h-12 w-full rounded-2xl bg-foreground text-[15px] font-semibold text-background"
           >
             <Share2 size={16} className="mr-2" />
-            Partager le récap
+            {t("common.share")}
           </Press>
           <Press
             onClick={() => { reset(); onDone(); }}
             className="!min-h-12 h-12 w-full rounded-2xl bg-muted text-[15px] font-semibold"
           >
             <Home size={16} className="mr-2" />
-            Retour à l'accueil
+            {t("broadcast.summary.close")}
           </Press>
         </div>
       </div>
