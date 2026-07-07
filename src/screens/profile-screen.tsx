@@ -59,6 +59,7 @@ export function ProfileScreen() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (!profile) return setAvatarUrl(null);
@@ -205,6 +206,13 @@ export function ProfileScreen() {
               danger: true,
               onClick: signingOut ? undefined : handleSignOut,
             },
+            {
+              icon: <Trash2 size={16} />,
+              label: t("account.delete.menuItem"),
+              tint: "oklch(0.55 0.22 27)",
+              danger: true,
+              onClick: () => setDeleteOpen(true),
+            },
           ]}
           index={3}
         />
@@ -220,6 +228,8 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
+      <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+
 
     </div>
   );
