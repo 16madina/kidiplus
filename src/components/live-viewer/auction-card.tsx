@@ -25,6 +25,9 @@ export function AuctionCard({
   onBid,
   onOpenProducts,
   onBuy,
+  onToggleCustom,
+  customPanel,
+  customOpen = false,
 }: {
   product: Product;
   secondsLeft: number;
@@ -37,6 +40,9 @@ export function AuctionCard({
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
+  onToggleCustom?: () => void;
+  customPanel?: ReactNode;
+  customOpen?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [bidPulse, setBidPulse] = useState(0);
