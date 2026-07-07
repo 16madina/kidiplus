@@ -11,25 +11,36 @@ import { formatEuro, type Product } from "@/lib/live-viewer-mock";
 export function BuySheet({
   product,
   onClose,
+  onConfirm,
 }: {
   product: Product | null;
   onClose: () => void;
+  /** When provided, called on confirm; must return true on success. */
+  onConfirm?: () => Promise<boolean>;
 }) {
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!product) setDone(false);
+    if (!product) { setDone(false); setBusy(false); }
   }, [product]);
 
   const shipping = 4.9;
   const total = product ? product.price + shipping : 0;
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    let ok = true;
+    if (onConfirm) ok = await onConfirm();
+    setBusy(false);
+    if (!ok) return;
     setDone(true);
     haptic.success();
     if (product) toast.success(`Commande confirmée : ${product.name}`);
     setTimeout(onClose, 1200);
   };
+
 
 
   return (
@@ -74,10 +85,11 @@ export function BuySheet({
                 <div className="mt-auto pt-6">
                   <Press
                     onClick={confirm}
-                    className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground"
+                    className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
                   >
-                    Confirmer et payer {formatEuro(total)}
+                    {busy ? "…" : `Confirmer et payer ${formatEuro(total)}`}
                   </Press>
+
                   <Press
                     onClick={onClose}
                     className="mt-2 w-full rounded-2xl py-3 text-[14px] font-semibold text-muted-foreground"

@@ -256,6 +256,120 @@ export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
  * Realtime subscription to the lives feed.
  * Fires `onChange` after any INSERT/UPDATE/DELETE — caller refetches.
  */
+// -------------------------------------------------------------------------
+// Products / bids / auctions
+// -------------------------------------------------------------------------
+
+export type LiveProductRow = {
+  id: string;
+  live_id: string;
+  name: string;
+  image_url: string | null;
+  mode: "auction" | "fixed";
+  start_price: number;
+  price: number;
+  stock: number;
+  timer_seconds: number;
+  status: "upcoming" | "active" | "sold" | "out";
+  sold_to_identity: string | null;
+  final_price: number | null;
+  position: number;
+};
+
+export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[]> {
+  const { data } = await supabase
+    .from("live_products")
+    .select("*")
+    .eq("live_id", liveId)
+    .order("position", { ascending: true });
+  return (data ?? []) as LiveProductRow[];
+}
+
+/** Host starts an auction: mark row active + set fresh price=start_price. */
+export async function startAuctionInDb(productId: string): Promise<void> {
+  const { data: row } = await supabase
+    .from("live_products")
+    .select("start_price")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!row) return;
+  await supabase
+    .from("live_products")
+    .update({ status: "active", price: row.start_price, final_price: null, sold_to_identity: null })
+    .eq("id", productId);
+}
+
+export async function endAuctionInDb(
+  productId: string,
+  winnerIdentity: string | null,
+  finalPrice: number,
+): Promise<void> {
+  await supabase
+    .from("live_products")
+    .update({
+      status: "sold",
+      sold_to_identity: winnerIdentity,
+      final_price: finalPrice,
+    })
+    .eq("id", productId);
+}
+
+/** Set fixed-price row to active (opens buying). Idempotent. */
+export async function activateFixedInDb(productId: string): Promise<void> {
+  await supabase.from("live_products").update({ status: "active" }).eq("id", productId);
+}
+
+export async function stopFixedInDb(productId: string): Promise<void> {
+  await supabase.from("live_products").update({ status: "upcoming" }).eq("id", productId);
+}
+
+/** Insert a bid AND bump the product price so realtime subscribers see it. */
+export async function placeBidInDb(args: {
+  liveId: string;
+  productId: string;
+  bidderId: string;
+  bidderName: string;
+  amount: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error: bidErr } = await supabase.from("live_bids").insert({
+    live_id: args.liveId,
+    product_id: args.productId,
+    bidder_id: args.bidderId,
+    bidder_name: args.bidderName,
+    amount: args.amount,
+  });
+  if (bidErr) return { ok: false, error: bidErr.message };
+  // Race-tolerant: only bump price if new amount is higher.
+  const { data: cur } = await supabase
+    .from("live_products")
+    .select("price")
+    .eq("id", args.productId)
+    .maybeSingle();
+  if (cur && args.amount > cur.price) {
+    await supabase
+      .from("live_products")
+      .update({ price: args.amount })
+      .eq("id", args.productId);
+  }
+  return { ok: true };
+}
+
+export async function purchaseFixedPriceRpc(
+  productId: string,
+  buyerIdentity: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.rpc("purchase_fixed_price", {
+    _product_id: productId,
+    _buyer_identity: buyerIdentity,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// -------------------------------------------------------------------------
+// Feed realtime
+// -------------------------------------------------------------------------
+
 export function subscribeToLivesFeed(onChange: () => void): () => void {
   const channel = supabase
     .channel("public:lives:feed")

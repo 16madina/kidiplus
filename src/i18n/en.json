@@ -151,7 +151,12 @@
       "success": "Purchase confirmed!",
       "fail": "Payment failed. Try again."
     },
-    "chatIntro": "Be respectful in the chat 💛"
+    "chatIntro": "Be respectful in the chat 💛",
+    "danglingTitle_one": "{{count}} live still open",
+    "danglingTitle_other": "{{count}} lives still open",
+    "danglingBody": "End them before starting a new one.",
+    "danglingEndAll": "End all",
+    "danglingEnded": "Previous lives ended"
   },
   "broadcast": {
     "becomeSellerTitle": "Become a seller",
@@ -390,4 +395,3 @@
     "reviewCount_other": "{{count}} reviews"
   }
 }
-
