@@ -20,6 +20,7 @@ import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -76,6 +77,11 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   id:
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/api/account/delete'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
     }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
