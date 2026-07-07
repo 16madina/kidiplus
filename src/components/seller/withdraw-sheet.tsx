@@ -163,8 +163,22 @@ export function WithdrawSheet({
                 onChange={(e) => setAmount(Number(e.target.value.replace(",", ".")) || 0)}
                 className="mt-1 h-12 w-full rounded-2xl border px-4 text-[16px] font-semibold tabular-nums"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t("payout.minHint", { min: formatMoney(min, currency, i18n.language) })}
+              <p
+                className="mt-1 text-[11px]"
+                style={{
+                  color: belowMin
+                    ? "oklch(0.6 0.24 25)"
+                    : "var(--muted-foreground)",
+                  fontWeight: belowMin ? 600 : 400,
+                }}
+              >
+                {belowMin
+                  ? t("payout.errors.belowMinInline", {
+                      min: formatMoney(min, currency, i18n.language),
+                    })
+                  : t("payout.minHint", {
+                      min: formatMoney(min, currency, i18n.language),
+                    })}
               </p>
 
               <p className="mt-4 mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
