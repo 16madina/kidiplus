@@ -4,7 +4,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 
 /**
  * KiDi+ brand logo.
- * Renders /logo.png (drop the file at public/logo.png) if available,
+ * Renders the uploaded brand mark from Lovable Assets by default,
  * otherwise falls back to a bold wordmark with a gold "+".
  *
  * Gold accent token: var(--primary) (brand gold).
