@@ -102,7 +102,12 @@ export function RealLiveViewerScreen() {
     [localMessages, room.chat],
   );
 
+  // ---------- Payment sheet state ----------
+  // A single sheet handles both fixed-price purchases and auction wins.
+  const [pendingOrder, setPendingOrder] = useState<OrderRow | null>(null);
+
   // Sold celebration from server auction:end.
+  // If the current user is the winner, open the payment sheet to pay for the item.
   const [confettiKey, setConfettiKey] = useState(0);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
@@ -118,7 +123,33 @@ export function RealLiveViewerScreen() {
       ...prev,
       systemMessage(`${t("live.soldTo", { name: winner })} · ${formatEuro(evt.finalPrice)}`),
     ]);
-  }, [room.lastAuctionEnd, t]);
+
+    // If I won and this is a real live with a known seller, open the payment sheet.
+    if (
+      user &&
+      evt.winnerId === user.id &&
+      active?.liveId &&
+      active?.sellerId
+    ) {
+      const prod = room.products.find((p) => p.id === evt.productId);
+      if (prod) {
+        void (async () => {
+          const res = await createPendingOrder({
+            buyerId: user.id,
+            sellerId: active.sellerId!,
+            liveId: active.liveId!,
+            productId: prod.id,
+            kind: "auction",
+            itemName: prod.name,
+            itemImage: prod.image_url,
+            amount: evt.finalPrice,
+          });
+          if (res.ok) setPendingOrder(res.order);
+          else toast.error(res.error);
+        })();
+      }
+    }
+  }, [room.lastAuctionEnd, t, user, active, room.products]);
 
   // Warning haptic near auction end.
   useEffect(() => {
