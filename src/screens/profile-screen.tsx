@@ -350,10 +350,37 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
             onClick={() => setCurrencyOpen(true)}
           />
         </div>
+
+        {/* Legal */}
+        <h2 className="mb-2 mt-5 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("legal.appLegal")}
+        </h2>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <NavRow icon={<FileText size={16} />} tint="oklch(0.5 0.06 265)" label={t("legal.privacy")}   onClick={() => setLegalOpen("privacy")} />
+          <Sep />
+          <NavRow icon={<FileText size={16} />} tint="oklch(0.5 0.06 265)" label={t("legal.terms")}     onClick={() => setLegalOpen("terms")} />
+          <Sep />
+          <NavRow icon={<ShieldAlert size={16} />} tint="oklch(0.55 0.16 155)" label={t("legal.community")} onClick={() => setLegalOpen("community")} />
+        </div>
+
+        {/* Account */}
+        <h2 className="mb-2 mt-5 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("profile.menu.account") ?? "Account"}
+        </h2>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <NavRow icon={<UserX size={16} />} tint="oklch(0.55 0.12 30)" label={t("block.listTitle")} onClick={() => setBlockedOpen(true)} />
+          <Sep />
+          <NavRow icon={<Trash2 size={16} />} tint="oklch(0.6 0.24 27)" label={t("account.delete.menuItem")} onClick={() => setDeleteOpen(true)} />
+        </div>
       </div>
 
       <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
       <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
+      <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
+      <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
+      <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
+      <BlockedUsersScreen open={blockedOpen} onClose={() => setBlockedOpen(false)} />
+      <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </PushScreen>
   );
 }
