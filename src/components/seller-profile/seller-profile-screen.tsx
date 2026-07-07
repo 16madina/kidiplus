@@ -72,6 +72,9 @@ function SellerProfileInner({
   const [tab, setTab] = useState<TabKey>("boutique");
   const { open: openLive } = useLiveViewer();
   const { requestWithPrePrompt: requestPush } = usePush();
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
+
 
 
   // Collapsing header transforms — transform + opacity only
