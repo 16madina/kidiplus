@@ -21,6 +21,7 @@ export function Logo({
   className?: string;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const showImage = variant !== "wordmark" && !imgFailed;
 
   if (showImage) {
