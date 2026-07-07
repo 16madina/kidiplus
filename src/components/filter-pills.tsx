@@ -54,7 +54,7 @@ export function FilterPills({
             style={{
               scrollSnapAlign: "start",
               backgroundColor: isActive
-                ? "oklch(0.18 0.005 60)"
+                ? "oklch(0.22 0.06 265)"
                 : "var(--muted)",
               color: isActive ? "#fff" : "var(--foreground)",
               transition: "background-color 150ms, color 150ms",

@@ -15,8 +15,13 @@ export function AuthFlow() {
 
   return (
     <div
-      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
-      style={{ isolation: "isolate" }}
+      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden"
+      style={{
+        isolation: "isolate",
+        background:
+          "linear-gradient(180deg, #141B33 0%, #10162B 55%, #0C1122 100%)",
+        color: "white",
+      }}
     >
       <AnimatePresence mode="wait">
         {view === "welcome" && (
@@ -113,11 +118,10 @@ function Welcome({
         </Press>
         <Press
           onClick={onSignIn}
-          className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold"
+          className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold text-white"
           style={{
             backgroundColor: "transparent",
-            color: "var(--foreground)",
-            border: "1.5px solid var(--border)",
+            border: "1.5px solid rgba(255,255,255,0.25)",
           }}
         >
           {t("auth.welcome.signIn")}

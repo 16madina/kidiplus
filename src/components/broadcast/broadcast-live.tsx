@@ -583,12 +583,12 @@ function SellerProductCard({
           <img src={product.image_url} alt="" className="h-full w-full object-cover" />
         )}
         {featured && (
-          <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-black">
+          <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]">
             {t("live.featured")}
           </span>
         )}
         {isNextAuction && !featured && (
-          <span className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-black"
+          <span className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]"
             style={{ backgroundColor: "oklch(0.85 0.18 90)" }}>
             {t("live.nextAuction")}
           </span>
@@ -623,7 +623,7 @@ function SellerProductCard({
                   className="!min-h-8 mt-1 h-8 rounded-full text-[11px] font-bold"
                   style={{
                     backgroundColor: isNextAuction ? "oklch(0.85 0.18 90)" : "white",
-                    color: "black",
+                    color: "#10162B",
                   }}
                 >
                   {isNextAuction ? t("live.startNext") : t("live.startAuction")}

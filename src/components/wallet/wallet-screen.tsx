@@ -34,7 +34,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           className="rounded-3xl p-5"
           style={{
             background:
-              "linear-gradient(135deg, oklch(0.16 0.01 60) 0%, oklch(0.22 0.03 60) 100%)",
+              "linear-gradient(135deg, oklch(0.19 0.06 265) 0%, oklch(0.27 0.07 265) 100%)",
             color: "white",
           }}
         >
@@ -48,7 +48,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           <Press
             onClick={() => setTopupOpen(true)}
             className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"
-            style={{ backgroundColor: "#c8a24a", color: "black" }}
+            style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
           >
             <span className="flex items-center justify-center gap-1.5">
               <Plus size={16} />
