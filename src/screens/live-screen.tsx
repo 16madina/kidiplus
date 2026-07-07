@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Store } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
