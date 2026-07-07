@@ -200,6 +200,7 @@ function NotifRow({
   onDelete: () => void;
   onTap: () => void;
 }) {
+  const { t } = useTranslation();
   const x = useMotionValue(0);
   const [snapped, setSnapped] = useState(false);
 
