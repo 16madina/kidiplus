@@ -36,6 +36,7 @@ export type AuctionStartEvt = {
 
 export type AuctionEndEvt = {
   productId: string;
+  winnerId: string | null;
   winnerName: string | null;
   finalPrice: number;
 };
@@ -48,7 +49,7 @@ export type LiveRoomState = {
   products: LiveProductRow[];
   auctionStart: AuctionStartEvt | null;
   lastAuctionEnd: AuctionEndEvt | null;
-  lastBid: { productId: string; bidderName: string; amount: number; ts: number } | null;
+  lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
