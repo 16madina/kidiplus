@@ -48,8 +48,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const launch = () => {
     if (!canLaunch) return;
     haptic.medium();
-    b.goLive();
+    // Generate a fresh unique room name for this broadcast session.
+    // TODO: replace "me" with the real signed-in seller id when available.
+    import("@/lib/livekit").then(({ makeRoomName }) => {
+      b.setRoomName(makeRoomName("me"));
+      b.goLive();
+    });
   };
+
 
   return (
     <motion.div
