@@ -181,6 +181,8 @@ export function WithdrawSheet({
                     <Row label="IBAN" value={iban} />
                     <Row label={t("payout.holder")} value={holder} />
                   </>
+                ) : method === "paypal" ? (
+                  <Row label={t("payout.paypalEmail")} value={paypalEmail} />
                 ) : (
                   <Row label={t("payout.phone")} value={phone} />
                 )}
