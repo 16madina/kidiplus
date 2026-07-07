@@ -417,7 +417,6 @@ function StripePayForm({
         </p>
       )}
       <Press
-        as="button"
         type="submit"
         disabled={!stripe || busy}
         className="mt-1 w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
