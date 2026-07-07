@@ -293,6 +293,61 @@ export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[
   return (data ?? []) as LiveProductRow[];
 }
 
+/** Append a product mid-live (called from the host dock).
+ *  Uploads the image if a File was picked, otherwise stores the URL as-is. */
+export async function createLiveProductInDb(args: {
+  liveId: string;
+  userId: string;
+  name: string;
+  imageFile: File | null;
+  imageUrl: string | null;
+  mode: "auction" | "fixed";
+  startPrice: number;
+  price: number;
+  stock: number;
+  timerSeconds: number;
+}): Promise<{ ok: boolean; error?: string; id?: string; imagePath?: string | null }> {
+  let imagePath: string | null = null;
+  try {
+    if (args.imageFile) {
+      imagePath = await uploadLiveImage("live-products", args.imageFile, args.userId);
+    } else if (args.imageUrl && /^blob:/i.test(args.imageUrl)) {
+      const file = await blobUrlToFile(args.imageUrl, `${args.name || "product"}.jpg`);
+      imagePath = await uploadLiveImage("live-products", file, args.userId);
+    } else {
+      imagePath = args.imageUrl || null;
+    }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  const { data: maxRow } = await supabase
+    .from("live_products")
+    .select("position")
+    .eq("live_id", args.liveId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const position = ((maxRow?.position as number | undefined) ?? -1) + 1;
+  const { data, error } = await supabase
+    .from("live_products")
+    .insert({
+      live_id: args.liveId,
+      name: args.name,
+      image_url: imagePath,
+      mode: args.mode,
+      start_price: args.startPrice,
+      price: args.price,
+      stock: args.stock,
+      timer_seconds: args.timerSeconds,
+      status: "upcoming",
+      position,
+    })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, error: error?.message ?? "insert failed" };
+  return { ok: true, id: data.id, imagePath };
+}
+
 /** Host starts an auction: mark row active + set fresh price=start_price. */
 export async function startAuctionInDb(productId: string): Promise<void> {
   const { data: row } = await supabase
