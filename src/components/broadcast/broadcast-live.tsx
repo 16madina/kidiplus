@@ -468,9 +468,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* Featured / auction overlay */}
+      {/* Featured / auction overlay — tap to open the products dock. */}
       {featured && activeAuction && activeAuction.productId === featured.id && (
-        <div className="absolute right-3 z-30" style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}>
+        <button
+          type="button"
+          onClick={() => { haptic.selection(); setProductsOpen(true); }}
+          className="absolute right-3 z-30 text-left"
+          style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+        >
           <div
             className="w-40 rounded-2xl p-2 text-white"
             style={{
@@ -506,7 +511,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               </span>
             </div>
           </div>
-        </div>
+        </button>
       )}
 
       {/* Seller dock */}
