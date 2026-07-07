@@ -186,6 +186,16 @@ export function ProfileScreen() {
           ]}
           index={1}
         />
+
+        <MenuGroup
+          items={[
+            { icon: <FileText size={16} />, label: t("legal.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
+            { icon: <FileText size={16} />, label: t("legal.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
+            { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
+          ]}
+          index={2}
+        />
+
         <MenuGroup
           items={[
             {
@@ -196,7 +206,7 @@ export function ProfileScreen() {
               onClick: signingOut ? undefined : handleSignOut,
             },
           ]}
-          index={2}
+          index={3}
         />
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">KiDi+ v1.0.0</p>
