@@ -367,6 +367,27 @@
     "about": "À propos",
     "follow": "Suivre",
     "following": "Abonné",
-    "message": "Message"
+    "message": "Message",
+    "tabs": {
+      "boutique": "Boutique",
+      "lives": "Lives",
+      "avis": "Avis"
+    },
+    "stats": {
+      "followers": "Abonnés",
+      "sales": "Ventes",
+      "rating": "Note"
+    },
+    "liveNow": "En direct",
+    "pushFollow": "Active les notifications pour ne rater aucun live de {{name}} 🔔",
+    "pushReminder": "Active les notifications pour être prévenu·e avant \"{{title}}\" 🔔",
+    "reminderOn": "Rappel activé",
+    "reminderOff": "Rappel désactivé",
+    "remindMe": "Me rappeler",
+    "activated": "Activé",
+    "ended": "Terminé",
+    "reviewCount_one": "{{count}} avis",
+    "reviewCount_other": "{{count}} avis"
   }
 }
+

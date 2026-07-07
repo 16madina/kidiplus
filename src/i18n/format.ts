@@ -86,3 +86,23 @@ export function formatFollowersLabel(n: number, lang: Lang): string {
   return label.replace(String(n), formatCount(n, lang));
 }
 
+/**
+ * Locale-aware short date + time for scheduled lives.
+ *  - fr: "lun. 8 juil. · 20:00"
+ *  - en: "Mon 8 Jul · 8:00 PM"
+ */
+export function formatShortDateTime(d: Date, lang: Lang): string {
+  const locale = lang === "fr" ? "fr-FR" : "en-GB";
+  const date = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(d);
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+  return `${date} · ${time}`;
+}
+
+

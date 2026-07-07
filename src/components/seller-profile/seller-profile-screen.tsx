@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import { ChevronLeft, Star, BadgeCheck, Bell, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useSellerProfile } from "@/lib/seller-profile-context";
@@ -16,22 +17,20 @@ import { haptic } from "@/lib/haptics";
 import { usePush } from "@/lib/push";
 import {
   formatCompact,
-  formatDate,
   getSellerInfo,
   type SellerInfo,
 } from "@/lib/seller-mock";
 import { formatEuro } from "@/lib/live-viewer-mock";
+import { useLanguage } from "@/i18n/language-context";
+import { formatShortDateTime } from "@/i18n/format";
 
 
 const HEADER_MAX = 260; // large header total height above nav
 const HEADER_MIN = 0;
 
 type TabKey = "boutique" | "lives" | "avis";
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "boutique", label: "Boutique" },
-  { key: "lives", label: "Lives" },
-  { key: "avis", label: "Avis" },
-];
+const TAB_KEYS: TabKey[] = ["boutique", "lives", "avis"];
+
 
 export function SellerProfileScreen() {
   const { activeSeller, close } = useSellerProfile();
@@ -73,6 +72,9 @@ function SellerProfileInner({
   const [tab, setTab] = useState<TabKey>("boutique");
   const { open: openLive } = useLiveViewer();
   const { requestWithPrePrompt: requestPush } = usePush();
+  const { t } = useTranslation();
+
+
 
 
   // Collapsing header transforms — transform + opacity only
@@ -100,7 +102,7 @@ function SellerProfileInner({
     const el = stripRef.current;
     if (!el) return;
     const btns = el.querySelectorAll<HTMLButtonElement>("[data-tab]");
-    const idx = TABS.findIndex((t) => t.key === tab);
+    const idx = TAB_KEYS.indexOf(tab);
     const b = btns[idx];
     if (b) {
       setUX(b.offsetLeft);
@@ -130,7 +132,7 @@ function SellerProfileInner({
         />
         <div className="relative flex items-center gap-2 px-2 py-1.5">
           <Press
-            aria-label="Retour"
+            aria-label={t("common.back")}
             onClick={onBack}
             className="h-10 w-10 rounded-full text-foreground"
           >
@@ -200,12 +202,12 @@ function SellerProfileInner({
               </p>
 
               <div className="mt-3 flex items-center gap-6">
-                <Stat label="Abonnés" value={formatCompact(info.followers)} />
+                <Stat label={t("seller.stats.followers")} value={formatCompact(info.followers)} />
                 <Divider />
-                <Stat label="Ventes" value={formatCompact(info.sales)} />
+                <Stat label={t("seller.stats.sales")} value={formatCompact(info.sales)} />
                 <Divider />
                 <Stat
-                  label="Note"
+                  label={t("seller.stats.rating")}
                   value={
                     <span className="inline-flex items-center gap-0.5">
                       {info.rating.toFixed(1)}
@@ -213,6 +215,7 @@ function SellerProfileInner({
                     </span>
                   }
                 />
+
               </div>
 
               <Press
@@ -222,8 +225,9 @@ function SellerProfileInner({
                     const next = !v;
                     if (next) {
                       void requestPush(
-                        `Active les notifications pour ne rater aucun live de ${info.name} 🔔`,
+                        t("seller.pushFollow", { name: info.name }),
                       );
+
                     }
                     return next;
                   });
@@ -243,7 +247,7 @@ function SellerProfileInner({
                       }
                 }
               >
-                {following ? "Abonné" : "Suivre"}
+                {following ? t("seller.following") : t("seller.follow")}
               </Press>
             </div>
           </motion.div>
@@ -275,7 +279,7 @@ function SellerProfileInner({
                           animate={{ opacity: [1, 0.35, 1] }}
                           transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
                         />
-                        En direct
+                        {t("seller.liveNow")}
                       </span>
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-white/90">
                         <Eye size={11} /> {formatCompact(info.liveStream.viewers)}
@@ -302,23 +306,24 @@ function SellerProfileInner({
             WebkitBackdropFilter: "saturate(180%) blur(18px)",
           }}
         >
-          {TABS.map((t) => {
-            const active = t.key === tab;
+          {TAB_KEYS.map((key) => {
+            const active = key === tab;
             return (
               <Press
-                key={t.key}
+                key={key}
                 data-tab
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(key)}
                 className="!min-h-11 rounded-none px-3 text-[14px] font-semibold"
                 style={{
                   color: active ? "var(--foreground)" : "var(--muted-foreground)",
                   transition: "color 150ms",
                 }}
               >
-                {t.label}
+                {t(`seller.tabs.${key}`)}
               </Press>
             );
           })}
+
           <motion.div
             className="absolute bottom-0 h-[2px] rounded-full"
             initial={false}
@@ -397,18 +402,19 @@ function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
   const { requestWithPrePrompt: requestPush } = usePush();
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const toggle = (id: string, title: string) => {
     const next = !reminders[id];
     haptic.medium();
     setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
-    toast(next ? "Rappel activé" : "Rappel désactivé");
+    toast(next ? t("seller.reminderOn") : t("seller.reminderOff"));
     if (next) {
-      void requestPush(
-        `Active les notifications pour être prévenu·e avant "${title}" 🔔`,
-      );
+      void requestPush(t("seller.pushReminder", { title }));
     }
   };
+
 
   return (
     <div className="space-y-2">
@@ -433,8 +439,9 @@ function LivesTab({ info }: { info: SellerInfo }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-semibold">{s.title}</p>
               <p className="text-[12px] text-muted-foreground">
-                {s.past ? "Terminé · " : ""}{formatDate(s.date)}
+                {s.past ? `${t("seller.ended")} · ` : ""}{formatShortDateTime(s.date, lang)}
               </p>
+
             </div>
             {!s.past && (
               <motion.div
@@ -447,7 +454,7 @@ function LivesTab({ info }: { info: SellerInfo }) {
                 transition={{ duration: 0.35, ease: EASE_IOS }}
               >
                 <Press
-                  aria-label={on ? "Rappel activé" : "Me rappeler"}
+                  aria-label={on ? t("seller.reminderOn") : t("seller.remindMe")}
                   onClick={() => toggle(s.id, s.title)}
                   hapticOnTap={false}
                   className="h-10 rounded-full px-3 text-[12px] font-semibold"
@@ -465,8 +472,9 @@ function LivesTab({ info }: { info: SellerInfo }) {
                   }
                 >
                   <Bell size={14} className="mr-1" fill={on ? "currentColor" : "none"} />
-                  {on ? "Activé" : "Me rappeler"}
+                  {on ? t("seller.activated") : t("seller.remindMe")}
                 </Press>
+
               </motion.div>
             )}
           </motion.div>
@@ -478,10 +486,12 @@ function LivesTab({ info }: { info: SellerInfo }) {
 
 function AvisTab({ info }: { info: SellerInfo }) {
   const [barsVisible, setBarsVisible] = useState(false);
+  const { t } = useTranslation();
   useEffect(() => {
-    const t = setTimeout(() => setBarsVisible(true), 80);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setBarsVisible(true), 80);
+    return () => clearTimeout(tm);
   }, []);
+
 
   return (
     <div className="space-y-5">
@@ -501,7 +511,7 @@ function AvisTab({ info }: { info: SellerInfo }) {
               />
             ))}
           </div>
-          <span className="mt-0.5 text-[11px] text-muted-foreground">{info.reviewCount} avis</span>
+          <span className="mt-0.5 text-[11px] text-muted-foreground">{t("seller.reviewCount", { count: info.reviewCount })}</span>
         </div>
         <div className="flex-1 space-y-1.5">
           {info.ratingBreakdown.map((pct, i) => {
@@ -545,8 +555,9 @@ function AvisTab({ info }: { info: SellerInfo }) {
               <div className="flex items-center gap-2">
                 <span className="truncate text-[13px] font-semibold">@{r.user}</span>
                 <span className="text-[11px] text-muted-foreground">
-                  · il y a {r.daysAgo}j
+                  · {t("time.dayAgo", { count: r.daysAgo })}
                 </span>
+
               </div>
               <div className="mt-0.5 flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, k) => (
