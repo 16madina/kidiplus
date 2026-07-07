@@ -56,13 +56,13 @@ export function ActivityScreen() {
         }}
       >
         <div className="px-4 pb-2 pt-2">
-          <h1 className="mb-2 text-[22px] font-bold tracking-tight">Activité</h1>
+          <h1 className="mb-2 text-[22px] font-bold tracking-tight">{t("activity.title")}</h1>
           <Segmented
             value={tab}
             onChange={setTab}
             options={[
-              { key: "notifs", label: "Notifications" },
-              { key: "orders", label: "Commandes" },
+              { key: "notifs", label: t("activity.tabs.notifications") },
+              { key: "orders", label: t("activity.tabs.orders") },
             ]}
           />
         </div>
