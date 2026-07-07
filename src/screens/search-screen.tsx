@@ -290,7 +290,7 @@ export function SearchScreen() {
               {rawQuery && (
                 <motion.button
                   type="button"
-                  aria-label="Effacer"
+                  aria-label={t("common.clear")}
                   onClick={() => {
                     setRawQuery("");
                     setQuery("");
