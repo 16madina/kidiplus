@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { Share2, Home, PartyPopper } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useBroadcast } from "@/lib/broadcast-context";
 import { formatEuro, fmtDuration } from "@/lib/broadcast-mock";
@@ -9,6 +10,7 @@ import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   const { session, reset } = useBroadcast();
   const revenue = session.sales.reduce((s, x) => s + x.price, 0);
 
