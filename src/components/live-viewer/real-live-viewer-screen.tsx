@@ -15,12 +15,13 @@ import { pushStatusBarLight } from "@/lib/native";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
+import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
 import { formatEuro, systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { ProductsSheet } from "./products-sheet";
-import { BuySheet } from "./buy-sheet";
+import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
 
