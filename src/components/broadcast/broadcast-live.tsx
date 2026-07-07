@@ -753,8 +753,12 @@ function SellerProductCard({
       }}
     >
       <button onClick={onFeature} className="relative h-20 w-full overflow-hidden text-left">
-        {product.image_url && (
+        {product.image_url ? (
           <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-white/10">
+            <Package size={20} className="text-white/60" />
+          </div>
         )}
         {featured && (
           <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#10162B]">
