@@ -744,7 +744,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         <div className="flex h-full min-h-0 flex-col px-4">
           <div className="flex items-center justify-between pb-2 pt-1">
             <h2 className="text-[18px] font-bold">{t("live.openProducts")}</h2>
-            <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-muted-foreground">{room.products.length}</span>
+              <Press
+                onClick={() => { haptic.selection(); setProductsOpen(false); setAddOpen(true); }}
+                className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+              >
+                <Plus size={14} /> {t("live.addProduct", "Ajouter")}
+              </Press>
+            </div>
           </div>
           <div
             className="min-h-0 flex-1 overflow-y-auto"
@@ -760,10 +768,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 const soldOut = p.mode === "auction"
                   ? p.status === "sold"
                   : p.stock <= 0 || p.status === "out";
+                const imgUrl = imgFor(p);
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                    {p.image_url ? (
-                      <img src={p.image_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    {imgUrl ? (
+                      <img src={imgUrl} alt="" className="h-14 w-14 rounded-xl object-cover" />
                     ) : (
                       <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted">
                         <Package size={18} className="text-muted-foreground" />
