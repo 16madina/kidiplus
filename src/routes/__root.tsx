@@ -102,6 +102,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "KiDi+ — Live Shopping & Enchères" },
+      { name: "description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
+      { property: "og:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
+      { name: "twitter:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783440231192-IMG_3876.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783440231192-IMG_3876.webp" },
     ],
     links: [
       {
