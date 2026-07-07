@@ -58,15 +58,22 @@ type Ctx = {
   setCategory: (v: string) => void;
   cover: string | null;
   setCover: (v: string | null) => void;
+  coverFile: File | null;
+  setCoverFile: (f: File | null) => void;
   products: BProduct[];
   addProduct: (p: Omit<BProduct, "id">) => void;
   removeProduct: (id: string) => void;
+  setProductDbIds: (ids: string[]) => void;
 
   // session (readonly-ish accessors are fine)
   session: BroadcastSession;
   setSession: (s: BroadcastSession) => void;
   roomName: string | null;
   setRoomName: (v: string | null) => void;
+
+  // DB id for the current live row (populated on launch).
+  liveId: string | null;
+  setLiveId: (v: string | null) => void;
 
   // Host identity for LiveKit (populated from the signed-in profile).
   hostIdentity: string | null;
@@ -75,6 +82,7 @@ type Ctx = {
 
   reset: () => void;
 };
+
 
 
 const BroadcastContext = createContext<Ctx | null>(null);
