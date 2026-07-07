@@ -2,22 +2,29 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { BottomSheet } from "./bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatEuro, type Product } from "@/lib/live-viewer-mock";
+import { type Product } from "@/lib/live-viewer-mock";
+import { formatMoney, normalizeCurrency, roundForCurrency } from "@/lib/money";
 
 
 export function BuySheet({
   product,
+  currency = "EUR",
   onClose,
   onConfirm,
 }: {
   product: Product | null;
+  currency?: string;
   onClose: () => void;
   /** When provided, called on confirm; must return true on success. */
   onConfirm?: () => Promise<boolean>;
 }) {
+  const { i18n } = useTranslation();
+  const cur = normalizeCurrency(currency);
+  const locale = i18n.language;
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -25,8 +32,8 @@ export function BuySheet({
     if (!product) { setDone(false); setBusy(false); }
   }, [product]);
 
-  const shipping = 4.9;
-  const total = product ? product.price + shipping : 0;
+  const shipping = cur === "XOF" ? 3200 : cur === "CAD" ? 7 : 4.9;
+  const total = product ? roundForCurrency(product.price + shipping, cur) : 0;
 
   const confirm = async () => {
     if (busy) return;
@@ -40,8 +47,6 @@ export function BuySheet({
     if (product) toast.success(`Commande confirmée : ${product.name}`);
     setTimeout(onClose, 1200);
   };
-
-
 
   return (
     <BottomSheet open={!!product} onClose={onClose} heightPercent={62}>
@@ -76,10 +81,10 @@ export function BuySheet({
                 </div>
 
                 <dl className="mt-4 space-y-2 text-sm">
-                  <Row label="Article" value={formatEuro(product.price)} />
-                  <Row label="Livraison" value={formatEuro(shipping)} />
+                  <Row label="Article" value={formatMoney(product.price, cur, locale)} />
+                  <Row label="Livraison" value={formatMoney(shipping, cur, locale)} />
                   <div className="my-2 h-px bg-border" />
-                  <Row label="Total" value={formatEuro(total)} bold />
+                  <Row label="Total" value={formatMoney(total, cur, locale)} bold />
                 </dl>
 
                 <div className="mt-auto pt-6">
@@ -87,7 +92,7 @@ export function BuySheet({
                     onClick={confirm}
                     className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
                   >
-                    {busy ? "…" : `Confirmer et payer ${formatEuro(total)}`}
+                    {busy ? "…" : `Confirmer et payer ${formatMoney(total, cur, locale)}`}
                   </Press>
 
                   <Press

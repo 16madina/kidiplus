@@ -1,19 +1,20 @@
 // POST /api/wallet-topup
 // -----------------------
-// Creates a Stripe PaymentIntent to credit the authenticated user's wallet.
-// The webhook (/api/stripe-webhook) reads metadata.kind === 'wallet_topup'
-// and calls credit_wallet_topup() to atomically bump the balance.
+// Creates a Stripe PaymentIntent to credit the authenticated user's wallet
+// in the wallet's own currency (XOF / EUR / CAD). The webhook
+// (/api/stripe-webhook) reads metadata.kind === 'wallet_topup' and calls
+// credit_wallet_topup() to atomically bump the balance.
 //
 // Validation:
 //   - Bearer token required (Supabase auth).
-//   - amount is a number in [2, 500] EUR (2-decimal max).
+//   - Amount must fall inside topUpLimits(walletCurrency).
+//   - XOF is zero-decimal (Stripe amount = amount, NOT amount*100).
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
 
-const MIN_AMOUNT = 2;
-const MAX_AMOUNT = 500;
 const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
 
 function isAllowedOrigin(origin: string | null): boolean {
@@ -65,11 +66,12 @@ export const Route = createFileRoute("/api/wallet-topup")({
         const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+        const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!STRIPE_SECRET_KEY || !STRIPE_PUBLISHABLE_KEY) {
           return json({ error: "stripe_not_configured" }, 503, origin);
         }
-        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
         }
 
@@ -84,6 +86,17 @@ export const Route = createFileRoute("/api/wallet-topup")({
         if (userErr || !userRes.user) return json({ error: "unauthorized" }, 401, origin);
         const userId = userRes.user.id;
 
+        // Look up the user's wallet currency (admin client — read-only).
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+        });
+        const { data: wallet } = await admin
+          .from("wallets")
+          .select("currency")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const currency = normalizeCurrency(wallet?.currency ?? "EUR");
+
         let body: { amount?: unknown };
         try {
           body = await request.json();
@@ -91,23 +104,25 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "invalid_json" }, 400, origin);
         }
         const raw = Number(body.amount);
+        const { min: MIN_AMOUNT, max: MAX_AMOUNT } = topUpLimits(currency);
         if (!Number.isFinite(raw) || raw < MIN_AMOUNT || raw > MAX_AMOUNT) {
-          return json({ error: "invalid_amount" }, 400, origin);
+          return json({ error: "invalid_amount", currency, min: MIN_AMOUNT, max: MAX_AMOUNT }, 400, origin);
         }
-        const amount = Math.round(raw * 100) / 100;
-        const amountCents = Math.round(amount * 100);
+        const amount = roundForCurrency(raw, currency);
+        const amountMinor = toStripeMinor(amount, currency);
 
         const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
         const intent = await stripe.paymentIntents.create({
-          amount: amountCents,
-          currency: "eur",
+          amount: amountMinor,
+          currency: currency.toLowerCase(),
           automatic_payment_methods: { enabled: true },
           metadata: {
             kind: "wallet_topup",
             userId,
             amount: String(amount),
+            currency,
           },
-          description: `KiDi+ · Recharge portefeuille (${amount.toFixed(2)} €)`,
+          description: `KiDi+ · Recharge portefeuille (${amount} ${currency})`,
         });
 
         return json(
@@ -115,6 +130,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
             clientSecret: intent.client_secret,
             publishableKey: STRIPE_PUBLISHABLE_KEY,
             amount,
+            currency,
           },
           200,
           origin,

@@ -334,7 +334,12 @@
     "preferences": "Preferences",
     "about": "About",
     "version": "Version",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "currency": "Currency",
+    "chooseCurrency": "Choose currency",
+    "currencyHint": "Wallet currency can only change when the balance is zero.",
+    "currencyUpdated": "Currency updated",
+    "currencyWalletLocked": "Profile currency updated. Wallet unchanged (non-zero balance)."
   },
   "errors": {
     "generic": "Something went wrong.",
@@ -444,6 +449,7 @@
       "purchase": "Purchase",
       "refund": "Refund",
       "adjustment": "Adjustment"
-    }
+    },
+    "currencyMismatch": "Wallet in {{currency}}"
   }
 }

@@ -28,20 +28,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
 import { useWallet } from "@/lib/wallet-context";
 import { payOrderWithWallet } from "@/lib/wallet-db";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
-
-function formatEuro(n: number): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-  }).format(n);
-}
 
 type CheckoutResp = {
   clientSecret?: string;
@@ -58,8 +51,10 @@ export function PaymentSheet({
   onClose: () => void;
   onPaid?: (order: OrderRow) => void;
 }) {
-  const { t } = useTranslation();
-  const { balance, currency } = useWallet();
+  const { t, i18n } = useTranslation();
+  const { balance, currency: walletCurrency } = useWallet();
+  const orderCurrency = normalizeCurrency(order?.currency ?? "EUR");
+  const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [state, setState] = useState<
@@ -188,17 +183,17 @@ export function PaymentSheet({
 
                 {/* Fee breakdown */}
                 <dl className="mt-4 space-y-2 text-sm">
-                  <Row label={t("pay.item")} value={formatEuro(Number(order.amount))} />
+                  <Row label={t("pay.item")} value={fmt(Number(order.amount))} />
                   <Row
                     label={t("pay.platformFee")}
-                    value={formatEuro(Number(order.platform_fee))}
+                    value={fmt(Number(order.platform_fee))}
                   />
                   <Row
                     label={t("pay.processingFee")}
-                    value={formatEuro(Number(order.processing_fee))}
+                    value={fmt(Number(order.processing_fee))}
                   />
                   <div className="my-2 h-px bg-border" />
-                  <Row label={t("pay.total")} value={formatEuro(Number(order.total))} bold />
+                  <Row label={t("pay.total")} value={fmt(Number(order.total))} bold />
                 </dl>
 
                 {/* Payment method selector */}
@@ -210,8 +205,10 @@ export function PaymentSheet({
                     {/* Wallet method — first, with balance and insufficient-funds shortcut */}
                     <WalletMethodRow
                       balance={balance}
-                      currency={currency}
+                      walletCurrency={walletCurrency}
+                      orderCurrency={orderCurrency}
                       total={Number(order.total)}
+                      locale={i18n.language}
                       busy={walletBusy}
                       onPay={async () => {
                         if (walletBusy) return;
@@ -281,7 +278,7 @@ export function PaymentSheet({
                     <StripeCardForm
                       clientSecret={state.clientSecret}
                       stripePromise={state.stripePromise}
-                      totalLabel={formatEuro(Number(order.total))}
+                      totalLabel={fmt(Number(order.total))}
                       onSuccess={handleSuccess}
                     />
                   )}
@@ -303,29 +300,35 @@ export function PaymentSheet({
 
 function WalletMethodRow({
   balance,
-  currency,
+  walletCurrency,
+  orderCurrency,
   total,
+  locale,
   busy,
   onPay,
   onTopUp,
 }: {
   balance: number;
-  currency: string;
+  walletCurrency: string;
+  orderCurrency: string;
   total: number;
+  locale: string;
   busy: boolean;
   onPay: () => void;
   onTopUp: () => void;
 }) {
   const { t } = useTranslation();
-  const enough = balance >= total;
+  const currencyMatch = walletCurrency === orderCurrency;
+  const enough = currencyMatch && balance >= total;
+  const disabled = !currencyMatch;
   return (
     <button
       type="button"
-      onClick={enough && !busy ? onPay : onTopUp}
-      disabled={busy}
+      onClick={disabled ? undefined : (enough && !busy ? onPay : onTopUp)}
+      disabled={busy || disabled}
       className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
         enough ? "border-primary bg-primary/5" : "border-border"
-      }`}
+      } ${disabled ? "opacity-60" : ""}`}
     >
       <div
         className="grid h-9 w-9 place-items-center rounded-xl"
@@ -336,14 +339,23 @@ function WalletMethodRow({
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
         <div className="text-[11px] text-muted-foreground tabular-nums">
-          {formatMoney(balance, currency)}
+          {formatMoney(balance, walletCurrency, locale)}
         </div>
+        {!currencyMatch && (
+          <div className="mt-0.5 text-[10.5px] text-muted-foreground">
+            {t("wallet.currencyMismatch", { currency: walletCurrency })}
+          </div>
+        )}
       </div>
       {busy ? (
         <Loader2 className="animate-spin" size={16} />
+      ) : !currencyMatch ? (
+        <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-bold text-muted-foreground">
+          {walletCurrency}
+        </span>
       ) : enough ? (
         <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
-          {t("pay.payNow", { total: formatMoney(total, currency) })}
+          {t("pay.payNow", { total: formatMoney(total, orderCurrency, locale) })}
         </span>
       ) : (
         <span className="flex flex-col items-end gap-0.5">

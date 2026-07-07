@@ -89,6 +89,8 @@ export type CreateLiveInput = {
   category: string;
   coverPath: string | null; // storage path OR absolute URL
   roomName: string;
+  /** Live currency — inherited from the seller's profile; a DB trigger enforces it. */
+  currency?: string;
   products: Array<{
     name: string;
     imagePath: string | null; // storage path OR absolute URL
@@ -119,6 +121,7 @@ export async function createLiveInDb(
       cover_url: input.coverPath,
       room_name: input.roomName,
       status: "live",
+      ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
     .single();
@@ -197,6 +200,7 @@ type LivesRow = {
   room_name: string;
   viewer_count: number;
   started_at: string;
+  currency: string | null;
   seller: {
     display_name: string | null;
     handle: string | null;
@@ -220,6 +224,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
       (await resolveLiveImage("live-covers", row.seller.avatar_url))) ||
     `https://i.pravatar.cc/80?u=${encodeURIComponent(row.seller_id)}`;
   const category = (row.category as LiveStream["category"]) ?? "Fashion";
+  const cur = (row.currency ?? "EUR").toUpperCase();
   return {
     id: `db-${row.id}`,
     seller: sellerName,
@@ -231,6 +236,8 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     roomName: row.room_name,
     liveId: row.id,
     sellerId: row.seller_id,
+    currency: (cur === "XOF" || cur === "CAD" || cur === "EUR" ? cur : "EUR") as
+      LiveStream["currency"],
   };
 }
 
@@ -239,7 +246,7 @@ export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
     .from("lives")
     .select(
       `
-      id, seller_id, title, category, cover_url, room_name, viewer_count, started_at,
+      id, seller_id, title, category, cover_url, room_name, viewer_count, started_at, currency,
       seller:profiles!lives_seller_id_fkey(display_name, handle, avatar_url)
       `,
     )

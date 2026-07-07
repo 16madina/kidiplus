@@ -109,12 +109,18 @@ export function EditProfileScreen({
     }
     setSaving(true);
     try {
+      const { currencyForCountry } = await import("@/lib/money");
       const patch: Partial<Profile> = {
         display_name: displayName.trim(),
         handle: handle.trim(),
         bio: bio.trim() || null,
         country: country || null,
       };
+      // If the country changed, suggest the matching currency (only when the
+      // wallet balance is 0 — DB trigger will reject otherwise, silently ok).
+      if (country && country !== (profile?.country ?? "")) {
+        patch.currency = currencyForCountry(country);
+      }
       await updateProfile(patch);
       await refreshProfile();
       haptic.success();

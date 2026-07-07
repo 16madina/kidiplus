@@ -1,19 +1,25 @@
 import { BottomSheet } from "./bottom-sheet";
 import { Press } from "@/components/press";
-import { formatEuro, type Product } from "@/lib/live-viewer-mock";
+import { type Product } from "@/lib/live-viewer-mock";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 
 export function ProductsSheet({
   open,
   onClose,
   products,
+  currency = "EUR",
   onBuyFixed,
 }: {
   open: boolean;
   onClose: () => void;
   products: Product[];
+  currency?: string;
   onBuyFixed: (p: Product) => void;
 }) {
+  const { i18n } = useTranslation();
+  const cur = normalizeCurrency(currency);
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={78}>
       <div className="px-5 pb-6 pt-2">
@@ -24,7 +30,12 @@ export function ProductsSheet({
         <ul className="mt-4 flex flex-col gap-2">
           {products.map((p) => (
             <li key={p.id}>
-              <ProductRow product={p} onBuyFixed={onBuyFixed} />
+              <ProductRow
+                product={p}
+                currency={cur}
+                locale={i18n.language}
+                onBuyFixed={onBuyFixed}
+              />
             </li>
           ))}
         </ul>
@@ -35,9 +46,13 @@ export function ProductsSheet({
 
 function ProductRow({
   product,
+  currency,
+  locale,
   onBuyFixed,
 }: {
   product: Product;
+  currency: string;
+  locale: string;
   onBuyFixed: (p: Product) => void;
 }) {
   const sold = product.status === "sold";
@@ -84,7 +99,7 @@ function ProductRow({
         )}
       </div>
       <div className="flex flex-col items-end gap-1">
-        <span className="text-sm font-bold">{formatEuro(product.price)}</span>
+        <span className="text-sm font-bold">{formatMoney(product.price, currency, locale)}</span>
         {product.mode === "fixed" && !sold && (
           <Press
             onClick={() => onBuyFixed(product)}

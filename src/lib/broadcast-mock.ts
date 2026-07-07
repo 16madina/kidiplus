@@ -11,7 +11,9 @@ const FR_USERS = [
 const rand = (n: number) => Math.floor(Math.random() * n);
 export const pickBidder = () => FR_USERS[rand(FR_USERS.length)];
 export const bidStep = () => 1 + rand(3);
-export const formatEuro = (n: number) => `${n.toFixed(0)} €`;
+import { formatMoney } from "@/lib/money";
+export const formatEuro = (n: number, currency: string = "EUR", locale: string = "fr") =>
+  formatMoney(n, currency, locale);
 
 // Default cover thumbnails offered in the setup screen.
 export const COVER_POOL = [

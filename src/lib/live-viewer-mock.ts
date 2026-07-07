@@ -105,6 +105,9 @@ export function bidStep(): number {
   return 1 + rand(3);
 }
 
+// Legacy helper — kept as a thin shim that defaults to EUR.
+// New code should call formatMoney(amount, currency, locale) directly.
+import { formatMoney } from "@/lib/money";
 export function formatEuro(n: number): string {
-  return `${n.toFixed(0)} €`;
+  return formatMoney(n, "EUR", "fr");
 }

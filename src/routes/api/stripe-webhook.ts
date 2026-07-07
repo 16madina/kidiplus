@@ -61,7 +61,12 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               // Wallet top-up: credit the user's balance atomically + idempotently.
               const userId = intent.metadata?.userId;
               const amountStr = intent.metadata?.amount;
-              const amount = amountStr ? Number(amountStr) : intent.amount_received / 100;
+              // XOF is a zero-decimal currency: amount_received IS the amount.
+              const cur = (intent.currency || "eur").toLowerCase();
+              const divisor = cur === "xof" ? 1 : 100;
+              const amount = amountStr
+                ? Number(amountStr)
+                : intent.amount_received / divisor;
               if (userId && Number.isFinite(amount) && amount > 0) {
                 await admin.rpc("credit_wallet_topup", {
                   _user_id: userId,

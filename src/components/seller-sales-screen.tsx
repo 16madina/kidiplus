@@ -14,7 +14,7 @@ import {
   type OrderRow,
   type OrderStatus,
 } from "@/lib/orders-db";
-import { formatEuro } from "@/lib/live-viewer-mock";
+import { formatMoney } from "@/lib/money";
 
 type BuyerMap = Record<string, { display_name: string; handle: string }>;
 
@@ -39,7 +39,8 @@ export function SellerSalesScreen({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const revenueCurrency = profile?.currency ?? "EUR";
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [buyers, setBuyers] = useState<BuyerMap>({});
 
@@ -77,7 +78,7 @@ export function SellerSalesScreen({
             {t("sales.revenue")}
           </div>
           <div className="mt-1 text-[32px] font-bold tabular-nums leading-none">
-            {formatEuro(revenue)}
+            {formatMoney(revenue, revenueCurrency)}
           </div>
         </div>
 
@@ -126,7 +127,7 @@ export function SellerSalesScreen({
                       </span>
                     </div>
                     <p className="mt-0.5 text-[12px] text-muted-foreground">{label}</p>
-                    <p className="mt-0.5 text-[13px] font-bold">{formatEuro(Number(o.amount))}</p>
+                    <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(o.amount), o.currency)}</p>
                   </div>
                 </motion.li>
               );

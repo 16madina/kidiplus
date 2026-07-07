@@ -20,7 +20,7 @@ import {
   getSellerInfo,
   type SellerInfo,
 } from "@/lib/seller-mock";
-import { formatEuro } from "@/lib/live-viewer-mock";
+import { formatMoney } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { formatShortDateTime } from "@/i18n/format";
 
@@ -389,7 +389,7 @@ function BoutiqueTab({ info }: { info: SellerInfo }) {
             </div>
             <div className="p-2">
               <p className="truncate text-[13px] font-medium">{p.name}</p>
-              <p className="text-[13px] font-bold">{formatEuro(p.price)}</p>
+              <p className="text-[13px] font-bold">{formatMoney(p.price, "EUR")}</p>
             </div>
           </Press>
         </motion.div>

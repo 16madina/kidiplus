@@ -27,13 +27,10 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal } from "@/lib/money";
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
-const PRESETS = [5, 10, 25, 50];
-const MIN_AMOUNT = 2;
-const MAX_AMOUNT = 500;
 
 type Step =
   | { kind: "amount" }
@@ -50,27 +47,32 @@ export function TopUpSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { balance, currency } = useWallet();
+  const cur = normalizeCurrency(currency);
+  const PRESETS = topUpPresets(cur);
+  const { min: MIN_AMOUNT, max: MAX_AMOUNT } = topUpLimits(cur);
+  const zeroDec = isZeroDecimal(cur);
 
   const [step, setStep] = useState<Step>({ kind: "amount" });
-  const [selected, setSelected] = useState<number>(10);
+  const [selected, setSelected] = useState<number>(PRESETS[1] ?? PRESETS[0]);
   const [custom, setCustom] = useState<string>("");
   const [confettiKey, setConfettiKey] = useState(0);
 
   useEffect(() => {
     if (open) {
       setStep({ kind: "amount" });
-      setSelected(10);
+      setSelected(PRESETS[1] ?? PRESETS[0]);
       setCustom("");
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cur]);
 
   const chosenAmount = useMemo(() => {
     const custN = Number(custom.replace(",", "."));
-    if (custom && Number.isFinite(custN) && custN > 0) return Math.round(custN * 100) / 100;
+    if (custom && Number.isFinite(custN) && custN > 0) return roundForCurrency(custN, cur);
     return selected;
-  }, [custom, selected]);
+  }, [custom, selected, cur]);
 
   const valid =
     Number.isFinite(chosenAmount) &&
@@ -151,7 +153,7 @@ export function TopUpSheet({
               </motion.div>
               <p className="text-lg font-bold">{t("wallet.topup.success")}</p>
               <p className="text-sm text-muted-foreground">
-                {t("wallet.topup.credited", { amount: formatMoney(step.amount, currency) })}
+                {t("wallet.topup.credited", { amount: formatMoney(step.amount, cur, i18n.language) })}
               </p>
             </motion.div>
           ) : (
@@ -181,7 +183,7 @@ export function TopUpSheet({
                     {t("wallet.currentBalance")}
                   </p>
                   <p className="text-[20px] font-bold tabular-nums">
-                    {formatMoney(balance, currency)}
+                    {formatMoney(balance, cur, i18n.language)}
                   </p>
                 </div>
               </div>
@@ -206,7 +208,7 @@ export function TopUpSheet({
                             : "border-border"
                         }`}
                       >
-                        {formatMoney(p, currency)}
+                        {formatMoney(p, cur, i18n.language)}
                       </Press>
                     ))}
                   </div>
@@ -216,8 +218,10 @@ export function TopUpSheet({
                     </span>
                     <input
                       value={custom}
-                      onChange={(e) => setCustom(e.target.value.replace(/[^0-9.,]/g, ""))}
-                      inputMode="decimal"
+                      onChange={(e) => setCustom(
+                        e.target.value.replace(zeroDec ? /[^0-9]/g : /[^0-9.,]/g, ""),
+                      )}
+                      inputMode={zeroDec ? "numeric" : "decimal"}
                       placeholder={`${MIN_AMOUNT}–${MAX_AMOUNT}`}
                       className="flex-1 bg-transparent text-right text-[15px] font-bold outline-none tabular-nums"
                     />
@@ -268,7 +272,7 @@ export function TopUpSheet({
                         <Loader2 className="mx-auto animate-spin" size={18} />
                       ) : (
                         t("wallet.topup.continueCta", {
-                          amount: formatMoney(chosenAmount, currency),
+                          amount: formatMoney(chosenAmount, cur, i18n.language),
                         })
                       )}
                     </Press>
@@ -283,7 +287,7 @@ export function TopUpSheet({
                 <StripeInline
                   clientSecret={step.clientSecret}
                   stripePromise={step.stripePromise}
-                  amountLabel={formatMoney(step.amount, currency)}
+                  amountLabel={formatMoney(step.amount, cur, i18n.language)}
                   onSuccess={() => handleSuccess(step.amount)}
                 />
               ) : null}

@@ -17,6 +17,7 @@ import {
   Languages,
   Check,
   Wallet as WalletIcon,
+  Coins,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -257,13 +258,20 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
   const { dark, setDark, notif, setNotif, sounds, setSounds } = useSettings();
   const { status: pushStatus, requestWithPrePrompt, refresh } = usePush();
   const { lang } = useLanguage();
+  const { profile } = useAuth();
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
 
   const wasOpen = useState(open)[0];
   if (open && !wasOpen) void refresh();
 
   const pushGranted = pushStatus === "granted";
   const pushOn = pushGranted && notif;
+
+  const currencyLabel =
+    profile?.currency === "XOF" ? "🇨🇮 FCFA (XOF)"
+    : profile?.currency === "CAD" ? "🇨🇦 CAD"
+    : "🇪🇺 EUR";
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("settings.title")} zIndex={65}>
@@ -311,10 +319,19 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
             value={lang === "fr" ? t("settings.french") : t("settings.english")}
             onClick={() => setLanguageOpen(true)}
           />
+          <Sep />
+          <NavRow
+            icon={<Coins size={16} />}
+            tint="oklch(0.68 0.14 75)"
+            label={t("settings.currency")}
+            value={currencyLabel}
+            onClick={() => setCurrencyOpen(true)}
+          />
         </div>
       </div>
 
       <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
     </PushScreen>
   );
 }
@@ -440,5 +457,60 @@ function LangRow({
         {active && <Check size={18} color="var(--primary)" strokeWidth={2.4} />}
       </div>
     </Press>
+  );
+}
+
+/* ================= Currency selector ================= */
+
+function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { profile, updateProfile, refreshProfile } = useAuth();
+  const current = profile?.currency ?? "EUR";
+
+  const choose = async (c: "XOF" | "EUR" | "CAD") => {
+    if (c === current) { onClose(); return; }
+    haptic.light();
+    try {
+      await updateProfile({ currency: c });
+      // Try to bring the wallet currency along; DB trigger rejects if balance > 0.
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase
+        .from("wallets")
+        .update({ currency: c })
+        .eq("user_id", profile!.id);
+      if (error) {
+        toast.message(t("settings.currencyWalletLocked"));
+      } else {
+        toast.success(t("settings.currencyUpdated"));
+      }
+      await refreshProfile();
+    } catch (err) {
+      toast.error(String(err));
+    }
+    onClose();
+  };
+
+  const rows: Array<{ code: "XOF" | "EUR" | "CAD"; label: string }> = [
+    { code: "EUR", label: "🇪🇺 EUR — Euro" },
+    { code: "XOF", label: "🇨🇮 FCFA (XOF)" },
+    { code: "CAD", label: "🇨🇦 CAD — Dollar canadien" },
+  ];
+
+  return (
+    <PushScreen open={open} onClose={onClose} title={t("settings.chooseCurrency")} zIndex={70}>
+      <div className="px-4 py-4">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          {rows.map((r, i) => (
+            <div key={r.code}>
+              <LangRow label={r.label} active={current === r.code} onClick={() => void choose(r.code)} />
+              {i < rows.length - 1 && <Sep />}
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
+          {t("settings.currencyHint")}
+        </p>
+      </div>
+    </PushScreen>
   );
 }

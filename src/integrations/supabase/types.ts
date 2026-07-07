@@ -132,6 +132,7 @@ export type Database = {
         Row: {
           category: string | null
           cover_url: string | null
+          currency: string
           ended_at: string | null
           id: string
           room_name: string
@@ -144,6 +145,7 @@ export type Database = {
         Insert: {
           category?: string | null
           cover_url?: string | null
+          currency?: string
           ended_at?: string | null
           id?: string
           room_name: string
@@ -156,6 +158,7 @@ export type Database = {
         Update: {
           category?: string | null
           cover_url?: string | null
+          currency?: string
           ended_at?: string | null
           id?: string
           room_name?: string
@@ -273,6 +276,7 @@ export type Database = {
           bio: string | null
           country: string | null
           created_at: string
+          currency: string
           display_name: string
           email: string
           handle: string
@@ -285,6 +289,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           display_name: string
           email: string
           handle: string
@@ -297,6 +302,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          currency?: string
           display_name?: string
           email?: string
           handle?: string
