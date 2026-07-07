@@ -21,6 +21,7 @@ import {
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { LanguageProvider } from "@/i18n/language-context";
 import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
