@@ -55,7 +55,7 @@ export function getStripeConfig(): {
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
   const haveApi = !!(gatewayKey || legacySecret);
-  if (!haveApi || !publishableKey) {
+  if (!haveApi) {
     return {
       ok: false,
       env,
@@ -64,6 +64,7 @@ export function getStripeConfig(): {
       reason: "stripe_not_configured",
     };
   }
+
   return { ok: true, env, publishableKey, webhookSecret };
 }
 
