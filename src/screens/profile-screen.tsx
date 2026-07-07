@@ -17,6 +17,7 @@ import {
   Languages,
   Check,
   Wallet as WalletIcon,
+  Coins,
 } from "lucide-react";
 
 import { toast } from "sonner";
