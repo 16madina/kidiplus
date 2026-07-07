@@ -393,5 +393,55 @@
     "ended": "Ended",
     "reviewCount_one": "{{count}} review",
     "reviewCount_other": "{{count}} reviews"
+  },
+  "pay": {
+    "title": "Payment",
+    "item": "Item",
+    "platformFee": "Service fee",
+    "processingFee": "Processing fee",
+    "total": "Total",
+    "payNow": "Pay {{total}}",
+    "secure": "Secure payment by Stripe",
+    "doneHint": "A confirmation email is on the way.",
+    "kind": {
+      "auction": "Auction won",
+      "fixed": "Buy now"
+    },
+    "method": {
+      "title": "Payment method",
+      "card": "Card",
+      "comingSoon": "Soon"
+    },
+    "notConfigured": {
+      "title": "Payment not configured",
+      "body": "Stripe keys have not been set on the server yet."
+    },
+    "errors": {
+      "title": "Payment failed",
+      "generic": "Something went wrong. Please try again.",
+      "network": "Could not reach the server.",
+      "notSignedIn": "Sign in to pay."
+    },
+    "toasts": {
+      "confirmed": "Payment confirmed 🎉"
+    }
+  },
+  "orders": {
+    "empty": "No orders yet.",
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "sales": {
+    "title": "My sales",
+    "empty": "No sales yet.",
+    "revenue": "Revenue",
+    "buyer": "Buyer"
+  },
+  "profile": {
+    "mySales": "My sales"
   }
 }
