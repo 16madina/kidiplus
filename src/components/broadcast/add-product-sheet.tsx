@@ -21,6 +21,7 @@ export function AddProductSheet({
   const [mode, setMode] = useState<SellMode>("auction");
   const [name, setName] = useState("");
   const [image, setImage] = useState<string>(PRODUCT_IMG_POOL[0]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [startPrice, setStartPrice] = useState(10);
   const [timerSec, setTimerSec] = useState(45);
   const [price, setPrice] = useState(29);
@@ -46,6 +47,7 @@ export function AddProductSheet({
     const url = urlTrackerRef.current.track(URL.createObjectURL(file));
     if (isBlobUrl(image)) urlTrackerRef.current.revoke(image);
     setImage(url);
+    setImageFile(file);
     e.target.value = "";
     haptic.selection();
   };
@@ -56,6 +58,7 @@ export function AddProductSheet({
     // Keep any tracked blob URLs alive — they may now belong to a saved
     // product. disposeAll runs only on unmount.
     setImage(PRODUCT_IMG_POOL[0]);
+    setImageFile(null);
     setStartPrice(10);
     setTimerSec(45);
     setPrice(29);
@@ -70,6 +73,7 @@ export function AddProductSheet({
     onAdd({
       name: name.trim(),
       image,
+      imageFile: imageFile ?? undefined,
       mode,
       startPrice,
       timerSec,
@@ -78,6 +82,7 @@ export function AddProductSheet({
     });
     reset();
     onClose();
+
   };
 
   return (
