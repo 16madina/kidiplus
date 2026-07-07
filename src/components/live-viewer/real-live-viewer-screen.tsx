@@ -28,6 +28,8 @@ import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
