@@ -306,23 +306,24 @@ function SellerProfileInner({
             WebkitBackdropFilter: "saturate(180%) blur(18px)",
           }}
         >
-          {TABS.map((t) => {
-            const active = t.key === tab;
+          {TAB_KEYS.map((key) => {
+            const active = key === tab;
             return (
               <Press
-                key={t.key}
+                key={key}
                 data-tab
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(key)}
                 className="!min-h-11 rounded-none px-3 text-[14px] font-semibold"
                 style={{
                   color: active ? "var(--foreground)" : "var(--muted-foreground)",
                   transition: "color 150ms",
                 }}
               >
-                {t.label}
+                {t(`seller.tabs.${key}`)}
               </Press>
             );
           })}
+
           <motion.div
             className="absolute bottom-0 h-[2px] rounded-full"
             initial={false}
