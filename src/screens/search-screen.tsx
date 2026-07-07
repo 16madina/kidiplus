@@ -279,7 +279,7 @@ export function SearchScreen() {
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
               onFocus={() => setFocused(true)}
-              placeholder="Rechercher"
+              placeholder={t("search.placeholder")}
               className="h-10 w-full rounded-full bg-muted pl-9 pr-9 text-[14px] outline-none placeholder:text-muted-foreground/80"
               enterKeyHint="search"
               autoComplete="off"
