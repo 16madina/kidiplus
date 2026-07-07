@@ -270,7 +270,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             boxShadow: "0 8px 24px rgba(255, 40, 60, 0.35)",
           }}
         >
-          Lancer le live
+          {t("broadcast.setup.start")}
         </Press>
       </div>
 
