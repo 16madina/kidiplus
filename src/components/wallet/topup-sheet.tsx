@@ -27,13 +27,10 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal } from "@/lib/money";
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
-const PRESETS = [5, 10, 25, 50];
-const MIN_AMOUNT = 2;
-const MAX_AMOUNT = 500;
 
 type Step =
   | { kind: "amount" }
