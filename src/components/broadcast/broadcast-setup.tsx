@@ -56,24 +56,86 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [launching, setLaunching] = useState(false);
 
 
-  const launch = () => {
-    if (!canLaunch) return;
+  const launch = async () => {
+    if (!canLaunch || launching) return;
+    if (!b.hostIdentity) {
+      toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
+      return;
+    }
     haptic.medium();
-    // Generate a fresh unique room name for this broadcast session using the
-    // signed-in user's id (falls back to a random tag if somehow missing).
-    import("@/lib/livekit").then(({ makeRoomName }) => {
-      // Lazy-import to avoid circular deps and keep this file lean.
-      import("@/lib/auth-context").then(() => {
-        // We can't call hooks here — the id was passed in via context earlier
-        // through window.__livekit_identity. Prefer the room key derived from
-        // the user id when available on the broadcast context.
+    setLaunching(true);
+    try {
+      const seed = b.hostIdentity.slice(0, 8) || "seller";
+      const room = makeRoomName(seed);
+
+      // 1. Upload cover if the seller picked a File (blob url).
+      let coverPath: string | null = null;
+      if (b.coverFile) {
+        coverPath = await uploadLiveImage(
+          "live-covers",
+          b.coverFile,
+          b.hostIdentity,
+        );
+      } else if (b.cover && !isBlobUrl(b.cover)) {
+        // Absolute URL — store as-is.
+        coverPath = b.cover;
+      }
+
+      // 2. Upload each product image; fall back to the existing URL.
+      const productsForDb = await Promise.all(
+        b.products.map(async (p, index) => {
+          let imagePath: string | null = null;
+          if (p.imageFile) {
+            imagePath = await uploadLiveImage(
+              "live-products",
+              p.imageFile,
+              b.hostIdentity!,
+            );
+          } else if (p.image && isBlobUrl(p.image)) {
+            // Convert stray blob to File and upload.
+            const file = await blobUrlToFile(p.image, `${p.name || "product"}.jpg`);
+            imagePath = await uploadLiveImage(
+              "live-products",
+              file,
+              b.hostIdentity!,
+            );
+          } else {
+            imagePath = p.image || null;
+          }
+          return {
+            name: p.name,
+            imagePath,
+            mode: p.mode,
+            startPrice: p.startPrice,
+            price: p.price,
+            stock: p.stock,
+            timerSeconds: p.timerSec,
+            position: index,
+          };
+        }),
+      );
+
+      // 3. Insert live + products.
+      const { liveId, productIds } = await createLiveInDb({
+        sellerId: b.hostIdentity,
+        title: b.title.trim(),
+        category: b.category,
+        coverPath,
+        roomName: room,
+        products: productsForDb,
       });
-      const seed =
-        (b.hostIdentity && b.hostIdentity.slice(0, 8)) || "seller";
-      b.setRoomName(makeRoomName(seed));
+
+      b.setRoomName(room);
+      b.setLiveId(liveId);
+      b.setProductDbIds(productIds);
       b.goLive();
-    });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(t("broadcast.setup.launchFailed", "Could not start live") + ` — ${msg}`);
+      setLaunching(false);
+    }
   };
+
 
 
 
