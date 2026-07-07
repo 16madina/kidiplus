@@ -62,10 +62,10 @@ export function AuthInput({
       </span>
       <input
         {...props}
-        className={`w-full rounded-2xl border bg-card px-4 text-[15px] text-foreground caret-foreground outline-none transition-colors ${
+        className={`w-full rounded-2xl border bg-card px-4 text-[15px] text-foreground caret-foreground placeholder:text-muted-foreground outline-none transition-colors ${
           error ? "border-[oklch(0.62_0.24_20)]" : "border-border focus:border-foreground/40"
         }`}
-        style={{ height: 48 }}
+        style={{ height: 48, color: "var(--foreground)", WebkitTextFillColor: "var(--foreground)" }}
       />
       {error && (
         <span className="mt-1 block text-[12px] font-medium text-[oklch(0.6_0.24_27)]">
