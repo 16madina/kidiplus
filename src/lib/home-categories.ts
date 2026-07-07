@@ -19,6 +19,25 @@ export const HOME_CATEGORIES: HomeCategory[] = [
   "Électronique",
 ];
 
+/** i18n key per home category id — used to render its localized label. */
+export const HOME_CATEGORY_LABEL_KEY: Record<HomeCategory, string> = {
+  "Pour toi": "home.categories.forYou",
+  "Beauté": "home.categories.beauty",
+  "Sacs & accessoires": "home.categories.bagsAccessories",
+  "Parfums": "home.categories.perfumes",
+  "Mode": "home.categories.fashion",
+  "Bijoux": "home.categories.jewelry",
+  "Électronique": "home.categories.electronics",
+};
+
+/** i18n key per home filter id. */
+export const HOME_FILTER_LABEL_KEY: Record<HomeFilter, string> = {
+  "Recommandés": "home.filters.recommended",
+  "Achat immédiat": "home.filters.buyNow",
+  "Populaires": "home.filters.popular",
+  "Nouveautés": "home.filters.new",
+};
+
 type Meta = {
   /** Underlying stream categories to include when this tile is active. */
   match: Array<Exclude<Category, "For You">> | "all";
