@@ -530,6 +530,9 @@
     "errors": {
       "insufficient": "Insufficient balance",
       "belowMin": "Minimum: {{min}}",
+      "belowMinInline": "Amount below minimum ({{min}})",
+      "aboveAvailable": "Amount exceeds available balance",
+      "missingDestination": "Enter your payout details",
       "generic": "Could not process the request."
     }
   },
