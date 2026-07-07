@@ -123,6 +123,9 @@
   },
   "live": {
     "liveBadge": "Live",
+    "allDone": "All items are done ✨",
+    "addProduct": "Add",
+    "productAdded": "Product added",
     "en_direct": "LIVE",
     "follow": "Follow",
     "following": "Following",
