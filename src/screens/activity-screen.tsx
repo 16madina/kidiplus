@@ -92,7 +92,7 @@ export function ActivityScreen() {
               ) : notifs.length === 0 ? (
                 <EmptyState
                   icon={<Inbox size={22} className="text-muted-foreground" />}
-                  message="Aucune notification pour le moment"
+                  message={t("activity.empty.notifications")}
                 />
               ) : (
                 <ul>
