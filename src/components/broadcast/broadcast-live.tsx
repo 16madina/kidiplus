@@ -392,7 +392,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       </div>
 
       {/* Video connection error overlay with retry */}
-      {(videoStatus === "error" || videoStatus === "denied") && (
+      {(videoStatus === "error" || videoStatus === "denied" || videoStatus === "token_failed" || videoStatus === "connect_failed") && (
         <div
           className="absolute left-1/2 z-40 -translate-x-1/2 rounded-2xl px-4 py-3 text-white shadow-lg"
           style={{
@@ -406,8 +406,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <div className="flex items-start gap-2">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-bold">{t("live.hostConnectFailed")}</p>
-              <p className="mt-0.5 text-[11.5px] opacity-90">{t("live.hostConnectFailedBody")}</p>
+              <p className="text-[13px] font-bold">
+                {videoStatus === "denied"
+                  ? t("live.hostCameraDeniedTitle", "Caméra bloquée")
+                  : videoStatus === "token_failed"
+                    ? t("live.hostTokenFailedTitle", "Authentification impossible")
+                    : videoStatus === "connect_failed"
+                      ? t("live.hostConnectServerFailedTitle", "Serveur vidéo injoignable")
+                      : t("live.hostConnectFailed")}
+              </p>
+              <p className="mt-0.5 text-[11.5px] opacity-90">
+                {videoStatus === "denied"
+                  ? t("live.hostCameraDeniedBody", "Autorise la caméra dans les réglages du navigateur, puis réessaie.")
+                  : videoStatus === "token_failed"
+                    ? t("live.hostTokenFailedBody", "Impossible d'obtenir un jeton vidéo. Vérifie ta connexion et réessaie.")
+                    : videoStatus === "connect_failed"
+                      ? t("live.hostConnectServerFailedBody", "Le serveur vidéo ne répond pas. Vérifie ta connexion et réessaie.")
+                      : t("live.hostConnectFailedBody")}
+              </p>
               <Press
                 onClick={retryConnection}
                 className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
