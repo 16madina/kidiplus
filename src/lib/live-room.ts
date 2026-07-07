@@ -134,11 +134,13 @@ export function useLiveRoom(params: {
         (payload) => {
           const row = payload.new as {
             product_id: string;
+            bidder_id: string;
             bidder_name: string;
             amount: number;
           };
           setLastBid({
             productId: row.product_id,
+            bidderId: row.bidder_id,
             bidderName: row.bidder_name,
             amount: Number(row.amount),
             ts: Date.now(),
