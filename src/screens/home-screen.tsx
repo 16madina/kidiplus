@@ -84,8 +84,11 @@ export function HomeScreen() {
   }, [openStream]);
 
   const filtered = useMemo(() => {
-    return applyHomeFilter(applyHomeCategory(items, category), filter);
-  }, [items, category, filter]);
+    // Real lives always come first; mock streams fill the grid below.
+    const merged = [...realLives, ...items];
+    return applyHomeFilter(applyHomeCategory(merged, category), filter);
+  }, [items, realLives, category, filter]);
+
 
   const doRefresh = useCallback(() => {
     setRefreshing(true);
