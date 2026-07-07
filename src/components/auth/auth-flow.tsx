@@ -70,20 +70,29 @@ function Welcome({
     >
       <div className="flex flex-1 flex-col items-center justify-center text-center">
         <motion.span
-          initial={{ y: 12, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.4, ease: EASE_IOS }}
+          initial={{ scale: 0.6, opacity: 0, y: 8 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE_IOS, type: "spring", stiffness: 120, damping: 14 }}
+          className="inline-block"
+          style={{ filter: "drop-shadow(0 12px 40px rgba(255, 195, 90, 0.25))" }}
         >
-          <Logo size={160} />
+          <motion.span
+            className="inline-block"
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 4.5, ease: "easeInOut", repeat: Infinity, delay: 0.8 }}
+          >
+            <Logo size={240} />
+          </motion.span>
         </motion.span>
         <motion.p
-          initial={{ y: 12, opacity: 0 }}
+          initial={{ y: 14, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.06 }}
-          className="mt-3 max-w-xs text-[15px] leading-snug text-muted-foreground"
+          transition={{ duration: 0.6, ease: EASE_IOS, delay: 0.35 }}
+          className="mt-5 max-w-xs text-[15px] leading-snug text-muted-foreground"
         >
           {t("auth.welcome.tagline")}
         </motion.p>
+
       </div>
 
       <motion.div
