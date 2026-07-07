@@ -144,7 +144,7 @@ export function SearchScreen() {
   const tabs: TabDef[] = [
     {
       key: "lives",
-      label: `Lives${liveResults.length ? ` (${liveResults.length})` : ""}`,
+      label: `${t("search.tabs.lives")}${liveResults.length ? ` (${liveResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
           {liveResults.length === 0 ? (
@@ -169,7 +169,7 @@ export function SearchScreen() {
     },
     {
       key: "vendeurs",
-      label: `Vendeurs${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
+      label: `${t("search.tabs.sellers")}${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
       content: (
         <div className="px-4 py-2">
           {sellerResults.length === 0 ? (
@@ -194,7 +194,7 @@ export function SearchScreen() {
     },
     {
       key: "produits",
-      label: `Produits${productResults.length ? ` (${productResults.length})` : ""}`,
+      label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
           {productResults.length === 0 ? (
