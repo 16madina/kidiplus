@@ -247,7 +247,7 @@ function SellerProfileInner({
                       }
                 }
               >
-                {following ? "Abonné" : "Suivre"}
+                {following ? t("seller.following") : t("seller.follow")}
               </Press>
             </div>
           </motion.div>
