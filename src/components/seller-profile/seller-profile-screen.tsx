@@ -214,7 +214,19 @@ function SellerProfileInner({
               </div>
 
               <Press
-                onClick={() => setFollowing((v) => !v)}
+                onClick={() => {
+                  haptic.medium();
+                  setFollowing((v) => {
+                    const next = !v;
+                    if (next) {
+                      void requestPush(
+                        `Active les notifications pour ne rater aucun live de ${info.name} 🔔`,
+                      );
+                    }
+                    return next;
+                  });
+                }}
+                hapticOnTap={false}
                 className="mt-4 h-11 w-full rounded-full text-[14px] font-bold"
                 style={
                   following
