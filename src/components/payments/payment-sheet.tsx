@@ -51,8 +51,11 @@ export function PaymentSheet({
   onClose: () => void;
   onPaid?: (order: OrderRow) => void;
 }) {
-  const { t } = useTranslation();
-  const { balance, currency } = useWallet();
+  const { t, i18n } = useTranslation();
+  const { balance, currency: walletCurrency } = useWallet();
+  const orderCurrency = normalizeCurrency(order?.currency ?? "EUR");
+  const currency = orderCurrency; // preserve old identifier used below
+  const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [state, setState] = useState<
