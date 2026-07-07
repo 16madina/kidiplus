@@ -37,6 +37,7 @@ export function ProfileScreen() {
   const { profile, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
