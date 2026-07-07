@@ -82,9 +82,13 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 .from("orders")
                 .update({ status: "paid", paid_at: new Date().toISOString() })
                 .eq("stripe_payment_intent_id", intent.id)
-                .neq("status", "paid");
-              if (orderId) await q.eq("id", orderId);
-              else await q;
+                .neq("status", "paid")
+                .select("id");
+              const res = orderId ? await q.eq("id", orderId) : await q;
+              // Credit the seller for each newly-paid order (idempotent RPC).
+              for (const row of (res.data ?? []) as Array<{ id: string }>) {
+                await admin.rpc("credit_seller_earning", { _order_id: row.id });
+              }
             }
           } else if (
             event.type === "payment_intent.payment_failed" ||
