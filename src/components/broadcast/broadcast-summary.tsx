@@ -64,7 +64,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
         <div className="grid grid-cols-3 gap-2">
           <StatTile label={t("broadcast.summary.duration")} value={fmtDuration(session.durationSec)} />
           <StatTile label={t("broadcast.summary.peakViewers")} value={String(session.peakViewers)} />
-          <StatTile label={t("broadcast.summary.sales")} value={String(session.sales.length)} />
+          <StatTile label={t("broadcast.summary.sales")} value={String(salesCount)} />
         </div>
 
         <div
