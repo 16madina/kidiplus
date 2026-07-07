@@ -22,6 +22,8 @@ import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { LanguageProvider } from "@/i18n/language-context";
+import { WalletProvider } from "@/lib/wallet-context";
+
 import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
@@ -38,20 +40,23 @@ export function AppShell() {
       <LanguageProvider>
         <SettingsProvider>
           <PushProvider>
-            <SellerProfileProvider>
-              <LiveViewerProvider>
-                <AuthGate />
-                <AnimatePresence>
-                  {!splashDone && (
-                    <SplashScreen onDone={() => setSplashDone(true)} />
-                  )}
-                </AnimatePresence>
-              </LiveViewerProvider>
-            </SellerProfileProvider>
+            <WalletProvider>
+              <SellerProfileProvider>
+                <LiveViewerProvider>
+                  <AuthGate />
+                  <AnimatePresence>
+                    {!splashDone && (
+                      <SplashScreen onDone={() => setSplashDone(true)} />
+                    )}
+                  </AnimatePresence>
+                </LiveViewerProvider>
+              </SellerProfileProvider>
+            </WalletProvider>
           </PushProvider>
         </SettingsProvider>
       </LanguageProvider>
     </AuthProvider>
+
   );
 }
 

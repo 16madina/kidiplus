@@ -22,8 +22,11 @@ import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { ProductsSheet } from "./products-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
+import { WalletPill } from "@/components/wallet/wallet-pill";
+import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
+
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
@@ -105,6 +108,8 @@ export function RealLiveViewerScreen() {
   // ---------- Payment sheet state ----------
   // A single sheet handles both fixed-price purchases and auction wins.
   const [pendingOrder, setPendingOrder] = useState<OrderRow | null>(null);
+  const [topupOpen, setTopupOpen] = useState(false);
+
 
   // Sold celebration from server auction:end.
   // If the current user is the winner, open the payment sheet to pay for the item.
@@ -321,10 +326,12 @@ export function RealLiveViewerScreen() {
           </div>
 
           <div className="flex items-center gap-1.5">
+            <WalletPill onTap={() => setTopupOpen(true)} />
             <div className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Eye size={13} />{displayViewers}
             </div>
+
             <Press aria-label={t("live.share")}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
@@ -412,6 +419,8 @@ export function RealLiveViewerScreen() {
         order={pendingOrder}
         onClose={() => setPendingOrder(null)}
       />
+      <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+
     </motion.div>
   );
 }

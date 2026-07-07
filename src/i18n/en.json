@@ -221,31 +221,9 @@
     }
   },
   "profile": {
-    "editProfile": "Edit profile",
-    "signOut": "Sign out",
-    "becomeSeller": "Become a seller",
+    "mySales": "My sales",
     "menu": {
-      "payments": "Payments",
-      "addresses": "Addresses",
-      "purchases": "My purchases",
-      "notifications": "Notifications",
-      "settings": "Settings",
-      "help": "Help"
-    },
-    "stats": {
-      "followers": "Followers",
-      "following": "Following",
-      "sales": "Sales"
-    },
-    "edit": {
-      "displayName": "Display name",
-      "handle": "Handle",
-      "bio": "Bio",
-      "avatar": "Avatar",
-      "changeAvatar": "Change avatar",
-      "country": "Country",
-      "saved": "Profile saved",
-      "saveError": "Couldn't save. Try again."
+      "wallet": "My wallet"
     }
   },
   "activity": {
@@ -441,7 +419,31 @@
     "revenue": "Revenue",
     "buyer": "Buyer"
   },
-  "profile": {
-    "mySales": "My sales"
+  "wallet": {
+    "title": "My wallet",
+    "currentBalance": "Current balance",
+    "topupCta": "Top up",
+    "history": "History",
+    "emptyTitle": "No activity yet",
+    "emptyBody": "Top up your wallet to buy instantly during lives.",
+    "insufficient": "Insufficient balance",
+    "paidWithWallet": "Paid with balance",
+    "method": "KiDi+ balance",
+    "topup": {
+      "title": "Top up my balance",
+      "chooseAmount": "Choose an amount",
+      "other": "Other",
+      "continueCta": "Top up {{amount}}",
+      "confirmCta": "Pay {{amount}}",
+      "range": "Between €{{min}} and €{{max}}",
+      "success": "Top-up successful 🎉",
+      "credited": "{{amount}} credited to your balance"
+    },
+    "tx": {
+      "topup": "Top-up",
+      "purchase": "Purchase",
+      "refund": "Refund",
+      "adjustment": "Adjustment"
+    }
   }
 }
