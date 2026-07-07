@@ -402,18 +402,19 @@ function LivesTab({ info }: { info: SellerInfo }) {
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [bounce, setBounce] = useState<Record<string, number>>({});
   const { requestWithPrePrompt: requestPush } = usePush();
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
   const toggle = (id: string, title: string) => {
     const next = !reminders[id];
     haptic.medium();
     setReminders((r) => ({ ...r, [id]: next }));
     setBounce((b) => ({ ...b, [id]: (b[id] ?? 0) + 1 }));
-    toast(next ? "Rappel activé" : "Rappel désactivé");
+    toast(next ? t("seller.reminderOn") : t("seller.reminderOff"));
     if (next) {
-      void requestPush(
-        `Active les notifications pour être prévenu·e avant "${title}" 🔔`,
-      );
+      void requestPush(t("seller.pushReminder", { title }));
     }
   };
+
 
   return (
     <div className="space-y-2">
