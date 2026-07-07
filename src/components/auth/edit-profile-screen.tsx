@@ -125,6 +125,10 @@ export function EditProfileScreen({
       }
       await updateProfile(patch);
       await refreshProfile();
+      // The DB trigger sync_currency_on_profile_change syncs wallet +
+      // seller_balances when balance is 0; refresh so the UI (pill,
+      // top-up presets) picks up the new currency immediately.
+      await refreshWallet();
       haptic.success();
       toast.success("Profil mis à jour");
       onClose();
