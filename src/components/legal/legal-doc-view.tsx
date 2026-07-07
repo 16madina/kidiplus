@@ -12,9 +12,6 @@ export function LegalDocView({ doc, kicker }: { doc: LegalDoc; kicker?: string }
   });
   return (
     <article className="mx-auto max-w-2xl px-5 py-5 text-foreground">
-      <div className="mb-3 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-        ⚠️ {t("legal.draftBanner")}
-      </div>
       {kicker && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{kicker}</p>}
       <h1 className="text-[24px] font-bold leading-tight">{doc.title}</h1>
       <p className="mt-1 text-[12px] text-muted-foreground">{t("legal.lastUpdated")}: {dateStr}</p>
