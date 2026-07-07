@@ -93,13 +93,35 @@ export function LiveScreen() {
 }
 
 function BroadcastFlow() {
+  const { t } = useTranslation();
   const { stage, goSetup, goSummary, reset, setHost } = useBroadcast();
   const { profile, user } = useAuth();
+  const [dangling, setDangling] = useState<Array<{ id: string; title: string }>>([]);
+  const [endingAll, setEndingAll] = useState(false);
 
-  // Feed the real signed-in host identity/name into broadcast context.
   useEffect(() => {
     if (user && profile) setHost(user.id, profile.display_name || profile.handle);
   }, [user, profile, setHost]);
+
+  useEffect(() => {
+    if (!user || stage !== "setup") return;
+    let alive = true;
+    void import("@/lib/lives-db").then(({ findDanglingLives }) =>
+      findDanglingLives(user.id).then((rows) => {
+        if (alive) setDangling(rows.map((r) => ({ id: r.id, title: r.title })));
+      }),
+    );
+    return () => { alive = false; };
+  }, [user, stage]);
+
+  const endAllDangling = async () => {
+    setEndingAll(true);
+    const { endLiveInDb } = await import("@/lib/lives-db");
+    await Promise.all(dangling.map((d) => endLiveInDb(d.id).catch(() => {})));
+    setDangling([]);
+    setEndingAll(false);
+    toast.success(t("live.danglingEnded", "Lives précédents terminés"));
+  };
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -114,6 +136,32 @@ function BroadcastFlow() {
           <BroadcastSummary key="summary" onDone={() => goSetup()} />
         )}
       </AnimatePresence>
+      {stage === "setup" && dangling.length > 0 && (
+        <div
+          className="absolute inset-x-3 z-40 rounded-2xl px-3 py-2.5 text-white shadow-lg"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 62px)",
+            backgroundColor: "rgba(220, 30, 40, 0.92)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <p className="text-[12px] font-semibold leading-tight">
+            {t("live.danglingTitle", { count: dangling.length, defaultValue: "{{count}} live(s) toujours ouvert(s)" })}
+          </p>
+          <p className="mt-0.5 text-[11px] opacity-90 leading-tight">
+            {t("live.danglingBody", "Termine les avant d'en lancer un nouveau.")}
+          </p>
+          <Press
+            onClick={endAllDangling}
+            disabled={endingAll}
+            className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
+          >
+            {endingAll ? t("common.loading") : t("live.danglingEndAll", "Terminer tout")}
+          </Press>
+        </div>
+      )}
     </div>
   );
 }
+
