@@ -20,6 +20,7 @@ export type Profile = {
   bio: string | null;
   is_seller: boolean;
   country: string | null;
+  language: "fr" | "en";
   created_at: string;
 };
 
