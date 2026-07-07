@@ -78,7 +78,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           <div className="text-[12px] font-semibold uppercase tracking-wide opacity-80">
             {t("broadcast.summary.revenue")}
           </div>
-          <RevenueCounter value={revenue} />
+          <RevenueCounter value={revenue} currency={currency} locale={i18n.language} />
         </div>
 
         <div>
