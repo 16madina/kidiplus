@@ -487,37 +487,48 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
 
-        {/* Product control dock — compact, right-aligned so it doesn't
-            cover the chat column on the left. */}
+        {/* Product control dock — right-aligned so it doesn't cover the chat.
+            The next auction product gets a highlight ring so the host always
+            knows which "Démarrer" button to tap next. */}
         <div
-          className="flex justify-end gap-2 overflow-x-auto pl-[45%] pr-3 pb-1"
+          className="flex justify-end gap-2 overflow-x-auto pl-[30%] pr-3 pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {b.products.map((p) => {
-            const soldOut = p.mode === "auction"
-              ? soldList.some((s) => s.productId === p.id)
-              : (fixedStates[p.id]?.soldCount ?? 0) >= p.stock;
-            const auctionActive = auction?.productId === p.id;
-            const onSale = p.mode === "fixed" && !!fixedStates[p.id];
-            const soldCount = fixedStates[p.id]?.soldCount ?? 0;
-            const isFeatured = p.id === featuredId;
-            return (
-              <SellerProductCard
-                key={p.id}
-                product={p}
-                soldOut={soldOut}
-                featured={isFeatured}
-                auctionActive={auctionActive}
-                onSale={onSale}
-                soldCount={soldCount}
-                onStartAuction={() => startAuction(p)}
-                onEndAuction={endAuctionNow}
-                onToggleFixed={() => toggleFixedSale(p)}
-                onFeature={() => { haptic.selection(); setFeaturedId(p.id); }}
-              />
-            );
-          })}
+          {(() => {
+            const nextAuctionId = !auction
+              ? b.products.find(
+                  (p) => p.mode === "auction" && !soldList.some((s) => s.productId === p.id),
+                )?.id ?? null
+              : null;
+            return b.products.map((p) => {
+              const soldOut = p.mode === "auction"
+                ? soldList.some((s) => s.productId === p.id)
+                : (fixedStates[p.id]?.soldCount ?? 0) >= p.stock;
+              const auctionActive = auction?.productId === p.id;
+              const onSale = p.mode === "fixed" && !!fixedStates[p.id];
+              const soldCount = fixedStates[p.id]?.soldCount ?? 0;
+              const isFeatured = p.id === featuredId;
+              const isNextAuction = p.id === nextAuctionId;
+              return (
+                <SellerProductCard
+                  key={p.id}
+                  product={p}
+                  soldOut={soldOut}
+                  featured={isFeatured}
+                  auctionActive={auctionActive}
+                  isNextAuction={isNextAuction}
+                  onSale={onSale}
+                  soldCount={soldCount}
+                  onStartAuction={() => startAuction(p)}
+                  onEndAuction={endAuctionNow}
+                  onToggleFixed={() => toggleFixedSale(p)}
+                  onFeature={() => { haptic.selection(); setFeaturedId(p.id); }}
+                />
+              );
+            });
+          })()}
         </div>
+
 
       </div>
 
