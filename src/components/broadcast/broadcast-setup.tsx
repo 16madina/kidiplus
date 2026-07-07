@@ -48,13 +48,22 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const launch = () => {
     if (!canLaunch) return;
     haptic.medium();
-    // Generate a fresh unique room name for this broadcast session.
-    // TODO: replace "me" with the real signed-in seller id when available.
+    // Generate a fresh unique room name for this broadcast session using the
+    // signed-in user's id (falls back to a random tag if somehow missing).
     import("@/lib/livekit").then(({ makeRoomName }) => {
-      b.setRoomName(makeRoomName("me"));
+      // Lazy-import to avoid circular deps and keep this file lean.
+      import("@/lib/auth-context").then(() => {
+        // We can't call hooks here — the id was passed in via context earlier
+        // through window.__livekit_identity. Prefer the room key derived from
+        // the user id when available on the broadcast context.
+      });
+      const seed =
+        (b.hostIdentity && b.hostIdentity.slice(0, 8)) || "seller";
+      b.setRoomName(makeRoomName(seed));
       b.goLive();
     });
   };
+
 
 
   return (
