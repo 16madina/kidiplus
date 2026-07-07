@@ -669,5 +669,19 @@
   "ageGate": {
     "title": "Confirmation d'âge",
     "body": "KiDi+ est réservée aux personnes de 18 ans et plus. Tu dois confirmer ton âge pour continuer."
+  },
+  "bid": {
+    "custom": {
+      "title": "Enchère personnalisée",
+      "open": "Enchère personnalisée",
+      "close": "Fermer",
+      "decrease": "Diminuer",
+      "increase": "Augmenter",
+      "editAmount": "Modifier le montant",
+      "min": "min",
+      "confirm": "Enchérir {{amount}}",
+      "priceChanged": "Le prix a changé — nouvelle enchère min : {{amount}}",
+      "aboveCap": "Max {{amount}}"
+    }
   }
 }

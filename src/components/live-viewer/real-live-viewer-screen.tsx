@@ -18,10 +18,11 @@ import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/
 import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
-import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
+import { CustomBidStepper } from "./custom-bid-stepper";
 import { ProductsSheet } from "./products-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
@@ -226,7 +227,16 @@ export function RealLiveViewerScreen() {
   }, [room.viewerCount, viewerMotion]);
 
   // Bidding
-  const doBid = async () => {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customMinOverride, setCustomMinOverride] = useState<number | null>(null);
+
+  // Close custom panel when the active auction changes or ends.
+  useEffect(() => {
+    setCustomOpen(false);
+    setCustomMinOverride(null);
+  }, [currentProduct?.id, room.auctionStart?.deadlineMs, liveEnded]);
+
+  const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
@@ -241,10 +251,30 @@ export function RealLiveViewerScreen() {
       productId: currentProduct.id,
       bidderId: user.id,
       bidderName: displayName,
-      amount: nextBidAmount(Number(currentProduct.price), liveCurrency),
+      amount: customAmount,
     });
     if (!res.ok) {
+      if (res.error === "price_changed" && res.minNext !== undefined) {
+        setCustomMinOverride(res.minNext);
+        toast(t("bid.custom.priceChanged", {
+          defaultValue: "Le prix a changé — nouvelle enchère min : {{amount}}",
+          amount: formatLive(res.minNext),
+        }));
+        return;
+      }
+      if (res.error === "above_cap" && res.maxAmount !== undefined) {
+        toast.error(t("bid.custom.aboveCap", {
+          defaultValue: "Max {{amount}}",
+          amount: formatLive(res.maxAmount),
+        }));
+        return;
+      }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
+      return;
+    }
+    if (customAmount !== undefined) {
+      setCustomOpen(false);
+      setCustomMinOverride(null);
     }
   };
 
@@ -433,12 +463,27 @@ export function RealLiveViewerScreen() {
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
             }
-            onBid={doBid}
+            onBid={() => { void doBid(); }}
             onOpenProducts={() => setShowProducts(true)}
             onBuy={() => {
               if (!currentProduct) return;
               void startFixedPurchase(currentProduct);
             }}
+            onToggleCustom={() => { haptic.light(); setCustomOpen((v) => !v); setCustomMinOverride(null); }}
+            customOpen={customOpen}
+            customPanel={
+              currentProduct && currentProduct.mode === "auction" ? (
+                <CustomBidStepper
+                  open={customOpen}
+                  onClose={() => setCustomOpen(false)}
+                  currentPrice={Number(currentProduct.price)}
+                  startPrice={Number(currentProduct.start_price)}
+                  currency={liveCurrency}
+                  minOverride={customMinOverride}
+                  onConfirm={(amount) => doBid(amount)}
+                />
+              ) : null
+            }
           />
         </div>
       )}
