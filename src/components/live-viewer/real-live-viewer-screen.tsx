@@ -277,7 +277,7 @@ export function RealLiveViewerScreen() {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0.4 }}
       transition={{ duration: 0.3, ease: EASE_IOS }}
-      className="fixed inset-0 z-[60] overflow-hidden bg-black"
+      className="fixed inset-y-0 left-1/2 z-[60] w-full max-w-xl -translate-x-1/2 overflow-hidden bg-black"
       style={{ y: dragY }}
     >
       {active.roomName ? (
