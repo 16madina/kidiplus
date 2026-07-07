@@ -16,7 +16,7 @@ import { createStripeClient, getStripeConfig, mapStripeError } from "@/lib/strip
 import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
 
 
-const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1"];
+const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1", "kidiplus.com"];
 
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true;
