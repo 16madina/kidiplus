@@ -26,10 +26,18 @@ import { ProductsSheet } from "./products-sheet";
 import { BuySheet } from "./buy-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
+import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 
 const AUCTION_SECONDS = 45;
 
 export function LiveViewerScreen() {
+  const { active } = useLiveViewer();
+  // Real live (backed by DB) → real chat/bids/hearts/viewers.
+  if (active?.liveId) return <RealLiveViewerScreen />;
+  return <MockLiveViewerScreen />;
+}
+
+function MockLiveViewerScreen() {
   const { active, close } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
