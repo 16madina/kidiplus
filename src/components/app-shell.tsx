@@ -30,6 +30,7 @@ import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 import { AuthFlow } from "./auth/auth-flow";
 import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
+import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
