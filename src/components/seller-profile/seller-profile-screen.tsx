@@ -73,7 +73,7 @@ function SellerProfileInner({
   const { open: openLive } = useLiveViewer();
   const { requestWithPrePrompt: requestPush } = usePush();
   const { t } = useTranslation();
-  const { lang } = useLanguage();
+
 
 
 
