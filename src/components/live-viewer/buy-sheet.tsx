@@ -11,25 +11,36 @@ import { formatEuro, type Product } from "@/lib/live-viewer-mock";
 export function BuySheet({
   product,
   onClose,
+  onConfirm,
 }: {
   product: Product | null;
   onClose: () => void;
+  /** When provided, called on confirm; must return true on success. */
+  onConfirm?: () => Promise<boolean>;
 }) {
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!product) setDone(false);
+    if (!product) { setDone(false); setBusy(false); }
   }, [product]);
 
   const shipping = 4.9;
   const total = product ? product.price + shipping : 0;
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    let ok = true;
+    if (onConfirm) ok = await onConfirm();
+    setBusy(false);
+    if (!ok) return;
     setDone(true);
     haptic.success();
     if (product) toast.success(`Commande confirmée : ${product.name}`);
     setTimeout(onClose, 1200);
   };
+
 
 
   return (
