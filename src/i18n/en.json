@@ -510,6 +510,9 @@
     "phone": "Mobile money number",
     "phonePlaceholder": "+225 …",
     "holder": "Account holder",
+    "paypalEmail": "PayPal email address",
+    "paypalEmailPlaceholder": "you@example.com",
+    "paypalHint": "The email associated with your PayPal account.",
     "submit": "Confirm request",
     "confirmTitle": "Confirm withdrawal",
     "successTitle": "Request sent ✅",
@@ -519,6 +522,7 @@
       "label": "Method",
       "wave": "Wave",
       "orange_money": "Orange Money",
+      "paypal": "PayPal",
       "bank_transfer": "Bank transfer"
     },
     "status": {
@@ -533,6 +537,7 @@
       "belowMinInline": "Amount below minimum ({{min}})",
       "aboveAvailable": "Amount exceeds available balance",
       "missingDestination": "Enter your payout details",
+      "invalidEmail": "Invalid email address",
       "generic": "Could not process the request."
     }
   },
