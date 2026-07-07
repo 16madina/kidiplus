@@ -459,3 +459,58 @@ function LangRow({
     </Press>
   );
 }
+
+/* ================= Currency selector ================= */
+
+function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { profile, updateProfile, refreshProfile } = useAuth();
+  const current = profile?.currency ?? "EUR";
+
+  const choose = async (c: "XOF" | "EUR" | "CAD") => {
+    if (c === current) { onClose(); return; }
+    haptic.light();
+    try {
+      await updateProfile({ currency: c });
+      // Try to bring the wallet currency along; DB trigger rejects if balance > 0.
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase
+        .from("wallets")
+        .update({ currency: c })
+        .eq("user_id", profile!.id);
+      if (error) {
+        toast.message(t("settings.currencyWalletLocked"));
+      } else {
+        toast.success(t("settings.currencyUpdated"));
+      }
+      await refreshProfile();
+    } catch (err) {
+      toast.error(String(err));
+    }
+    onClose();
+  };
+
+  const rows: Array<{ code: "XOF" | "EUR" | "CAD"; label: string }> = [
+    { code: "EUR", label: "🇪🇺 EUR — Euro" },
+    { code: "XOF", label: "🇨🇮 FCFA (XOF)" },
+    { code: "CAD", label: "🇨🇦 CAD — Dollar canadien" },
+  ];
+
+  return (
+    <PushScreen open={open} onClose={onClose} title={t("settings.chooseCurrency")} zIndex={70}>
+      <div className="px-4 py-4">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          {rows.map((r, i) => (
+            <div key={r.code}>
+              <LangRow label={r.label} active={current === r.code} onClick={() => void choose(r.code)} />
+              {i < rows.length - 1 && <Sep />}
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
+          {t("settings.currencyHint")}
+        </p>
+      </div>
+    </PushScreen>
+  );
+}
