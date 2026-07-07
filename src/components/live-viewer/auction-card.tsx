@@ -61,14 +61,14 @@ export function AuctionCard({
     >
       <Press
         onClick={onOpenProducts}
-        className="!block w-full !p-3 text-left"
+        className="!block w-full !p-2.5 text-left"
         aria-label="Voir tous les produits"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <img
             src={product.image}
             alt=""
-            className="h-14 w-14 shrink-0 rounded-xl object-cover"
+            className="h-11 w-11 shrink-0 rounded-lg object-cover"
             onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
             draggable={false}
           />
