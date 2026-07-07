@@ -204,12 +204,27 @@ export function RealLiveViewerScreen() {
 
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
-  const [buyProduct, setBuyProduct] = useState<Product | null>(null);
-  const confirmBuy = async (): Promise<boolean> => {
-    if (!buyProduct || !user) return false;
-    const res = await purchaseFixedPriceRpc(buyProduct.id, user.id);
-    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return false; }
-    return true;
+
+  // Fixed-price flow: reserve stock atomically, then open the payment sheet.
+  // Note (phase 1): if the buyer abandons payment, stock is not automatically
+  // returned. A future phase should refund stock on payment_intent.canceled.
+  const startFixedPurchase = async (p: LiveProductRow) => {
+    if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!active?.liveId || !active?.sellerId) return;
+    const res = await purchaseFixedPriceRpc(p.id, user.id);
+    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
+    const order = await createPendingOrder({
+      buyerId: user.id,
+      sellerId: active.sellerId,
+      liveId: active.liveId,
+      productId: p.id,
+      kind: "fixed",
+      itemName: p.name,
+      itemImage: p.image_url,
+      amount: Number(p.price),
+    });
+    if (order.ok) setPendingOrder(order.order);
+    else toast.error(order.error);
   };
 
   // Composer
