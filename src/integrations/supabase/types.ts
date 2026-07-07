@@ -14,6 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
+      live_bids: {
+        Row: {
+          amount: number
+          bidder_id: string
+          bidder_name: string
+          created_at: string
+          id: string
+          live_id: string
+          product_id: string
+        }
+        Insert: {
+          amount: number
+          bidder_id: string
+          bidder_name: string
+          created_at?: string
+          id?: string
+          live_id: string
+          product_id: string
+        }
+        Update: {
+          amount?: number
+          bidder_id?: string
+          bidder_name?: string
+          created_at?: string
+          id?: string
+          live_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_bids_bidder_id_fkey"
+            columns: ["bidder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_bids_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_bids_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "live_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_products: {
+        Row: {
+          created_at: string
+          final_price: number | null
+          id: string
+          image_url: string | null
+          live_id: string
+          mode: string
+          name: string
+          position: number
+          price: number
+          sold_to_identity: string | null
+          start_price: number
+          status: string
+          stock: number
+          timer_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          final_price?: number | null
+          id?: string
+          image_url?: string | null
+          live_id: string
+          mode: string
+          name: string
+          position?: number
+          price?: number
+          sold_to_identity?: string | null
+          start_price?: number
+          status?: string
+          stock?: number
+          timer_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          final_price?: number | null
+          id?: string
+          image_url?: string | null
+          live_id?: string
+          mode?: string
+          name?: string
+          position?: number
+          price?: number
+          sold_to_identity?: string | null
+          start_price?: number
+          status?: string
+          stock?: number
+          timer_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_products_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lives: {
+        Row: {
+          category: string | null
+          cover_url: string | null
+          ended_at: string | null
+          id: string
+          room_name: string
+          seller_id: string
+          started_at: string
+          status: string
+          title: string
+          viewer_count: number
+        }
+        Insert: {
+          category?: string | null
+          cover_url?: string | null
+          ended_at?: string | null
+          id?: string
+          room_name: string
+          seller_id: string
+          started_at?: string
+          status?: string
+          title: string
+          viewer_count?: number
+        }
+        Update: {
+          category?: string | null
+          cover_url?: string | null
+          ended_at?: string | null
+          id?: string
+          room_name?: string
+          seller_id?: string
+          started_at?: string
+          status?: string
+          title?: string
+          viewer_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lives_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -58,7 +219,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      purchase_fixed_price: {
+        Args: { _buyer_identity: string; _product_id: string }
+        Returns: {
+          created_at: string
+          final_price: number | null
+          id: string
+          image_url: string | null
+          live_id: string
+          mode: string
+          name: string
+          position: number
+          price: number
+          sold_to_identity: string | null
+          start_price: number
+          status: string
+          stock: number
+          timer_seconds: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
