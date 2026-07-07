@@ -327,7 +327,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     onEnd();
   };
 
-  // Adapt real chat -> ChatMsg for existing LiveChat.
+  const onAddProductMidLive = async (p: Omit<BProduct, "id">) => {
+    if (!b.liveId || !b.hostIdentity || addingProduct) return;
+    setAddingProduct(true);
+    const res = await createLiveProductInDb({
+      liveId: b.liveId,
+      userId: b.hostIdentity,
+      name: p.name,
+      imageFile: p.imageFile ?? null,
+      imageUrl: p.image,
+      mode: p.mode,
+      startPrice: p.startPrice,
+      price: p.price,
+      stock: p.stock,
+      timerSeconds: p.timerSec,
+    });
+    setAddingProduct(false);
+    if (!res.ok) {
+      toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+      return;
+    }
+    // Register in local context so the image-fallback map picks up this dbId.
+    b.addProduct({ ...p, dbId: res.id });
+    haptic.success();
+    toast.success(t("live.productAdded", "Produit ajouté"));
+  };
   const chatMessages: ChatMsg[] = room.chat.map((c) => ({
     id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
   }));
