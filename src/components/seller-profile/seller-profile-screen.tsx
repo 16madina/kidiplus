@@ -132,7 +132,7 @@ function SellerProfileInner({
         />
         <div className="relative flex items-center gap-2 px-2 py-1.5">
           <Press
-            aria-label="Retour"
+            aria-label={t("common.back")}
             onClick={onBack}
             className="h-10 w-10 rounded-full text-foreground"
           >
