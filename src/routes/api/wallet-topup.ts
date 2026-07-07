@@ -111,7 +111,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
         const amount = roundForCurrency(raw, currency);
         const amountMinor = toStripeMinor(amount, currency);
 
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2026-06-24.dahlia" });
+        const stripe = createStripeClient();
         const intent = await stripe.paymentIntents.create({
           amount: amountMinor,
           currency: currency.toLowerCase(),
