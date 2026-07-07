@@ -14,6 +14,8 @@ export type BProduct = {
   id: string;
   name: string;
   image: string;
+  /** Local File for images picked from disk (uploaded on live launch). */
+  imageFile?: File;
   mode: SellMode;
   // auction
   startPrice: number;
@@ -21,7 +23,10 @@ export type BProduct = {
   // fixed
   price: number;
   stock: number;
+  /** DB id (public.live_products.id) once the live has been created. */
+  dbId?: string;
 };
+
 
 export type Sale = {
   id: string;
