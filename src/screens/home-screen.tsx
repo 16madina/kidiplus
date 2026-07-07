@@ -93,12 +93,14 @@ export function HomeScreen() {
   const doRefresh = useCallback(() => {
     setRefreshing(true);
     setLoading(true);
+    void refreshRealLives();
     setTimeout(() => {
       setItems(makeStreams(Math.floor(Math.random() * 24), PAGE));
       setLoading(false);
       setRefreshing(false);
     }, 700);
-  }, []);
+  }, [refreshRealLives]);
+
 
   const loadMore = useCallback(() => {
     if (loadingMore || loading) return;
