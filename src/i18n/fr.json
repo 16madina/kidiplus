@@ -209,6 +209,15 @@
     "becomeSellerTitle": "Deviens vendeur",
     "becomeSellerBody": "Active le mode vendeur pour organiser tes propres lives et vendre en direct.",
     "becomeSellerCta": "Activer le mode vendeur",
+    "camera": {
+      "connecting": "Connexion au live…",
+      "denied": "Autorise la caméra dans Réglages > KiDi+",
+      "unavailable": "Caméra indisponible",
+      "unsupported": "Caméra non supportée",
+      "connectFailed": "Connexion impossible",
+      "preview": "Aperçu caméra",
+      "retry": "Réessayer"
+    },
     "setup": {
       "titlePlaceholder": "Titre du live…",
       "descriptionPlaceholder": "Décris ton live (optionnel)",
