@@ -706,6 +706,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           </span>
         </div>
       </div>
+      </div>
+
+
 
       <AddProductSheet
         open={showAdd}
