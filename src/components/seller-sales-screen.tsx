@@ -1,10 +1,12 @@
 // SellerSalesScreen — lists paid + pending orders where the current user is
-// the seller. Read-only view (buyer-name resolution via profiles).
+// the seller. Tap a row to view its event timeline.
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { PushScreen } from "@/components/push-screen";
+import { OrderTimeline } from "@/components/orders/order-timeline";
+import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useAuth } from "@/lib/auth-context";
 import {
