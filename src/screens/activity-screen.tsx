@@ -183,7 +183,7 @@ export function ActivityScreen() {
                         n={n}
                         index={i}
                         onDelete={() => removeNotif(n.id)}
-                        onTap={() => markRead(n.id)}
+                        onTap={() => openNotif(n)}
                       />
                     ))}
                   </AnimatePresence>
