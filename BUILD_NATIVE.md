@@ -31,7 +31,42 @@ npx cap sync ios
 > Le WebView charge directement `https://kidiplus.lovable.app` (voir `capacitor.config.ts`).
 > Aucune build SPA locale n'est nécessaire — TanStack Start est SSR.
 
-## 4. Ouvrir dans l'IDE natif
+## 4. Configurer Firebase (Push Notifications) — Android
+
+Le fichier `google-services.json` est déjà dans le repo à `android-config/google-services.json`.
+Après `npx cap add android` (ou après un `npx cap sync android`), fais :
+
+### 4a. Copier le fichier Firebase
+```bash
+cp android-config/google-services.json android/app/google-services.json
+```
+
+### 4b. Éditer `android/build.gradle` (racine du projet Android)
+
+Dans le bloc `buildscript { dependencies { ... } }`, ajoute :
+```gradle
+classpath 'com.google.gms:google-services:4.4.2'
+```
+
+### 4c. Éditer `android/app/build.gradle`
+
+Tout en haut du fichier, sous les autres `apply plugin:` :
+```gradle
+apply plugin: 'com.google.gms.google-services'
+```
+
+Puis dans `dependencies { ... }` ajoute (si absent) :
+```gradle
+implementation platform('com.google.firebase:firebase-bom:33.5.1')
+implementation 'com.google.firebase:firebase-messaging'
+```
+
+### 4d. Re-sync
+```bash
+npx cap sync android
+```
+
+## 5. Ouvrir dans l'IDE natif
 ```bash
 npx cap open android   # Android Studio → Run ▶ ou Build > Build APK(s)
 npx cap open ios       # Xcode → Product > Run / Archive
