@@ -305,7 +305,33 @@
     "remindMe": "Remind me 🔔",
     "reminderOn": "Reminder on — remove",
     "reminderSet": "Reminder set 🔔",
-    "reminderHint": "We'll notify you as soon as the live starts."
+    "reminderHint": "We'll notify you as soon as the live starts.",
+    "form": {
+      "title": "Schedule a live ✨",
+      "editTitle": "Edit live",
+      "subtitle": "Prepare your live, add your items and announce it to your community.",
+      "coverTitle": "Cover image",
+      "addCover": "Add an image",
+      "infoTitle": "Live details",
+      "titleLabel": "Live title",
+      "categoryLabel": "Category",
+      "descLabel": "Description",
+      "descPlaceholder": "Discover an exclusive selection of premium bags and accessories.",
+      "dateTitle": "Date & time",
+      "date": "Date",
+      "time": "Time",
+      "pickDate": "Pick",
+      "duration": "Estimated duration",
+      "productsTitle": "Items to feature",
+      "addProduct": "Add an item",
+      "optionsTitle": "Options",
+      "optAuctions": "Enable auctions",
+      "optBuyNow": "Buy now",
+      "optNotify": "Notify my followers",
+      "optGifts": "Allow gifts",
+      "cta": "Schedule my live",
+      "hint": "You can edit your live before it goes on air."
+    }
   },
 
   "profile": {
