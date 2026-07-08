@@ -240,7 +240,10 @@ export function GoLiveEntryScreen({
         <div className="h-11 w-11" />
       </div>
 
+      {/* Scrollable content */}
+      <div className="min-h-0 flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="px-5 pt-6 text-center">
+
         <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct")}
         </h1>
