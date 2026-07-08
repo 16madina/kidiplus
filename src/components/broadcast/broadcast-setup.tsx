@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
