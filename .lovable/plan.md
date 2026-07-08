@@ -1,27 +1,60 @@
-# Rendre visible le logo KiDi+ au centre de la barre
+Objectif : quand tu tapes une notification (push OS ou cloche in-app), l'app ouvre directement le bon écran (live, commande, vendeur, chat).
 
-## Ce qui ne va pas
+## 1. Router de deep-link (client)
 
-Sur ta capture, l'encoche de la pilule est bien là, mais le logo au-dessus est invisible. Deux causes possibles :
+Nouveau `src/lib/push-router.ts` : traduit `data.kind` en action UI.
 
-1. Le `<Press>` (motion.button en `inline-flex`) peut réduire l'`<img>` à sa taille intrinsèque au lieu de la contraindre à 72×72, donc l'image s'affiche minuscule ou vide.
-2. Le `filter: drop-shadow(...)` appliqué sur le bouton s'applique aussi à l'image transparente — s'il y a un souci de rendu, l'image peut disparaître.
+| `kind`   | Champs attendus | Action                                            |
+| -------- | --------------- | ------------------------------------------------- |
+| `live`   | `live_id`       | Ouvre le live viewer                              |
+| `order`  | `order_id`      | Tab Activité → ouvre `OrderDetailScreen`          |
+| `seller` | `seller_handle` | Ouvre la fiche vendeur                            |
+| `chat`   | `live_id`       | Ouvre le live viewer avec chat visible            |
+| `notif`  | —               | Tab Activité (par défaut)                         |
 
-## Ce que je vais changer (`src/components/bottom-tab-bar.tsx`)
+Comme les contextes (`useLiveViewer`, `useSellerProfile`, tab actif) vivent dans React, le router émet un `CustomEvent("kidi:push-open", { detail })` que `AppShellInner` écoute et exécute (il a accès à toutes les contexts).
 
-1. **Remplacer `<Press>` par un `<button>` natif** pour le bouton central, avec :
-   - `block` (pas flex) + `h-[72px] w-[72px]`
-   - un `<img>` avec `width={72} height={72}` explicites + `className="h-full w-full object-contain block"`
-   - `draggable={false}` conservé
+## 2. Listeners de tap (client)
 
-2. **Retirer le `filter: drop-shadow`** sur le bouton, le remplacer par une ombre douce dorée dessinée derrière le logo via un pseudo-cercle (`::before` ou un `<span>` `absolute inset-0 rounded-2xl` avec `boxShadow`), pour ne pas dépendre du filter qui peut mal rendre l'image PNG.
+Dans `src/lib/push.tsx` (PushProvider) :
+- ajouter `PushNotifications.addListener("pushNotificationActionPerformed", …)` → dispatch `kidi:push-open`
+- au boot, `PushNotifications.getDeliveredNotifications()` pour gérer le cold-start (app fermée quand la notif arrive)
+- foreground `pushNotificationReceived` : toast cliquable qui déclenche la même action
 
-3. **Ajouter un `bg-transparent` explicite** et `z-20` sur le bouton, pour être sûr qu'il passe au-dessus de la pilule (qui a `backdrop-filter` créant un stacking context).
+Dans `src/screens/activity-screen.tsx` : le tap sur une notification in-app appelle aussi le router (aujourd'hui il ne fait que marquer lue).
 
-4. **Conserver** : l'encoche de la pilule (mask radial-gradient), la position `-top-5`, l'indicateur "en direct" (ping rouge).
+## 3. Fanout serveur (BDD → FCM)
 
-## Vérification après changement
+Aujourd'hui `_push_notification()` insère seulement une ligne dans `public.notifications`. J'ajoute :
 
-- Ouvrir la preview et confirmer que le logo apparaît bien au centre au-dessus de la barre.
-- Vérifier qu'il reste cliquable (ouvre l'écran Live).
-- Vérifier sur viewport mobile (375px) que le logo reste centré et proportionné.
+- **Migration SQL** : trigger `AFTER INSERT ON public.notifications` qui appelle `pg_net.http_post` vers `/api/public/notifications-fanout` avec la ligne complète + un shared secret.
+- **Route TSS** `src/routes/api/public/notifications-fanout.ts` (vérifie signature via `NOTIFICATIONS_FANOUT_SECRET`) :
+  - dérive `kind` de deep-link à partir de `notifications.kind` (mapping : `order_*` → `order`, `live_started` → `live`, `new_follower` → `seller`, `chat_*` → `chat`, sinon `notif`)
+  - construit le `data` payload avec `order_id` etc.
+  - appelle `sendFcmToUser(user_id, { notification, data })`
+
+Résultat : **toute** notification insérée en BDD envoie automatiquement un push FCM deep-linké — les flux existants (commande expédiée, livrée, remboursée, escrow libéré…) fonctionnent immédiatement.
+
+## 4. Route admin de test
+
+`src/routes/api/admin/test-push.ts` : accepter un champ `data` optionnel pour tester chaque `kind` (`live`, `order`, `seller`, `chat`).
+
+## Détails techniques
+
+- Nouveau secret généré : `NOTIFICATIONS_FANOUT_SECRET` (48 chars).
+- Le trigger utilise `pg_net` (déjà activé sur Cloud) en mode fire-and-forget ; échec HTTP → notif in-app existe toujours, seul le push est perdu.
+- URL cible du trigger : `https://project--{project-id}.lovable.app/api/public/notifications-fanout` (stable, publié).
+- Nouveau `chat_id` / `live_id` / `seller_handle` : on ajoute une colonne `data jsonb` à `public.notifications` (nullable) pour transporter ces champs sans multiplier les colonnes. `_push_notification()` gagne un paramètre `_data jsonb DEFAULT NULL`. Rétrocompatible.
+- Le fanout ne s'exécute qu'en prod (URL publiée) — en preview les pushs ne partent pas mais les rows sont bien créées.
+
+## Fichiers touchés
+
+- `src/lib/push-router.ts` (nouveau)
+- `src/lib/push.tsx` (listeners tap + cold-start)
+- `src/components/app-shell.tsx` (listener `kidi:push-open` → contextes)
+- `src/screens/activity-screen.tsx` (tap notif in-app → router)
+- `src/routes/api/admin/test-push.ts` (support `data`)
+- `src/routes/api/public/notifications-fanout.ts` (nouveau)
+- Migration SQL : colonne `data jsonb`, trigger fanout, `_push_notification` étendue.
+
+Rappel : après merge il faut **republier** pour que le trigger atteigne la nouvelle route.
