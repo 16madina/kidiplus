@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
-import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, PackageCheck, AlertTriangle } from "lucide-react";
+import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, PackageCheck, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
-import {
-  formatRelative,
-  initialNotifications,
-  orderDateShort,
-  type Notification,
-} from "@/lib/activity-mock";
+import { formatRelative, orderDateShort } from "@/lib/activity-mock";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,11 +16,19 @@ import {
   type OrderStatus,
   type FulfillmentStatus,
 } from "@/lib/orders-db";
-import { confirmOrderDelivered, disputeOrder } from "@/lib/escrow-db";
+import { confirmOrderDelivered, disputeOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
 import { SuspensionBanner } from "@/components/moderation/moderation-gate";
+import {
+  fetchMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  subscribeMyNotifications,
+  type NotificationRow,
+} from "@/lib/notifications-db";
+import { OrderTimeline } from "@/components/orders/order-timeline";
 
 type Tab = "notifs" | "orders";
 
@@ -34,26 +37,33 @@ export function ActivityScreen() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
-  const [notifs, setNotifs] = useState<Notification[]>([]);
+  const [notifs, setNotifs] = useState<NotificationRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
   const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
 
-  // Notifs still mocked; orders come from the DB.
+  // Real DB-backed notifications.
   useEffect(() => {
-    const to = setTimeout(() => {
-      setNotifs(initialNotifications());
+    if (!user) { setNotifs([]); setLoading(false); return; }
+    let alive = true;
+    const load = async () => {
+      const r = await fetchMyNotifications(50);
+      if (!alive) return;
+      setNotifs(r.rows);
       setLoading(false);
-    }, 300);
-    return () => clearTimeout(to);
-  }, []);
+    };
+    void load();
+    const unsub = subscribeMyNotifications(user.id, () => { void load(); });
+    return () => { alive = false; unsub(); };
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setOrders([]); return; }
     let alive = true;
     const load = async () => {
-      // Opportunistic cleanup so overdue rows are cancelled before display.
+      // Opportunistic cleanup + escrow auto-release/reminders.
       await expireOverdueOrders().catch(() => 0);
+      await releaseOverdueEscrow().catch(() => null);
       const rows = await fetchMyOrders(user.id);
       if (alive) setOrders(rows);
     };
@@ -63,12 +73,20 @@ export function ActivityScreen() {
   }, [user]);
 
   const removeNotif = (id: string) => {
+    // Soft-hide locally (no destructive server delete — mark read).
     setNotifs((prev) => prev.filter((n) => n.id !== id));
+    void markNotificationRead(id);
     toast(t("common.remove"));
   };
   const markRead = (id: string) => {
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)));
+    void markNotificationRead(id);
   };
+  const markAll = () => {
+    setNotifs((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+    void markAllNotificationsRead();
+  };
+
 
   return (
     <div className="flex h-full flex-col">
