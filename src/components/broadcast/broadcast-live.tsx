@@ -366,11 +366,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
     const productId = activeAuction.productId;
-    const res = await finalizeAuctionInDb({
-      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-    });
+    const [res, winnerAvatarUrl] = await Promise.all([
+      finalizeAuctionInDb({
+        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+      }),
+      resolveWinnerAvatar(winnerId),
+    ]);
     room.broadcastAuctionEnd({
-      productId, winnerId, winnerName, finalPrice,
+      productId, winnerId, winnerName, winnerAvatarUrl, finalPrice,
       orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
     });
   };
