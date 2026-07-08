@@ -1,46 +1,73 @@
 # Capacitor — iOS & Android
 
-This app ships with a native shell via Capacitor 8. All plugin calls are
-guarded by `Capacitor.isNativePlatform()` so the app runs identically in the
-browser.
+KiDi+ ships with a native shell via Capacitor 8. All plugin calls are guarded
+by `Capacitor.isNativePlatform()` so the app runs identically in the browser.
 
-## Config
+## Config summary
 
-- `appId`: `com.kidiplus.app` (iOS Bundle ID == Android package name)
+- `appId`: `com.kidiplus.app`
 - `appName`: `KiDi+`
-- `webDir`: `dist`
-- Portrait-locked (set in the generated Xcode / Android Studio projects)
-- Splash: dark `#10162B`, manually hidden with a short fade after boot
-- Status bar: overlays webview, style follows dark/light theme; live viewer forces light content
+- `webDir`: `dist` (bundled launcher — see `scripts/prepare-native.mjs`)
+- **No `server.url` in production** — the WebView loads the bundled
+  `dist/index.html`, which navigates in-WebView to the live SSR app
+  (`kidiplus.lovable.app`) via `server.allowNavigation`. This keeps native
+  chrome hidden and prevents Safari hand-off for internal routes.
+- Splash: `#0C1122` deep navy, auto-hides after ~1.2 s (plus a manual fade
+  from `bootstrapNative()`).
+- Status bar: light content over navy splash.
 
-## Plugins in use
-
-| Plugin | Where |
-| --- | --- |
-| `@capacitor/haptics` | `src/lib/haptics.ts`, wired into `<Press>`, bids, hearts, buy confirm, countdown ≤10 |
-| `@capacitor/status-bar` | `src/lib/native.ts` (theme sync + live viewer override) |
-| `@capacitor/keyboard` | Resize mode `native`; dismissed on feed scroll |
-| `@capacitor/splash-screen` | Hidden with fade from `bootstrapNative()` |
-| `@capacitor/push-notifications` | `src/lib/push.tsx` (pre-prompt sheet, permission state, token handler) |
-| `@capacitor/app` | Android back button + foreground/background pause of live simulations |
-
-## Build & run
+## Production build & run (macOS + Xcode)
 
 ```bash
-# 1. Prepare the Capacitor webDir placeholder
-bun run native:prepare
+# 1. Install deps
+npm install
 
-# 2. First-time only — add the native projects
-bunx cap add ios
-bunx cap add android
+# 2. Build the native launcher into dist/
+npm run build            # runs prepare-native under the hood if configured;
+                         # otherwise: node scripts/prepare-native.mjs
+node scripts/prepare-native.mjs
 
-# 3. Sync Capacitor config + plugins into the native projects
-bunx cap sync
+# 3. Sync Capacitor config + plugins into the native iOS project
+npx cap sync ios
 
-# 4. Open in the respective IDE
-bunx cap open ios      # requires Xcode + CocoaPods (macOS)
-bunx cap open android  # requires Android Studio + JDK 17
+# 4. Open Xcode, pick your device, press ▶
+npx cap open ios
 ```
+
+Android is the same with `npx cap sync android` / `npx cap open android`.
+
+### First-time only (per platform)
+
+```bash
+npx cap add ios
+npx cap add android
+```
+
+## Branded icons & splash
+
+See `resources/README.md`. Drop `icon.png` (1024²) and `splash.png` (2732²)
+into `resources/`, then:
+
+```bash
+npm i -D @capacitor/assets
+npx @capacitor/assets generate \
+  --iconBackgroundColor "#0C1122" \
+  --splashBackgroundColor "#0C1122"
+npx cap sync
+```
+
+## Dev hot-reload (optional)
+
+Edit `capacitor.config.ts` and uncomment the `server` block with your Mac's
+LAN IP (see the banner in that file). Then:
+
+```bash
+bun run dev            # start Vite on 0.0.0.0:8080
+npx cap sync ios
+npx cap run ios
+```
+
+Revert the change (or set the env `NATIVE_APP_URL`) before shipping.
 
 ## Portrait lock
 
@@ -48,18 +75,30 @@ bunx cap open android  # requires Android Studio + JDK 17
 - **Android**: `android/app/src/main/AndroidManifest.xml` → add
   `android:screenOrientation="portrait"` on the main `<activity>`.
 
-## Live reload against dev server
+## Allowed API origins (native WebView)
 
-Temporarily replace `server.url` in `capacitor.config.ts` with your machine's LAN IP:
+The API routes (`/api/livekit-token`, `/api/checkout`, `/api/checkout/confirm`,
+`/api/wallet-topup`, `/api/wallet-topup/confirm`, `/api/account/delete`) share
+one CORS allowlist. It permits, in addition to web origins:
 
-```ts
-server: { url: "http://192.168.1.10:8080", cleartext: true }
-```
+- `capacitor://localhost` (iOS WebView origin)
+- `ionic://localhost`     (legacy iOS scheme)
+- `http://localhost`      (Android WebView origin)
 
-Then `bunx cap sync` and run from Xcode / Android Studio.
+If you add a new API route, reuse `isAllowedNativeOrScheme` / the same
+`ALLOWED_ORIGIN_SUFFIXES` list — do not copy-paste a narrower one.
 
 ## Push notifications
 
-- iOS: enable *Push Notifications* capability in Xcode; upload APNs key to your provider.
-- Android: add `google-services.json` to `android/app/` and follow the Firebase setup.
-- The device token is logged from `src/lib/push.tsx` (`registration` listener) — forward it to your backend there.
+- iOS: enable *Push Notifications* capability in Xcode; upload APNs key.
+- Android: add `google-services.json` to `android/app/`.
+- Device token is logged from `src/lib/push.tsx` (`registration` listener) —
+  forward it to your backend there.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| App shows Safari-style bottom bar | `server.url` is set → WebView loaded a remote origin as a "web app" | Ensure `server.url` is commented out in `capacitor.config.ts`; rebuild + `cap sync` |
+| Stuck on default blue Capacitor splash | JS never boots (missing bundled `dist/`) or API allowlist blocks `capacitor://localhost` startup fetch | Run `node scripts/prepare-native.mjs`, confirm `dist/index.html` exists, then `cap sync`. Verify the origin allowlist includes `capacitor://localhost`. |
+| Tapping an in-app link opens Safari | Target host missing from `server.allowNavigation` | Add the host to the array in `capacitor.config.ts` |
