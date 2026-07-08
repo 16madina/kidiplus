@@ -83,23 +83,34 @@ export function EditProfileScreen({
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      console.log("[avatar] uploading", { path, size: file.size, type: file.type });
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: false, contentType: file.type });
-      if (upErr) throw upErr;
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) {
+        console.error("[avatar] upload error", upErr);
+        throw upErr;
+      }
       // Persist path in profile so it survives refreshes.
-      await updateProfile({ avatar_url: path });
-      invalidateAvatar(profile?.avatar_url);
+      const oldPath = profile?.avatar_url;
+      const updated = await updateProfile({ avatar_url: path });
+      console.log("[avatar] profile updated", { avatar_url: updated.avatar_url });
+      invalidateAvatar(oldPath);
+      invalidateAvatar(path);
       const signed = await resolveAvatarUrl(path);
       setAvatarUrl(signed);
+      toast.success("Photo mise à jour");
       haptic.success();
     } catch (err) {
+      console.error("[avatar] failed", err);
       haptic.error();
-      toast.error(frenchAuthError(err));
+      const msg = err instanceof Error ? err.message : frenchAuthError(err);
+      toast.error(msg || "Échec de l'envoi de la photo");
     } finally {
       setUploading(false);
     }
   };
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
