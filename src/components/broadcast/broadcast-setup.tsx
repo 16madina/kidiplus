@@ -27,6 +27,7 @@ import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { ScheduleLiveSetup } from "./schedule-live-setup";
 
 
 
