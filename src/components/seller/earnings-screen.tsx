@@ -59,6 +59,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
     if (!open || !user) return;
     let alive = true;
     const load = async () => {
+      await expireOverdueOrders().catch(() => 0);
       const [b, os, ps] = await Promise.all([
         fetchMyBalance(user.id),
         fetchSellerOrders(user.id),
