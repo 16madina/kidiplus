@@ -108,6 +108,24 @@ export type Database = {
           },
         ]
       }
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -336,6 +354,7 @@ export type Database = {
         Row: {
           body: string | null
           created_at: string
+          data: Json | null
           id: string
           kind: string
           order_id: string | null
@@ -346,6 +365,7 @@ export type Database = {
         Insert: {
           body?: string | null
           created_at?: string
+          data?: Json | null
           id?: string
           kind: string
           order_id?: string | null
@@ -356,6 +376,7 @@ export type Database = {
         Update: {
           body?: string | null
           created_at?: string
+          data?: Json | null
           id?: string
           kind?: string
           order_id?: string | null
@@ -974,16 +995,28 @@ export type Database = {
         }
         Returns: undefined
       }
-      _push_notification: {
-        Args: {
-          _body: string
-          _kind: string
-          _order_id?: string
-          _title: string
-          _user_id: string
-        }
-        Returns: undefined
-      }
+      _push_notification:
+        | {
+            Args: {
+              _body: string
+              _kind: string
+              _order_id?: string
+              _title: string
+              _user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _body: string
+              _data?: Json
+              _kind: string
+              _order_id?: string
+              _title: string
+              _user_id: string
+            }
+            Returns: undefined
+          }
       _release_order_escrow: {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
