@@ -446,7 +446,8 @@
     },
     "toasts": {
       "confirmed": "Payment confirmed 🎉"
-    }
+    },
+    "autoPaid": "Paid automatically with your balance ✅"
   },
   "orders": {
     "empty": "No orders yet.",
