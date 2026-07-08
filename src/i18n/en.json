@@ -824,7 +824,8 @@
     "winner": {
       "you": "You won!",
       "other": "{{name}} won!",
-      "said": "SAID +"
+      "said": "{{name}} said + 🎉",
+      "saidMe": "You said + 🎉"
     }
   }
 }
