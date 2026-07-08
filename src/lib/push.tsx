@@ -110,7 +110,21 @@ export function PushProvider({ children }: { children: ReactNode }) {
       }).then((h) => handles.push(h)).catch(() => {});
 
       PushNotifications.addListener("pushNotificationReceived", (n) => {
-        if (n.title) toast(n.title, { description: n.body });
+        const data = normalizePushData((n as unknown as { data?: unknown }).data);
+        if (n.title) {
+          toast(n.title, {
+            description: n.body,
+            action: data
+              ? { label: "Ouvrir", onClick: () => openFromPush(data) }
+              : undefined,
+          });
+        }
+      }).then((h) => handles.push(h)).catch(() => {});
+
+      // Tap on a push (background/quit → foreground). Routes to the right screen.
+      PushNotifications.addListener("pushNotificationActionPerformed", (a) => {
+        const raw = (a as unknown as { notification?: { data?: unknown } })?.notification?.data;
+        openFromPush(normalizePushData(raw));
       }).then((h) => handles.push(h)).catch(() => {});
     } catch (e) {
       console.warn("[push] plugin unavailable", e);
@@ -123,11 +137,22 @@ export function PushProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (s.receive === "granted") {
           await PushNotifications.register();
+          // Cold-start: check for a notification that launched the app.
+          try {
+            const delivered = await PushNotifications.getDeliveredNotifications();
+            const first = delivered?.notifications?.[0];
+            if (first) {
+              const raw = (first as unknown as { data?: unknown }).data;
+              openFromPush(normalizePushData(raw));
+              await PushNotifications.removeAllDeliveredNotifications().catch(() => {});
+            }
+          } catch {}
         }
       } catch (e) {
         console.warn("[push] auto-register failed", e);
       }
     })();
+
 
     return () => {
       cancelled = true;
