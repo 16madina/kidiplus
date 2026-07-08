@@ -154,7 +154,13 @@ export function ActivityScreen() {
                 />
               ) : (
                 orders.map((o, i) => (
-                  <OrderCard key={o.id} order={o} index={i} onOpen={() => setOpenOrder(o)} />
+                  <OrderCard
+                    key={o.id}
+                    order={o}
+                    index={i}
+                    onOpen={() => setOpenOrder(o)}
+                    onPay={() => setPayOrder(o)}
+                  />
                 ))
               )}
             </motion.div>
@@ -163,6 +169,11 @@ export function ActivityScreen() {
       </div>
 
       <OrderDetailScreen order={openOrder} onClose={() => setOpenOrder(null)} />
+      <PaymentSheet
+        order={payOrder}
+        onClose={() => setPayOrder(null)}
+        onPaid={() => setPayOrder(null)}
+      />
     </div>
   );
 }
