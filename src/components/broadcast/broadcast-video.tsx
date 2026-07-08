@@ -115,46 +115,29 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
       async function acquire() {
         if (!shouldRun) return teardown();
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setState("unsupported");
+        teardown();
+        const res = await ensureCameraMicAccess({
+          video: { facingMode: facing },
+          audio: false,
+        });
+        if (cancelled) {
+          if (res.status === "granted") res.stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        teardown();
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facing } },
-            audio: false,
-          });
-          if (cancelled) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          streamRef.current = stream;
+        if (res.status === "granted") {
+          streamRef.current = res.stream;
           if (videoRef.current) {
-            videoRef.current.srcObject = stream;
+            videoRef.current.srcObject = res.stream;
             videoRef.current.play().catch(() => {});
           }
           setState("granted");
-        } catch (err) {
-          if (cancelled) return;
-          // DOMException.name is the reliable discriminator across browsers.
-          const name = err instanceof DOMException ? err.name : "";
-          if (name === "NotAllowedError" || name === "SecurityError") {
-            // User denied, OS-level permission blocked (iOS Info.plist), or
-            // permission was revoked in Settings.
-            setState("denied");
-          } else if (
-            name === "NotFoundError" ||
-            name === "OverconstrainedError" ||
-            name === "NotReadableError" ||
-            name === "AbortError"
-          ) {
-            // No camera device / device busy / hardware error.
-            setState("unavailable");
-          } else {
-            setState("unavailable");
-          }
+          return;
         }
+        if (res.status === "denied_by_user") setState("denied");
+        else if (res.status === "config_missing") setState("config_missing");
+        else if (res.status === "no_device") setState("unavailable");
+        else if (res.status === "unsupported") setState("unsupported");
+        else setState("error");
       }
 
       function teardown() {
