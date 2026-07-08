@@ -147,10 +147,13 @@ export function ProfileScreen() {
       >
         {/* ============ HERO CARD ============ */}
         <div className="relative mx-4 mt-14">
-          {/* Avatar overlapping the card top edge */}
+          {/* Avatar overlapping the card top edge — tap to edit */}
           <div className="absolute left-1/2 -top-11 z-10 -translate-x-1/2">
-            <div
-              className="grid h-[88px] w-[88px] place-items-center rounded-full"
+            <Press
+              type="button"
+              onClick={() => { haptic.light(); setEditOpen(true); }}
+              aria-label={t("profile.editAvatar", { defaultValue: lang === "fr" ? "Changer la photo" : "Change photo" })}
+              className="relative grid h-[88px] w-[88px] place-items-center rounded-full"
               style={{
                 background: GOLD,
                 padding: 3,
@@ -173,8 +176,20 @@ export function ProfileScreen() {
                   {initial}
                 </div>
               )}
-            </div>
+              <span
+                aria-hidden
+                className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full text-white"
+                style={{
+                  background: NAVY_TOP,
+                  border: `2px solid ${GOLD}`,
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                }}
+              >
+                <Camera size={13} />
+              </span>
+            </Press>
           </div>
+
 
           <motion.div
             initial={{ opacity: 0, y: 8 }}
