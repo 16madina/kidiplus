@@ -228,7 +228,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         >
           <X size={20} />
         </Press>
-        <Logo size={72} withGoldFrame={false} />
+        <Logo size={72} variant="wordmark" />
         <Press
           onClick={() => {
             haptic.selection();
