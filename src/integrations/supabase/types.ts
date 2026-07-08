@@ -1024,28 +1024,17 @@ export type Database = {
         }
         Returns: undefined
       }
-      _push_notification:
-        | {
-            Args: {
-              _body: string
-              _kind: string
-              _order_id?: string
-              _title: string
-              _user_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _body: string
-              _data?: Json
-              _kind: string
-              _order_id?: string
-              _title: string
-              _user_id: string
-            }
-            Returns: undefined
-          }
+      _push_notification: {
+        Args: {
+          _body: string
+          _data?: Json
+          _kind: string
+          _order_id?: string
+          _title: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       _release_order_escrow: {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
@@ -1148,24 +1137,15 @@ export type Database = {
       my_moderation_state: { Args: never; Returns: Json }
       notify_live_reminders: { Args: { _live_id: string }; Returns: number }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
-      place_live_bid:
-        | {
-            Args: {
-              _bidder_name: string
-              _live_id: string
-              _product_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _amount?: number
-              _bidder_name: string
-              _live_id: string
-              _product_id: string
-            }
-            Returns: Json
-          }
+      place_live_bid: {
+        Args: {
+          _amount?: number
+          _bidder_name: string
+          _live_id: string
+          _product_id: string
+        }
+        Returns: Json
+      }
       purchase_fixed_price: {
         Args: { _buyer_identity: string; _product_id: string }
         Returns: {
