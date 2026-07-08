@@ -518,6 +518,8 @@
     "successTitle": "Request sent ✅",
     "successBody": "Processed within 48h.",
     "emptyHistory": "No withdrawals yet.",
+    "rejectionReason": "Rejection reason",
+
     "method": {
       "label": "Method",
       "wave": "Wave",
