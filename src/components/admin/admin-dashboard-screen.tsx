@@ -413,8 +413,9 @@ function PaymentsTab() {
   const { t, i18n } = useTranslation();
   const [payouts, setPayouts] = useState<AdminPayoutRow[]>([]);
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [payTab, setPayTab] = useState<"requested" | "paid" | "rejected">("requested");
+  const [sheetTarget, setSheetTarget] = useState<{ row: AdminPayoutRow; action: "paid" | "rejected" } | null>(null);
 
   const loadPayouts = async () => setPayouts(await fetchAdminPayouts());
   const loadOrders  = async () => setOrders((await fetchAdminOrders(status, 50, 0)).rows);
@@ -422,26 +423,43 @@ function PaymentsTab() {
   useEffect(() => { void loadPayouts(); const un = subscribeAllPayouts(() => void loadPayouts()); return () => un(); }, []);
   useEffect(() => { void loadOrders(); }, [status]);
 
-  const act = async (id: string, action: "paid" | "rejected") => {
-    setBusy(id); haptic.medium();
-    const r = await adminProcessPayout(id, action);
-    setBusy(null);
-    if (r.ok) { haptic.success(); toast.success(t(action === "paid" ? "admin.markedPaid" : "admin.markedRejected")); }
-    else { haptic.warning(); toast.error(r.error); }
-  };
-
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); toast.success(t("common.copied")); } catch { /* ignore */ } };
+
+  const buckets = useMemo(() => {
+    const requested = payouts.filter((p) => p.status === "requested" || p.status === "processing");
+    const paid      = payouts.filter((p) => p.status === "paid")
+      .sort((a, b) => new Date(b.processed_at ?? b.requested_at).getTime() - new Date(a.processed_at ?? a.requested_at).getTime());
+    const rejected  = payouts.filter((p) => p.status === "rejected")
+      .sort((a, b) => new Date(b.processed_at ?? b.requested_at).getTime() - new Date(a.processed_at ?? a.requested_at).getTime());
+    return { requested, paid, rejected };
+  }, [payouts]);
+
+  const list = payTab === "requested" ? buckets.requested : payTab === "paid" ? buckets.paid : buckets.rejected;
 
   const statusOptions: Array<string | null> = [null, "pending", "paid", "failed", "cancelled"];
 
   return (
     <div className="space-y-6">
       <Section title={t("admin.tabs.payments")}>
-        {payouts.length === 0 ? (
+        <div className="mb-2 flex gap-1 rounded-full border border-border p-1">
+          {(["requested","paid","rejected"] as const).map((k) => {
+            const count = k === "requested" ? buckets.requested.length : k === "paid" ? buckets.paid.length : buckets.rejected.length;
+            const active = payTab === k;
+            return (
+              <button key={k} type="button" onClick={() => { haptic.selection(); setPayTab(k); }}
+                className="flex-1 rounded-full py-1.5 text-[12px] font-semibold transition-colors"
+                style={{ backgroundColor: active ? "var(--foreground)" : "transparent", color: active ? "var(--background)" : "var(--muted-foreground)" }}>
+                {t(`admin.payouts.tab.${k}`)} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {list.length === 0 ? (
           <p className="rounded-2xl border border-border p-4 text-center text-[12px] text-muted-foreground">{t("admin.empty")}</p>
         ) : (
           <ul className="space-y-2">
-            {payouts.map((p) => {
+            {list.map((p) => {
               const isActionable = p.status === "requested" || p.status === "processing";
               const destText = Object.entries(p.destination ?? {}).map(([k, v]) => `${k}: ${v}`).join("\n");
               return (
@@ -449,7 +467,14 @@ function PaymentsTab() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[14px] font-semibold">@{p.seller_handle ?? p.seller_id.slice(0, 8)}</p>
-                      <p className="text-[11px] text-muted-foreground">{new Date(p.requested_at).toLocaleString(i18n.language)}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("admin.payouts.requestedAt")}: {new Date(p.requested_at).toLocaleString(i18n.language)}
+                      </p>
+                      {p.processed_at && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t("admin.payouts.processedAt")}: {new Date(p.processed_at).toLocaleString(i18n.language)}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-[15px] font-bold tabular-nums">{formatMoney(Number(p.amount), normalizeCurrency(p.currency), i18n.language)}</p>
@@ -461,16 +486,25 @@ function PaymentsTab() {
                     <pre className="whitespace-pre-wrap break-all text-[11px] text-muted-foreground">{destText}</pre>
                     <Copy size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                   </button>
+
+                  {p.status === "paid" && p.proof_url && (
+                    <ProofThumbnail path={p.proof_url} />
+                  )}
+                  {p.admin_note && (
+                    <p className="mt-2 rounded-xl bg-muted p-2 text-[12px] leading-relaxed">
+                      <span className="font-semibold">{t("admin.payouts.adminNote")}: </span>
+                      {p.admin_note}
+                    </p>
+                  )}
+
                   {isActionable ? (
                     <div className="mt-2 flex gap-2">
-                      <Press onClick={() => act(p.id, "paid")}
+                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "paid" }); }}
                         className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
                         style={{ backgroundColor: "oklch(0.62 0.16 155)" }}>
-                        {busy === p.id ? <Loader2 className="mx-auto animate-spin" size={14} /> : (
-                          <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
-                        )}
+                        <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
                       </Press>
-                      <Press onClick={() => { if (confirm(t("admin.confirmReject"))) void act(p.id, "rejected"); }}
+                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "rejected" }); }}
                         className="flex-1 rounded-xl border py-2 text-[13px] font-bold">
                         <span className="inline-flex items-center gap-1"><X size={14} />{t("admin.reject")}</span>
                       </Press>
@@ -490,7 +524,7 @@ function PaymentsTab() {
           {statusOptions.map((s) => (
             <Press key={s ?? "all"} onClick={() => setStatus(s)}
               className={`rounded-full px-3 py-1 text-[11px] font-semibold ${status === s ? "bg-foreground text-background" : "bg-muted"}`}>
-              {s === null ? t("admin.orders.filterAll") : t(`order.status.${s}`, s ?? "")}
+              {s === null ? t("admin.orders.filterAll") : t(`orders.status.${s}`)}
             </Press>
           ))}
         </div>
@@ -505,7 +539,7 @@ function PaymentsTab() {
                   : <div className="h-9 w-9 shrink-0 rounded-lg bg-muted" />}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{o.item_name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {o.status} · {o.payment_method}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {t(`orders.status.${o.status}`, o.status)} · {o.payment_method}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[13px] font-bold tabular-nums">{formatMoney(Number(o.total), normalizeCurrency(o.currency), i18n.language)}</p>
@@ -516,9 +550,149 @@ function PaymentsTab() {
           </ul>
         )}
       </Section>
+
+      <ProcessPayoutSheet
+        target={sheetTarget}
+        onClose={() => setSheetTarget(null)}
+        onDone={() => { setSheetTarget(null); void loadPayouts(); }}
+      />
     </div>
   );
 }
+
+// ---------- Process payout sheet (mark paid / reject with proof + note) ----------
+
+function ProcessPayoutSheet({
+  target,
+  onClose,
+  onDone,
+}: {
+  target: { row: AdminPayoutRow; action: "paid" | "rejected" } | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setFile(null); setPreview(null); setNote("");
+  }, [target?.row.id, target?.action]);
+
+  useEffect(() => {
+    if (!file) { setPreview(null); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  if (!target) return null;
+  const { row, action } = target;
+  const destText = Object.entries(row.destination ?? {}).map(([k, v]) => `${k}: ${v}`).join("\n");
+
+  const submit = async () => {
+    setBusy(true);
+    let proofPath: string | null = null;
+    if (action === "paid" && file) {
+      const up = await uploadPayoutProof(row.id, file);
+      if (!up.ok) { setBusy(false); haptic.warning(); toast.error(up.error); return; }
+      proofPath = up.path;
+    }
+    const r = await adminProcessPayout(row.id, action, {
+      proofUrl: proofPath,
+      adminNote: note.trim() || null,
+    });
+    setBusy(false);
+    if (r.ok) {
+      haptic.success();
+      toast.success(t(action === "paid" ? "admin.markedPaid" : "admin.markedRejected"));
+      onDone();
+    } else {
+      haptic.warning();
+      toast.error(r.error);
+    }
+  };
+
+  return (
+    <PushScreen
+      open={!!target}
+      onClose={onClose}
+      title={t(action === "paid" ? "admin.payouts.confirmPaidTitle" : "admin.payouts.confirmRejectTitle")}
+      zIndex={85}
+    >
+      <div className="space-y-4 px-4 py-4">
+        <div className="rounded-2xl border border-border p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[14px] font-semibold">@{row.seller_handle ?? row.seller_id.slice(0, 8)}</p>
+            <p className="text-[16px] font-bold tabular-nums">{formatMoney(Number(row.amount), normalizeCurrency(row.currency), i18n.language)}</p>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t(`payout.method.${row.method}`)}</p>
+          <pre className="mt-2 whitespace-pre-wrap break-all rounded-xl bg-muted p-2 text-[11px] text-muted-foreground">{destText}</pre>
+        </div>
+
+        {action === "paid" && (
+          <div>
+            <label className="mb-1.5 block text-[12px] font-semibold">{t("admin.payouts.proofLabel")}</label>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border p-4 text-[13px] text-muted-foreground">
+              {preview ? (
+                <img src={preview} alt="" className="max-h-48 rounded-lg object-contain" />
+              ) : (
+                <span className="inline-flex items-center gap-2"><Upload size={16} />{t("admin.payouts.proofChoose")}</span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <p className="mt-1 text-[10px] text-muted-foreground">{t("admin.payouts.proofHint")}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="mb-1.5 block text-[12px] font-semibold">
+            {action === "paid" ? t("admin.payouts.noteLabel") : t("admin.payouts.rejectNoteLabel")}
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+            placeholder={action === "paid" ? t("admin.payouts.notePh") : t("admin.payouts.rejectNotePh")}
+            className="w-full resize-none rounded-2xl border border-border bg-background p-3 text-[13px] outline-none"
+          />
+        </div>
+
+        <Press
+          onClick={submit}
+          className="w-full rounded-2xl py-3 text-[15px] font-bold text-white"
+          style={{ backgroundColor: action === "paid" ? "oklch(0.62 0.16 155)" : "oklch(0.55 0.2 27)" }}
+        >
+          {busy ? <Loader2 className="mx-auto animate-spin" size={16} /> : t(action === "paid" ? "admin.payouts.confirmPaidCta" : "admin.payouts.confirmRejectCta")}
+        </Press>
+      </div>
+    </PushScreen>
+  );
+}
+
+function ProofThumbnail({ path }: { path: string }) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let alive = true; void signPayoutProofUrl(path).then((u) => { if (alive) setUrl(u); }); return () => { alive = false; }; }, [path]);
+  if (!url) return (
+    <div className="mt-2 flex items-center gap-2 rounded-xl bg-muted p-2 text-[11px] text-muted-foreground">
+      <ImageIcon size={14} /> {t("admin.payouts.proofLoading")}
+    </div>
+  );
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+      <img src={url} alt={t("admin.payouts.proofAlt")} className="max-h-40 w-auto rounded-xl border border-border object-contain" />
+    </a>
+  );
+}
+
 
 // ---------- Lives ----------
 
