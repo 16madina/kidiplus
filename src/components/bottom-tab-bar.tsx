@@ -94,9 +94,9 @@ export function BottomTabBar({
             // Mask: everything visible EXCEPT a 36px-radius circle centered
             // horizontally at the top edge — that's the notch.
             WebkitMaskImage:
-              "radial-gradient(circle 28px at 50% -2px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 28px at 50% 8px, transparent 98%, #000 100%)",
             maskImage:
-              "radial-gradient(circle 28px at 50% -2px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 28px at 50% 8px, transparent 98%, #000 100%)",
           }}
         >
           <ul className="grid h-full grid-cols-[1fr_1fr_88px_1fr_1fr] items-stretch px-2">
