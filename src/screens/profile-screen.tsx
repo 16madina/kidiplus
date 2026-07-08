@@ -60,6 +60,8 @@ export function ProfileScreen() {
   const [salesOpen, setSalesOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [addressesOpen, setAddressesOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
