@@ -823,7 +823,8 @@
     },
     "winner": {
       "you": "You won!",
-      "other": "{{name}} won!"
+      "other": "{{name}} won!",
+      "said": "SAID +"
     }
   }
 }
