@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
+  Flag, MessageSquare, ShieldAlert, AlertTriangle,
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
@@ -26,9 +27,14 @@ import {
   uploadPayoutProof, signPayoutProofUrl,
 } from "@/lib/earnings-db";
 import { useAuth } from "@/lib/auth-context";
+import { fetchAdminReports } from "@/lib/moderation-admin";
+import {
+  ReportsTab, ComposeMessageSheet, UserSanctionsHistory, EndLiveButton,
+} from "./moderation-pieces";
+import { SanctionSheet } from "./sanction-sheet";
 
 
-type Tab = "overview" | "users" | "payments" | "lives";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
