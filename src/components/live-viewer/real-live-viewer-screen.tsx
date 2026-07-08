@@ -28,9 +28,13 @@ import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
+import { WinnerReveal } from "./winner-reveal";
+import { SuddenDeathFlash } from "./sudden-death-flash";
 import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { supabase } from "@/integrations/supabase/client";
 
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
