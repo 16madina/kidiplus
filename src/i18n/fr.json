@@ -772,6 +772,26 @@
       "failed": "Envoi échoué"
     }
   },
+  "timeline": {
+    "title": "Historique",
+    "empty": "Aucun événement pour l'instant.",
+    "by": "par",
+    "system": "Automatique",
+    "event": {
+      "created": "Commande créée",
+      "paid": "Paiement reçu",
+      "shipped": "Expédiée",
+      "delivered": "Réception confirmée",
+      "autoReleased": "Fonds libérés automatiquement",
+      "disputed": "Litige ouvert",
+      "disputeReleased": "Litige : fonds au vendeur",
+      "disputeRefunded": "Litige : remboursé",
+      "cancelled": "Annulée"
+    }
+  },
+  "notif": {
+    "markAllRead": "Tout marquer comme lu"
+  },
   "legal": {
     "appLegal": "Documents légaux — KiDi+",
     "lastUpdated": "Dernière mise à jour",
