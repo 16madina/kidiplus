@@ -98,17 +98,18 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
 
 // ---------- Overview ----------
 
-function OverviewTab() {
+function OverviewTab({ onGoTab }: { onGoTab: (t: Tab) => void }) {
   const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openReports, setOpenReports] = useState(0);
 
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const s = await fetchOverviewStats();
+      const [s, reports] = await Promise.all([fetchOverviewStats(), fetchAdminReports("open")]);
       if (!alive) return;
-      setStats(s); setLoading(false);
+      setStats(s); setOpenReports(reports.length); setLoading(false);
     };
     void load();
     const id = window.setInterval(() => void load(), 60_000);
@@ -121,6 +122,34 @@ function OverviewTab() {
   const c = stats.counts;
   return (
     <div className="space-y-4">
+      {/* À traiter */}
+      <Section title={t("admin.toDo.title")}>
+        <div className="grid grid-cols-2 gap-2">
+          <Press onClick={() => onGoTab("reports")}
+            className="flex items-center justify-between rounded-2xl border p-3 text-left"
+            style={{ borderColor: openReports > 0 ? "oklch(0.55 0.2 27 / 0.5)" : "var(--border)" }}>
+            <div>
+              <p className="text-[22px] font-bold tabular-nums" style={{ color: openReports > 0 ? "oklch(0.55 0.2 27)" : undefined }}>
+                {fmtInt(openReports, i18n.language)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{t("admin.toDo.reports")}</p>
+            </div>
+            <Flag size={16} className="text-muted-foreground" />
+          </Press>
+          <Press onClick={() => onGoTab("payments")}
+            className="flex items-center justify-between rounded-2xl border p-3 text-left"
+            style={{ borderColor: stats.pending_payouts.count > 0 ? "oklch(0.62 0.18 60 / 0.5)" : "var(--border)" }}>
+            <div>
+              <p className="text-[22px] font-bold tabular-nums" style={{ color: stats.pending_payouts.count > 0 ? "oklch(0.55 0.16 60)" : undefined }}>
+                {fmtInt(stats.pending_payouts.count, i18n.language)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{t("admin.toDo.payouts")}</p>
+            </div>
+            <CreditCard size={16} className="text-muted-foreground" />
+          </Press>
+        </div>
+      </Section>
+
       <Section title={t("admin.kpi.gmv")}>
         <MoneyByCurrency map={stats.gmv} approx />
       </Section>
