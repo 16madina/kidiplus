@@ -173,12 +173,7 @@ export function SellerSalesScreen({
           </div>
         )}
       </PushScreen>
-
-              );
-            })}
-          </ul>
-        )}
-      </div>
     </PushScreen>
   );
 }
+
