@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          details: string | null
+          full_name: string
+          id: string
+          is_default: boolean
+          label: string
+          phone: string
+          street_address: string | null
+          updated_at: string
+          user_id: string
+          zone_or_commune: string | null
+        }
+        Insert: {
+          city?: string
+          country?: string
+          created_at?: string
+          details?: string | null
+          full_name?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone: string
+          street_address?: string | null
+          updated_at?: string
+          user_id: string
+          zone_or_commune?: string | null
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          details?: string | null
+          full_name?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone?: string
+          street_address?: string | null
+          updated_at?: string
+          user_id?: string
+          zone_or_commune?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_messages: {
         Row: {
           body: string
@@ -278,11 +334,18 @@ export type Database = {
       }
       orders: {
         Row: {
+          address_id: string | null
+          address_snapshot: Json | null
           amount: number
           buyer_id: string
           cancelled_reason: string | null
           created_at: string
           currency: string
+          delivered_confirmed_at: string | null
+          delivery_fee: number
+          delivery_mode: string | null
+          delivery_zone: string | null
+          fulfillment_status: string
           id: string
           item_image: string | null
           item_name: string
@@ -294,18 +357,27 @@ export type Database = {
           platform_fee: number
           processing_fee: number
           product_id: string | null
+          refund_status: string | null
           seller_id: string
           seller_net: number
+          shipped_at: string | null
           status: string
           stripe_payment_intent_id: string | null
           total: number
         }
         Insert: {
+          address_id?: string | null
+          address_snapshot?: Json | null
           amount: number
           buyer_id: string
           cancelled_reason?: string | null
           created_at?: string
           currency?: string
+          delivered_confirmed_at?: string | null
+          delivery_fee?: number
+          delivery_mode?: string | null
+          delivery_zone?: string | null
+          fulfillment_status?: string
           id?: string
           item_image?: string | null
           item_name: string
@@ -317,18 +389,27 @@ export type Database = {
           platform_fee?: number
           processing_fee?: number
           product_id?: string | null
+          refund_status?: string | null
           seller_id: string
           seller_net?: number
+          shipped_at?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           total: number
         }
         Update: {
+          address_id?: string | null
+          address_snapshot?: Json | null
           amount?: number
           buyer_id?: string
           cancelled_reason?: string | null
           created_at?: string
           currency?: string
+          delivered_confirmed_at?: string | null
+          delivery_fee?: number
+          delivery_mode?: string | null
+          delivery_zone?: string | null
+          fulfillment_status?: string
           id?: string
           item_image?: string | null
           item_name?: string
@@ -340,13 +421,22 @@ export type Database = {
           platform_fee?: number
           processing_fee?: number
           product_id?: string | null
+          refund_status?: string | null
           seller_id?: string
           seller_net?: number
+          shipped_at?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_buyer_id_fkey"
             columns: ["buyer_id"]
@@ -547,24 +637,59 @@ export type Database = {
         Row: {
           available: number
           currency: string
+          pending: number
           seller_id: string
           updated_at: string
         }
         Insert: {
           available?: number
           currency?: string
+          pending?: number
           seller_id: string
           updated_at?: string
         }
         Update: {
           available?: number
           currency?: string
+          pending?: number
           seller_id?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "seller_balances_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_delivery_settings: {
+        Row: {
+          flat_fee: number
+          mode: string
+          seller_id: string
+          updated_at: string
+          zones: Json
+        }
+        Insert: {
+          flat_fee?: number
+          mode?: string
+          seller_id: string
+          updated_at?: string
+          zones?: Json
+        }
+        Update: {
+          flat_fee?: number
+          mode?: string
+          seller_id?: string
+          updated_at?: string
+          zones?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_delivery_settings_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: true
             referencedRelation: "profiles"
@@ -580,6 +705,7 @@ export type Database = {
           id: string
           order_id: string
           seller_id: string
+          status: string
         }
         Insert: {
           amount: number
@@ -588,6 +714,7 @@ export type Database = {
           id?: string
           order_id: string
           seller_id: string
+          status?: string
         }
         Update: {
           amount?: number
@@ -596,6 +723,7 @@ export type Database = {
           id?: string
           order_id?: string
           seller_id?: string
+          status?: string
         }
         Relationships: [
           {
