@@ -11,6 +11,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
   // guarantees the Android WebView default play-button placeholder can
   // never be seen (it only draws on the <video> element itself).
   const [videoVisible, setVideoVisible] = useState(false);
+  const videoVisibleRef = useRef(false);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -28,8 +29,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     };
 
     const forceSilentInlineAutoplay = () => {
-      // Android WebView can ignore HTML attributes until the JS properties are
-      // set on the media element itself, before every play() attempt.
       v.muted = true;
       v.defaultMuted = true;
       v.playsInline = true;
@@ -49,15 +48,10 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
     forceSilentInlineAutoplay();
 
-    // Safety net if 'ended' never fires (some Android WebViews).
     const timeout = window.setTimeout(finish, 6500);
-    // If play() rejects (autoplay denied), skip the video after a beat —
-    // never show a play control or a frozen frame.
     let skipTimeout = 0;
-    // If real playback hasn't started within 1.5s, keep the logo splash and
-    // finish cleanly — the user never sees any player chrome.
     const playingWatchdog = window.setTimeout(() => {
-      if (!videoVisible) finish();
+      if (!videoVisibleRef.current) finish();
     }, 1500);
 
     const tryPlay = () => {
@@ -73,7 +67,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     window.requestAnimationFrame(tryPlay);
 
     const onPlaying = () => {
-      // Frames are actually rendering now — safe to reveal the video.
+      videoVisibleRef.current = true;
       setVideoVisible(true);
     };
 
@@ -90,7 +84,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("ended", finish);
     };
-  }, [onDone, videoVisible]);
+  }, [onDone]);
 
   return (
     <motion.div
