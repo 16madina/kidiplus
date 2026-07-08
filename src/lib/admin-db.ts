@@ -82,9 +82,13 @@ export type AdminPayoutRow = {
   destination: Record<string, string>;
   status: "requested" | "processing" | "paid" | "rejected";
   note: string | null;
+  admin_note: string | null;
+  proof_url: string | null;
+  processed_by: string | null;
   requested_at: string;
   processed_at: string | null;
 };
+
 
 export async function fetchAdminPayouts(status: string | null = null): Promise<AdminPayoutRow[]> {
   const { data, error } = await sb.rpc("admin_list_payouts", { _status: status, _limit: 200 });
