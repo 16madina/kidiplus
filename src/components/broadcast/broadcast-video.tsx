@@ -3,6 +3,7 @@ import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
+import { ensureCameraMicAccess } from "@/lib/media-permissions";
 import {
   Room,
   RoomEvent,
