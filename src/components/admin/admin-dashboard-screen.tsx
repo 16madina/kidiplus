@@ -107,6 +107,8 @@ function OverviewTab({ onGoTab }: { onGoTab: (t: Tab) => void }) {
   useEffect(() => {
     let alive = true;
     const load = async () => {
+      // Opportunistic cleanup so the admin sees fresh cancellations.
+      await import("@/lib/lives-db").then((m) => m.expireOverdueOrders()).catch(() => 0);
       const [s, reports] = await Promise.all([fetchOverviewStats(), fetchAdminReports("open")]);
       if (!alive) return;
       setStats(s); setOpenReports(reports.length); setLoading(false);
