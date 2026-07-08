@@ -1,15 +1,17 @@
 // Shared CORS allowlist for KiDi+ API routes.
 //
 // The KiDi+ WebView loads under these origins in the native app:
-//   - iOS Capacitor: `capacitor://localhost` (scheme `capacitor:`, host `localhost`)
-//   - iOS legacy:    `ionic://localhost`
-//   - Android:       `http://localhost`
+//   - iOS Capacitor:  `capacitor://localhost` (scheme `capacitor:`, host `localhost`)
+//   - iOS legacy:     `ionic://localhost`
+//   - Android:        `https://localhost` (default `androidScheme: "https"`).
+//                     Older Capacitor configs use `http://localhost`.
 //
-// These are ADDED to the existing web allowlist so fetch() calls from the
-// native WebView aren't rejected by the API's Origin check.
+// All of the above satisfy the hostname suffix `localhost` below, so both
+// `http://localhost` and `https://localhost` are accepted without needing
+// a scheme entry. The native scheme list only covers non-http(s) schemes.
 //
 // Web origins are matched by hostname suffix (subdomains allowed). Native
-// origins are matched by URL scheme.
+// custom-scheme origins are matched by URL scheme.
 
 export const ALLOWED_ORIGIN_SUFFIXES = [
   "lovable.app",
