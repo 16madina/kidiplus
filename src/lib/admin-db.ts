@@ -110,6 +110,8 @@ export type AdminOrderRow = {
   payment_method: string;
   created_at: string;
   paid_at: string | null;
+  payment_deadline: string | null;
+  cancelled_reason: string | null;
   buyer_handle: string | null;
   seller_handle: string | null;
   buyer_id: string;
