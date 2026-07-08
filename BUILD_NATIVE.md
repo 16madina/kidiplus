@@ -29,27 +29,75 @@ npx cap sync android
 npx cap sync ios
 ```
 
-> Le WebView Capacitor charge directement `https://kidiplus.lovable.app` via `server.url`.
-> Il ne faut pas rediriger depuis `dist/index.html`, sinon iOS peut ouvrir Safari avec sa barre de navigation.
+> Le WebView Capacitor charge la page launcher dans `dist/index.html`, puis ouvre
+> `https://kidiplus.lovable.app` dans le WebView via `server.allowNavigation`.
+> Ne mets pas de `server.url` actif en production.
 
-## 4. Configurer Firebase (Push Notifications) — Android
+## 4. Android : enlever le bouton play natif du splash vidéo
+
+Si Android affiche un gros bouton play sur la vidéo d'intro, édite sur ta machine :
+
+`android/app/src/main/java/com/kidiplus/app/MainActivity.java`
+
+Remplace le contenu par :
+
+```java
+package com.kidiplus.app;
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
+
+public class MainActivity extends BridgeActivity {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    WebSettings settings = this.bridge.getWebView().getSettings();
+    settings.setMediaPlaybackRequiresUserGesture(false);
+
+    this.bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(this.bridge) {
+      @Override
+      public Bitmap getDefaultVideoPoster() {
+        Bitmap bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawARGB(0, 0, 0, 0);
+        return bitmap;
+      }
+    });
+  }
+}
+```
+
+Puis relance :
+
+```bash
+npm run native:prepare
+npx cap sync android
+```
+
+## 5. Configurer Firebase (Push Notifications) — Android
 
 Le fichier `google-services.json` est déjà dans le repo à `android-config/google-services.json`.
 Après `npx cap add android` (ou après un `npx cap sync android`), fais :
 
-### 4a. Copier le fichier Firebase
+### 5a. Copier le fichier Firebase
 ```bash
 cp android-config/google-services.json android/app/google-services.json
 ```
 
-### 4b. Éditer `android/build.gradle` (racine du projet Android)
+### 5b. Éditer `android/build.gradle` (racine du projet Android)
 
 Dans le bloc `buildscript { dependencies { ... } }`, ajoute :
 ```gradle
 classpath 'com.google.gms:google-services:4.4.2'
 ```
 
-### 4c. Éditer `android/app/build.gradle`
+### 5c. Éditer `android/app/build.gradle`
 
 Tout en haut du fichier, sous les autres `apply plugin:` :
 ```gradle
@@ -62,12 +110,12 @@ implementation platform('com.google.firebase:firebase-bom:33.5.1')
 implementation 'com.google.firebase:firebase-messaging'
 ```
 
-### 4d. Re-sync
+### 5d. Re-sync
 ```bash
 npx cap sync android
 ```
 
-## 5. Ouvrir dans l'IDE natif
+## 6. Ouvrir dans l'IDE natif
 ```bash
 npx cap open android   # Android Studio → Run ▶ ou Build > Build APK(s)
 npx cap open ios       # Xcode → Product > Run / Archive
