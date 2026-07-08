@@ -77,10 +77,8 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         poster={NAVY_POSTER}
         autoPlay
         muted
-        defaultMuted
         playsInline
-        // @ts-expect-error webkit-only attribute
-        webkit-playsinline="true"
+        {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
         preload="auto"
         disablePictureInPicture
         controlsList="nodownload noplaybackrate nofullscreen"
