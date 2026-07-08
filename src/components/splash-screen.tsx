@@ -92,7 +92,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       animate={{ opacity: exiting ? 0 : 1 }}
       transition={{ duration: 0.25, ease: EASE_IOS }}
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
-      style={{ isolation: "isolate", backgroundColor: "#10162B" }}
+      style={{ isolation: "isolate", backgroundColor: "#10162B", pointerEvents: exiting ? "none" : "auto" }}
     >
       {/* Branded fallback — always painted behind the video. If the video
           never becomes visible (autoplay denied, slow decode, Android
