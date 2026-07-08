@@ -462,13 +462,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             color: b.mode === "now" ? "white" : "black",
           }}
         >
-          {launching
-            ? t("common.loading")
-            : b.mode === "schedule"
-              ? t("schedule.cta", "Programmer le live 📅")
-              : b.mode === "edit"
-                ? t("schedule.saveEdit", "Enregistrer les modifications")
-                : t("broadcast.setup.start")}
+          {launching ? t("common.loading") : t("broadcast.setup.start")}
+
         </Press>
 
       </div>
