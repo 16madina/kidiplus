@@ -9,15 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
-
-const ALLOWED_ORIGIN_SUFFIXES = ["lovable.app", "lovableproject.com", "localhost", "127.0.0.1", "kidiplus.com"];
-function isAllowedOrigin(origin: string | null): boolean {
-  if (!origin) return true;
-  try {
-    const host = new URL(origin).hostname;
-    return ALLOWED_ORIGIN_SUFFIXES.some((s) => host === s || host.endsWith(`.${s}`));
-  } catch { return false; }
-}
+import { isAllowedOrigin } from "@/lib/api-cors";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
