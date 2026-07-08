@@ -265,8 +265,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           className="flex gap-2 overflow-x-auto pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {CATEGORIES.filter((c) => c !== "For You").map((c) => {
+          {BROADCAST_CATEGORY_KEYS.map((c) => {
             const active = c === b.category;
+            const label = t(
+              BROADCAST_CATEGORY_LABEL_KEY[c],
+              BROADCAST_CATEGORY_FR_FALLBACK[c],
+            );
             return (
               <Press
                 key={c}
@@ -280,7 +284,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   backgroundColor: active ? "white" : "rgba(255,255,255,0.16)",
                 }}
               >
-                {c}
+                {label}
               </Press>
             );
           })}
