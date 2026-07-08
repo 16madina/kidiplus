@@ -633,7 +633,7 @@ function PaymentsTab() {
                   : <div className="h-9 w-9 shrink-0 rounded-lg bg-muted" />}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{o.item_name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {t(`orders.status.${o.status}`, o.status)} · {o.payment_method}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {o.status === "cancelled" && o.cancelled_reason === "payment_timeout" ? t("orders.status.paymentTimeout") : t(`orders.status.${o.status}`, o.status)} · {o.payment_method}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[13px] font-bold tabular-nums">{formatMoney(Number(o.total), normalizeCurrency(o.currency), i18n.language)}</p>
