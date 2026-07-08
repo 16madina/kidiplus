@@ -291,8 +291,8 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       <div
         className="relative z-30 flex shrink-0 items-center gap-3 px-4"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top) + 10px)",
-          paddingBottom: 10,
+          paddingTop: "calc(env(safe-area-inset-top) + 2px)",
+          paddingBottom: 6,
           background:
             "linear-gradient(to bottom, oklch(0.11 0.03 260) 55%, oklch(0.11 0.03 260 / 0.6) 100%)",
         }}
@@ -314,29 +314,29 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               aria-hidden
               className="pointer-events-none absolute inset-0"
               style={{
-                filter: "blur(28px)",
+                filter: "blur(18px)",
                 background:
-                  "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
+                  "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.55), transparent 70%)",
               }}
             />
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
               style={{
-                filter: "blur(12px)",
+                filter: "blur(10px)",
                 background:
-                  "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
+                  "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.20), transparent 70%)",
               }}
             />
             <div
               className="relative"
-              style={{ filter: "drop-shadow(0 4px 20px rgba(255,205,110,0.35))" }}
+              style={{ filter: "drop-shadow(0 3px 14px rgba(255,205,110,0.30))" }}
             >
-              <Logo size={72} />
+              <Logo size={68} />
             </div>
             <div
               aria-hidden
-              className="mx-auto mt-1.5 h-px w-24"
+              className="mx-auto mt-1 h-px w-24"
               style={{
                 background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`,
               }}
