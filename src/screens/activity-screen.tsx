@@ -264,7 +264,7 @@ function NotifRow({
   onDelete,
   onTap,
 }: {
-  n: Notification;
+  n: NotificationRow;
   index: number;
   onDelete: () => void;
   onTap: () => void;
@@ -272,6 +272,8 @@ function NotifRow({
   const { t } = useTranslation();
   const x = useMotionValue(0);
   const [snapped, setSnapped] = useState(false);
+  const unread = !n.read_at;
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(n.created_at).getTime()) / 60000));
 
   return (
     <motion.li
@@ -282,7 +284,6 @@ function NotifRow({
       transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(index, 8) * 0.03 }}
       className="relative overflow-hidden"
     >
-      {/* delete action underneath */}
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-end"
         style={{ width: SWIPE_ACTION, backgroundColor: "oklch(0.6 0.24 27)" }}
@@ -322,30 +323,21 @@ function NotifRow({
           className="!block w-full p-0 text-left"
         >
           <div className="flex items-start gap-3 px-4 py-3">
-            <div className="relative shrink-0">
-              <img
-                src={n.avatar}
-                alt=""
-                className="h-11 w-11 rounded-full object-cover"
-                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                draggable={false}
-              />
-              <NotifKindBadge kind={n.kind} />
-            </div>
+            <NotifKindIcon kind={n.kind} />
             <div className="min-w-0 flex-1">
               <p className="text-[14px] leading-snug">
-                <span className={n.unread ? "font-semibold" : "font-medium text-foreground/85"}>
+                <span className={unread ? "font-semibold" : "font-medium text-foreground/85"}>
                   {n.title}
                 </span>
               </p>
               {n.body && (
-                <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{n.body}</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">{n.body}</p>
               )}
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatRelative(n.minutesAgo)}
+                {formatRelative(minutes)}
               </p>
             </div>
-            {n.unread && (
+            {unread && (
               <span
                 aria-label={t("common.notifications")}
                 className="mt-2 h-2 w-2 shrink-0 rounded-full"
@@ -359,25 +351,25 @@ function NotifRow({
   );
 }
 
-function NotifKindBadge({ kind }: { kind: Notification["kind"] }) {
-  const map: Record<Notification["kind"], { icon: React.ReactNode; bg: string }> = {
-    live: { icon: <Radio size={9} />, bg: "oklch(0.65 0.26 15)" },
-    shipped: { icon: <Truck size={9} />, bg: "oklch(0.7 0.17 55)" },
-    outbid: { icon: <Bell size={9} />, bg: "oklch(0.6 0.2 250)" },
-    sold: { icon: <Check size={9} />, bg: "oklch(0.6 0.17 155)" },
-    follow: { icon: <Bell size={9} />, bg: "oklch(0.55 0.16 300)" },
-    reminder: { icon: <Bell size={9} />, bg: "oklch(0.62 0.24 20)" },
-  };
-  const m = map[kind];
+function NotifKindIcon({ kind }: { kind: string }) {
+  let icon: React.ReactNode = <Bell size={18} />;
+  let bg = "oklch(0.6 0.2 250)";
+  if (kind === "order_shipped") { icon = <Truck size={18} />; bg = "oklch(0.6 0.16 60)"; }
+  else if (kind === "order_delivered") { icon = <PackageCheck size={18} />; bg = "oklch(0.55 0.18 155)"; }
+  else if (kind === "order_auto_released") { icon = <Check size={18} />; bg = "oklch(0.55 0.18 155)"; }
+  else if (kind === "order_reminder") { icon = <Bell size={18} />; bg = "oklch(0.62 0.24 20)"; }
+  else if (kind === "dispute_released" || kind === "dispute_refunded") { icon = <ShieldCheck size={18} />; bg = "oklch(0.55 0.16 300)"; }
+  else if (kind === "live") { icon = <Radio size={18} />; bg = "oklch(0.65 0.26 15)"; }
   return (
-    <span
-      className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2 ring-background"
-      style={{ backgroundColor: m.bg }}
+    <div
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white"
+      style={{ backgroundColor: bg }}
     >
-      {m.icon}
-    </span>
+      {icon}
+    </div>
   );
 }
+
 
 function NotifSkeletons() {
   return (
