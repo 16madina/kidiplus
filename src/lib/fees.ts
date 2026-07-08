@@ -22,6 +22,11 @@ export const PLATFORM_FEE_PERCENT = 5;
  */
 export const ESCROW_AUTO_RELEASE_DAYS = 7;
 
+/** Buyer reminder timing — a notification is generated when a shipped order
+ *  reaches this many days without confirmation, i.e. 2 days before auto-release.
+ *  Enforced in SQL by `release_overdue_escrow`. */
+export const ESCROW_REMINDER_DAYS = 5;
+
 /** Hours a winning bidder has to pay before the order auto-cancels. */
 export const AUCTION_PAYMENT_DEADLINE_HOURS = 24;
 
