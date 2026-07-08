@@ -40,6 +40,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
+  const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup
   // screen is on-screen. Gated by TabVisibility so it doesn't stay pushed when
