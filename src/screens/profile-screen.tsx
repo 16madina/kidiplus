@@ -50,6 +50,7 @@ import { DeleteAccountScreen } from "@/components/account/delete-account-screen"
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
+import { supabase } from "@/integrations/supabase/client";
 
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
