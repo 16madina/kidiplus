@@ -241,9 +241,10 @@ export function AddProductSheet({
           <>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <NumberField
-                label="Prix de départ (€)"
+                label={`Prix de départ (${symbol})`}
                 value={startPrice}
                 min={1}
+                step={priceStep}
                 onChange={setStartPrice}
                 icon={<Tag size={18} style={{ color: GOLD }} />}
               />
@@ -271,18 +272,19 @@ export function AddProductSheet({
                 inputMode="numeric"
                 value={bidIncrement}
                 onChange={(e) => setBidIncrement(e.target.value)}
-                placeholder="ex : 1"
+                placeholder={currency === "XOF" ? "ex : 500" : "ex : 1"}
                 className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/70"
               />
-              <span className="text-[15px] text-muted-foreground">€</span>
+              <span className="text-[15px] text-muted-foreground">{symbol}</span>
             </div>
           </>
         ) : (
           <div className="mt-5 grid grid-cols-2 gap-3">
             <NumberField
-              label="Prix (€)"
+              label={`Prix (${symbol})`}
               value={price}
               min={1}
+              step={priceStep}
               onChange={setPrice}
               icon={<Tag size={18} style={{ color: GOLD }} />}
             />
