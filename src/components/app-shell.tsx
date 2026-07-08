@@ -224,6 +224,8 @@ function AppShellInner() {
   );
 }
 
+export const TabVisibilityContext = createContext<boolean>(true);
+
 function TabPane({
   visible,
   children,
@@ -232,12 +234,14 @@ function TabPane({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      aria-hidden={!visible}
-      className="absolute inset-0 overflow-hidden"
-      style={{ display: visible ? "block" : "none" }}
-    >
-      {children}
-    </div>
+    <TabVisibilityContext.Provider value={visible}>
+      <div
+        aria-hidden={!visible}
+        className="absolute inset-0 overflow-hidden"
+        style={{ display: visible ? "block" : "none" }}
+      >
+        {children}
+      </div>
+    </TabVisibilityContext.Provider>
   );
 }
