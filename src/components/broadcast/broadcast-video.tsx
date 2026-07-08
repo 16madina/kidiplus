@@ -347,6 +347,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                         "broadcast.camera.denied",
                         "Autorise la caméra dans Réglages > KiDi+",
                       )
+                    : state === "config_missing"
+                      ? t(
+                          "broadcast.camera.configMissing",
+                          "Configuration requise : permissions caméra manquantes dans le build",
+                        )
                     : state === "unavailable"
                       ? t("broadcast.camera.unavailable", "Caméra indisponible")
                       : state === "unsupported"
@@ -359,6 +364,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               </p>
               {onRequestRetry &&
                 (state === "denied" ||
+                  state === "config_missing" ||
                   state === "unavailable" ||
                   state === "unsupported" ||
                   state === "error") && (
