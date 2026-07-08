@@ -635,6 +635,93 @@
     "onlyAdmins": "Accès réservé aux administrateurs.",
     "approxEurTotal": "≈ EUR (indicatif)"
   },
+  "moderation": {
+    "reason": "Motif",
+    "suspendedUntil": "Compte suspendu jusqu'au {{date}}",
+    "suspendedIndefinite": "Compte suspendu",
+    "banned": {
+      "title": "Compte suspendu définitivement",
+      "body": "Ton compte a été suspendu suite à une violation des règles de la communauté KiDi+.",
+      "support": "Pour toute question, contacte support@kidiplus.com"
+    },
+    "types": {
+      "warning": "Avertissement",
+      "suspension": "Suspension",
+      "ban": "Bannissement"
+    },
+    "durations": { "h24": "24 h", "d7": "7 jours", "d30": "30 jours" },
+    "sanction": {
+      "title": "Sanction utilisateur",
+      "for": "Sanction pour",
+      "type": "Type de sanction",
+      "duration": "Durée",
+      "reason": "Motif (visible par l'utilisateur)",
+      "reasonPh": "Ex. Propos injurieux dans le chat",
+      "reasonHint": "3 caractères minimum. L'utilisateur recevra ce texte.",
+      "internalNote": "Note interne (optionnelle)",
+      "internalNotePh": "Contexte, preuves…",
+      "recap": "Récapitulatif",
+      "until": "jusqu'au",
+      "apply": "Appliquer la sanction",
+      "banConfirm": "Je confirme le bannissement définitif de ce compte.",
+      "done": "Sanction appliquée",
+      "failed": "Échec de l'application"
+    },
+    "sanctions": {
+      "empty": "Aucune sanction.",
+      "active": "ACTIVE",
+      "revoked": "LEVÉE",
+      "expired": "expirée",
+      "revoke": "Lever la sanction",
+      "revokedOk": "Sanction levée"
+    },
+    "reports": {
+      "empty": "Aucun signalement.",
+      "reported": "a signalé un(e)",
+      "viewTarget": "Voir la cible",
+      "action": "Traiter",
+      "dismiss": "Rejeter",
+      "dismissTitle": "Rejeter le signalement",
+      "dismissNotePh": "Note interne (optionnelle)",
+      "dismissConfirm": "Confirmer le rejet",
+      "dismissed": "Signalement rejeté",
+      "resolution": "Résolution",
+      "filter": { "open": "Ouverts", "actioned": "Traités", "dismissed": "Rejetés", "all": "Tous" },
+      "status": { "open": "Ouvert", "reviewed": "Vu", "actioned": "Sanctionné", "dismissed": "Rejeté" }
+    },
+    "targetType": { "user": "utilisateur", "live": "live", "message": "message" },
+    "lives": {
+      "endBtn": "Terminer ce live",
+      "endConfirm": "Confirmer",
+      "ended": "Live terminé"
+    },
+    "userDetail": {
+      "statusBadge": "Statut",
+      "sendMessage": "Envoyer un message",
+      "warn": "Avertir",
+      "suspend": "Suspendre",
+      "ban": "Bannir",
+      "sanctionsTitle": "Sanctions"
+    },
+    "errors": {
+      "account_banned": "Compte banni.",
+      "account_suspended": "Compte suspendu."
+    }
+  },
+  "adminMsg": {
+    "section": "Messages officiels",
+    "detailTitle": "Message KiDi+",
+    "communityRef": "Consulte nos directives de la communauté pour en savoir plus.",
+    "compose": {
+      "title": "Nouveau message",
+      "for": "Destinataire :",
+      "titlePh": "Titre du message",
+      "bodyPh": "Écris ton message…",
+      "send": "Envoyer",
+      "sent": "Message envoyé",
+      "failed": "Envoi échoué"
+    }
+  },
   "legal": {
     "appLegal": "Documents légaux — KiDi+",
     "lastUpdated": "Dernière mise à jour",
