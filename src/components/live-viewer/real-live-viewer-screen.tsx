@@ -316,6 +316,15 @@ export function RealLiveViewerScreen() {
     setCustomMinOverride(null);
   }, [currentProduct?.id, room.auctionStart?.deadlineMs, liveEnded]);
 
+  // Track the freshest known price for the currently-featured auction so
+  // quick-bid taps always compute against realtime state, never a stale
+  // render prop.
+  const latestPriceRef = useRef<{ id: string | null; price: number }>({ id: null, price: 0 });
+  useEffect(() => {
+    if (!currentProduct) { latestPriceRef.current = { id: null, price: 0 }; return; }
+    latestPriceRef.current = { id: currentProduct.id, price: Number(currentProduct.price) };
+  }, [currentProduct?.id, currentProduct?.price]);
+
   const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
@@ -326,13 +335,33 @@ export function RealLiveViewerScreen() {
       return;
     }
     haptic.medium();
-    const res = await placeBidInDb({
-      liveId: active!.liveId!,
-      productId: currentProduct.id,
-      bidderId: user.id,
-      bidderName: displayName,
-      amount: customAmount,
-    });
+
+    // Compute quick-bid amount from the freshest price (realtime ref beats
+    // render prop). Custom amounts pass through as-is.
+    const freshest =
+      latestPriceRef.current.id === currentProduct.id
+        ? latestPriceRef.current.price
+        : Number(currentProduct.price);
+    const quickAmount = nextBidAmount(freshest, liveCurrency);
+    const sendAmount = customAmount ?? quickAmount;
+
+    const attempt = async (amount: number) =>
+      placeBidInDb({
+        liveId: active!.liveId!,
+        productId: currentProduct.id,
+        bidderId: user.id,
+        bidderName: displayName,
+        amount,
+      });
+
+    let res = await attempt(sendAmount);
+
+    // Auto-retry ONCE on price_changed using the server's suggested min_next.
+    if (!res.ok && res.error === "price_changed" && res.minNext !== undefined && customAmount === undefined) {
+      latestPriceRef.current = { id: currentProduct.id, price: res.minNext - (res.minNext - freshest > 0 ? (res.minNext - freshest) : 0) };
+      res = await attempt(res.minNext);
+    }
+
     if (!res.ok) {
       if (res.error === "price_changed" && res.minNext !== undefined) {
         setCustomMinOverride(res.minNext);
@@ -351,6 +380,10 @@ export function RealLiveViewerScreen() {
       }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
       return;
+    }
+    // Optimistically bump the ref so a rapid second tap uses the freshest price.
+    if (res.amount !== undefined) {
+      latestPriceRef.current = { id: currentProduct.id, price: res.amount };
     }
     if (customAmount !== undefined) {
       setCustomOpen(false);
