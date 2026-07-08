@@ -10,6 +10,7 @@ export type NotificationRow = {
   title: string;
   body: string | null;
   order_id: string | null;
+  data: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
 };
