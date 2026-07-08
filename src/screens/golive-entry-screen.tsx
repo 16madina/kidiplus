@@ -196,8 +196,8 @@ export function GoLiveEntryScreen({
       <div
         className="relative z-30 flex shrink-0 items-center justify-between px-3"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top) + 8px)",
-          paddingBottom: 8,
+          paddingTop: "calc(env(safe-area-inset-top) + 2px)",
+          paddingBottom: 6,
         }}
       >
         <Press
@@ -234,7 +234,7 @@ export function GoLiveEntryScreen({
 
       {/* Scrollable content */}
       <div className="min-h-0 flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-      <div className="px-5 pt-6 text-center">
+      <div className="px-5 pt-3 text-center">
 
         <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct")}
@@ -245,7 +245,7 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Choice cards */}
-      <div className="grid grid-cols-2 gap-3 px-5 pt-6">
+      <div className="grid grid-cols-2 gap-3 px-5 pt-4">
         <ChoiceCard
           icon={<Radio size={38} color={GOLD} />}
           title={t("golive.entry.startNow", "Commencer\nun live")}
@@ -273,7 +273,7 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Scheduled list */}
-      <div className="px-5 pt-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
+      <div className="px-5 pt-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-bold text-white">
             {t("golive.entry.myScheduled", "Mes lives programmés")}
@@ -282,7 +282,7 @@ export function GoLiveEntryScreen({
         </div>
         {!loadingList && scheduled.length === 0 && (
           <div
-            className="mt-3 grid place-items-center rounded-2xl px-6 py-10 text-center"
+            className="mt-3 grid place-items-center rounded-2xl px-6 py-8 text-center"
             style={{
               border: `1.5px dashed ${GOLD_DIM}`,
               backgroundColor: "rgba(255,255,255,0.02)",
@@ -451,7 +451,7 @@ function ChoiceCard({
   return (
     <Press
       onClick={onPress}
-      className="flex h-full min-h-[280px] w-full flex-col items-center justify-start gap-4 rounded-3xl p-5 text-center"
+      className="flex h-full min-h-[248px] w-full flex-col items-center justify-start gap-3 rounded-3xl p-5 text-center"
       style={{
         backgroundColor: "rgba(255,255,255,0.04)",
         border: `1px solid ${GOLD_DIM}`,
