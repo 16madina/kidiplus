@@ -183,26 +183,28 @@ export function BellIcon({ active = false }: IconProps) {
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Profil — bust silhouette (head + shoulders, no medallion) ---------- */
+/* ---------- Profil — gold medallion with dark bust silhouette ---------- */
 export function PersonIcon({ active = false }: IconProps) {
-  const head = "M12 8 m -3 0 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0";
-  const shoulders = "M4.5 20 Q5.8 13.5 12 13.5 Q18.2 13.5 19.5 20";
+  // Head + shoulders silhouette clipped inside the medallion circle.
+  const head = "M12 10.2 m -2.4 0 a 2.4 2.4 0 1 0 4.8 0 a 2.4 2.4 0 1 0 -4.8 0";
+  const bust = "M6.6 18.4 Q7.6 13.8 12 13.8 Q16.4 13.8 17.4 18.4 Z";
   const outline = (
     <Svg>
-      <path d={head} />
-      <path d={shoulders} />
-      <GoldPlus />
+      <circle cx="12" cy="12" r="8.5" fill="var(--accent)" stroke="var(--accent)" />
+      <path d={head} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
+      <path d={bust} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
     </Svg>
   );
   const filled = (
     <Svg>
-      <path d={head} fill="var(--accent)" stroke="var(--accent)" />
-      <path d={shoulders} fill="var(--accent)" stroke="var(--accent)" />
-      <GoldPlus />
+      <circle cx="12" cy="12" r="8.5" fill="var(--accent)" stroke="var(--accent)" />
+      <path d={head} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
+      <path d={bust} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
+
 
 
 /* ---------- Go Live — broadcast waves (used INSIDE the raised gold button) ---------- */
