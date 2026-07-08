@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   UserX,
   Trash2,
+  Truck,
 } from "lucide-react";
 
 import { toast } from "sonner";
