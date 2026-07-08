@@ -379,6 +379,12 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
             <StatTile label={t("admin.users.sellerBal")} value={formatMoney(Number(user.seller_balance), normalizeCurrency(user.seller_currency), i18n.language)} />
             <StatTile label={t("admin.users.purchases")} value={String(user.orders_count)} />
             <StatTile label={t("admin.users.sales")} value={String(user.sales_count)} />
+            {typeof data?.unpaid_timeouts === "number" && data.unpaid_timeouts > 0 && (
+              <StatTile
+                label={t("admin.users.unpaidTimeouts")}
+                value={String(data.unpaid_timeouts)}
+              />
+            )}
           </div>
 
           {/* Moderation actions */}
