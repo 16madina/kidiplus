@@ -365,19 +365,37 @@ export async function startAuctionInDb(productId: string): Promise<void> {
     .eq("id", productId);
 }
 
-export async function endAuctionInDb(
-  productId: string,
-  winnerIdentity: string | null,
-  finalPrice: number,
-): Promise<void> {
-  await supabase
-    .from("live_products")
-    .update({
-      status: "sold",
-      sold_to_identity: winnerIdentity,
-      final_price: finalPrice,
-    })
-    .eq("id", productId);
+/**
+ * Host-triggered auction finalize. Marks the product sold, creates the pending
+ * order for the winner, and — when possible — auto-pays it from the winner's
+ * wallet (matching currency + sufficient balance). Returns the created order
+ * id and whether it was auto-paid.
+ */
+export async function finalizeAuctionInDb(args: {
+  liveId: string;
+  productId: string;
+  winnerId: string | null;
+  winnerName: string | null;
+  finalPrice: number;
+}): Promise<{ ok: boolean; orderId: string | null; autoPaid: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc("finalize_auction_winner", {
+    _live_id: args.liveId,
+    _product_id: args.productId,
+    _winner_id: args.winnerId,
+    _winner_name: args.winnerName,
+    _final_price: args.finalPrice,
+  } as never);
+  if (error) return { ok: false, orderId: null, autoPaid: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; order_id?: string | null; auto_paid?: boolean; error?: string };
+  if (!r.ok) return { ok: false, orderId: null, autoPaid: false, error: r.error };
+  return { ok: true, orderId: r.order_id ?? null, autoPaid: !!r.auto_paid };
+}
+
+/** Opportunistic cleanup — cancels overdue unpaid auction orders. */
+export async function expireOverdueOrders(): Promise<number> {
+  const { data } = await supabase.rpc("expire_overdue_orders", {} as never);
+  const r = (data ?? {}) as { expired?: number };
+  return Number(r.expired ?? 0);
 }
 
 /** Set fixed-price row to active (opens buying). Idempotent. */
