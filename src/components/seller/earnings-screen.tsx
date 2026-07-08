@@ -212,14 +212,23 @@ function TabBtn({
   );
 }
 
+const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: string }> = {
+  awaiting: { bg: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)", key: "orders.fulfillment.awaiting" },
+  shipped:  { bg: "oklch(0.94 0.06 60)",  color: "oklch(0.42 0.14 60)",  key: "orders.fulfillment.shipped" },
+  delivered:{ bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)",  key: "orders.fulfillment.delivered" },
+  disputed: { bg: "oklch(0.94 0.06 27)",  color: "oklch(0.45 0.18 27)",  key: "orders.fulfillment.disputed" },
+};
+
 function SalesList({
   orders,
   buyers,
   fmt,
+  onShip,
 }: {
   orders: OrderRow[];
   buyers: BuyerMap;
   fmt: (n: number, cur?: string) => string;
+  onShip: (orderId: string) => void;
 }) {
   const { t } = useTranslation();
   if (orders.length === 0) {
@@ -229,6 +238,9 @@ function SalesList({
     <ul className="space-y-2">
       {orders.map((o) => {
         const buyer = buyers[o.buyer_id];
+        const isPaid = o.status === "paid";
+        const canShip = isPaid && o.fulfillment_status === "awaiting";
+        const fm = FULFILL_META[o.fulfillment_status];
         return (
           <li key={o.id} className="rounded-2xl border border-border p-3">
             <div className="flex items-center gap-3">
@@ -238,7 +250,17 @@ function SalesList({
                 <div className="h-14 w-14 rounded-xl bg-muted" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-semibold">{o.item_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
+                  {isPaid && (
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{ backgroundColor: fm.bg, color: fm.color }}
+                    >
+                      {t(fm.key)}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
                   {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
@@ -265,6 +287,15 @@ function SalesList({
                 strong
               />
             </div>
+            {canShip && (
+              <Press
+                onClick={() => onShip(o.id)}
+                className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold text-white"
+                style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
+              >
+                <PackageCheck size={14} /> {t("orders.shipCta")}
+              </Press>
+            )}
           </li>
         );
       })}
