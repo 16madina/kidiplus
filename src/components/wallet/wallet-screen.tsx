@@ -84,7 +84,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           </h2>
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-10 text-center">
-              <Sparkles size={22} className="text-muted-foreground" />
+              <Receipt size={22} className="text-muted-foreground" />
               <p className="text-sm font-semibold">{t("wallet.emptyTitle")}</p>
               <p className="max-w-[240px] text-xs text-muted-foreground">
                 {t("wallet.emptyBody")}
