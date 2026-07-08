@@ -106,6 +106,8 @@ export function ActivityScreen() {
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="pt-2"
             >
+              <SuspensionBanner />
+              <AdminMessagesInbox />
               {loading ? (
                 <NotifSkeletons />
               ) : notifs.length === 0 ? (
