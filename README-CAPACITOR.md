@@ -103,3 +103,37 @@ so both http and https on `localhost` are accepted automatically.
 | App shows Safari-style bottom bar | `server.url` is set → WebView loaded a remote origin as a "web app" | Ensure `server.url` is commented out in `capacitor.config.ts`; rebuild + `cap sync` |
 | Stuck on default blue Capacitor splash | JS never boots (missing bundled `dist/`) or API allowlist blocks `capacitor://localhost` startup fetch | Run `node scripts/prepare-native.mjs`, confirm `dist/index.html` exists, then `cap sync`. Verify the origin allowlist includes `capacitor://localhost`. |
 | Tapping an in-app link opens Safari | Target host missing from `server.allowNavigation` | Add the host to the array in `capacitor.config.ts` |
+
+## Android — production build & run (Windows + Android Studio)
+
+```bat
+git pull
+npm install
+node scripts/prepare-native.mjs
+npx cap sync android
+npx cap open android
+```
+
+Then in Android Studio: pick your device (or emulator) → press ▶ Run.
+
+### Debugging a black / stuck screen on Android
+
+The bundled `dist/index.html` is a defensive launcher: it fires a JS
+`location.replace`, a `<meta http-equiv="refresh">` fallback, and a 6-second
+watchdog that surfaces a "Réessayer" button if the WebView is stuck. If you
+still see nothing:
+
+1. Enable USB debugging on the device, plug it in, launch the app.
+2. On the same computer, open Chrome → visit `chrome://inspect/#devices`.
+3. Under "Remote Target", find `com.kidiplus.app` → click **inspect**.
+4. The DevTools that open give you the WebView's console, network, and
+   elements — same as debugging a normal web page.
+
+Look for:
+- `net::ERR_CLEARTEXT_NOT_PERMITTED` → the launcher target is `http://…`.
+  We use `https://kidiplus.lovable.app`, so this shouldn't happen; if it
+  does, check `NATIVE_APP_URL` env when running `prepare-native`.
+- SSL / certificate errors → the device clock is wrong, or a corporate
+  proxy is intercepting HTTPS.
+- CORS / 403 on `/api/*` → the Origin allowlist in `src/lib/api-cors.ts`
+  must include the `localhost` hostname suffix (it does by default).
