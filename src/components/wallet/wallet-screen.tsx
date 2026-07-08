@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   Wallet as WalletIcon,
   Plus,
-  Sparkles,
+  Receipt,
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
