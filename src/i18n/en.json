@@ -285,6 +285,7 @@
       "account": "ACCOUNT",
       "admin": "ADMINISTRATION"
     },
+    "editAvatar": "Change photo",
     "stats": {
       "followers": "Followers",
       "sales": "Sales",
