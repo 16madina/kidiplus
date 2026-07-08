@@ -130,7 +130,15 @@ function BroadcastFlow() {
     <div className="relative h-full w-full overflow-hidden">
       <AnimatePresence mode="wait">
         {stage === "setup" && (
-          <BroadcastSetup key="setup" onExit={() => reset()} />
+          <BroadcastSetup
+            key="setup"
+            onExit={() => {
+              reset();
+              window.dispatchEvent(
+                new CustomEvent("kidi:navigate-tab", { detail: "home" }),
+              );
+            }}
+          />
         )}
         {stage === "live" && (
           <BroadcastLive key="live" onEnd={() => goSummary()} />
