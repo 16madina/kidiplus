@@ -20,6 +20,8 @@ import {
   type OrderRow,
   type OrderStatus,
 } from "@/lib/orders-db";
+import { expireOverdueOrders } from "@/lib/lives-db";
+import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
 import { SuspensionBanner } from "@/components/moderation/moderation-gate";
 
@@ -33,6 +35,7 @@ export function ActivityScreen() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
+  const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
 
   // Notifs still mocked; orders come from the DB.
   useEffect(() => {
@@ -47,6 +50,8 @@ export function ActivityScreen() {
     if (!user) { setOrders([]); return; }
     let alive = true;
     const load = async () => {
+      // Opportunistic cleanup so overdue rows are cancelled before display.
+      await expireOverdueOrders().catch(() => 0);
       const rows = await fetchMyOrders(user.id);
       if (alive) setOrders(rows);
     };
@@ -149,7 +154,13 @@ export function ActivityScreen() {
                 />
               ) : (
                 orders.map((o, i) => (
-                  <OrderCard key={o.id} order={o} index={i} onOpen={() => setOpenOrder(o)} />
+                  <OrderCard
+                    key={o.id}
+                    order={o}
+                    index={i}
+                    onOpen={() => setOpenOrder(o)}
+                    onPay={() => setPayOrder(o)}
+                  />
                 ))
               )}
             </motion.div>
@@ -158,6 +169,11 @@ export function ActivityScreen() {
       </div>
 
       <OrderDetailScreen order={openOrder} onClose={() => setOpenOrder(null)} />
+      <PaymentSheet
+        order={payOrder}
+        onClose={() => setPayOrder(null)}
+        onPaid={() => setPayOrder(null)}
+      />
     </div>
   );
 }
@@ -362,48 +378,86 @@ function statusMeta(s: OrderStatus): { bg: string; color: string; labelKey: stri
   }
 }
 
-function OrderCard({ order, index, onOpen }: { order: OrderRow; index: number; onOpen: () => void }) {
-  const { t } = useTranslation();
+function formatDeadline(iso: string, lang: string): string {
+  return new Date(iso).toLocaleString(lang, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+function hoursLeft(iso: string): number {
+  return (new Date(iso).getTime() - Date.now()) / 3_600_000;
+}
+
+function OrderCard({
+  order, index, onOpen, onPay,
+}: { order: OrderRow; index: number; onOpen: () => void; onPay: () => void }) {
+  const { t, i18n } = useTranslation();
   const meta = statusMeta(order.status);
+  const isAuctionPending =
+    order.status === "pending" && order.kind === "auction" && !!order.payment_deadline;
+  const isTimeoutCancel =
+    order.status === "cancelled" && order.cancelled_reason === "payment_timeout";
+  const hrs = order.payment_deadline ? hoursLeft(order.payment_deadline) : null;
+  const urgent = hrs !== null && hrs > 0 && hrs < 6;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(index, 8) * 0.03 }}
     >
-      <Press
-        onClick={onOpen}
-        className="!block w-full overflow-hidden rounded-2xl p-0 text-left"
+      <div
+        className="overflow-hidden rounded-2xl"
         style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
       >
-        <div className="flex items-center gap-3 p-3">
-          {order.item_image ? (
-            <img
-              src={order.item_image}
-              alt=""
-              className="h-16 w-16 shrink-0 rounded-xl object-cover"
-              draggable={false}
-            />
-          ) : (
-            <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 truncate text-[14px] font-semibold">{order.item_name}</p>
-              <span
-                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                style={{ backgroundColor: meta.bg, color: meta.color }}
-              >
-                {t(meta.labelKey)}
-              </span>
+        <Press onClick={onOpen} className="!block w-full p-0 text-left">
+          <div className="flex items-center gap-3 p-3">
+            {order.item_image ? (
+              <img
+                src={order.item_image}
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 truncate text-[14px] font-semibold">{order.item_name}</p>
+                <span
+                  className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ backgroundColor: meta.bg, color: meta.color }}
+                >
+                  {isTimeoutCancel ? t("orders.status.paymentTimeout") : t(meta.labelKey)}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                {orderDateShort(new Date(order.created_at))}
+              </p>
+              <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
+              {isAuctionPending && order.payment_deadline && (
+                <p
+                  className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{
+                    backgroundColor: urgent ? "oklch(0.94 0.06 27)" : "oklch(0.94 0.05 80)",
+                    color: urgent ? "oklch(0.45 0.18 27)" : "oklch(0.42 0.14 70)",
+                  }}
+                >
+                  {t("orders.payBefore", { date: formatDeadline(order.payment_deadline, i18n.language) })}
+                </p>
+              )}
             </div>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {orderDateShort(new Date(order.created_at))}
-            </p>
-            <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
           </div>
-        </div>
-      </Press>
+        </Press>
+        {isAuctionPending && (
+          <div className="border-t border-border p-2">
+            <Press
+              onClick={onPay}
+              className="!block w-full rounded-xl py-2.5 text-center text-[13px] font-bold text-white"
+              style={{ backgroundColor: "oklch(0.6 0.18 250)" }}
+            >
+              {t("orders.payNow")}
+            </Press>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }

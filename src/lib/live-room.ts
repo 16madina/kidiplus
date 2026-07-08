@@ -61,6 +61,8 @@ export type AuctionEndEvt = {
   winnerId: string | null;
   winnerName: string | null;
   finalPrice: number;
+  orderId?: string | null;
+  autoPaid?: boolean;
 };
 
 export type LiveRoomState = {

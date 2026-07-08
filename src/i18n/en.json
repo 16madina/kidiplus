@@ -446,15 +446,19 @@
     },
     "toasts": {
       "confirmed": "Payment confirmed 🎉"
-    }
+    },
+    "autoPaid": "Paid automatically with your balance ✅"
   },
   "orders": {
     "empty": "No orders yet.",
+    "payBefore": "Pay before {{date}}",
+    "payNow": "Pay now",
     "status": {
       "pending": "Pending",
       "paid": "Paid",
       "failed": "Failed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "paymentTimeout": "Unpaid — cancelled"
     }
   },
   "sales": {
@@ -588,6 +592,7 @@
       "sellerBal": "Seller balance",
       "purchases": "Purchases",
       "sales": "Sales",
+      "unpaidTimeouts": "Unpaid auction wins",
       "joined": "Joined",
       "detail": "User detail",
       "recentOrders": "Recent orders",

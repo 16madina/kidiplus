@@ -446,15 +446,19 @@
     },
     "toasts": {
       "confirmed": "Paiement confirmé 🎉"
-    }
+    },
+    "autoPaid": "Payé automatiquement avec ton solde ✅"
   },
   "orders": {
     "empty": "Aucune commande pour le moment.",
+    "payBefore": "À payer avant {{date}}",
+    "payNow": "Payer maintenant",
     "status": {
       "pending": "En attente",
       "paid": "Payé",
       "failed": "Échoué",
-      "cancelled": "Annulé"
+      "cancelled": "Annulé",
+      "paymentTimeout": "Non payé — annulé"
     }
   },
   "sales": {
@@ -588,6 +592,7 @@
       "sellerBal": "Solde vendeur",
       "purchases": "Achats",
       "sales": "Ventes",
+      "unpaidTimeouts": "Enchères gagnées non payées",
       "joined": "Inscrit",
       "detail": "Détail utilisateur",
       "recentOrders": "Commandes récentes",

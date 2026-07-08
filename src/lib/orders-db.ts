@@ -29,6 +29,8 @@ export type OrderRow = {
   stripe_payment_intent_id: string | null;
   created_at: string;
   paid_at: string | null;
+  payment_deadline: string | null;
+  cancelled_reason: string | null;
 };
 
 export type CreatePendingOrderInput = {
@@ -77,6 +79,11 @@ export async function createPendingOrder(
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? "insert failed" };
   return { ok: true, order: data as OrderRow };
+}
+
+export async function fetchOrderById(orderId: string): Promise<OrderRow | null> {
+  const { data } = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
+  return (data ?? null) as OrderRow | null;
 }
 
 export async function fetchMyOrders(buyerId: string, limit = 50): Promise<OrderRow[]> {
