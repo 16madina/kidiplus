@@ -140,6 +140,25 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
           </Press>
         </motion.div>
 
+        {/* Pending / escrow card */}
+        <div
+          className="mt-2 flex items-center justify-between rounded-2xl border border-border p-3"
+          style={{ backgroundColor: "oklch(0.98 0.02 80)" }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: "oklch(0.94 0.06 80)", color: "oklch(0.42 0.14 70)" }}>
+              <Clock size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-muted-foreground truncate">{t("gains.pending")}</p>
+              <p className="text-[16px] font-bold tabular-nums">{fmt(pending)}</p>
+            </div>
+          </div>
+        </div>
+        <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground">
+          {t("gains.escrowExplainer")}
+        </p>
+
         {/* Tabs */}
         <div className="mt-4 flex gap-1 rounded-full border border-border p-1">
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")}>
@@ -152,7 +171,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-3">
           {tab === "sales" ? (
-            <SalesList orders={orders} buyers={buyers} fmt={fmt} />
+            <SalesList orders={orders} buyers={buyers} fmt={fmt} onShip={onShip} />
           ) : (
             <PayoutsList payouts={payouts} fmt={fmt} tr={t} />
           )}
