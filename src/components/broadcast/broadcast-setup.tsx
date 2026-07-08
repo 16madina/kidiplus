@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Sparkles, Camera, ChevronDown, Check } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -297,11 +297,6 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             ) : (
               <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
                 <ImageIcon size={24} strokeWidth={1.6} />
-                <Sparkles
-                  size={10}
-                  className="absolute right-1.5 top-1.5"
-                  style={{ color: GOLD }}
-                />
               </div>
             )}
           </Press>
