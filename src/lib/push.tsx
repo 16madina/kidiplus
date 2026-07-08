@@ -60,21 +60,30 @@ export function PushProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   // Device token wiring — ready to hand off to a push service later.
+  // Wrapped in try/catch so a missing Firebase config on Android
+  // (no google-services.json / FCM not initialised) can't crash the app.
   useEffect(() => {
     if (!isNative()) return;
     const handles: Array<{ remove: () => void }> = [];
-    PushNotifications.addListener("registration", (t: Token) => {
-      // TODO: forward token to your push backend.
-      console.info("[push] token", t.value);
-    }).then((h) => handles.push(h));
-    PushNotifications.addListener("registrationError", (e) => {
-      console.warn("[push] registration error", e);
-    }).then((h) => handles.push(h));
-    PushNotifications.addListener("pushNotificationReceived", (n) => {
-      if (n.title) toast(n.title, { description: n.body });
-    }).then((h) => handles.push(h));
-    return () => handles.forEach((h) => h.remove());
+    try {
+      PushNotifications.addListener("registration", (t: Token) => {
+        // TODO: forward token to your push backend.
+        console.info("[push] token", t.value);
+      }).then((h) => handles.push(h)).catch((e) => console.warn("[push] listener registration failed", e));
+      PushNotifications.addListener("registrationError", (e) => {
+        console.warn("[push] registration error", e);
+      }).then((h) => handles.push(h)).catch(() => {});
+      PushNotifications.addListener("pushNotificationReceived", (n) => {
+        if (n.title) toast(n.title, { description: n.body });
+      }).then((h) => handles.push(h)).catch(() => {});
+    } catch (e) {
+      console.warn("[push] plugin unavailable", e);
+    }
+    return () => {
+      try { handles.forEach((h) => h.remove()); } catch {}
+    };
   }, []);
+
 
   const doRequest = useCallback(async (): Promise<boolean> => {
     if (!isNative()) {
