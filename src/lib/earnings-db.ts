@@ -34,9 +34,13 @@ export type PayoutRow = {
   destination: Record<string, string>;
   status: PayoutStatus;
   note: string | null;
+  admin_note: string | null;
+  proof_url: string | null;
+  processed_by: string | null;
   requested_at: string;
   processed_at: string | null;
 };
+
 
 // Types file is regenerated after migrations; cast to any for the new tables.
 type AnySb = {
