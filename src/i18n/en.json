@@ -278,8 +278,36 @@
   },
   "profile": {
     "mySales": "My sales",
+    "editProfile": "Edit profile",
+    "signOut": "Sign out",
+    "sections": {
+      "general": "GENERAL",
+      "account": "ACCOUNT",
+      "admin": "ADMINISTRATION"
+    },
+    "stats": {
+      "followers": "Followers",
+      "sales": "Sales",
+      "following": "Following"
+    },
+    "quick": {
+      "recharge": "Top up",
+      "wallet": "Wallet",
+      "earnings": "My earnings",
+      "becomeSeller": "Become seller",
+      "orders": "My orders"
+    },
     "menu": {
-      "wallet": "My wallet"
+      "wallet": "My wallet",
+      "payments": "Payment methods",
+      "purchases": "My orders",
+      "notifications": "Notifications",
+      "settings": "Settings",
+      "help": "Help & support",
+      "account": "Account",
+      "darkMode": "Dark mode",
+      "privacy": "Privacy",
+      "terms": "Terms of use"
     }
   },
   "activity": {

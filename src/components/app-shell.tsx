@@ -140,6 +140,18 @@ function AppShellInner() {
     void import("@/lib/lives-db").then((m) => m.expireOverdueOrders()).catch(() => 0);
   }, []);
 
+  // Cross-screen tab navigation (dispatched via CustomEvent "kidi:navigate-tab").
+  useEffect(() => {
+    const onNav = (e: Event) => {
+      const detail = (e as CustomEvent<TabKey>).detail;
+      if (detail && ["home", "search", "live", "activity", "profile"].includes(detail)) {
+        setActive(detail);
+      }
+    };
+    window.addEventListener("kidi:navigate-tab", onNav);
+    return () => window.removeEventListener("kidi:navigate-tab", onNav);
+  }, []);
+
   // Android hardware back button: close sheets/live viewer first, then minimize.
   useEffect(() => {
     let native = false;

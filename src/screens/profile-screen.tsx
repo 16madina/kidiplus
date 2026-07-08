@@ -1,29 +1,29 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronRight,
-  CreditCard,
   MapPin,
-  ShoppingBag,
   Bell,
   Settings as SettingsIcon,
   HelpCircle,
   Moon,
-  Volume2,
-  BellRing,
   LogOut,
   BadgeCheck,
   Loader2,
   Languages,
-  Check,
   Wallet as WalletIcon,
-  Coins,
   ShieldCheck,
   FileText,
   ShieldAlert,
   UserX,
   Trash2,
   Truck,
+  Coins,
+  Plus,
+  TrendingUp,
+  ShoppingBag,
+  UserPen,
+  Store,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -33,9 +33,9 @@ import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { IOSSwitch } from "@/components/ios-switch";
 import { EASE_IOS } from "@/lib/motion";
-import { usePush } from "@/lib/push";
 import { useSettings } from "@/lib/settings-context";
 import { useAuth } from "@/lib/auth-context";
+import { useWallet } from "@/lib/wallet-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
@@ -47,14 +47,28 @@ import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
+import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
 import type { Lang } from "@/i18n";
 
+/* ============================================================
+   Design tokens for this screen
+   Navy gradient card + gold accent — works in light & dark
+   ============================================================ */
+const NAVY_TOP = "#10162B";
+const NAVY_BOTTOM = "#1C2440";
+const NAVY_INSET = "#182140";
+const GOLD = "#E8B93B";
+
 export function ProfileScreen() {
   const { t } = useTranslation();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, becomeSeller } = useAuth();
+  const { balance, currency } = useWallet();
+  const { lang } = useLanguage();
+  const { dark, setDark } = useSettings();
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
@@ -62,11 +76,14 @@ export function ProfileScreen() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [addressesOpen, setAddressesOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [serverAdmin, setServerAdmin] = useState<boolean | null>(null);
   const fetchAdminStatus = useServerFn(getAdminStatus);
 
@@ -77,14 +94,8 @@ export function ProfileScreen() {
     }
     let alive = true;
     fetchAdminStatus()
-      .then((res) => {
-        if (!alive) return;
-        setServerAdmin(res.isAdmin);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setServerAdmin(false);
-      });
+      .then((res) => { if (alive) setServerAdmin(res.isAdmin); })
+      .catch(() => { if (alive) setServerAdmin(false); });
     return () => { alive = false; };
   }, [profile, fetchAdminStatus]);
 
@@ -95,19 +106,37 @@ export function ProfileScreen() {
 
   const handleSignOut = async () => {
     setSigningOut(true);
-    try {
-      await signOut();
-      haptic.success();
-    } finally {
-      setSigningOut(false);
-    }
+    try { await signOut(); haptic.success(); }
+    finally { setSigningOut(false); }
   };
 
   const initial = (profile?.display_name || "?").slice(0, 1).toUpperCase();
   const soon = t("common.loading");
 
+  const walletCaption = formatMoneyShort(balance, normalizeCurrency(currency), lang);
+
+  const goActivity = () => {
+    haptic.light();
+    window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "activity" }));
+  };
+
+  const handleBecomeSeller = async () => {
+    haptic.light();
+    try {
+      await becomeSeller();
+      toast.success(lang === "fr" ? "Mode vendeur activé" : "Seller mode enabled");
+    } catch (err) {
+      toast.error(String(err));
+    }
+  };
+
+  const currencyLabel =
+    profile?.currency === "XOF" ? "🇨🇮 FCFA (XOF)"
+    : profile?.currency === "CAD" ? "🇨🇦 CAD"
+    : "🇪🇺 EUR";
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background">
       <div
         className="min-h-0 flex-1 overflow-y-auto pt-safe"
         style={{
@@ -116,123 +145,170 @@ export function ProfileScreen() {
           paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
         }}
       >
-        {/* Header */}
-        <div className="px-5 pb-4 pt-4">
-          <div className="flex items-center gap-4">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                className="h-[72px] w-[72px] rounded-full object-cover ring-2 ring-border"
-                draggable={false}
-              />
-            ) : (
-              <div className="grid h-[72px] w-[72px] place-items-center rounded-full bg-muted text-[28px] font-bold text-muted-foreground ring-2 ring-border">
-                {initial}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h1 className="flex items-center gap-1.5 truncate text-[20px] font-bold tracking-tight">
-                {profile?.display_name ?? "…"}
-                {profile?.is_seller && (
-                  <BadgeCheck size={16} color="oklch(0.62 0.2 250)" />
-                )}
-              </h1>
-              <p className="text-[13px] text-muted-foreground">
-                @{profile?.handle ?? "…"}
-              </p>
-              {profile?.country && (
-                <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  {profile.country}
-                </p>
+        {/* ============ HERO CARD ============ */}
+        <div className="relative mx-4 mt-14">
+          {/* Avatar overlapping the card top edge */}
+          <div className="absolute left-1/2 -top-11 z-10 -translate-x-1/2">
+            <div
+              className="grid h-[88px] w-[88px] place-items-center rounded-full"
+              style={{
+                background: GOLD,
+                padding: 3,
+                boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
+              }}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full rounded-full object-cover"
+                  style={{ background: NAVY_TOP }}
+                  draggable={false}
+                />
+              ) : (
+                <div
+                  className="grid h-full w-full place-items-center rounded-full text-[30px] font-bold text-white"
+                  style={{ background: NAVY_TOP }}
+                >
+                  {initial}
+                </div>
               )}
             </div>
           </div>
-          {profile?.bio && (
-            <p className="mt-3 text-[13px] leading-snug text-foreground/90">
-              {profile.bio}
-            </p>
-          )}
-          <Press
-            onClick={() => setEditOpen(true)}
-            className="mt-3 h-10 w-full rounded-full text-[13px] font-semibold"
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: EASE_IOS }}
+            className="rounded-3xl px-5 pb-4 pt-16 text-white"
             style={{
-              backgroundColor: "transparent",
-              color: "var(--foreground)",
-              border: "1.5px solid var(--border)",
+              background: `linear-gradient(155deg, ${NAVY_TOP} 0%, ${NAVY_BOTTOM} 100%)`,
+              boxShadow:
+                "0 12px 30px -12px rgba(16,22,43,0.45), inset 0 1px 0 rgba(255,255,255,0.04)",
             }}
           >
-            {t("profile.editProfile")}
-          </Press>
+            {/* Identity */}
+            <div className="text-center">
+              <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
+                {profile?.display_name ?? "…"}
+                {profile?.is_seller && (
+                  <span
+                    aria-hidden
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ background: GOLD, boxShadow: `0 0 0 3px rgba(232,185,59,0.18)` }}
+                  />
+                )}
+              </h1>
+              <p className="mt-0.5 text-[13px] text-white/70">
+                @{profile?.handle ?? "…"}
+              </p>
+              {profile?.email && (
+                <p className="text-[12px] text-white/50">{profile.email}</p>
+              )}
+            </div>
+
+            {/* Inset panel: stats + quick actions */}
+            <div
+              className="mt-4 rounded-2xl px-3 py-3"
+              style={{
+                background: NAVY_INSET,
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {/* Stats */}
+              <div className="grid grid-cols-3">
+                <HeroStat label={t("profile.stats.followers")} value="—" />
+                <HeroStatDivider />
+                <HeroStat label={t("profile.stats.sales")} value="—" />
+                <HeroStatDivider />
+                <HeroStat label={t("profile.stats.following")} value="—" />
+              </div>
+
+              <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+
+              {/* Quick actions */}
+              <div className="grid grid-cols-4 gap-1">
+                <QuickAction
+                  icon={<Plus size={18} />}
+                  label={t("profile.quick.recharge")}
+                  onClick={() => { haptic.light(); setWalletOpen(true); }}
+                />
+                <QuickAction
+                  icon={<WalletIcon size={18} />}
+                  label={t("profile.quick.wallet")}
+                  caption={walletCaption}
+                  onClick={() => { haptic.light(); setWalletOpen(true); }}
+                />
+                {profile?.is_seller ? (
+                  <QuickAction
+                    icon={<TrendingUp size={18} />}
+                    label={t("profile.quick.earnings")}
+                    onClick={() => { haptic.light(); setSalesOpen(true); }}
+                  />
+                ) : (
+                  <QuickAction
+                    icon={<Store size={18} />}
+                    label={t("profile.quick.becomeSeller")}
+                    onClick={handleBecomeSeller}
+                  />
+                )}
+                <QuickAction
+                  icon={<ShoppingBag size={18} />}
+                  label={t("profile.quick.orders")}
+                  onClick={goActivity}
+                />
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Stats */}
-        <div className="mx-4 mb-5 grid grid-cols-3 rounded-2xl border border-border py-3">
-          <Stat label={t("profile.stats.followers")} value="—" />
-          <StatDivider />
-          <Stat label={t("profile.stats.following")} value="—" />
-          <StatDivider />
-          <Stat label={t("profile.stats.sales")} value="—" />
-        </div>
-
+        {/* ============ GÉNÉRAL ============ */}
+        <SectionHeader label={t("profile.sections.general")} />
         <MenuGroup
-          items={[
-            {
-              icon: <WalletIcon size={16} />,
-              label: t("wallet.title"),
-              tint: "oklch(0.68 0.14 75)",
-              onClick: () => setWalletOpen(true),
-            },
-            { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
-            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
-            { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
-            ...(profile?.is_seller
-              ? [
-                  {
-                    icon: <BadgeCheck size={16} />,
-                    label: t("gains.title"),
-                    tint: "oklch(0.65 0.16 60)",
-                    onClick: () => setSalesOpen(true),
-                  },
-                  {
-                    icon: <Truck size={16} />,
-                    label: t("delivery.title"),
-                    tint: "oklch(0.55 0.13 200)",
-                    onClick: () => setDeliveryOpen(true),
-                  },
-                ]
-              : []),
-            ...(serverAdmin === true
-              ? [{
-                  icon: <ShieldCheck size={16} />,
-                  label: t("admin.title"),
-                  tint: "oklch(0.3 0.06 265)",
-                  onClick: () => setAdminOpen(true),
-                }]
-              : []),
-          ]}
           index={0}
+          items={[
+            { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
+            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
+            ...(profile?.is_seller
+              ? [{ icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) }]
+              : []),
+            { icon: <Languages size={16} />, label: t("settings.language"), tint: "oklch(0.55 0.16 210)", trailing: lang === "fr" ? t("settings.french") : t("settings.english"), onClick: () => setLanguageOpen(true) },
+            { icon: <Coins size={16} />, label: t("settings.currency"), tint: "oklch(0.68 0.14 75)", trailing: currencyLabel, onClick: () => setCurrencyOpen(true) },
+            { icon: <Moon size={16} />, label: t("profile.menu.darkMode"), tint: "oklch(0.35 0.02 285)", toggle: { checked: dark, onChange: setDark } },
+          ]}
         />
 
+        {/* ============ COMPTE ============ */}
+        <SectionHeader label={t("profile.sections.account")} />
         <MenuGroup
+          index={1}
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
+            { icon: <UserX size={16} />, label: t("block.listTitle"), tint: "oklch(0.55 0.12 30)", onClick: () => setBlockedOpen(true) },
+            { icon: <FileText size={16} />, label: t("profile.menu.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
+            { icon: <FileText size={16} />, label: t("profile.menu.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
+            { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
             { icon: <SettingsIcon size={16} />, label: t("profile.menu.settings"), tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
             { icon: <HelpCircle size={16} />, label: t("profile.menu.help"), tint: "oklch(0.55 0.16 300)", onClick: () => toast(soon) },
           ]}
-          index={1}
         />
 
-        <MenuGroup
-          items={[
-            { icon: <FileText size={16} />, label: t("legal.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
-            { icon: <FileText size={16} />, label: t("legal.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
-            { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
-          ]}
-          index={2}
-        />
+        {/* ============ ADMINISTRATION ============ */}
+        {serverAdmin === true && (
+          <>
+            <SectionHeader label={t("profile.sections.admin")} />
+            <MenuGroup
+              index={2}
+              items={[
+                { icon: <ShieldCheck size={16} />, label: t("admin.title"), tint: "oklch(0.3 0.06 265)", onClick: () => setAdminOpen(true) },
+              ]}
+            />
+          </>
+        )}
 
+        {/* ============ Danger ============ */}
         <MenuGroup
+          index={3}
           items={[
             {
               icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
@@ -249,12 +325,12 @@ export function ProfileScreen() {
               onClick: () => setDeleteOpen(true),
             },
           ]}
-          index={3}
         />
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">KiDi+ v1.0.0</p>
       </div>
 
+      {/* Push screens */}
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
       <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
@@ -262,26 +338,81 @@ export function ProfileScreen() {
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
       <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />
       <SellerDeliverySettingsScreen open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
+      <BlockedUsersScreen open={blockedOpen} onClose={() => setBlockedOpen(false)} />
+      <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
       <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
-
-
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/* ================= HERO subcomponents ================= */
+
+function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-[15px] font-bold tabular-nums">{value}</span>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-[16px] font-bold tabular-nums text-white">{value}</span>
+      <span className="mt-0.5 text-[11px] font-medium text-white/60">{label}</span>
     </div>
   );
 }
-function StatDivider() {
-  return <span className="mx-auto h-6 w-px bg-border" aria-hidden />;
+function HeroStatDivider() {
+  return (
+    <span
+      className="mx-auto h-7 w-px"
+      style={{ background: "rgba(255,255,255,0.10)" }}
+      aria-hidden
+    />
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  caption,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  caption?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <Press
+      onClick={onClick}
+      className="!block !min-h-0 !p-0 !bg-transparent"
+    >
+      <div className="flex flex-col items-center gap-1.5 py-1.5">
+        <span
+          className="grid h-11 w-11 place-items-center rounded-full"
+          style={{
+            background: "rgba(232,185,59,0.12)",
+            color: GOLD,
+            border: "1px solid rgba(232,185,59,0.28)",
+          }}
+        >
+          {icon}
+        </span>
+        <span className="text-[11px] font-semibold text-white/90 leading-none">{label}</span>
+        {caption && (
+          <span className="text-[10px] tabular-nums text-white/50 leading-none">{caption}</span>
+        )}
+      </div>
+    </Press>
+  );
+}
+
+/* ================= Sections list ================= */
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <h2 className="mb-2 mt-6 px-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      {label}
+    </h2>
+  );
 }
 
 type MenuItem = {
@@ -290,6 +421,8 @@ type MenuItem = {
   tint: string;
   onClick?: () => void;
   danger?: boolean;
+  trailing?: string;
+  toggle?: { checked: boolean; onChange: (v: boolean) => void };
 };
 
 function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
@@ -297,37 +430,53 @@ function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: EASE_IOS, delay: 0.04 + index * 0.04 }}
+      transition={{ duration: 0.2, ease: EASE_IOS, delay: 0.04 + index * 0.03 }}
       className="mx-4 mb-3 overflow-hidden rounded-2xl border border-border bg-card"
     >
       {items.map((it, i) => (
         <div key={it.label}>
-          <Press
-            onClick={it.onClick}
-            className="!block w-full !min-h-11 p-0 text-left"
-          >
+          {it.toggle ? (
             <div className="flex items-center gap-3 px-3 py-2.5">
-              <span
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white"
-                style={{ backgroundColor: it.tint }}
-              >
-                {it.icon}
-              </span>
-              <span
-                className="flex-1 text-[15px] font-medium"
-                style={{ color: it.danger ? "oklch(0.6 0.24 27)" : "var(--foreground)" }}
-              >
-                {it.label}
-              </span>
-              {!it.danger && <ChevronRight size={16} className="text-muted-foreground" />}
+              <MenuIcon icon={it.icon} tint={it.tint} />
+              <span className="flex-1 text-[15px] font-medium">{it.label}</span>
+              <IOSSwitch
+                checked={it.toggle.checked}
+                onChange={it.toggle.onChange}
+                label={it.label}
+              />
             </div>
-          </Press>
-          {i < items.length - 1 && (
-            <div className="ml-14 h-px bg-border" aria-hidden />
+          ) : (
+            <Press onClick={it.onClick} className="!block w-full !min-h-11 p-0 text-left">
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <MenuIcon icon={it.icon} tint={it.tint} />
+                <span
+                  className="flex-1 text-[15px] font-medium"
+                  style={{ color: it.danger ? "oklch(0.6 0.24 27)" : "var(--foreground)" }}
+                >
+                  {it.label}
+                </span>
+                {it.trailing && (
+                  <span className="text-[13px] text-muted-foreground">{it.trailing}</span>
+                )}
+                {!it.danger && <ChevronRight size={16} className="text-muted-foreground" />}
+              </div>
+            </Press>
           )}
+          {i < items.length - 1 && <div className="ml-14 h-px bg-border" aria-hidden />}
         </div>
       ))}
     </motion.div>
+  );
+}
+
+function MenuIcon({ icon, tint }: { icon: React.ReactNode; tint: string }) {
+  return (
+    <span
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white"
+      style={{ backgroundColor: tint }}
+    >
+      {icon}
+    </span>
   );
 }
 
@@ -335,26 +484,7 @@ function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
 
 function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const { dark, setDark, notif, setNotif, sounds, setSounds } = useSettings();
-  const { status: pushStatus, requestWithPrePrompt, refresh } = usePush();
-  const { lang } = useLanguage();
-  const { profile } = useAuth();
-  const [languageOpen, setLanguageOpen] = useState(false);
-  const [currencyOpen, setCurrencyOpen] = useState(false);
-  const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
-  const [blockedOpen, setBlockedOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const wasOpen = useState(open)[0];
-  if (open && !wasOpen) void refresh();
-
-  const pushGranted = pushStatus === "granted";
-  const pushOn = pushGranted && notif;
-
-  const currencyLabel =
-    profile?.currency === "XOF" ? "🇨🇮 FCFA (XOF)"
-    : profile?.currency === "CAD" ? "🇨🇦 CAD"
-    : "🇪🇺 EUR";
+  const { notif, setNotif, sounds, setSounds } = useSettings();
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("settings.title")} zIndex={65}>
@@ -364,94 +494,28 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
         </h2>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <ToggleRow
-            icon={<BellRing size={16} />}
+            icon={<Bell size={16} />}
             tint="oklch(0.62 0.24 20)"
             label={t("profile.menu.notifications")}
-            checked={pushOn}
-            onChange={async (v) => {
-              setNotif(v);
-              if (v && !pushGranted) {
-                const ok = await requestWithPrePrompt(
-                  t("profile.menu.notifications"),
-                );
-                if (!ok) setNotif(false);
-              }
-            }}
+            checked={notif}
+            onChange={setNotif}
           />
           <Sep />
           <ToggleRow
-            icon={<Volume2 size={16} />}
+            icon={<Bell size={16} />}
             tint="oklch(0.6 0.2 250)"
             label={t("common.notifications")}
             checked={sounds}
             onChange={setSounds}
           />
-          <Sep />
-          <ToggleRow
-            icon={<Moon size={16} />}
-            tint="oklch(0.35 0.02 285)"
-            label={lang === "fr" ? "Mode sombre" : "Dark mode"}
-            checked={dark}
-            onChange={setDark}
-          />
-          <Sep />
-          <NavRow
-            icon={<Languages size={16} />}
-            tint="oklch(0.55 0.16 210)"
-            label={t("settings.language")}
-            value={lang === "fr" ? t("settings.french") : t("settings.english")}
-            onClick={() => setLanguageOpen(true)}
-          />
-          <Sep />
-          <NavRow
-            icon={<Coins size={16} />}
-            tint="oklch(0.68 0.14 75)"
-            label={t("settings.currency")}
-            value={currencyLabel}
-            onClick={() => setCurrencyOpen(true)}
-          />
-        </div>
-
-        {/* Legal */}
-        <h2 className="mb-2 mt-5 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("legal.appLegal")}
-        </h2>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <NavRow icon={<FileText size={16} />} tint="oklch(0.5 0.06 265)" label={t("legal.privacy")}   onClick={() => setLegalOpen("privacy")} />
-          <Sep />
-          <NavRow icon={<FileText size={16} />} tint="oklch(0.5 0.06 265)" label={t("legal.terms")}     onClick={() => setLegalOpen("terms")} />
-          <Sep />
-          <NavRow icon={<ShieldAlert size={16} />} tint="oklch(0.55 0.16 155)" label={t("legal.community")} onClick={() => setLegalOpen("community")} />
-        </div>
-
-        {/* Account */}
-        <h2 className="mb-2 mt-5 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("profile.menu.account") ?? "Account"}
-        </h2>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <NavRow icon={<UserX size={16} />} tint="oklch(0.55 0.12 30)" label={t("block.listTitle")} onClick={() => setBlockedOpen(true)} />
-          <Sep />
-          <NavRow icon={<Trash2 size={16} />} tint="oklch(0.6 0.24 27)" label={t("account.delete.menuItem")} onClick={() => setDeleteOpen(true)} />
         </div>
       </div>
-
-      <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
-      <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
-      <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
-      <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
-      <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
-      <BlockedUsersScreen open={blockedOpen} onClose={() => setBlockedOpen(false)} />
-      <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </PushScreen>
   );
 }
 
 function ToggleRow({
-  icon,
-  tint,
-  label,
-  checked,
-  onChange,
+  icon, tint, label, checked, onChange,
 }: {
   icon: React.ReactNode;
   tint: string;
@@ -461,50 +525,10 @@ function ToggleRow({
 }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
-      <span
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white"
-        style={{ backgroundColor: tint }}
-      >
-        {icon}
-      </span>
+      <MenuIcon icon={icon} tint={tint} />
       <span className="flex-1 text-[15px] font-medium">{label}</span>
       <IOSSwitch checked={checked} onChange={onChange} label={label} />
     </div>
-  );
-}
-
-function NavRow({
-  icon,
-  tint,
-  label,
-  value,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  tint: string;
-  label: string;
-  value?: string;
-  onClick: () => void;
-}) {
-  return (
-    <Press
-      onClick={onClick}
-      className="!block w-full !min-h-11 p-0 text-left"
-    >
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white"
-          style={{ backgroundColor: tint }}
-        >
-          {icon}
-        </span>
-        <span className="flex-1 text-[15px] font-medium">{label}</span>
-        {value && (
-          <span className="text-[13px] text-muted-foreground">{value}</span>
-        )}
-        <ChevronRight size={16} className="text-muted-foreground" />
-      </div>
-    </Press>
   );
 }
 
@@ -528,43 +552,22 @@ function LanguageSheet({ open, onClose }: { open: boolean; onClose: () => void }
     <PushScreen open={open} onClose={onClose} title={t("settings.chooseLanguage")} zIndex={70}>
       <div className="px-4 py-4">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <LangRow
-            label={t("settings.french")}
-            active={lang === "fr"}
-            onClick={() => void choose("fr")}
-          />
+          <LangRow label={t("settings.french")}  active={lang === "fr"} onClick={() => void choose("fr")} />
           <Sep />
-          <LangRow
-            label={t("settings.english")}
-            active={lang === "en"}
-            onClick={() => void choose("en")}
-          />
+          <LangRow label={t("settings.english")} active={lang === "en"} onClick={() => void choose("en")} />
         </div>
-        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
-          {t("settings.languageSubtitle")}
-        </p>
+        <p className="mt-3 px-2 text-[12px] text-muted-foreground">{t("settings.languageSubtitle")}</p>
       </div>
     </PushScreen>
   );
 }
 
-function LangRow({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function LangRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <Press
-      onClick={onClick}
-      className="!block w-full !min-h-11 p-0 text-left"
-    >
+    <Press onClick={onClick} className="!block w-full !min-h-11 p-0 text-left">
       <div className="flex items-center gap-3 px-3 py-3">
         <span className="flex-1 text-[15px] font-medium">{label}</span>
-        {active && <Check size={18} color="var(--primary)" strokeWidth={2.4} />}
+        {active && <BadgeCheck size={18} color="var(--primary)" />}
       </div>
     </Press>
   );
@@ -582,17 +585,10 @@ function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }
     haptic.light();
     try {
       await updateProfile({ currency: c });
-      // Try to bring the wallet currency along; DB trigger rejects if balance > 0.
       const { supabase } = await import("@/integrations/supabase/client");
-      const { error } = await supabase
-        .from("wallets")
-        .update({ currency: c })
-        .eq("user_id", profile!.id);
-      if (error) {
-        toast.message(t("settings.currencyWalletLocked"));
-      } else {
-        toast.success(t("settings.currencyUpdated"));
-      }
+      const { error } = await supabase.from("wallets").update({ currency: c }).eq("user_id", profile!.id);
+      if (error) toast.message(t("settings.currencyWalletLocked"));
+      else toast.success(t("settings.currencyUpdated"));
       await refreshProfile();
     } catch (err) {
       toast.error(String(err));
@@ -617,9 +613,7 @@ function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }
             </div>
           ))}
         </div>
-        <p className="mt-3 px-2 text-[12px] text-muted-foreground">
-          {t("settings.currencyHint")}
-        </p>
+        <p className="mt-3 px-2 text-[12px] text-muted-foreground">{t("settings.currencyHint")}</p>
       </div>
     </PushScreen>
   );

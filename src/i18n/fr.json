@@ -278,8 +278,36 @@
   },
   "profile": {
     "mySales": "Mes ventes",
+    "editProfile": "Modifier le profil",
+    "signOut": "Se déconnecter",
+    "sections": {
+      "general": "GÉNÉRAL",
+      "account": "COMPTE",
+      "admin": "ADMINISTRATION"
+    },
+    "stats": {
+      "followers": "Abonnés",
+      "sales": "Ventes",
+      "following": "Abonnements"
+    },
+    "quick": {
+      "recharge": "Recharger",
+      "wallet": "Portefeuille",
+      "earnings": "Mes gains",
+      "becomeSeller": "Devenir vendeur",
+      "orders": "Mes commandes"
+    },
     "menu": {
-      "wallet": "Mon portefeuille"
+      "wallet": "Mon portefeuille",
+      "payments": "Moyens de paiement",
+      "purchases": "Mes commandes",
+      "notifications": "Notifications",
+      "settings": "Paramètres",
+      "help": "Aide & support",
+      "account": "Compte",
+      "darkMode": "Mode sombre",
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation"
     }
   },
   "activity": {
