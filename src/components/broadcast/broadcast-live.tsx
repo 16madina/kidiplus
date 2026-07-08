@@ -24,7 +24,7 @@ import { useLiveRoom } from "@/lib/live-room";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
-  startAuctionInDb, endAuctionInDb, activateFixedInDb, stopFixedInDb,
+  startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
   createLiveProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
