@@ -217,6 +217,20 @@ export function RealLiveViewerScreen() {
         const prod = room.products.find((p) => p.id === evt.productId);
         if (prod) {
           void (async () => {
+            const dr = await resolveDeliveryForCheckout({
+              sellerId: active.sellerId!,
+              buyerId: user.id,
+            });
+            if (!dr.ok) {
+              // Auction can't auto-resolve — surface a toast; buyer must
+              // set a default address / a matching zone before paying.
+              const msg =
+                dr.reason === "no_address"
+                  ? t("delivery.noAddressBlock")
+                  : t("delivery.zoneMismatch");
+              toast.error(msg);
+              return;
+            }
             const res = await createPendingOrder({
               buyerId: user.id,
               sellerId: active.sellerId!,
@@ -227,6 +241,11 @@ export function RealLiveViewerScreen() {
               itemImage: prod.image_url,
               amount: evt.finalPrice,
               currency: liveCurrency,
+              deliveryFee: dr.delivery.deliveryFee,
+              deliveryMode: dr.delivery.deliveryMode,
+              deliveryZone: dr.delivery.deliveryZone,
+              addressId: dr.delivery.addressId,
+              addressSnapshot: dr.delivery.addressSnapshot,
             });
             if (res.ok) setPendingOrder(res.order);
             else toast.error(res.error);
