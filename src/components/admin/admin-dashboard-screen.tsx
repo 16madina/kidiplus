@@ -793,11 +793,8 @@ function LivesTab() {
   const [rows, setRows] = useState<AdminLiveRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
-    void fetchAdminLives().then((r) => { if (alive) { setRows(r); setLoading(false); } });
-    return () => { alive = false; };
-  }, []);
+  const load = async () => { setRows(await fetchAdminLives()); setLoading(false); };
+  useEffect(() => { void load(); }, []);
 
   if (loading) return <Skeleton />;
   if (rows.length === 0) return <p className="py-16 text-center text-[13px] text-muted-foreground">{t("admin.lives.empty")}</p>;
@@ -823,6 +820,9 @@ function LivesTab() {
                 <span>{t("admin.lives.gmv")}: <b className="text-foreground tabular-nums">{formatMoney(Number(l.gmv), normalizeCurrency(l.currency), i18n.language)}</b></span>
                 <span>#{l.orders_count}</span>
               </div>
+              {l.status === "live" && (
+                <EndLiveButton liveId={l.id} onEnded={() => void load()} />
+              )}
             </div>
           </div>
         </li>
@@ -830,3 +830,4 @@ function LivesTab() {
     </ul>
   );
 }
+
