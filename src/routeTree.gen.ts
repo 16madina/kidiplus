@@ -21,6 +21,7 @@ import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhoo
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
+import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
@@ -85,6 +86,12 @@ const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiWalletTopupRoute,
 } as any)
+const ApiPublicNotificationsFanoutRoute =
+  ApiPublicNotificationsFanoutRouteImport.update({
+    id: '/api/public/notifications-fanout',
+    path: '/api/public/notifications-fanout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesByTo {
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRoutesById {
@@ -151,6 +160,7 @@ export interface FileRoutesById {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
 export interface FileRouteTypes {
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
   id:
     | '__root__'
@@ -204,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
   fileRoutesById: FileRoutesById
 }
@@ -221,6 +234,7 @@ export interface RootRouteChildren {
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
+  ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -309,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
       parentRoute: typeof ApiWalletTopupRoute
     }
+    '/api/public/notifications-fanout': {
+      id: '/api/public/notifications-fanout'
+      path: '/api/public/notifications-fanout'
+      fullPath: '/api/public/notifications-fanout'
+      preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/checkout/confirm': {
       id: '/api/checkout/confirm'
       path: '/confirm'
@@ -371,6 +392,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
+  ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

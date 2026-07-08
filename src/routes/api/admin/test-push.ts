@@ -30,7 +30,12 @@ export const Route = createFileRoute("/api/admin/test-push")({
           if (!isAdmin) return new Response("Forbidden", { status: 403 });
         }
 
-        let body: { email?: string; title?: string; body?: string } = {};
+        let body: {
+          email?: string;
+          title?: string;
+          body?: string;
+          data?: Record<string, string>;
+        } = {};
         try { body = await request.json(); } catch {}
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -50,7 +55,7 @@ export const Route = createFileRoute("/api/admin/test-push")({
               title: body.title ?? "KiDi+",
               body: body.body ?? "Notification test 👋",
             },
-            data: { kind: "test" },
+            data: { kind: "test", ...(body.data ?? {}) },
           });
           return Response.json({ targetUserId, ...result });
         } catch (e) {

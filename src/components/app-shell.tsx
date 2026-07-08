@@ -18,6 +18,8 @@ import {
   SellerProfileProvider,
   useSellerProfile,
 } from "@/lib/seller-profile-context";
+import { PUSH_OPEN_EVENT, type PushOpenPayload } from "@/lib/push-router";
+import { fetchLiveById } from "@/lib/lives-db";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
 import { PushDeniedBanner } from "@/components/push-denied-banner";
@@ -129,8 +131,8 @@ function AuthGate() {
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
-  const { active: liveStream, close: closeLive } = useLiveViewer();
-  const { activeSeller, close: closeSeller } = useSellerProfile();
+  const { active: liveStream, close: closeLive, open: openLive } = useLiveViewer();
+  const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
@@ -151,6 +153,48 @@ function AppShellInner() {
     window.addEventListener("kidi:navigate-tab", onNav);
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
   }, []);
+
+
+
+
+  // Deep-link router: reacts to push taps + in-app notification taps.
+  useEffect(() => {
+    const onOpen = async (e: Event) => {
+      const p = (e as CustomEvent<PushOpenPayload>).detail;
+      if (!p) return;
+      const kind = String(p.kind ?? "notif");
+      if (kind === "live" || kind === "chat") {
+        if (p.live_id) {
+          const stream = await fetchLiveById(p.live_id).catch(() => null);
+          if (stream) { openLive(stream); return; }
+        }
+        setActive("live");
+        return;
+      }
+      if (kind === "order") {
+        setActive("activity");
+        // Give the tab a tick to mount, then ask activity to open the detail.
+        if (p.order_id) {
+          setTimeout(() => {
+            try {
+              window.dispatchEvent(new CustomEvent("kidi:open-order", { detail: { order_id: p.order_id } }));
+            } catch {}
+          }, 60);
+        }
+        return;
+      }
+      if (kind === "seller") {
+        if (p.seller_handle) { openSeller(p.seller_handle); return; }
+        setActive("profile");
+        return;
+      }
+      // Fallback → activity tab.
+      setActive("activity");
+    };
+    window.addEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
+  }, [openLive, openSeller]);
+
 
   // Android hardware back button: close sheets/live viewer first, then minimize.
   useEffect(() => {
