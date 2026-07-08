@@ -22,6 +22,7 @@ import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 
 const TermsRoute = TermsRouteImport.update({
@@ -89,6 +90,11 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiAdminTestPushRoute = ApiAdminTestPushRouteImport.update({
+  id: '/api/admin/test-push',
+  path: '/api/admin/test-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
   id: '/api/account/delete',
   path: '/api/account/delete',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/api/account/delete'
+    | '/api/admin/test-push'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/api/account/delete'
+    | '/api/admin/test-push'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/api/account/delete'
+    | '/api/admin/test-push'
     | '/api/checkout/confirm'
     | '/api/wallet-topup/confirm'
   fileRoutesById: FileRoutesById
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
+  ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
     }
+    '/api/admin/test-push': {
+      id: '/api/admin/test-push'
+      path: '/api/admin/test-push'
+      fullPath: '/api/admin/test-push'
+      preLoaderRoute: typeof ApiAdminTestPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/account/delete': {
       id: '/api/account/delete'
       path: '/api/account/delete'
@@ -350,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
+  ApiAdminTestPushRoute: ApiAdminTestPushRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
