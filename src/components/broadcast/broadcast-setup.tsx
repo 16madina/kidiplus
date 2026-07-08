@@ -32,9 +32,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
 
-  // Full-screen immersive flow: hide the app's bottom tab bar the whole time
-  // the setup screen is mounted so the "Lancer le live" CTA is never covered.
-  useImmersiveScope(true);
+  // Full-screen immersive flow: hide the app's bottom tab bar while the setup
+  // screen is on-screen. Gated by TabVisibility so it doesn't stay pushed when
+  // the Live tab is mounted-but-hidden behind another tab.
+  const tabVisible = useContext(TabVisibilityContext);
+  useImmersiveScope(tabVisible);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const urlTrackerRef = useRef(createObjectUrlTracker());
