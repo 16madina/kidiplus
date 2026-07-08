@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2 } from "lucide-react";
+import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -209,24 +209,26 @@ export function GoLiveEntryScreen({
         >
           <X size={22} />
         </Press>
-        <Logo size={32} />
+        <div className="flex-1 grid place-items-center">
+          <Logo size={56} />
+        </div>
         <div className="h-11 w-11" />
       </div>
 
-      <div className="px-5 pt-4">
-        <h1 className="text-[26px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
+      <div className="px-5 pt-6 text-center">
+        <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct ✨")}
         </h1>
-        <p className="mt-1 text-[13px] leading-snug text-white/70">
+        <p className="mt-2 text-[14px] leading-snug text-white/70">
           {t("golive.entry.subtitle", "Commence maintenant ou programme un live pour ta communauté.")}
         </p>
       </div>
 
       {/* Choice cards */}
-      <div className="flex flex-col gap-3 px-5 pt-6">
+      <div className="grid grid-cols-2 gap-3 px-5 pt-6">
         <ChoiceCard
-          icon={<Radio size={26} color={GOLD} />}
-          title={t("golive.entry.startNow", "🔴 Commencer un live")}
+          icon={<Radio size={38} color={GOLD} />}
+          title={t("golive.entry.startNow", "Commencer\nun live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
             haptic.medium();
@@ -237,8 +239,8 @@ export function GoLiveEntryScreen({
           }}
         />
         <ChoiceCard
-          icon={<CalendarIcon size={26} color={GOLD} />}
-          title={t("golive.entry.schedule", "📅 Programmer un live")}
+          icon={<CalendarIcon size={38} color={GOLD} />}
+          title={t("golive.entry.schedule", "Programmer\nun live")}
           subtitle={t("golive.entry.scheduleSub", "Annonce ton live à l'avance et prépare tes articles")}
           onPress={() => {
             haptic.medium();
@@ -253,15 +255,29 @@ export function GoLiveEntryScreen({
       {/* Scheduled list */}
       <div className="px-5 pt-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-bold text-white">
+          <h2 className="flex items-center gap-2 text-[15px] font-bold text-white">
+            <Sparkles size={14} color={GOLD} />
             {t("golive.entry.myScheduled", "Mes lives programmés")}
           </h2>
           {loadingList && <Loader2 size={16} className="animate-spin text-white/60" />}
         </div>
         {!loadingList && scheduled.length === 0 && (
-          <p className="mt-3 text-[13px] text-white/50">
-            {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
-          </p>
+          <div
+            className="mt-3 grid place-items-center rounded-2xl px-6 py-10 text-center"
+            style={{
+              border: `1.5px dashed ${GOLD_DIM}`,
+              backgroundColor: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div className="relative mb-3">
+              <CalendarIcon size={54} color={GOLD} strokeWidth={1.5} style={{ opacity: 0.55 }} />
+              <Sparkles size={12} color={GOLD} className="absolute -left-3 -top-1" style={{ opacity: 0.7 }} />
+              <Sparkles size={10} color={GOLD} className="absolute -right-3 top-2" style={{ opacity: 0.6 }} />
+            </div>
+            <p className="text-[13px] text-white/55">
+              {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
+            </p>
+          </div>
         )}
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
@@ -414,28 +430,35 @@ function ChoiceCard({
   return (
     <Press
       onClick={onPress}
-      className="!min-h-24 flex w-full items-center gap-4 rounded-3xl p-4 text-left"
+      className="flex h-full min-h-[280px] w-full flex-col items-center justify-start gap-4 rounded-3xl p-5 text-center"
       style={{
-        backgroundColor: "rgba(255,255,255,0.05)",
+        backgroundColor: "rgba(255,255,255,0.04)",
         border: `1px solid ${GOLD_DIM}`,
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
       }}
     >
       <div
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
+        className="mt-2 grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
         style={{
-          background: "linear-gradient(135deg, rgba(255,215,140,0.18), rgba(255,215,140,0.05))",
+          background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
           border: `1px solid ${GOLD_DIM}`,
         }}
       >
         {icon}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[16px] font-bold text-white" style={{ letterSpacing: "-0.01em" }}>
+      <div className="min-w-0">
+        <div
+          className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
+          style={{ letterSpacing: "-0.01em" }}
+        >
           {title}
         </div>
-        <div className="mt-0.5 text-[12.5px] leading-snug text-white/60">{subtitle}</div>
       </div>
+      <div
+        className="h-px w-16"
+        style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
+      />
+      <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
     </Press>
   );
 }
