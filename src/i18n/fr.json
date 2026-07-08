@@ -481,7 +481,28 @@
       "failed": "Échoué",
       "cancelled": "Annulé",
       "paymentTimeout": "Non payé — annulé"
-    }
+    },
+    "fulfillment": {
+      "awaiting": "À expédier",
+      "shipped": "Expédié",
+      "delivered": "Livré",
+      "disputed": "Litige"
+    },
+    "confirmDelivery": "Confirmer la réception ✅",
+    "reportProblem": "Signaler un problème",
+    "shipCta": "Marquer expédié 📦",
+    "shipped": "Marqué comme expédié",
+    "delivered": "Merci ! Le vendeur a reçu ses fonds",
+    "disputeOpened": "Litige ouvert — un modérateur va s'en occuper",
+    "disputeTitle": "Signaler un problème",
+    "disputeBody": "Explique ce qui ne va pas. Un modérateur reviendra vers vous.",
+    "disputeReason": "Motif",
+    "disputeReasons": {
+      "counterfeit": "Produit contrefait ou non conforme",
+      "fraud": "Fraude ou tentative d'arnaque",
+      "other": "Autre problème"
+    },
+    "disputeSubmit": "Ouvrir le litige"
   },
   "sales": {
     "title": "Mes ventes",
@@ -520,6 +541,8 @@
   "gains": {
     "title": "Mes gains",
     "available": "Solde disponible",
+    "pending": "En attente de livraison",
+    "escrowExplainer": "Les gains sont libérés à la confirmation de livraison (auto après 7 jours).",
     "withdraw": "Retirer mes gains",
     "price": "Prix",
     "net": "Net",
