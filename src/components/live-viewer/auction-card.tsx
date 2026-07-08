@@ -135,10 +135,11 @@ export function AuctionCard({
             <div
               className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums"
               style={{
-                backgroundColor: urgent
-                  ? "oklch(0.6 0.24 25 / 0.95)"
+                background: urgent
+                  ? "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.7 0.16 75))"
                   : "rgba(255,255,255,0.12)",
-                color: "white",
+                color: urgent ? "#10162B" : "white",
+                boxShadow: urgent ? "0 0 18px oklch(0.78 0.14 85 / 0.55)" : "none",
               }}
             >
               <motion.span
@@ -205,6 +206,14 @@ export function AuctionCard({
                 </Press>
               )}
             </div>
+            {auctionActive && urgent && secondsLeft > 0 && (
+              <div
+                className="mt-1.5 text-center text-[10.5px] font-semibold"
+                style={{ color: "oklch(0.82 0.14 85)" }}
+              >
+                {t("auction.suddenDeath.hint", "Toute enchère relance le chrono ⚡")}
+              </div>
+            )}
             {customPanel}
           </>
         ) : (

@@ -60,9 +60,17 @@ export type AuctionEndEvt = {
   productId: string;
   winnerId: string | null;
   winnerName: string | null;
+  winnerAvatarUrl?: string | null;
   finalPrice: number;
   orderId?: string | null;
   autoPaid?: boolean;
+};
+
+export type AuctionExtendEvt = {
+  productId: string;
+  deadlineMs: number;
+  /** Client-side timestamp so viewers can dedupe / flash once. */
+  ts: number;
 };
 
 export type LiveRoomState = {
@@ -74,11 +82,13 @@ export type LiveRoomState = {
   liveStatus: "live" | "ended" | null;
   auctionStart: AuctionStartEvt | null;
   lastAuctionEnd: AuctionEndEvt | null;
+  lastExtension: AuctionExtendEvt | null;
   lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
+  broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
   systemMessage: (text: string) => void;
 };
 
@@ -115,6 +125,7 @@ export function useLiveRoom(params: {
   const [liveStatus, setLiveStatus] = useState<"live" | "ended" | null>(null);
   const [auctionStart, setAuctionStart] = useState<AuctionStartEvt | null>(null);
   const [lastAuctionEnd, setLastAuctionEnd] = useState<AuctionEndEvt | null>(null);
+  const [lastExtension, setLastExtension] = useState<AuctionExtendEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -241,6 +252,13 @@ export function useLiveRoom(params: {
       setLastAuctionEnd(evt);
       setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
     });
+    ch.on("broadcast", { event: "auction:extend" }, ({ payload }) => {
+      const evt = payload as AuctionExtendEvt;
+      setAuctionStart((cur) =>
+        cur && cur.productId === evt.productId ? { ...cur, deadlineMs: evt.deadlineMs } : cur,
+      );
+      setLastExtension(evt);
+    });
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
@@ -284,6 +302,7 @@ export function useLiveRoom(params: {
       liveStatus,
       auctionStart,
       lastAuctionEnd,
+      lastExtension,
       lastBid,
       sendChat: (text: string) => {
         const trimmed = text.trim();
@@ -311,13 +330,21 @@ export function useLiveRoom(params: {
         setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
         void channelRef.current?.send({ type: "broadcast", event: "auction:end", payload: evt });
       },
+      broadcastAuctionExtend: (evt) => {
+        const full: AuctionExtendEvt = { ...evt, ts: Date.now() };
+        setAuctionStart((cur) =>
+          cur && cur.productId === full.productId ? { ...cur, deadlineMs: full.deadlineMs } : cur,
+        );
+        setLastExtension(full);
+        void channelRef.current?.send({ type: "broadcast", event: "auction:extend", payload: full });
+      },
       systemMessage: (text: string) => {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
         setChat((prev) => [...prev, evt].slice(-80));
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastBid,
+      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid,
       identity, displayName,
     ],
   );

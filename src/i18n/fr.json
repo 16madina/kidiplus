@@ -815,5 +815,15 @@
       "priceChanged": "Le prix a changé — nouvelle enchère min : {{amount}}",
       "aboveCap": "Max {{amount}}"
     }
+  },
+  "auction": {
+    "suddenDeath": {
+      "flash": "⚡ Mort subite — enchère prolongée !",
+      "hint": "Toute enchère relance le chrono ⚡"
+    },
+    "winner": {
+      "you": "Tu as gagné !",
+      "other": "{{name}} a gagné !"
+    }
   }
 }

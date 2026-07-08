@@ -28,6 +28,11 @@ import {
   createLiveProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { AUCTION_EXTENSION_WINDOW_SECONDS, AUCTION_EXTENSION_RESET_SECONDS } from "@/lib/fees";
+import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
+import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
@@ -158,6 +163,23 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     prevSecRef.current = timeLeft;
   }, [timeLeft, activeAuction]);
 
+  // Helper — resolve the winner's avatar URL so all viewers can render it in
+  // the reveal animation. Best-effort: falls back to null on any failure.
+  const resolveWinnerAvatar = useCallback(async (winnerId: string | null): Promise<string | null> => {
+    if (!winnerId) return null;
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", winnerId)
+        .maybeSingle();
+      if (!data?.avatar_url) return null;
+      return (await resolveAvatarUrl(data.avatar_url)) ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Auto-end when time hits zero (host is authoritative).
   const endingRef = useRef<string | null>(null);
   useEffect(() => {
@@ -171,17 +193,57 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const finalPrice = activeProduct.price;
     const productId = activeAuction.productId;
     void (async () => {
-      const res = await finalizeAuctionInDb({
-        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-      });
+      const [res, winnerAvatarUrl] = await Promise.all([
+        finalizeAuctionInDb({
+          liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+        }),
+        resolveWinnerAvatar(winnerId),
+      ]);
       room.broadcastAuctionEnd({
-        productId, winnerId, winnerName, finalPrice,
+        productId, winnerId, winnerName, winnerAvatarUrl, finalPrice,
         orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
       });
     })();
-  }, [timeLeft, activeAuction, activeProduct, room, b.liveId]);
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
 
-  // React to auction:end (from ourselves too) — flash + confetti + system msg.
+  // ---- Sudden-death / anti-snipe extension ----
+  // Whenever a new realtime bid lands on the active auction with less than
+  // AUCTION_EXTENSION_WINDOW seconds remaining, extend the deadline to
+  // AUCTION_EXTENSION_RESET seconds from now — for everyone, in sync.
+  // Extensions chain indefinitely while bids keep coming.
+  const seenExtendBidRef = useRef<number | null>(null);
+  useEffect(() => {
+    const bid = room.lastBid;
+    if (!bid) return;
+    if (seenExtendBidRef.current === bid.ts) return;
+    seenExtendBidRef.current = bid.ts;
+    if (!activeAuction || bid.productId !== activeAuction.productId) return;
+    const msLeft = activeAuction.deadlineMs - Date.now();
+    if (msLeft <= 0) return;
+    if (msLeft > AUCTION_EXTENSION_WINDOW_SECONDS * 1000) return;
+    const newDeadline = Date.now() + AUCTION_EXTENSION_RESET_SECONDS * 1000;
+    // Only extend if the new deadline is actually later.
+    if (newDeadline <= activeAuction.deadlineMs) return;
+    room.broadcastAuctionExtend({ productId: activeAuction.productId, deadlineMs: newDeadline });
+  }, [room.lastBid, activeAuction, room]);
+
+  // Sudden-death flash for everyone (host sees it too).
+  const [suddenDeathTick, setSuddenDeathTick] = useState(0);
+  const seenExtRef = useRef<number | null>(null);
+  useEffect(() => {
+    const ext = room.lastExtension;
+    if (!ext || seenExtRef.current === ext.ts) return;
+    seenExtRef.current = ext.ts;
+    setSuddenDeathTick((n) => n + 1);
+    haptic.warning();
+  }, [room.lastExtension]);
+
+  // React to auction:end (from ourselves too) — flash + confetti + system msg + reveal.
+  const [winnerReveal, setWinnerReveal] = useState<{
+    key: number;
+    name: string | null;
+    avatar: string | null;
+  } | null>(null);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
     const evt = room.lastAuctionEnd;
@@ -197,6 +259,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setConfettiTrigger((n) => n + 1);
     haptic.success();
     room.systemMessage(label + (prod ? ` — ${prod.name}` : ""));
+    if (evt.winnerName) {
+      setWinnerReveal({
+        key: Date.now(),
+        name: evt.winnerName,
+        avatar: evt.winnerAvatarUrl ?? null,
+      });
+    }
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
   }, [room.lastAuctionEnd, room.products, t, room]);
@@ -212,6 +281,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
   }, [room.lastBid, room.products]);
+
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
   const seenSoldOutRef = useRef<Set<string>>(new Set());
@@ -297,11 +367,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
     const productId = activeAuction.productId;
-    const res = await finalizeAuctionInDb({
-      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-    });
+    const [res, winnerAvatarUrl] = await Promise.all([
+      finalizeAuctionInDb({
+        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+      }),
+      resolveWinnerAvatar(winnerId),
+    ]);
     room.broadcastAuctionEnd({
-      productId, winnerId, winnerName, finalPrice,
+      productId, winnerId, winnerName, winnerAvatarUrl, finalPrice,
       orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
     });
   };
@@ -546,6 +619,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
+      <WinnerReveal
+        open={!!winnerReveal}
+        winnerName={winnerReveal?.name ?? null}
+        winnerAvatarUrl={winnerReveal?.avatar ?? null}
+        isMe={false}
+        onDone={() => setWinnerReveal(null)}
+      />
+      <SuddenDeathFlash tick={suddenDeathTick} />
       <LiveChat messages={chatMessages} />
 
       {/* Sale flash */}
