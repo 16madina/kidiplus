@@ -592,6 +592,7 @@
       "sellerBal": "Solde vendeur",
       "purchases": "Achats",
       "sales": "Ventes",
+      "unpaidTimeouts": "Enchères gagnées non payées",
       "joined": "Inscrit",
       "detail": "Détail utilisateur",
       "recentOrders": "Commandes récentes",
