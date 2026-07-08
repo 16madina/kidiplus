@@ -94,9 +94,9 @@ export function BottomTabBar({
             // Mask: everything visible EXCEPT a 36px-radius circle centered
             // horizontally at the top edge — that's the notch.
             WebkitMaskImage:
-              "radial-gradient(circle 28px at 50% 8px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 30px at 50% 10px, transparent 98%, #000 100%)",
             maskImage:
-              "radial-gradient(circle 28px at 50% 8px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 30px at 50% 10px, transparent 98%, #000 100%)",
           }}
         >
           <ul className="grid h-full grid-cols-[1fr_1fr_88px_1fr_1fr] items-stretch px-2">
@@ -115,21 +115,21 @@ export function BottomTabBar({
             onClick={() => onChange("live")}
             className="pointer-events-auto relative flex h-auto w-auto flex-col items-center bg-transparent p-0 outline-none"
           >
-            <span className="relative block h-14 w-14">
+            <span className="relative block h-[60px] w-[60px]">
               {/* Soft gold glow behind the badge */}
               <span
                 aria-hidden
                 className="absolute inset-1 rounded-2xl"
                 style={{
                   boxShadow:
-                    "0 8px 20px rgba(232,185,59,0.40), 0 3px 8px rgba(0,0,0,0.25)",
+                    "0 9px 22px rgba(232,185,59,0.42), 0 3px 8px rgba(0,0,0,0.25)",
                 }}
               />
               <img
                 src={kidiLiveBadge.url}
                 alt=""
-                width={56}
-                height={56}
+                width={60}
+                height={60}
                 data-loaded="true"
                 className="relative block h-full w-full object-contain"
                 draggable={false}
