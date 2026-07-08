@@ -60,6 +60,19 @@
     "activity": "Activity",
     "profile": "Profile"
   },
+  "categories": {
+    "beauty": "Beauty",
+    "fashion": "Fashion",
+    "bagsAccessories": "Bags & accessories",
+    "perfumes": "Perfumes",
+    "jewelry": "Jewelry",
+    "watches": "Watches",
+    "electronics": "Electronics",
+    "games": "Video games",
+    "sneakers": "Sneakers",
+    "home": "Home",
+    "bundles": "Bundles & clearance"
+  },
   "home": {
     "categories": {
       "forYou": "For you",
