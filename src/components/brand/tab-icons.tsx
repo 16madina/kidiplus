@@ -1,9 +1,10 @@
 // Custom brand icons for the bottom tab bar.
-// Hand-crafted 24×24 SVGs with a consistent 1.8 stroke, rounded caps/joins,
-// and a subtle gold "+" spark echoing the KiDi+ logo.
-// Each icon exposes an `active` prop that swaps between outline and filled
-// variants. Colors are driven by CSS custom properties so the icons stay
-// theme-aware (var(--accent) for active, currentColor for inactive).
+//
+// Redesign: cleaner geometry, consistent 24×24 grid, 1.6 stroke, rounded
+// caps/joins. Each icon has an outline (inactive) and a filled (active)
+// variant that swap with a subtle spring. A small gold "+" spark in the
+// top-right corner is the shared KiDi+ signature — kept discreet so the
+// silhouette reads first.
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -13,7 +14,7 @@ type IconProps = {
   className?: string;
 };
 
-const STROKE = 1.8;
+const STROKE = 1.6;
 
 function Svg({
   children,
@@ -42,16 +43,15 @@ function Svg({
   );
 }
 
-// Tiny gold spark "+" that sits in the top-right corner of every icon.
-// It's the shared signature detail.
-function GoldPlus({ cx = 19, cy = 5, r = 1.6 }: { cx?: number; cy?: number; r?: number }) {
+// Signature gold "+" spark — subtle, top-right.
+function GoldPlus({ cx = 19.5, cy = 4.5, r = 1.4 }: { cx?: number; cy?: number; r?: number }) {
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r + 1} fill="var(--accent)" opacity={0.18} stroke="none" />
+      <circle cx={cx} cy={cy} r={r + 1.2} fill="var(--accent)" opacity={0.14} stroke="none" />
       <path
         d={`M${cx - r} ${cy} L${cx + r} ${cy} M${cx} ${cy - r} L${cx} ${cy + r}`}
         stroke="var(--accent)"
-        strokeWidth={1.4}
+        strokeWidth={1.5}
         strokeLinecap="round"
       />
     </g>
@@ -73,10 +73,10 @@ function IconWrap({
         {active ? (
           <motion.div
             key="f"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            initial={{ opacity: 0, scale: 0.85, y: 1 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 500, damping: 28 }}
             className="absolute inset-0"
           >
             {filled}
@@ -87,7 +87,7 @@ function IconWrap({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: 0.14, ease: [0.32, 0.72, 0, 1] }}
             className="absolute inset-0"
           >
             {outline}
@@ -98,30 +98,19 @@ function IconWrap({
   );
 }
 
-/* ---------- Accueil — rounded storefront/stage ---------- */
+/* ---------- Accueil — squircle house with soft roof ---------- */
 export function HomeIcon({ active = false }: IconProps) {
   const outline = (
     <Svg>
-      {/* Awning arc */}
-      <path d="M4 8 Q12 3 20 8" />
-      {/* Awning scallops */}
-      <path d="M4 8 Q6 10.5 8 8 Q10 10.5 12 8 Q14 10.5 16 8 Q18 10.5 20 8" />
-      {/* Storefront body */}
-      <path d="M5 8.5 V19 Q5 20 6 20 H18 Q19 20 19 19 V8.5" />
-      {/* Door */}
-      <path d="M10 20 V14 Q10 13 11 13 H13 Q14 13 14 14 V20" />
+      <path d="M4 11 L12 4.5 L20 11 V18.5 Q20 20 18.5 20 H5.5 Q4 20 4 18.5 Z" />
+      <path d="M9.5 20 V14.5 Q9.5 13.5 10.5 13.5 H13.5 Q14.5 13.5 14.5 14.5 V20" />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
       <path
-        d="M4 8 Q12 3 20 8 L20 8.5 Q18 10.8 16 8.3 Q14 10.8 12 8.3 Q10 10.8 8 8.3 Q6 10.8 4 8.5 Z"
-        fill="var(--accent)"
-        stroke="var(--accent)"
-      />
-      <path
-        d="M5 9 V19 Q5 20 6 20 H10 V14 Q10 13 11 13 H13 Q14 13 14 14 V20 H18 Q19 20 19 19 V9 Q17 11 15 9 Q13 11 11 9 Q9 11 7 9 Q6 10 5 9 Z"
+        d="M4 11 L12 4.5 L20 11 V18.5 Q20 20 18.5 20 H14.5 V14.5 Q14.5 13.5 13.5 13.5 H10.5 Q9.5 13.5 9.5 14.5 V20 H5.5 Q4 20 4 18.5 Z"
         fill="var(--accent)"
         stroke="var(--accent)"
       />
@@ -131,24 +120,22 @@ export function HomeIcon({ active = false }: IconProps) {
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Explorer — compass/sparkle-search hybrid ---------- */
+/* ---------- Explorer — magnifier + spark ---------- */
 export function ExploreIcon({ active = false }: IconProps) {
   const outline = (
     <Svg>
-      <circle cx="11" cy="11" r="7" />
-      {/* Compass needle as 4-point star */}
-      <path d="M11 7 L12.3 10.3 L11 11 L9.7 10.3 Z" fill="currentColor" stroke="none" />
-      <path d="M11 15 L9.7 11.7 L11 11 L12.3 11.7 Z" fill="currentColor" opacity={0.5} stroke="none" />
-      {/* Tiny sparkle */}
-      <path d="M15.5 8.5 L16 7 L16.5 8.5 L18 9 L16.5 9.5 L16 11 L15.5 9.5 L14 9 Z" opacity={0.5} />
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M15.8 15.8 L20 20" />
+      <path d="M11 8 L11.8 10.2 L14 11 L11.8 11.8 L11 14 L10.2 11.8 L8 11 L10.2 10.2 Z" opacity={0.7} />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
-      <circle cx="11" cy="11" r="7" fill="var(--accent)" stroke="var(--accent)" />
+      <circle cx="11" cy="11" r="6.5" fill="var(--accent)" stroke="var(--accent)" />
+      <path d="M15.8 15.8 L20 20" stroke="var(--accent)" strokeWidth={2.2} />
       <path
-        d="M11 6.5 L12.6 10.4 L11 11 L9.4 10.4 Z M11 15.5 L9.4 11.6 L11 11 L12.6 11.6 Z"
+        d="M11 7.5 L11.9 10.1 L14.5 11 L11.9 11.9 L11 14.5 L10.1 11.9 L7.5 11 L10.1 10.1 Z"
         fill="var(--primary-foreground)"
         stroke="none"
       />
@@ -158,54 +145,47 @@ export function ExploreIcon({ active = false }: IconProps) {
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Activité — bell with motion wave ---------- */
+/* ---------- Activité — bell ---------- */
 export function BellIcon({ active = false }: IconProps) {
   const outline = (
     <Svg>
-      <path d="M6.5 16 Q6 16 6 15.5 Q7.5 14 7.5 12 V10 Q7.5 6.5 11 6.5 Q14.5 6.5 14.5 10 V12 Q14.5 14 16 15.5 Q16 16 15.5 16 Z" />
-      <path d="M9.5 18.5 Q10 20 11 20 Q12 20 12.5 18.5" />
-      {/* Motion wave */}
-      <path d="M17.5 10 Q18.5 11.5 17.5 13" opacity={0.6} />
+      <path d="M6 16.5 Q5.5 16.5 5.5 16 Q7 14.5 7 12.5 V10.5 Q7 6.5 11 6.5 Q15 6.5 15 10.5 V12.5 Q15 14.5 16.5 16 Q16.5 16.5 16 16.5 Z" />
+      <path d="M11 4.5 V6.5" />
+      <path d="M9.5 19 Q10 20.5 11 20.5 Q12 20.5 12.5 19" />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
       <path
-        d="M6.5 16 Q6 16 6 15.5 Q7.5 14 7.5 12 V10 Q7.5 6.5 11 6.5 Q14.5 6.5 14.5 10 V12 Q14.5 14 16 15.5 Q16 16 15.5 16 Z"
+        d="M6 16.5 Q5.5 16.5 5.5 16 Q7 14.5 7 12.5 V10.5 Q7 6.5 11 6.5 Q15 6.5 15 10.5 V12.5 Q15 14.5 16.5 16 Q16.5 16.5 16 16.5 Z"
         fill="var(--accent)"
         stroke="var(--accent)"
       />
-      <path d="M9.5 18.5 Q10 20 11 20 Q12 20 12.5 18.5" stroke="var(--accent)" />
-      <path d="M17.5 10 Q18.5 11.5 17.5 13" stroke="var(--accent)" opacity={0.7} />
+      <path d="M11 4.5 V6.5" stroke="var(--accent)" />
+      <path d="M9.5 19 Q10 20.5 11 20.5 Q12 20.5 12.5 19" stroke="var(--accent)" />
       <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Profil — person in squircle (echoes logo silhouette) ---------- */
+/* ---------- Profil — clean person silhouette ---------- */
 export function PersonIcon({ active = false }: IconProps) {
   const outline = (
     <Svg>
-      <path d="M4.5 8 Q4.5 4.5 8 4.5 H14 Q17.5 4.5 17.5 8 V14 Q17.5 17.5 14 17.5 H8 Q4.5 17.5 4.5 14 Z" />
-      <circle cx="11" cy="10" r="2.4" />
-      <path d="M6.5 16 Q7.5 13 11 13 Q14.5 13 15.5 16" />
+      <circle cx="11" cy="8.5" r="3.2" />
+      <path d="M4.5 19 Q4.5 13.8 11 13.8 Q17.5 13.8 17.5 19" />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
+      <circle cx="11" cy="8.5" r="3.2" fill="var(--accent)" stroke="var(--accent)" />
       <path
-        d="M4.5 8 Q4.5 4.5 8 4.5 H14 Q17.5 4.5 17.5 8 V14 Q17.5 17.5 14 17.5 H8 Q4.5 17.5 4.5 14 Z"
+        d="M4.5 19.2 Q4.5 13.6 11 13.6 Q17.5 13.6 17.5 19.2 Z"
         fill="var(--accent)"
         stroke="var(--accent)"
-      />
-      <circle cx="11" cy="10" r="2.4" fill="var(--primary-foreground)" stroke="none" />
-      <path
-        d="M6.8 16.5 Q7.8 13.2 11 13.2 Q14.2 13.2 15.2 16.5 Z"
-        fill="var(--primary-foreground)"
-        stroke="none"
       />
       <GoldPlus />
     </Svg>
@@ -213,7 +193,7 @@ export function PersonIcon({ active = false }: IconProps) {
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Go Live — broadcast/signal (used INSIDE the raised gold button) ---------- */
+/* ---------- Go Live — broadcast waves (used INSIDE the raised gold button) ---------- */
 export function BroadcastIcon({ size = 26 }: { size?: number }) {
   return (
     <svg
@@ -222,16 +202,16 @@ export function BroadcastIcon({ size = 26 }: { size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.1}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
-      <path d="M8.5 8.5 Q7 12 8.5 15.5" />
-      <path d="M15.5 8.5 Q17 12 15.5 15.5" />
-      <path d="M6 6 Q3.5 12 6 18" opacity={0.7} />
-      <path d="M18 6 Q20.5 12 18 18" opacity={0.7} />
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" />
+      <path d="M8.8 8.8 Q7 12 8.8 15.2" />
+      <path d="M15.2 8.8 Q17 12 15.2 15.2" />
+      <path d="M6 6.5 Q3.5 12 6 17.5" opacity={0.55} />
+      <path d="M18 6.5 Q20.5 12 18 17.5" opacity={0.55} />
     </svg>
   );
 }
