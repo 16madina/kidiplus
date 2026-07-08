@@ -557,7 +557,13 @@
       "overview": "Vue d'ensemble",
       "users": "Utilisateurs",
       "payments": "Paiements",
-      "lives": "Lives"
+      "lives": "Lives",
+      "reports": "Signalements"
+    },
+    "toDo": {
+      "title": "À traiter",
+      "reports": "Signalements ouverts",
+      "payouts": "Retraits en attente"
     },
     "kpi": {
       "gmv": "GMV",
