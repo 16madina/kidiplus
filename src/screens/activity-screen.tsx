@@ -74,6 +74,22 @@ export function ActivityScreen() {
     return () => { alive = false; unsub(); };
   }, [user]);
 
+  // Listen for deep-link requests to open a specific order (from push tap).
+  useEffect(() => {
+    const onOpen = async (e: Event) => {
+      const detail = (e as CustomEvent<{ order_id?: string }>).detail;
+      const id = detail?.order_id;
+      if (!id) return;
+      setTab("orders");
+      const local = orders.find((o) => o.id === id);
+      if (local) { setOpenOrder(local); return; }
+      const fetched = await fetchOrderById(id).catch(() => null);
+      if (fetched) setOpenOrder(fetched);
+    };
+    window.addEventListener("kidi:open-order", onOpen as EventListener);
+    return () => window.removeEventListener("kidi:open-order", onOpen as EventListener);
+  }, [orders]);
+
   const removeNotif = (id: string) => {
     // Soft-hide locally (no destructive server delete — mark read).
     setNotifs((prev) => prev.filter((n) => n.id !== id));
@@ -84,10 +100,16 @@ export function ActivityScreen() {
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)));
     void markNotificationRead(id);
   };
+  const openNotif = (n: NotificationRow) => {
+    markRead(n.id);
+    // Route based on notification kind + payload.
+    openFromPush(payloadFromNotificationRow(n));
+  };
   const markAll = () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
     void markAllNotificationsRead();
   };
+
 
 
   return (
