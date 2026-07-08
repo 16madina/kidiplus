@@ -7,7 +7,11 @@ import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
-import { CATEGORIES } from "@/lib/live-mock";
+import {
+  BROADCAST_CATEGORY_KEYS,
+  BROADCAST_CATEGORY_LABEL_KEY,
+  BROADCAST_CATEGORY_FR_FALLBACK,
+} from "@/lib/broadcast-categories";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
@@ -18,6 +22,7 @@ import {
   uploadLiveImage,
 } from "@/lib/lives-db";
 import { formatMoney } from "@/lib/money";
+import { useImmersiveScope } from "@/lib/immersive-context";
 
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
@@ -25,6 +30,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
+  const [previewRetryKey, setPreviewRetryKey] = useState(0);
+
+  // Full-screen immersive flow: hide the app's bottom tab bar the whole time
+  // the setup screen is mounted so the "Lancer le live" CTA is never covered.
+  useImmersiveScope(true);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const urlTrackerRef = useRef(createObjectUrlTracker());
