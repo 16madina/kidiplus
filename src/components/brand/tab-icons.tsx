@@ -1,10 +1,10 @@
 // Custom brand icons for the bottom tab bar.
 //
-// Redesign: cleaner geometry, consistent 24×24 grid, 1.6 stroke, rounded
-// caps/joins. Each icon has an outline (inactive) and a filled (active)
-// variant that swap with a subtle spring. A small gold "+" spark in the
-// top-right corner is the shared KiDi+ signature — kept discreet so the
-// silhouette reads first.
+// Reproduces the reference set: an arched doorway (Accueil), a compass rose
+// (Explorer), a wrapped gift box (Activité) and a portrait badge (Profil).
+// Each icon has an outline (inactive) and a filled (active) variant that swap
+// with a subtle spring. A small gold "+" spark in the top-right corner is the
+// shared KiDi+ signature — kept discreet so the silhouette reads first.
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -98,94 +98,113 @@ function IconWrap({
   );
 }
 
-/* ---------- Accueil — squircle house with soft roof ---------- */
+/* ---------- Accueil — arched doorway (rounded arch + inner frame) ---------- */
 export function HomeIcon({ active = false }: IconProps) {
+  // Outer arch: half-circle top on a rectangle base.
+  // Inner arch: same silhouette, inset — reads as a door within a frame.
+  const outerArch =
+    "M5 20 V11 A7 7 0 0 1 19 11 V20 Z";
+  const innerArch =
+    "M8 20 V11.5 A4 4 0 0 1 16 11.5 V20";
   const outline = (
     <Svg>
-      <path d="M4 11 L12 4.5 L20 11 V18.5 Q20 20 18.5 20 H5.5 Q4 20 4 18.5 Z" />
-      <path d="M9.5 20 V14.5 Q9.5 13.5 10.5 13.5 H13.5 Q14.5 13.5 14.5 14.5 V20" />
+      <path d={outerArch} />
+      <path d={innerArch} />
+      {/* Door knob */}
+      <circle cx="14" cy="15.5" r="0.6" fill="currentColor" stroke="none" />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
-      <path
-        d="M4 11 L12 4.5 L20 11 V18.5 Q20 20 18.5 20 H14.5 V14.5 Q14.5 13.5 13.5 13.5 H10.5 Q9.5 13.5 9.5 14.5 V20 H5.5 Q4 20 4 18.5 Z"
-        fill="var(--accent)"
-        stroke="var(--accent)"
-      />
+      <path d={outerArch} fill="var(--accent)" stroke="var(--accent)" />
+      <path d={innerArch} fill="var(--background)" stroke="var(--accent)" />
+      <circle cx="14" cy="15.5" r="0.7" fill="var(--accent)" stroke="none" />
       <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Explorer — magnifier + spark ---------- */
+/* ---------- Explorer — compass rose (circle + 4-point star) ---------- */
 export function ExploreIcon({ active = false }: IconProps) {
+  // 4-point rhombus star centered in the dial.
+  const star = "M12 5.5 L13.6 12 L12 18.5 L10.4 12 Z M5.5 12 L12 10.4 L18.5 12 L12 13.6 Z";
   const outline = (
     <Svg>
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="M15.8 15.8 L20 20" />
-      <path d="M11 8 L11.8 10.2 L14 11 L11.8 11.8 L11 14 L10.2 11.8 L8 11 L10.2 10.2 Z" opacity={0.7} />
+      <circle cx="12" cy="12" r="7.5" />
+      {/* Cardinal ticks */}
+      <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" />
+      <path d={star} />
+      <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
-      <circle cx="11" cy="11" r="6.5" fill="var(--accent)" stroke="var(--accent)" />
-      <path d="M15.8 15.8 L20 20" stroke="var(--accent)" strokeWidth={2.2} />
-      <path
-        d="M11 7.5 L11.9 10.1 L14.5 11 L11.9 11.9 L11 14.5 L10.1 11.9 L7.5 11 L10.1 10.1 Z"
-        fill="var(--primary-foreground)"
-        stroke="none"
-      />
+      <circle cx="12" cy="12" r="7.5" fill="var(--accent)" stroke="var(--accent)" />
+      <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" stroke="var(--accent)" />
+      <path d={star} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.8} />
+      <circle cx="12" cy="12" r="0.9" fill="var(--accent)" stroke="none" />
       <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Activité — bell ---------- */
+/* ---------- Activité — wrapped gift box with bow ---------- */
+// Kept the BellIcon export name so existing imports (bottom-tab-bar) keep working.
 export function BellIcon({ active = false }: IconProps) {
+  // Box body + lid + vertical ribbon + bow loops on top.
+  const body = "M4.5 11 H19.5 V19 Q19.5 20 18.5 20 H5.5 Q4.5 20 4.5 19 Z";
+  const lid = "M3.8 8.5 H20.2 Q20.5 8.5 20.5 8.8 V10.7 Q20.5 11 20.2 11 H3.8 Q3.5 11 3.5 10.7 V8.8 Q3.5 8.5 3.8 8.5 Z";
+  const ribbon = "M12 8.5 V20";
+  // Two bow loops meeting at the ribbon top.
+  const bow =
+    "M12 8.5 C11 7 8.5 6.2 8 7.2 C7.5 8.2 9.5 8.5 12 8.5 Z M12 8.5 C13 7 15.5 6.2 16 7.2 C16.5 8.2 14.5 8.5 12 8.5 Z";
   const outline = (
     <Svg>
-      <path d="M6 16.5 Q5.5 16.5 5.5 16 Q7 14.5 7 12.5 V10.5 Q7 6.5 11 6.5 Q15 6.5 15 10.5 V12.5 Q15 14.5 16.5 16 Q16.5 16.5 16 16.5 Z" />
-      <path d="M11 4.5 V6.5" />
-      <path d="M9.5 19 Q10 20.5 11 20.5 Q12 20.5 12.5 19" />
+      <path d={body} />
+      <path d={lid} />
+      <path d={ribbon} />
+      <path d={bow} />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
-      <path
-        d="M6 16.5 Q5.5 16.5 5.5 16 Q7 14.5 7 12.5 V10.5 Q7 6.5 11 6.5 Q15 6.5 15 10.5 V12.5 Q15 14.5 16.5 16 Q16.5 16.5 16 16.5 Z"
-        fill="var(--accent)"
-        stroke="var(--accent)"
-      />
-      <path d="M11 4.5 V6.5" stroke="var(--accent)" />
-      <path d="M9.5 19 Q10 20.5 11 20.5 Q12 20.5 12.5 19" stroke="var(--accent)" />
+      <path d={body} fill="var(--accent)" stroke="var(--accent)" />
+      <path d={lid} fill="var(--accent)" stroke="var(--accent)" />
+      <path d={ribbon} stroke="var(--primary-foreground)" strokeWidth={1.4} />
+      <path d={bow} fill="var(--accent)" stroke="var(--accent)" />
       <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Profil — clean person silhouette ---------- */
+/* ---------- Profil — portrait badge (circle medallion + bust silhouette) ---------- */
 export function PersonIcon({ active = false }: IconProps) {
+  // Outer medallion circle + bust (head + shoulders clipped by the medallion).
+  const head = "M12 10.6 m -2.6 0 a 2.6 2.6 0 1 0 5.2 0 a 2.6 2.6 0 1 0 -5.2 0";
+  const shoulders = "M6.5 18.5 Q7.5 14.2 12 14.2 Q16.5 14.2 17.5 18.5";
   const outline = (
     <Svg>
-      <circle cx="11" cy="8.5" r="3.2" />
-      <path d="M4.5 19 Q4.5 13.8 11 13.8 Q17.5 13.8 17.5 19" />
+      <circle cx="12" cy="12" r="8" />
+      <path d={head} />
+      <path d={shoulders} />
       <GoldPlus />
     </Svg>
   );
   const filled = (
     <Svg>
-      <circle cx="11" cy="8.5" r="3.2" fill="var(--accent)" stroke="var(--accent)" />
+      <circle cx="12" cy="12" r="8" fill="var(--accent)" stroke="var(--accent)" />
+      {/* Bust silhouette in dark navy on the gold medallion */}
+      <path d={head} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" />
       <path
-        d="M4.5 19.2 Q4.5 13.6 11 13.6 Q17.5 13.6 17.5 19.2 Z"
-        fill="var(--accent)"
-        stroke="var(--accent)"
+        d="M5.5 19 Q6.8 14 12 14 Q17.2 14 18.5 19 Z"
+        fill="var(--primary-foreground)"
+        stroke="var(--primary-foreground)"
       />
       <GoldPlus />
     </Svg>
