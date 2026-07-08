@@ -187,14 +187,14 @@ export function GoLiveEntryScreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: EASE_IOS }}
-      className="relative h-full w-full overflow-y-auto"
+      className="relative flex h-full w-full flex-col overflow-hidden"
       style={{
         background: `radial-gradient(120% 80% at 50% 0%, ${NAVY_A} 0%, ${NAVY_B} 60%, #000 100%)`,
       }}
     >
-      {/* Top bar */}
+      {/* Top bar — fixed, non-scrolling */}
       <div
-        className="sticky top-0 z-30 flex items-center justify-between px-3"
+        className="relative z-30 flex shrink-0 items-center justify-between px-3"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 8px)",
           paddingBottom: 8,
