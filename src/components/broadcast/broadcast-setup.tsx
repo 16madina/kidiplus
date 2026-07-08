@@ -74,19 +74,9 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     haptic.selection();
   };
 
-  const isSchedule = b.mode === "schedule" || b.mode === "edit";
-  const scheduleValid = !isSchedule || (b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000);
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
+  const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
   const [launching, setLaunching] = useState(false);
 
-  // Datetime picker bounds — now+15min to now+30d, formatted for datetime-local.
-  const toLocalInput = (d: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
-  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
 
   const uploadProducts = async () =>
     Promise.all(
