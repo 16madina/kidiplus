@@ -60,6 +60,7 @@ export function AppShell() {
             <WalletProvider>
               <SellerProfileProvider>
                 <LiveViewerProvider>
+                  <PushDeniedBanner />
                   <AuthGate />
                   <AnimatePresence>
                     {!splashDone && (
