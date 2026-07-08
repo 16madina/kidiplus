@@ -181,7 +181,12 @@ export function EditProfileScreen({
             aria-label="Changer la photo"
           >
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              <img
+                src={avatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              />
             ) : (
               <div className="grid h-full w-full place-items-center bg-muted text-[28px] font-bold text-muted-foreground">
                 {(displayName || "?").slice(0, 1).toUpperCase()}
