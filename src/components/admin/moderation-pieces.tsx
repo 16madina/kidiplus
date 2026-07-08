@@ -18,6 +18,7 @@ import {
   type ReportRow,
   type SanctionRow,
 } from "@/lib/moderation-admin";
+import { adminReleaseEscrow, adminRefundOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
 import { SanctionSheet } from "./sanction-sheet";
 
 // -------- Reports Tab --------
@@ -36,6 +37,7 @@ export function ReportsTab({
 
   const load = async () => {
     setLoading(true);
+    await releaseOverdueEscrow().catch(() => null);
     setRows(await fetchAdminReports(status));
     setLoading(false);
   };
