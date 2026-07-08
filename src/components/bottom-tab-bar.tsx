@@ -108,14 +108,14 @@ export function BottomTabBar({
         </div>
 
         {/* Raised center action — sits above the pill, aligned to the notch */}
-        <div className="pointer-events-none absolute inset-x-0 -top-4 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 -top-5 z-10 flex justify-center">
           <Press
             aria-label={t("tabs.live")}
             onClick={() => onChange("live")}
-            className="pointer-events-auto relative h-16 w-16 overflow-visible rounded-2xl"
+            className="pointer-events-auto relative h-[72px] w-[72px] overflow-visible rounded-2xl"
             style={{
               filter:
-                "drop-shadow(0 12px 22px rgba(232,185,59,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.25))",
+                "drop-shadow(0 10px 20px rgba(232,185,59,0.45)) drop-shadow(0 4px 8px rgba(0,0,0,0.28))",
             }}
           >
             <img
