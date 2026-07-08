@@ -1,9 +1,10 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Sparkles, Camera } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
+import { Logo } from "@/components/brand/logo";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
@@ -26,8 +27,10 @@ import {
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
+
+const GOLD = "oklch(0.82 0.14 85)";
+const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
 
 
 
@@ -71,19 +74,9 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     haptic.selection();
   };
 
-  const isSchedule = b.mode === "schedule" || b.mode === "edit";
-  const scheduleValid = !isSchedule || (b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000);
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
+  const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
   const [launching, setLaunching] = useState(false);
 
-  // Datetime picker bounds — now+15min to now+30d, formatted for datetime-local.
-  const toLocalInput = (d: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
-  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
 
   const uploadProducts = async () =>
     Promise.all(
@@ -196,14 +189,18 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   return (
     <motion.div
       key="setup"
-
       initial={{ opacity: 0, scale: 1.02 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.3, ease: EASE_IOS }}
-      className="relative h-full w-full overflow-hidden bg-black"
+      className="relative h-full w-full overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 55%, #05060a 100%)",
+      }}
     >
-      {b.mode === "now" ? (
+      {/* Camera preview area (top half) */}
+      <div className="absolute inset-x-0 top-0 h-[52%] overflow-hidden">
         <BroadcastVideo
           key={previewRetryKey}
           facing={facing}
@@ -211,75 +208,73 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           fallbackImage={b.cover}
           onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
         />
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 60%, #000 100%)",
-          }}
-        />
-      )}
+      </div>
 
-
-      {/* Top bar */}
+      {/* Top bar — X · KIDI+ · Refresh */}
       <div
-        className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-3 pt-safe"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 2px)" }}
+        className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
         <Press
           onClick={onExit}
           aria-label={t("common.close")}
-          className="!min-h-11 !min-w-11 rounded-full text-white"
+          className="!min-h-11 !min-w-11 h-11 w-11 rounded-full p-0 text-white"
           style={{
-            backgroundColor: "rgba(0,0,0,0.4)",
+            backgroundColor: "rgba(10,12,20,0.55)",
+            border: `1px solid ${GOLD_SOFT}`,
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
           }}
         >
-          <X size={22} />
+          <X size={20} />
         </Press>
-        {b.mode === "now" ? (
-          <Press
-            onClick={() => {
-              haptic.selection();
-              setFacing((f) => (f === "user" ? "environment" : "user"));
-            }}
-            aria-label={t("broadcast.live.flipCam")}
-            className="!min-h-11 !min-w-11 rounded-full text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.4)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <RefreshCw size={20} />
-          </Press>
-        ) : (
-          <div className="text-[13px] font-bold text-white/80">
-            {b.mode === "edit"
-              ? t("schedule.editingTitle", "Modifier le live")
-              : t("schedule.planningTitle", "Programmer un live")}
-          </div>
-        )}
+        <Logo size={72} variant="wordmark" />
+        <Press
+          onClick={() => {
+            haptic.selection();
+            setFacing((f) => (f === "user" ? "environment" : "user"));
+            setPreviewRetryKey((k) => k + 1);
+          }}
+          aria-label={t("broadcast.live.flipCam")}
+          className="!min-h-11 !min-w-11 h-11 w-11 rounded-full p-0"
+          style={{
+            backgroundColor: "rgba(10,12,20,0.55)",
+            border: `1px solid ${GOLD_SOFT}`,
+            color: GOLD,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <RefreshCw size={18} />
+        </Press>
       </div>
 
-
-      {/* Form overlay */}
+      {/* Bottom sheet */}
       <div
-        className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-8 pb-safe"
+        className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-3"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
           background:
-            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.85) 100%)",
+            "linear-gradient(to bottom, oklch(0.13 0.035 260 / 0.92) 0%, oklch(0.10 0.03 260) 25%, #05060a 100%)",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          borderTop: `1px solid ${GOLD_SOFT}`,
+          boxShadow: "0 -20px 50px rgba(0,0,0,0.55)",
         }}
       >
-        {/* Cover + title row */}
+        {/* drag handle */}
+        <div className="mx-auto mb-1 h-1 w-10 rounded-full" style={{ background: GOLD_SOFT }} />
+
+        {/* Cover + title */}
         <div className="flex items-start gap-3">
           <Press
             onClick={pickCover}
-            className="!min-h-16 h-16 w-16 shrink-0 overflow-hidden rounded-xl p-0"
-            style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+            className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
+            style={{
+              backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
+              border: `1.5px solid ${GOLD}`,
+              boxShadow: `0 0 16px ${GOLD_SOFT}`,
+            }}
             aria-label={t("broadcast.setup.addCover")}
           >
             {b.cover ? (
@@ -293,25 +288,27 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="grid h-full w-full place-items-center text-white/80">
-                <ImageIcon size={22} />
+              <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
+                <ImageIcon size={24} strokeWidth={1.6} />
+                <Sparkles
+                  size={10}
+                  className="absolute right-1.5 top-1.5"
+                  style={{ color: GOLD }}
+                />
               </div>
             )}
           </Press>
           <input
             value={b.title}
             onChange={(e) => b.setTitle(e.target.value)}
-            placeholder={t("broadcast.setup.titlePlaceholder")}
+            placeholder={t("broadcast.setup.titlePlaceholder", "Titre du live...")}
             maxLength={80}
-            className="h-16 flex-1 rounded-xl px-3 text-[15px] font-medium text-white placeholder:text-white/60 outline-none"
+            className="h-16 flex-1 rounded-2xl px-4 text-[15px] font-medium text-white placeholder:text-white/50 outline-none"
             style={{
-              backgroundColor: "rgba(255,255,255,0.14)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
+              backgroundColor: "oklch(0.16 0.04 260 / 0.7)",
+              border: `1px solid ${GOLD_SOFT}`,
             }}
           />
-          {/* Hidden native file input — click() is dispatched from pickCover
-              inside a genuine user gesture so the OS dialog opens. */}
           <input
             ref={coverInputRef}
             type="file"
@@ -320,7 +317,6 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             onChange={onCoverFile}
           />
         </div>
-
 
         {/* Category pills */}
         <div
@@ -340,10 +336,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   haptic.selection();
                   b.setCategory(c);
                 }}
-                className="!min-h-9 shrink-0 rounded-full px-3.5 text-[12px] font-semibold"
+                className="!min-h-9 h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold"
                 style={{
-                  color: active ? "black" : "white",
-                  backgroundColor: active ? "white" : "rgba(255,255,255,0.16)",
+                  color: active ? "#0a0a12" : "white",
+                  background: active
+                    ? `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`
+                    : "transparent",
+                  border: active ? "none" : `1px solid ${GOLD_SOFT}`,
+                  boxShadow: active ? `0 6px 18px ${GOLD_SOFT}` : "none",
                 }}
               >
                 {label}
@@ -352,11 +352,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           })}
         </div>
 
-        {/* Products row */}
+        {/* Products */}
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-white/80">
-              {t("broadcast.setup.products")} ({b.products.length})
+          <div className="mb-2">
+            <span className="text-[14px] font-bold text-white">
+              {t("broadcast.setup.products", "Produits")} ({b.products.length})
             </span>
           </div>
           <motion.div
@@ -369,103 +369,59 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               <motion.div
                 key={p.id}
                 variants={listItem}
-                className="relative flex w-24 shrink-0 flex-col gap-1"
+                className="relative flex w-20 shrink-0 flex-col gap-1"
               >
-                <div className="relative h-24 w-24 overflow-hidden rounded-xl">
+                <div
+                  className="relative h-20 w-20 overflow-hidden rounded-2xl"
+                  style={{ border: `1px solid ${GOLD_SOFT}` }}
+                >
                   <img src={p.image} alt="" className="h-full w-full object-cover" />
-                  <span
-                    className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white"
-                    style={{
-                      backgroundColor:
-                        p.mode === "auction"
-                          ? "oklch(0.62 0.24 20)"
-                          : "oklch(0.55 0.18 260)",
-                    }}
-                  >
-                    {p.mode === "auction"
-                      ? t("broadcast.setup.productSheet.auction").toUpperCase()
-                      : t("broadcast.setup.productSheet.fixedPrice").toUpperCase()}
-                  </span>
                   <Press
                     onClick={() => b.removeProduct(p.id)}
                     aria-label={t("common.remove")}
-                    className="!min-h-7 !min-w-7 absolute right-1 top-1 h-7 w-7 rounded-full p-0 text-white"
-                    style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+                    className="!min-h-6 !min-w-6 absolute right-1 top-1 h-6 w-6 rounded-full p-0 text-white"
+                    style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={11} />
                   </Press>
                 </div>
-                <span className="truncate text-[11px] font-medium text-white">
-                  {p.name}
-                </span>
-                <span className="text-[10px] text-white/70">
+                <span className="truncate text-[10px] font-medium text-white">{p.name}</span>
+                <span className="text-[9px] text-white/60">
                   {p.mode === "auction"
                     ? `dès ${formatMoney(p.startPrice, b.currency, "fr")}`
-                    : `${formatMoney(p.price, b.currency, "fr")} · stock ${p.stock}`}
+                    : formatMoney(p.price, b.currency, "fr")}
                 </span>
               </motion.div>
             ))}
             <Press
               onClick={() => setShowAdd(true)}
-              className="!min-h-24 flex h-24 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-white"
-              style={{ borderColor: "rgba(255,255,255,0.5)" }}
+              className="!min-h-20 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl p-0"
+              style={{
+                border: `2px dashed ${GOLD}`,
+                background: "transparent",
+                color: GOLD,
+              }}
             >
-              <Plus size={20} />
-              <span className="text-[10px] font-semibold">{t("common.add")}</span>
+              <Plus size={22} strokeWidth={2} />
+              <span className="text-[10px] font-semibold">{t("common.add", "Ajouter")}</span>
             </Press>
           </motion.div>
         </div>
-
-        {/* Schedule datetime (schedule + edit modes) */}
-        {isSchedule && (
-          <label
-            className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.10)",
-              border: "1px solid oklch(0.82 0.14 85 / 0.4)",
-            }}
-          >
-            <CalendarIcon size={18} color="oklch(0.82 0.14 85)" />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[11px] font-semibold text-white/70">
-                {t("schedule.datetimeLabel", "Date et heure du live")}
-              </span>
-              <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) => b.setScheduledAt(e.target.value ? new Date(e.target.value).toISOString() : null)}
-                className="bg-transparent text-[14px] font-medium text-white outline-none"
-                style={{ colorScheme: "dark" }}
-                lang={"fr-FR"}
-              />
-            </div>
-          </label>
-        )}
 
         {/* Launch */}
         <Press
           onClick={launch}
           disabled={!canLaunch || launching}
           hapticOnTap={false}
-          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold text-white disabled:opacity-40"
+          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold disabled:opacity-40"
           style={{
-            background:
-              b.mode === "now"
-                ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))"
-                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
-            boxShadow:
-              b.mode === "now"
-                ? "0 8px 24px rgba(255, 40, 60, 0.35)"
-                : "0 8px 24px oklch(0.82 0.14 85 / 0.35)",
-            color: b.mode === "now" ? "white" : "black",
+            background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
+            boxShadow: `0 10px 30px ${GOLD_SOFT}`,
+            color: "#0a0a12",
           }}
         >
-          {launching ? t("common.loading") : t("broadcast.setup.start")}
-
+          {launching ? t("common.loading") : t("broadcast.setup.start", "Lancer le live")}
         </Press>
-
       </div>
 
       <AddProductSheet
