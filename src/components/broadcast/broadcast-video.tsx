@@ -3,6 +3,7 @@ import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
+import { ensureCameraMicAccess } from "@/lib/media-permissions";
 import {
   Room,
   RoomEvent,
@@ -52,6 +53,7 @@ export type BroadcastStatus =
   | "connecting"
   | "granted"
   | "denied"
+  | "config_missing"
   | "unavailable"
   | "unsupported"
   | "token_failed"
@@ -113,46 +115,29 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
       async function acquire() {
         if (!shouldRun) return teardown();
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setState("unsupported");
+        teardown();
+        const res = await ensureCameraMicAccess({
+          video: { facingMode: facing },
+          audio: false,
+        });
+        if (cancelled) {
+          if (res.status === "granted") res.stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        teardown();
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facing } },
-            audio: false,
-          });
-          if (cancelled) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          streamRef.current = stream;
+        if (res.status === "granted") {
+          streamRef.current = res.stream;
           if (videoRef.current) {
-            videoRef.current.srcObject = stream;
+            videoRef.current.srcObject = res.stream;
             videoRef.current.play().catch(() => {});
           }
           setState("granted");
-        } catch (err) {
-          if (cancelled) return;
-          // DOMException.name is the reliable discriminator across browsers.
-          const name = err instanceof DOMException ? err.name : "";
-          if (name === "NotAllowedError" || name === "SecurityError") {
-            // User denied, OS-level permission blocked (iOS Info.plist), or
-            // permission was revoked in Settings.
-            setState("denied");
-          } else if (
-            name === "NotFoundError" ||
-            name === "OverconstrainedError" ||
-            name === "NotReadableError" ||
-            name === "AbortError"
-          ) {
-            // No camera device / device busy / hardware error.
-            setState("unavailable");
-          } else {
-            setState("unavailable");
-          }
+          return;
         }
+        if (res.status === "denied_by_user") setState("denied");
+        else if (res.status === "config_missing") setState("config_missing");
+        else if (res.status === "no_device") setState("unavailable");
+        else if (res.status === "unsupported") setState("unsupported");
+        else setState("error");
       }
 
       function teardown() {
@@ -179,6 +164,30 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       async function start() {
         if (!shouldRun) return teardown();
         setState("connecting");
+
+        // Step 0: on native, force the OS permission prompt BEFORE we hit
+        // LiveKit's track factory (which just calls getUserMedia and would
+        // fail silently if Info.plist / manifest entries are missing).
+        const preflight = await ensureCameraMicAccess({
+          video: { facingMode: facing },
+          audio: micEnabled,
+        });
+        if (cancelled) {
+          if (preflight.status === "granted") preflight.stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        if (preflight.status !== "granted") {
+          if (preflight.status === "denied_by_user") setState("denied");
+          else if (preflight.status === "config_missing") setState("config_missing");
+          else if (preflight.status === "no_device") setState("unavailable");
+          else if (preflight.status === "unsupported") setState("unsupported");
+          else setState("error");
+          return;
+        }
+        // Release the pre-flight stream — LiveKit will re-acquire under its
+        // own tracks (permission is now cached by the OS so no re-prompt).
+        preflight.stream.getTracks().forEach((t) => t.stop());
+
         let phase: "token" | "connect" | "camera" = "token";
         try {
           const { token, url } = await getToken(
@@ -338,6 +347,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                         "broadcast.camera.denied",
                         "Autorise la caméra dans Réglages > KiDi+",
                       )
+                    : state === "config_missing"
+                      ? t(
+                          "broadcast.camera.configMissing",
+                          "Configuration requise : permissions caméra manquantes dans le build",
+                        )
                     : state === "unavailable"
                       ? t("broadcast.camera.unavailable", "Caméra indisponible")
                       : state === "unsupported"
@@ -350,6 +364,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               </p>
               {onRequestRetry &&
                 (state === "denied" ||
+                  state === "config_missing" ||
                   state === "unavailable" ||
                   state === "unsupported" ||
                   state === "error") && (

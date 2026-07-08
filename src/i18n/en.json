@@ -216,6 +216,7 @@
       "unsupported": "Camera not supported",
       "connectFailed": "Connection failed",
       "preview": "Camera preview",
+      "configMissing": "Configuration required: camera permissions missing from build",
       "retry": "Retry"
     },
     "setup": {
