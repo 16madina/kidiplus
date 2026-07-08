@@ -281,21 +281,20 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0.6 }}
       transition={{ duration: 0.32, ease: EASE_IOS }}
-      className="relative h-full w-full overflow-y-auto"
+      className="relative flex h-full w-full flex-col overflow-hidden"
       style={{
         background:
           "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.10 0.03 260) 55%, #05060b 100%)",
-        WebkitOverflowScrolling: "touch",
       }}
     >
-      {/* Header */}
+      {/* Header — fixed, non-scrolling */}
       <div
-        className="sticky top-0 z-30 flex items-center gap-3 px-4"
+        className="relative z-30 flex shrink-0 items-center gap-3 px-4"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 10px)",
           paddingBottom: 10,
           background:
-            "linear-gradient(to bottom, oklch(0.11 0.03 260) 40%, transparent 100%)",
+            "linear-gradient(to bottom, oklch(0.11 0.03 260) 55%, oklch(0.11 0.03 260 / 0.6) 100%)",
         }}
       >
         <Press
@@ -313,7 +312,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           <div className="relative">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(28px)",
                 background:
@@ -322,7 +321,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
             />
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(12px)",
                 background:
@@ -347,6 +346,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         <div className="h-11 w-11" />
       </div>
 
+      {/* Scrollable content */}
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
       <div className="mx-auto flex w-full max-w-[520px] flex-col gap-4 px-4 pb-40 pt-2">
         {/* Title block */}
         <div className="mt-1 text-center">
