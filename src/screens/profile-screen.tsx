@@ -32,6 +32,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
+import { usePush } from "@/lib/push";
 import { IOSSwitch } from "@/components/ios-switch";
 import { EASE_IOS } from "@/lib/motion";
 import { useSettings } from "@/lib/settings-context";
@@ -501,11 +502,79 @@ function MenuIcon({ icon, tint }: { icon: React.ReactNode; tint: string }) {
 function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const { notif, setNotif, sounds, setSounds } = useSettings();
+  const { status, requestWithPrePrompt, refresh } = usePush();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) void refresh();
+  }, [open, refresh]);
+
+  const statusLabel =
+    status === "granted" ? "Autorisées"
+    : status === "denied" ? "Refusées"
+    : status === "prompt" ? "Non demandées"
+    : "Inconnu";
+  const statusTint =
+    status === "granted" ? "oklch(0.72 0.17 150)"
+    : status === "denied" ? "oklch(0.62 0.24 20)"
+    : "oklch(0.7 0.02 285)";
+
+  const onRetry = async () => {
+    setBusy(true);
+    haptic.medium();
+    try {
+      await requestWithPrePrompt("Réglages");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("settings.title")} zIndex={65}>
       <div className="px-4 py-4">
         <h2 className="mb-2 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Notifications système
+        </h2>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <MenuIcon icon={<Bell size={16} />} tint={statusTint} />
+            <div className="flex-1">
+              <div className="text-[15px] font-medium">Autorisation push</div>
+              <div className="text-[12px] text-muted-foreground">{statusLabel}</div>
+            </div>
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+              style={{ background: statusTint }}
+            >
+              {statusLabel}
+            </span>
+          </div>
+          {status !== "granted" && (
+            <>
+              <Sep />
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={busy}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left disabled:opacity-60"
+              >
+                <MenuIcon icon={busy ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />} tint="oklch(0.6 0.2 250)" />
+                <span className="flex-1 text-[15px] font-medium">
+                  {status === "denied" ? "Réessayer / Ouvrir Réglages" : "Activer les notifications"}
+                </span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </button>
+            </>
+          )}
+        </div>
+        {status === "denied" && (
+          <p className="mt-2 px-2 text-[12px] text-muted-foreground">
+            Si le système refuse la demande, active-les manuellement dans Réglages &gt; Notifications &gt; KiDi+.
+          </p>
+        )}
+
+        <h2 className="mb-2 mt-6 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
           {t("settings.preferences")}
         </h2>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
