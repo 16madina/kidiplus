@@ -60,9 +60,17 @@ export type AuctionEndEvt = {
   productId: string;
   winnerId: string | null;
   winnerName: string | null;
+  winnerAvatarUrl?: string | null;
   finalPrice: number;
   orderId?: string | null;
   autoPaid?: boolean;
+};
+
+export type AuctionExtendEvt = {
+  productId: string;
+  deadlineMs: number;
+  /** Client-side timestamp so viewers can dedupe / flash once. */
+  ts: number;
 };
 
 export type LiveRoomState = {
@@ -74,11 +82,13 @@ export type LiveRoomState = {
   liveStatus: "live" | "ended" | null;
   auctionStart: AuctionStartEvt | null;
   lastAuctionEnd: AuctionEndEvt | null;
+  lastExtension: AuctionExtendEvt | null;
   lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
+  broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
   systemMessage: (text: string) => void;
 };
 
