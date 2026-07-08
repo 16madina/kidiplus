@@ -618,6 +618,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
+      <WinnerReveal
+        open={!!winnerReveal}
+        winnerName={winnerReveal?.name ?? null}
+        winnerAvatarUrl={winnerReveal?.avatar ?? null}
+        isMe={false}
+        onDone={() => setWinnerReveal(null)}
+      />
+      <SuddenDeathFlash tick={suddenDeathTick} />
       <LiveChat messages={chatMessages} />
 
       {/* Sale flash */}
