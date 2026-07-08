@@ -6,10 +6,12 @@ const config: CapacitorConfig = {
   appName: "KiDi+",
   webDir: "dist",
   bundledWebRuntime: false,
-  // Local dev: point the native shell at the Vite dev server on your LAN.
-  // Uncomment `url` and set your machine's LAN IP to hot-reload on device.
+  // KiDi+ tourne sur TanStack Start (SSR) — il n'y a pas de build SPA statique
+  // à embarquer dans l'APK. Le WebView natif charge donc directement l'app
+  // publiée. Pour tester une build locale, commente `url` et mets ton IP LAN.
   server: {
-    // url: "http://192.168.1.10:8080",
+    url: "https://kidiplus.lovable.app",
+    // url: "http://192.168.1.10:8080", // dev local (Vite sur ta machine)
     cleartext: true,
     androidScheme: "https",
   },
