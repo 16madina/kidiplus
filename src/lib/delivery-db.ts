@@ -15,6 +15,7 @@ function normalizeZones(z: unknown): DeliveryZone[] {
   return z
     .filter((x) => x && typeof x === "object")
     .map((x) => ({
+      country: String((x as { country?: unknown }).country ?? "").trim().toUpperCase(),
       name: String((x as { name?: unknown }).name ?? "").trim(),
       fee: Number((x as { fee?: unknown }).fee ?? 0),
     }))
