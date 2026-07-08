@@ -198,7 +198,6 @@ export function GoLiveEntryScreen({
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 8px)",
           paddingBottom: 8,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0))",
         }}
       >
         <Press
@@ -210,24 +209,7 @@ export function GoLiveEntryScreen({
           <X size={22} />
         </Press>
         <div className="flex-1 grid place-items-center">
-          <div className="relative">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
-              style={{
-                filter: "blur(22px)",
-                background: "radial-gradient(55% 60% at 50% 55%, rgba(255,205,110,0.45), transparent 72%)",
-              }}
-            />
-            <div className="relative" style={{ filter: "drop-shadow(0 2px 10px rgba(255,205,110,0.28))" }}>
-              <Logo size={72} />
-            </div>
-            <div
-              aria-hidden
-              className="mx-auto mt-1.5 h-px w-24"
-              style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
-            />
-          </div>
+          <Logo size={72} />
         </div>
         <div className="h-11 w-11" />
       </div>
