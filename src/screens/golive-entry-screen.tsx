@@ -208,8 +208,27 @@ export function GoLiveEntryScreen({
         >
           <X size={22} />
         </Press>
-        <div className="flex-1 grid place-items-center">
-          <Logo size={72} />
+        <div className="relative flex-1 grid place-items-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{
+              background:
+                "radial-gradient(60% 100% at 50% 55%, rgba(255,205,110,0.45), transparent 70%)",
+              filter: "blur(22px)",
+            }}
+          />
+          <Logo
+            size={72}
+            style={{ filter: "drop-shadow(0 2px 10px rgba(255,205,110,0.28))" }}
+          />
+          <div
+            aria-hidden
+            className="mt-1 h-px w-24"
+            style={{
+              background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`,
+            }}
+          />
         </div>
         <div className="h-11 w-11" />
       </div>
