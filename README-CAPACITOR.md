@@ -83,10 +83,11 @@ one CORS allowlist. It permits, in addition to web origins:
 
 - `capacitor://localhost` (iOS WebView origin)
 - `ionic://localhost`     (legacy iOS scheme)
-- `http://localhost`      (Android WebView origin)
+- `https://localhost`     (Android WebView origin — default `androidScheme: "https"`)
+- `http://localhost`      (Android WebView if `androidScheme: "http"`)
 
-If you add a new API route, reuse `isAllowedNativeOrScheme` / the same
-`ALLOWED_ORIGIN_SUFFIXES` list — do not copy-paste a narrower one.
+All four match via the `localhost` hostname suffix in `src/lib/api-cors.ts`,
+so both http and https on `localhost` are accepted automatically.
 
 ## Push notifications
 
