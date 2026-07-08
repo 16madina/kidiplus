@@ -349,10 +349,15 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
 function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<any | null>(null);
+  const [sanctionOpen, setSanctionOpen] = useState<{ type: "warning" | "suspension" | "ban" } | null>(null);
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [sanctionsReload, setSanctionsReload] = useState(0);
+  const modStatus = (data?.profile?.moderation_status ?? "active") as "active" | "suspended" | "banned";
+
   useEffect(() => {
     if (!user) { setData(null); return; }
     void fetchAdminUserDetail(user.id).then(setData);
-  }, [user]);
+  }, [user, sanctionsReload]);
 
   return (
     <PushScreen open={!!user} onClose={onClose} title={t("admin.users.detail")} zIndex={80}>
@@ -360,10 +365,11 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
         <div className="space-y-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <Avatar url={user.avatar_url} name={user.display_name} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-[16px] font-bold">{user.display_name}</p>
               <p className="truncate text-[12px] text-muted-foreground">@{user.handle} · {user.email}</p>
             </div>
+            <ModStatusBadge status={modStatus} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -373,13 +379,39 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
             <StatTile label={t("admin.users.sales")} value={String(user.sales_count)} />
           </div>
 
+          {/* Moderation actions */}
+          <div className="grid grid-cols-4 gap-2">
+            <Press onClick={() => setMsgOpen(true)}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold">
+              <MessageSquare size={14} />{t("moderation.userDetail.sendMessage")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "warning" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.7 0.16 90 / 0.4)", color: "oklch(0.6 0.16 90)" }}>
+              <AlertTriangle size={14} />{t("moderation.userDetail.warn")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "suspension" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.62 0.18 60 / 0.4)", color: "oklch(0.55 0.16 60)" }}>
+              <ShieldAlert size={14} />{t("moderation.userDetail.suspend")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "ban" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.55 0.2 27 / 0.4)", color: "oklch(0.55 0.2 27)" }}>
+              <X size={14} />{t("moderation.userDetail.ban")}
+            </Press>
+          </div>
+
+          <Section title={t("moderation.userDetail.sanctionsTitle")}>
+            <UserSanctionsHistory userId={user.id} reloadKey={sanctionsReload} />
+          </Section>
+
           {data && (
             <>
               <Section title={t("admin.users.recentOrders")}>
                 <MiniList
                   items={(data.orders ?? []).slice(0, 10).map((o: any) => ({
-                    key: o.id,
-                    left: o.item_name,
+                    key: o.id, left: o.item_name,
                     sub: `${o.status} · ${new Date(o.created_at).toLocaleDateString(i18n.language)}`,
                     right: formatMoney(Number(o.total), normalizeCurrency(o.currency), i18n.language),
                   }))}
@@ -388,8 +420,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.recentLives")}>
                 <MiniList
                   items={(data.lives ?? []).slice(0, 10).map((l: any) => ({
-                    key: l.id,
-                    left: l.title,
+                    key: l.id, left: l.title,
                     sub: `${l.status} · ${new Date(l.started_at).toLocaleDateString(i18n.language)}`,
                     right: `${l.viewer_count} 👀`,
                   }))}
@@ -398,8 +429,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.walletTx")}>
                 <MiniList
                   items={(data.wallet_transactions ?? []).slice(0, 10).map((tx: any) => ({
-                    key: tx.id,
-                    left: tx.type,
+                    key: tx.id, left: tx.type,
                     sub: new Date(tx.created_at).toLocaleString(i18n.language),
                     right: formatMoney(Number(tx.amount), normalizeCurrency(user.wallet_currency), i18n.language),
                   }))}
@@ -408,8 +438,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.earnings")}>
                 <MiniList
                   items={(data.earnings ?? []).slice(0, 10).map((e: any) => ({
-                    key: e.id,
-                    left: e.order_id.slice(0, 8),
+                    key: e.id, left: e.order_id.slice(0, 8),
                     sub: new Date(e.created_at).toLocaleString(i18n.language),
                     right: formatMoney(Number(e.amount), normalizeCurrency(user.seller_currency), i18n.language),
                   }))}
@@ -417,15 +446,41 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               </Section>
             </>
           )}
-
-          <div className="rounded-2xl border border-dashed border-border p-4 text-center text-[11px] text-muted-foreground">
-            {t("admin.users.moderationSoon")}
-          </div>
         </div>
       )}
+      <SanctionSheet
+        open={!!sanctionOpen}
+        onClose={() => setSanctionOpen(null)}
+        targetUserId={user?.id ?? null}
+        targetHandle={user?.handle ?? null}
+        onDone={() => { setSanctionOpen(null); setSanctionsReload((n) => n + 1); }}
+      />
+      <ComposeMessageSheet
+        open={msgOpen}
+        onClose={() => setMsgOpen(false)}
+        targetUserId={user?.id ?? null}
+        targetHandle={user?.handle ?? null}
+      />
     </PushScreen>
   );
 }
+
+function ModStatusBadge({ status }: { status: "active" | "suspended" | "banned" }) {
+  const { t } = useTranslation();
+  const map = {
+    active: { color: "oklch(0.62 0.16 155)", label: "Actif" },
+    suspended: { color: "oklch(0.62 0.18 60)", label: t("moderation.types.suspension") },
+    banned: { color: "oklch(0.55 0.2 27)", label: t("moderation.types.ban") },
+  } as const;
+  const m = map[status];
+  return (
+    <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+      style={{ backgroundColor: `color-mix(in oklch, ${m.color} 18%, transparent)`, color: m.color }}>
+      {m.label}
+    </span>
+  );
+}
+
 
 function MiniList({ items }: { items: Array<{ key: string; left: string; sub: string; right: string }> }) {
   if (items.length === 0) return <p className="rounded-2xl border border-border p-3 text-[12px] text-muted-foreground">—</p>;
