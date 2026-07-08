@@ -23,6 +23,7 @@ import {
 } from "@/lib/lives-db";
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
+import { TabVisibilityContext } from "@/components/app-shell";
 
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
