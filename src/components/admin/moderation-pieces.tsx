@@ -91,6 +91,16 @@ export function ReportsTab({
                 <StatusPill status={r.status} />
               </div>
 
+              {r.target_type === "order" && (
+                <div className="mt-3 rounded-xl border border-border p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("timeline.title")}
+                  </p>
+                  <OrderTimeline orderId={r.target_id} showActors />
+                </div>
+              )}
+
+
               {r.status === "open" && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {r.target_type === "order" && (
