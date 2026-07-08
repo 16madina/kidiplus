@@ -112,16 +112,18 @@ export function BottomTabBar({
           <Press
             aria-label={t("tabs.live")}
             onClick={() => onChange("live")}
-            className="pointer-events-auto relative h-16 w-16 rounded-full"
+            className="pointer-events-auto relative h-16 w-16 overflow-visible rounded-2xl"
             style={{
-              background:
-                "linear-gradient(135deg, #E8B93B 0%, #D4A62A 60%, #B8891C 100%)",
-              color: "var(--navy-900, #0C1122)",
-              boxShadow:
-                "0 12px 28px -8px color-mix(in oklch, var(--accent) 60%, transparent), 0 4px 10px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.4)",
+              filter:
+                "drop-shadow(0 12px 22px rgba(232,185,59,0.35)) drop-shadow(0 4px 10px rgba(0,0,0,0.25))",
             }}
           >
-            <BroadcastIcon size={28} />
+            <img
+              src={kidiLiveBadge.url}
+              alt=""
+              className="h-full w-full object-contain"
+              draggable={false}
+            />
             {isBroadcasting && (
               <span
                 className="absolute right-1 top-1 flex h-3 w-3 items-center justify-center"
