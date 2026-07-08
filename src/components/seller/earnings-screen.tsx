@@ -28,6 +28,7 @@ import {
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
+import { expireOverdueOrders } from "@/lib/lives-db";
 
 type BuyerMap = Record<string, { display_name: string; handle: string }>;
 
