@@ -270,11 +270,11 @@ export function ProfileScreen() {
             >
               {/* Stats */}
               <div className="grid grid-cols-3">
-                <HeroStat label={t("profile.stats.followers")} value="—" />
+                <HeroStat label={t("profile.stats.followers")} value="0" />
                 <HeroStatDivider />
-                <HeroStat label={t("profile.stats.sales")} value="—" />
+                <HeroStat label={t("profile.stats.sales")} value={salesCount === null ? "—" : String(salesCount)} />
                 <HeroStatDivider />
-                <HeroStat label={t("profile.stats.following")} value="—" />
+                <HeroStat label={t("profile.stats.following")} value="0" />
               </div>
 
               <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
