@@ -253,6 +253,7 @@ export type Database = {
         Row: {
           amount: number
           buyer_id: string
+          cancelled_reason: string | null
           created_at: string
           currency: string
           id: string
@@ -261,6 +262,7 @@ export type Database = {
           kind: string
           live_id: string | null
           paid_at: string | null
+          payment_deadline: string | null
           payment_method: string
           platform_fee: number
           processing_fee: number
@@ -274,6 +276,7 @@ export type Database = {
         Insert: {
           amount: number
           buyer_id: string
+          cancelled_reason?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -282,6 +285,7 @@ export type Database = {
           kind: string
           live_id?: string | null
           paid_at?: string | null
+          payment_deadline?: string | null
           payment_method?: string
           platform_fee?: number
           processing_fee?: number
@@ -295,6 +299,7 @@ export type Database = {
         Update: {
           amount?: number
           buyer_id?: string
+          cancelled_reason?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -303,6 +308,7 @@ export type Database = {
           kind?: string
           live_id?: string | null
           paid_at?: string | null
+          payment_deadline?: string | null
           payment_method?: string
           platform_fee?: number
           processing_fee?: number
@@ -777,6 +783,17 @@ export type Database = {
         Returns: Json
       }
       current_moderation_status: { Args: { _user_id: string }; Returns: string }
+      expire_overdue_orders: { Args: never; Returns: Json }
+      finalize_auction_winner: {
+        Args: {
+          _final_price: number
+          _live_id: string
+          _product_id: string
+          _winner_id: string
+          _winner_name: string
+        }
+        Returns: Json
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
