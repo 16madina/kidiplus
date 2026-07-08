@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AccessToken } from "livekit-server-sdk";
+import { isAllowedOrigin } from "@/lib/api-cors";
 
 // LiveKit token issuer — server-only.
 //
@@ -16,25 +17,7 @@ import { AccessToken } from "livekit-server-sdk";
 //   documented values ("host" | "viewer"); anything else falls back to
 //   the least-privileged "viewer" grant.
 
-const ALLOWED_ORIGIN_SUFFIXES = [
-  "lovable.app",
-  "lovableproject.com",
-  "localhost",
-  "127.0.0.1",
-  "kidiplus.com",
-];
-
-function isAllowedOrigin(origin: string | null): boolean {
-  if (!origin) return true; // same-origin fetches often omit Origin
-  try {
-    const host = new URL(origin).hostname;
-    return ALLOWED_ORIGIN_SUFFIXES.some(
-      (s) => host === s || host.endsWith(`.${s}`),
-    );
-  } catch {
-    return false;
-  }
-}
+// Origin allowlist (web + native WebView schemes) lives in @/lib/api-cors.
 
 function corsHeaders(origin: string | null): HeadersInit {
   // Echo the caller's origin only when it's on the allowlist. No wildcard.
