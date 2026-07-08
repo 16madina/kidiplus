@@ -225,7 +225,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       {/* Top bar */}
       <div
         className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-3 pt-safe"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 2px)" }}
       >
         <Press
           onClick={onExit}
