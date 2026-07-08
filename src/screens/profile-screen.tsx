@@ -38,7 +38,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { useSettings } from "@/lib/settings-context";
 import { useAuth } from "@/lib/auth-context";
 import { useWallet } from "@/lib/wallet-context";
-import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
 import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
@@ -102,9 +102,16 @@ export function ProfileScreen() {
   }, [profile, fetchAdminStatus]);
 
   useEffect(() => {
-    if (!profile) return setAvatarUrl(null);
-    void resolveAvatarUrl(profile.avatar_url).then(setAvatarUrl);
-  }, [profile]);
+    let alive = true;
+    if (!profile?.avatar_url) {
+      setAvatarUrl(null);
+      return () => { alive = false; };
+    }
+    void resolveAvatarUrl(profile.avatar_url).then((url) => {
+      if (alive) setAvatarUrl(bustAvatarCache(url, profile.avatar_url));
+    });
+    return () => { alive = false; };
+  }, [profile?.avatar_url]);
 
   const handleSignOut = async () => {
     setSigningOut(true);

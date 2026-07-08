@@ -7,7 +7,7 @@ import { AuthInput } from "@/components/auth/auth-shell";
 import { useAuth, frenchAuthError, type Profile } from "@/lib/auth-context";
 import { useWallet } from "@/lib/wallet-context";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveAvatarUrl, invalidateAvatar } from "@/lib/avatar-url";
+import { resolveAvatarUrl, invalidateAvatar, bustAvatarCache } from "@/lib/avatar-url";
 import { haptic } from "@/lib/haptics";
 
 const COUNTRIES = [
@@ -42,6 +42,7 @@ export function EditProfileScreen({
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const previewObjectUrl = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +54,17 @@ export function EditProfileScreen({
     setHandle(profile.handle ?? "");
     setBio(profile.bio ?? "");
     setCountry(profile.country ?? "");
-    void resolveAvatarUrl(profile.avatar_url).then(setAvatarUrl);
+    void resolveAvatarUrl(profile.avatar_url).then((url) => {
+      setAvatarUrl(bustAvatarCache(url, profile.avatar_url));
+    });
     setError(null);
   }, [open, profile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
+    };
+  }, []);
 
   const validate = (): string | null => {
     if (!displayName.trim() || displayName.trim().length < 2)
@@ -80,6 +89,10 @@ export function EditProfileScreen({
       return;
     }
     setUploading(true);
+    if (previewObjectUrl.current) URL.revokeObjectURL(previewObjectUrl.current);
+    const localPreview = URL.createObjectURL(file);
+    previewObjectUrl.current = localPreview;
+    setAvatarUrl(localPreview);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
@@ -98,7 +111,8 @@ export function EditProfileScreen({
       invalidateAvatar(oldPath);
       invalidateAvatar(path);
       const signed = await resolveAvatarUrl(path);
-      setAvatarUrl(signed);
+      setAvatarUrl(bustAvatarCache(signed, path));
+      await refreshProfile();
       toast.success("Photo mise à jour");
       haptic.success();
     } catch (err) {
