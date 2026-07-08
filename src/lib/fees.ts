@@ -13,6 +13,9 @@ import { normalizeCurrency, roundForCurrency, isZeroDecimal, type Currency } fro
 
 export const PLATFORM_FEE_PERCENT = 5;
 
+/** Hours a winning bidder has to pay before the order auto-cancels. */
+export const AUCTION_PAYMENT_DEADLINE_HOURS = 24;
+
 /**
  * Minimum payout amount per currency. Single source of truth used by both
  * the withdraw sheet (UI validation + hint text) and mirrored in the
