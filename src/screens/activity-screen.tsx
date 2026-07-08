@@ -20,6 +20,8 @@ import {
   type OrderRow,
   type OrderStatus,
 } from "@/lib/orders-db";
+import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
+import { SuspensionBanner } from "@/components/moderation/moderation-gate";
 
 type Tab = "notifs" | "orders";
 
