@@ -399,9 +399,23 @@ function hoursLeft(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / 3_600_000;
 }
 
+const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: string }> = {
+  awaiting: { bg: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)", key: "orders.fulfillment.awaiting" },
+  shipped:  { bg: "oklch(0.94 0.06 60)",  color: "oklch(0.42 0.14 60)",  key: "orders.fulfillment.shipped" },
+  delivered:{ bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)",  key: "orders.fulfillment.delivered" },
+  disputed: { bg: "oklch(0.94 0.06 27)",  color: "oklch(0.45 0.18 27)",  key: "orders.fulfillment.disputed" },
+};
+
 function OrderCard({
-  order, index, onOpen, onPay,
-}: { order: OrderRow; index: number; onOpen: () => void; onPay: () => void }) {
+  order, index, onOpen, onPay, onConfirm, onDispute,
+}: {
+  order: OrderRow;
+  index: number;
+  onOpen: () => void;
+  onPay: () => void;
+  onConfirm: () => void;
+  onDispute: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const meta = statusMeta(order.status);
   const isAuctionPending =
@@ -410,6 +424,10 @@ function OrderCard({
     order.status === "cancelled" && order.cancelled_reason === "payment_timeout";
   const hrs = order.payment_deadline ? hoursLeft(order.payment_deadline) : null;
   const urgent = hrs !== null && hrs > 0 && hrs < 6;
+  const isPaid = order.status === "paid";
+  const canConfirm = isPaid && (order.fulfillment_status === "shipped" || order.fulfillment_status === "awaiting");
+  const canDispute = isPaid && (order.fulfillment_status === "shipped" || order.fulfillment_status === "awaiting");
+  const fm = FULFILL_META[order.fulfillment_status];
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -445,7 +463,17 @@ function OrderCard({
               <p className="mt-0.5 text-[12px] text-muted-foreground">
                 {orderDateShort(new Date(order.created_at))}
               </p>
-              <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
+                {isPaid && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ backgroundColor: fm.bg, color: fm.color }}
+                  >
+                    {t(fm.key)}
+                  </span>
+                )}
+              </div>
               {isAuctionPending && order.payment_deadline && (
                 <p
                   className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -469,6 +497,26 @@ function OrderCard({
             >
               {t("orders.payNow")}
             </Press>
+          </div>
+        )}
+        {isPaid && canConfirm && (
+          <div className="flex gap-2 border-t border-border p-2">
+            <Press
+              onClick={onConfirm}
+              className="!min-h-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold text-white"
+              style={{ backgroundColor: "oklch(0.55 0.18 155)" }}
+            >
+              <PackageCheck size={14} /> {t("orders.confirmDelivery")}
+            </Press>
+            {canDispute && (
+              <Press
+                onClick={onDispute}
+                className="!min-h-10 flex items-center justify-center gap-1 rounded-xl border px-3 py-2 text-[12px] font-semibold"
+                style={{ borderColor: "oklch(0.85 0.14 27)", color: "oklch(0.5 0.18 27)" }}
+              >
+                <AlertTriangle size={12} /> {t("orders.reportProblem")}
+              </Press>
+            )}
           </div>
         )}
       </div>
