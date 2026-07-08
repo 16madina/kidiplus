@@ -129,6 +129,7 @@ export function BottomTabBar({
               alt=""
               width={72}
               height={72}
+              data-loaded="true"
               className="relative block h-full w-full object-contain"
               draggable={false}
             />
