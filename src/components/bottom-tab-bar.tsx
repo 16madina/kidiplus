@@ -94,9 +94,9 @@ export function BottomTabBar({
             // Mask: everything visible EXCEPT a 36px-radius circle centered
             // horizontally at the top edge — that's the notch.
             WebkitMaskImage:
-              "radial-gradient(circle 36px at 50% -2px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 28px at 50% -2px, transparent 98%, #000 100%)",
             maskImage:
-              "radial-gradient(circle 36px at 50% -2px, transparent 98%, #000 100%)",
+              "radial-gradient(circle 28px at 50% -2px, transparent 98%, #000 100%)",
           }}
         >
           <ul className="grid h-full grid-cols-[1fr_1fr_88px_1fr_1fr] items-stretch px-2">
@@ -113,44 +113,55 @@ export function BottomTabBar({
             type="button"
             aria-label={t("tabs.live")}
             onClick={() => onChange("live")}
-            className="pointer-events-auto relative block h-[72px] w-[72px] cursor-pointer bg-transparent p-0 outline-none"
+            className="pointer-events-auto relative flex h-auto w-auto flex-col items-center bg-transparent p-0 outline-none"
           >
-            {/* Soft gold glow behind the badge */}
-            <span
-              aria-hidden
-              className="absolute inset-1 rounded-2xl"
-              style={{
-                boxShadow:
-                  "0 10px 24px rgba(232,185,59,0.45), 0 4px 10px rgba(0,0,0,0.28)",
-              }}
-            />
-            <img
-              src={kidiLiveBadge.url}
-              alt=""
-              width={72}
-              height={72}
-              data-loaded="true"
-              className="relative block h-full w-full object-contain"
-              draggable={false}
-            />
-            {isBroadcasting && (
+            <span className="relative block h-14 w-14">
+              {/* Soft gold glow behind the badge */}
               <span
-                className="absolute right-1 top-1 flex h-3 w-3 items-center justify-center"
                 aria-hidden
-              >
+                className="absolute inset-1 rounded-2xl"
+                style={{
+                  boxShadow:
+                    "0 8px 20px rgba(232,185,59,0.40), 0 3px 8px rgba(0,0,0,0.25)",
+                }}
+              />
+              <img
+                src={kidiLiveBadge.url}
+                alt=""
+                width={56}
+                height={56}
+                data-loaded="true"
+                className="relative block h-full w-full object-contain"
+                draggable={false}
+              />
+              {isBroadcasting && (
                 <span
-                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
-                  style={{ backgroundColor: "var(--live)" }}
-                />
-                <span
-                  className="relative inline-flex h-2.5 w-2.5 rounded-full"
-                  style={{
-                    backgroundColor: "var(--live)",
-                    boxShadow: "0 0 0 2px var(--background)",
-                  }}
-                />
-              </span>
-            )}
+                  className="absolute right-1 top-1 flex h-3 w-3 items-center justify-center"
+                  aria-hidden
+                >
+                  <span
+                    className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
+                    style={{ backgroundColor: "var(--live)" }}
+                  />
+                  <span
+                    className="relative inline-flex h-2.5 w-2.5 rounded-full"
+                    style={{
+                      backgroundColor: "var(--live)",
+                      boxShadow: "0 0 0 2px var(--background)",
+                    }}
+                  />
+                </span>
+              )}
+            </span>
+            <span
+              className="mt-0.5 text-[10px] leading-none"
+              style={{
+                fontWeight: active === "live" ? 600 : 500,
+                color: active === "live" ? "var(--accent)" : "var(--muted-foreground)",
+              }}
+            >
+              {t("tabs.live")}
+            </span>
           </button>
         </div>
 
