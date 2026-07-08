@@ -52,6 +52,7 @@ export type BroadcastStatus =
   | "connecting"
   | "granted"
   | "denied"
+  | "config_missing"
   | "unavailable"
   | "unsupported"
   | "token_failed"
