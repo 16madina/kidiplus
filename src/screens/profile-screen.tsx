@@ -50,6 +50,7 @@ import { DeleteAccountScreen } from "@/components/account/delete-account-screen"
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
+import { supabase } from "@/integrations/supabase/client";
 
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
@@ -112,6 +113,33 @@ export function ProfileScreen() {
     });
     return () => { alive = false; };
   }, [profile?.avatar_url]);
+
+  // Live-updating sales count (paid orders where the current user is seller).
+  // Followers/subscriptions tables don't exist yet — show 0 for those.
+  const [salesCount, setSalesCount] = useState<number | null>(null);
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) { setSalesCount(null); return; }
+    let alive = true;
+    const load = async () => {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("seller_id", userId)
+        .eq("status", "paid");
+      if (alive) setSalesCount(count ?? 0);
+    };
+    void load();
+    const channel = supabase
+      .channel(`profile-sales-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${userId}` },
+        () => { void load(); },
+      )
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, [profile?.id]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -242,11 +270,11 @@ export function ProfileScreen() {
             >
               {/* Stats */}
               <div className="grid grid-cols-3">
-                <HeroStat label={t("profile.stats.followers")} value="—" />
+                <HeroStat label={t("profile.stats.followers")} value="0" />
                 <HeroStatDivider />
-                <HeroStat label={t("profile.stats.sales")} value="—" />
+                <HeroStat label={t("profile.stats.sales")} value={salesCount === null ? "—" : String(salesCount)} />
                 <HeroStatDivider />
-                <HeroStat label={t("profile.stats.following")} value="—" />
+                <HeroStat label={t("profile.stats.following")} value="0" />
               </div>
 
               <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
