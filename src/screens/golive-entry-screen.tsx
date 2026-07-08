@@ -210,7 +210,22 @@ export function GoLiveEntryScreen({
           <X size={22} />
         </Press>
         <div className="flex-1 grid place-items-center">
-          <Logo size={56} />
+          <div className="relative">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                filter: "blur(18px)",
+                background: "radial-gradient(50% 60% at 50% 55%, rgba(255,205,110,0.45), transparent 70%)",
+              }}
+            />
+            <Logo size={64} />
+            <div
+              aria-hidden
+              className="mx-auto mt-1 h-px w-20"
+              style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
+            />
+          </div>
         </div>
         <div className="h-11 w-11" />
       </div>
@@ -411,7 +426,11 @@ export function GoLiveEntryScreen({
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes kidiPulse { 0%,100% { box-shadow: 0 6px 18px ${GOLD_DIM}; transform: scale(1); } 50% { box-shadow: 0 10px 28px ${GOLD}; transform: scale(1.03); } }`}</style>
+      <style>{`
+        @keyframes kidiPulse { 0%,100% { box-shadow: 0 6px 18px ${GOLD_DIM}; transform: scale(1); } 50% { box-shadow: 0 10px 28px ${GOLD}; transform: scale(1.03); } }
+        @keyframes kidiTwinkle { 0%,100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
+        .sparkle-twinkle { animation: kidiTwinkle 2.4s ease-in-out infinite; }
+      `}</style>
     </motion.div>
   );
 }
@@ -437,14 +456,28 @@ function ChoiceCard({
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
       }}
     >
-      <div
-        className="mt-2 grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
-        style={{
-          background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
-          border: `1px solid ${GOLD_DIM}`,
-        }}
-      >
-        {icon}
+      <div className="relative mt-2">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+          style={{
+            filter: "blur(16px)",
+            background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
+          }}
+        />
+        <div
+          className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
+          style={{
+            background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
+            border: `1px solid ${GOLD_DIM}`,
+            boxShadow: `inset 0 0 0 1px rgba(255,215,140,0.08), 0 0 22px rgba(255,205,110,0.18)`,
+          }}
+        >
+          {icon}
+        </div>
+        <Sparkles size={10} color={GOLD} className="absolute -right-1 -top-1 sparkle-twinkle" style={{ animationDelay: "0s" }} />
+        <Sparkles size={8} color={GOLD} className="absolute -left-2 top-3 sparkle-twinkle" style={{ animationDelay: "0.8s" }} />
+        <Sparkles size={9} color={GOLD} className="absolute -bottom-1 right-2 sparkle-twinkle" style={{ animationDelay: "1.4s" }} />
       </div>
       <div className="min-w-0">
         <div
@@ -454,10 +487,17 @@ function ChoiceCard({
           {title}
         </div>
       </div>
-      <div
-        className="h-px w-16"
-        style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
-      />
+      <div className="relative flex items-center">
+        <div
+          className="h-px w-20"
+          style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
+        />
+        <span
+          aria-hidden
+          className="absolute left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full sparkle-twinkle"
+          style={{ backgroundColor: GOLD, boxShadow: `0 0 8px ${GOLD}` }}
+        />
+      </div>
       <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
     </Press>
   );
