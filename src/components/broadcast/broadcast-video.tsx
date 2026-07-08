@@ -1,5 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
-import { Camera } from "lucide-react";
+import { Camera, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
 import {
   Room,
@@ -41,6 +43,8 @@ export type BroadcastVideoProps = {
   /** Bump this to force a fresh token + reconnect (host retry). */
   retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
+  /** Called when the user taps "Retry" on the error overlay (preview mode). */
+  onRequestRetry?: () => void;
 };
 
 export type BroadcastStatus =
@@ -48,6 +52,7 @@ export type BroadcastStatus =
   | "connecting"
   | "granted"
   | "denied"
+  | "unavailable"
   | "unsupported"
   | "token_failed"
   | "connect_failed"
@@ -59,9 +64,10 @@ export type BroadcastVideoHandle = {
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onRequestRetry },
     ref,
   ) {
+    const { t } = useTranslation();
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const roomRef = useRef<Room | null>(null);
@@ -127,8 +133,25 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             videoRef.current.play().catch(() => {});
           }
           setState("granted");
-        } catch {
-          if (!cancelled) setState("denied");
+        } catch (err) {
+          if (cancelled) return;
+          // DOMException.name is the reliable discriminator across browsers.
+          const name = err instanceof DOMException ? err.name : "";
+          if (name === "NotAllowedError" || name === "SecurityError") {
+            // User denied, OS-level permission blocked (iOS Info.plist), or
+            // permission was revoked in Settings.
+            setState("denied");
+          } else if (
+            name === "NotFoundError" ||
+            name === "OverconstrainedError" ||
+            name === "NotReadableError" ||
+            name === "AbortError"
+          ) {
+            // No camera device / device busy / hardware error.
+            setState("unavailable");
+          } else {
+            setState("unavailable");
+          }
         }
       }
 
@@ -307,17 +330,38 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               }}
             >
               <Camera size={28} />
-              <p className="text-[13px] font-semibold">
+              <p className="max-w-[260px] text-center text-[13px] font-semibold">
                 {state === "connecting"
-                  ? "Connexion au live…"
+                  ? t("broadcast.camera.connecting", "Connexion au live…")
                   : state === "denied"
-                    ? "Autorise la caméra"
-                    : state === "unsupported"
-                      ? "Caméra indisponible"
-                      : state === "error"
-                        ? "Connexion impossible"
-                        : "Aperçu caméra"}
+                    ? t(
+                        "broadcast.camera.denied",
+                        "Autorise la caméra dans Réglages > KiDi+",
+                      )
+                    : state === "unavailable"
+                      ? t("broadcast.camera.unavailable", "Caméra indisponible")
+                      : state === "unsupported"
+                        ? t("broadcast.camera.unsupported", "Caméra non supportée")
+                        : state === "error" ||
+                            state === "token_failed" ||
+                            state === "connect_failed"
+                          ? t("broadcast.camera.connectFailed", "Connexion impossible")
+                          : t("broadcast.camera.preview", "Aperçu caméra")}
               </p>
+              {onRequestRetry &&
+                (state === "denied" ||
+                  state === "unavailable" ||
+                  state === "unsupported" ||
+                  state === "error") && (
+                  <Press
+                    onClick={onRequestRetry}
+                    className="!min-h-9 mt-1 inline-flex items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-black"
+                    style={{ backgroundColor: "white" }}
+                  >
+                    <RefreshCw size={14} />
+                    {t("broadcast.camera.retry", "Réessayer")}
+                  </Press>
+                )}
             </div>
           </div>
         )}

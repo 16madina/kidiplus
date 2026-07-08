@@ -60,6 +60,19 @@
     "activity": "Activity",
     "profile": "Profile"
   },
+  "categories": {
+    "beauty": "Beauty",
+    "fashion": "Fashion",
+    "bagsAccessories": "Bags & accessories",
+    "perfumes": "Perfumes",
+    "jewelry": "Jewelry",
+    "watches": "Watches",
+    "electronics": "Electronics",
+    "games": "Video games",
+    "sneakers": "Sneakers",
+    "home": "Home",
+    "bundles": "Bundles & clearance"
+  },
   "home": {
     "categories": {
       "forYou": "For you",
@@ -196,6 +209,15 @@
     "becomeSellerTitle": "Become a seller",
     "becomeSellerBody": "Turn on seller mode to run your own lives and sell in real time.",
     "becomeSellerCta": "Enable seller mode",
+    "camera": {
+      "connecting": "Connecting to live…",
+      "denied": "Allow camera access in Settings > KiDi+",
+      "unavailable": "Camera unavailable",
+      "unsupported": "Camera not supported",
+      "connectFailed": "Connection failed",
+      "preview": "Camera preview",
+      "retry": "Retry"
+    },
     "setup": {
       "titlePlaceholder": "Live title…",
       "descriptionPlaceholder": "Describe your live (optional)",

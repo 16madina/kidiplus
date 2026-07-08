@@ -7,7 +7,11 @@ import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
-import { CATEGORIES } from "@/lib/live-mock";
+import {
+  BROADCAST_CATEGORY_KEYS,
+  BROADCAST_CATEGORY_LABEL_KEY,
+  BROADCAST_CATEGORY_FR_FALLBACK,
+} from "@/lib/broadcast-categories";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
@@ -18,6 +22,7 @@ import {
   uploadLiveImage,
 } from "@/lib/lives-db";
 import { formatMoney } from "@/lib/money";
+import { useImmersiveScope } from "@/lib/immersive-context";
 
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
@@ -25,6 +30,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
+  const [previewRetryKey, setPreviewRetryKey] = useState(0);
+
+  // Full-screen immersive flow: hide the app's bottom tab bar the whole time
+  // the setup screen is mounted so the "Lancer le live" CTA is never covered.
+  useImmersiveScope(true);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const urlTrackerRef = useRef(createObjectUrlTracker());
@@ -150,7 +160,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative h-full w-full overflow-hidden bg-black"
     >
-      <BroadcastVideo facing={facing} enabled={true} fallbackImage={b.cover} />
+      <BroadcastVideo
+        key={previewRetryKey}
+        facing={facing}
+        enabled={true}
+        fallbackImage={b.cover}
+        onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
+      />
+
 
       {/* Top bar */}
       <div
@@ -190,7 +207,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       <div
         className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-8 pb-safe"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
           background:
             "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.85) 100%)",
         }}
@@ -248,8 +265,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           className="flex gap-2 overflow-x-auto pb-1"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {CATEGORIES.filter((c) => c !== "For You").map((c) => {
+          {BROADCAST_CATEGORY_KEYS.map((c) => {
             const active = c === b.category;
+            const label = t(
+              BROADCAST_CATEGORY_LABEL_KEY[c],
+              BROADCAST_CATEGORY_FR_FALLBACK[c],
+            );
             return (
               <Press
                 key={c}
@@ -263,7 +284,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   backgroundColor: active ? "white" : "rgba(255,255,255,0.16)",
                 }}
               >
-                {c}
+                {label}
               </Press>
             );
           })}
