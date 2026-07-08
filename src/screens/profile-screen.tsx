@@ -184,15 +184,23 @@ export function ProfileScreen() {
               onClick: () => setWalletOpen(true),
             },
             { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
-            { icon: <MapPin size={16} />, label: t("profile.menu.addresses"), tint: "oklch(0.6 0.17 155)", onClick: () => toast(soon) },
+            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
             { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
             ...(profile?.is_seller
-              ? [{
-                  icon: <BadgeCheck size={16} />,
-                  label: t("gains.title"),
-                  tint: "oklch(0.65 0.16 60)",
-                  onClick: () => setSalesOpen(true),
-                }]
+              ? [
+                  {
+                    icon: <BadgeCheck size={16} />,
+                    label: t("gains.title"),
+                    tint: "oklch(0.65 0.16 60)",
+                    onClick: () => setSalesOpen(true),
+                  },
+                  {
+                    icon: <Truck size={16} />,
+                    label: t("delivery.title"),
+                    tint: "oklch(0.55 0.13 200)",
+                    onClick: () => setDeliveryOpen(true),
+                  },
+                ]
               : []),
             ...(serverAdmin === true
               ? [{
