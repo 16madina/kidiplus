@@ -35,6 +35,7 @@ export function ActivityScreen() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
+  const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
 
   // Notifs still mocked; orders come from the DB.
   useEffect(() => {
@@ -49,6 +50,8 @@ export function ActivityScreen() {
     if (!user) { setOrders([]); return; }
     let alive = true;
     const load = async () => {
+      // Opportunistic cleanup so overdue rows are cancelled before display.
+      await expireOverdueOrders().catch(() => 0);
       const rows = await fetchMyOrders(user.id);
       if (alive) setOrders(rows);
     };
