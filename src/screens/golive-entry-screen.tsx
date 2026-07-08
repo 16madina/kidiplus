@@ -209,24 +209,26 @@ export function GoLiveEntryScreen({
         >
           <X size={22} />
         </Press>
-        <Logo size={32} />
+        <div className="flex-1 grid place-items-center">
+          <Logo size={56} />
+        </div>
         <div className="h-11 w-11" />
       </div>
 
-      <div className="px-5 pt-4">
-        <h1 className="text-[26px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
+      <div className="px-5 pt-6 text-center">
+        <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct ✨")}
         </h1>
-        <p className="mt-1 text-[13px] leading-snug text-white/70">
+        <p className="mt-2 text-[14px] leading-snug text-white/70">
           {t("golive.entry.subtitle", "Commence maintenant ou programme un live pour ta communauté.")}
         </p>
       </div>
 
       {/* Choice cards */}
-      <div className="flex flex-col gap-3 px-5 pt-6">
+      <div className="grid grid-cols-2 gap-3 px-5 pt-6">
         <ChoiceCard
-          icon={<Radio size={26} color={GOLD} />}
-          title={t("golive.entry.startNow", "🔴 Commencer un live")}
+          icon={<Radio size={38} color={GOLD} />}
+          title={t("golive.entry.startNow", "Commencer\nun live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
             haptic.medium();
@@ -237,8 +239,8 @@ export function GoLiveEntryScreen({
           }}
         />
         <ChoiceCard
-          icon={<CalendarIcon size={26} color={GOLD} />}
-          title={t("golive.entry.schedule", "📅 Programmer un live")}
+          icon={<CalendarIcon size={38} color={GOLD} />}
+          title={t("golive.entry.schedule", "Programmer\nun live")}
           subtitle={t("golive.entry.scheduleSub", "Annonce ton live à l'avance et prépare tes articles")}
           onPress={() => {
             haptic.medium();
