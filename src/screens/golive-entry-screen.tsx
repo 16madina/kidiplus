@@ -458,17 +458,17 @@ function ChoiceCard({
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
       }}
     >
-        <div className="mt-2">
+        <div className="relative mt-2 h-[92px] w-[92px]">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               filter: "blur(16px)",
-              background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
+              background: "radial-gradient(circle, rgba(255,205,110,0.35), transparent 70%)",
             }}
           />
           <div
-            className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
+            className="relative grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
             style={{
               background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
               border: `1px solid ${GOLD_DIM}`,
