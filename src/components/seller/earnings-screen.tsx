@@ -64,7 +64,10 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
     if (!open || !user) return;
     let alive = true;
     const load = async () => {
-      await expireOverdueOrders().catch(() => 0);
+      await Promise.all([
+        expireOverdueOrders().catch(() => 0),
+        releaseOverdueEscrow().catch(() => null),
+      ]);
       const [b, os, ps] = await Promise.all([
         fetchMyBalance(user.id),
         fetchSellerOrders(user.id),
@@ -89,9 +92,18 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
   }, [open, user]);
 
   const available = balance?.available ?? 0;
+  const pending = balance?.pending ?? 0;
   const balanceCurrency = balance?.currency ?? currency;
 
   const fmt = (n: number, cur?: string) => formatMoney(n, cur ?? balanceCurrency, i18n.language);
+
+  const onShip = async (orderId: string) => {
+    haptic.medium();
+    const r = await markOrderShipped(orderId);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success(t("orders.shipped"));
+    setOrders((os) => os.map((o) => (o.id === orderId ? { ...o, fulfillment_status: "shipped", shipped_at: new Date().toISOString() } : o)));
+  };
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("gains.title")} zIndex={65}>
