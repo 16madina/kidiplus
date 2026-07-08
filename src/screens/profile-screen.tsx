@@ -38,11 +38,13 @@ import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
+import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 
 import { haptic } from "@/lib/haptics";
