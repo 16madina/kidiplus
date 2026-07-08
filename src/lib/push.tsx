@@ -1,10 +1,13 @@
 // Push notification pre-prompt + permission wrapper.
-// The pre-prompt bottom sheet is shown BEFORE the OS dialog so users understand why.
+// - Auto-registers on startup if the OS permission is already granted.
+// - Persists the FCM/APNS device token to the backend when it arrives.
+// - Exposes a clear `status` so the UI can show a "notifications refusées" state.
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -16,6 +19,8 @@ import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
+import { supabase } from "@/integrations/supabase/client";
+import { registerDeviceToken } from "@/lib/device-tokens.functions";
 
 export type PushStatus = "unknown" | "granted" | "denied" | "prompt";
 
@@ -24,6 +29,8 @@ type Ctx = {
   /** Ask (with pre-prompt if never asked). Returns granted?. */
   requestWithPrePrompt: (reason: string) => Promise<boolean>;
   refresh: () => Promise<void>;
+  /** Latest FCM/APNS token, once registered. */
+  token: string | null;
 };
 
 const PushContext = createContext<Ctx | null>(null);
@@ -36,11 +43,22 @@ function isNative(): boolean {
   }
 }
 
+function currentPlatform(): "ios" | "android" | "web" {
+  try {
+    const p = Capacitor.getPlatform();
+    if (p === "ios" || p === "android") return p;
+  } catch {}
+  return "web";
+}
+
 const PREPROMPT_SHOWN_KEY = "push:preprompt_shown";
+const LAST_TOKEN_KEY = "push:last_token";
 
 export function PushProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<PushStatus>("unknown");
+  const [token, setToken] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<{ reason: string; resolve: (b: boolean) => void } | null>(null);
+  const savedTokenRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isNative()) {
@@ -59,35 +77,75 @@ export function PushProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  // Device token wiring — ready to hand off to a push service later.
-  // Wrapped in try/catch so a missing Firebase config on Android
-  // (no google-services.json / FCM not initialised) can't crash the app.
+  // Persist token to backend once we have both a user session and a token.
+  const persistToken = useCallback(async (value: string) => {
+    if (savedTokenRef.current === value) return;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return; // will retry on next auth change
+      await registerDeviceToken({ data: { token: value, platform: currentPlatform() } });
+      savedTokenRef.current = value;
+      try { localStorage.setItem(LAST_TOKEN_KEY, value); } catch {}
+    } catch (e) {
+      console.warn("[push] failed to persist device token", e);
+    }
+  }, []);
+
+  // Listeners + auto-register when permission is already granted.
   useEffect(() => {
     if (!isNative()) return;
     const handles: Array<{ remove: () => void }> = [];
+    let cancelled = false;
+
     try {
       PushNotifications.addListener("registration", (t: Token) => {
-        // TODO: forward token to your push backend.
-        console.info("[push] token", t.value);
+        console.info("[push] token received");
+        setToken(t.value);
+        void persistToken(t.value);
       }).then((h) => handles.push(h)).catch((e) => console.warn("[push] listener registration failed", e));
+
       PushNotifications.addListener("registrationError", (e) => {
         console.warn("[push] registration error", e);
       }).then((h) => handles.push(h)).catch(() => {});
+
       PushNotifications.addListener("pushNotificationReceived", (n) => {
         if (n.title) toast(n.title, { description: n.body });
       }).then((h) => handles.push(h)).catch(() => {});
     } catch (e) {
       console.warn("[push] plugin unavailable", e);
     }
+
+    // If OS permission is already granted, register at startup so we get a token.
+    (async () => {
+      try {
+        const s = await PushNotifications.checkPermissions();
+        if (cancelled) return;
+        if (s.receive === "granted") {
+          await PushNotifications.register();
+        }
+      } catch (e) {
+        console.warn("[push] auto-register failed", e);
+      }
+    })();
+
     return () => {
+      cancelled = true;
       try { handles.forEach((h) => h.remove()); } catch {}
     };
-  }, []);
+  }, [persistToken]);
 
+  // Re-persist token when the user signs in later.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "USER_UPDATED") return;
+      const t = token ?? (typeof localStorage !== "undefined" ? localStorage.getItem(LAST_TOKEN_KEY) : null);
+      if (t) void persistToken(t);
+    });
+    return () => { sub.subscription.unsubscribe(); };
+  }, [token, persistToken]);
 
   const doRequest = useCallback(async (): Promise<boolean> => {
     if (!isNative()) {
-      // On web: pretend granted so downstream UX proceeds.
       setStatus("granted");
       return true;
     }
@@ -100,7 +158,9 @@ export function PushProvider({ children }: { children: ReactNode }) {
         toast.success("Notifications activées");
         haptic.success();
       } else {
-        toast("Notifications non activées");
+        toast.error("Notifications refusées", {
+          description: "Active-les dans Réglages > Notifications > KiDi+.",
+        });
       }
       return granted;
     } catch {
@@ -110,9 +170,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
   const requestWithPrePrompt = useCallback(
     async (reason: string): Promise<boolean> => {
-      // Already granted → no-op.
       if (status === "granted") return true;
-      // Pre-prompt only once. If they already saw it or OS already denied, go direct.
       const seen = typeof localStorage !== "undefined" && localStorage.getItem(PREPROMPT_SHOWN_KEY);
       if (seen || status === "denied") {
         return doRequest();
@@ -139,7 +197,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <PushContext.Provider value={{ status, requestWithPrePrompt, refresh }}>
+    <PushContext.Provider value={{ status, requestWithPrePrompt, refresh, token }}>
       {children}
       <AnimatePresence>
         {prompt && (
