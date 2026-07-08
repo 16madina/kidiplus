@@ -133,8 +133,25 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             videoRef.current.play().catch(() => {});
           }
           setState("granted");
-        } catch {
-          if (!cancelled) setState("denied");
+        } catch (err) {
+          if (cancelled) return;
+          // DOMException.name is the reliable discriminator across browsers.
+          const name = err instanceof DOMException ? err.name : "";
+          if (name === "NotAllowedError" || name === "SecurityError") {
+            // User denied, OS-level permission blocked (iOS Info.plist), or
+            // permission was revoked in Settings.
+            setState("denied");
+          } else if (
+            name === "NotFoundError" ||
+            name === "OverconstrainedError" ||
+            name === "NotReadableError" ||
+            name === "AbortError"
+          ) {
+            // No camera device / device busy / hardware error.
+            setState("unavailable");
+          } else {
+            setState("unavailable");
+          }
         }
       }
 
