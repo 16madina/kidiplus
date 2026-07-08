@@ -1,10 +1,12 @@
 // SellerSalesScreen — lists paid + pending orders where the current user is
-// the seller. Read-only view (buyer-name resolution via profiles).
+// the seller. Tap a row to view its event timeline.
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { PushScreen } from "@/components/push-screen";
+import { OrderTimeline } from "@/components/orders/order-timeline";
+import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -43,6 +45,7 @@ export function SellerSalesScreen({
   const revenueCurrency = profile?.currency ?? "EUR";
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [buyers, setBuyers] = useState<BuyerMap>({});
+  const [detail, setDetail] = useState<OrderRow | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -104,37 +107,73 @@ export function SellerSalesScreen({
                     ease: EASE_IOS,
                     delay: Math.min(i, 8) * 0.03,
                   }}
-                  className="flex items-center gap-3 rounded-2xl border border-border p-3"
                 >
-                  {o.item_image ? (
-                    <img
-                      src={o.item_image}
-                      alt=""
-                      className="h-14 w-14 rounded-xl object-cover"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="h-14 w-14 rounded-xl bg-muted" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
-                      <span
-                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                        style={{ backgroundColor: meta.bg, color: meta.color }}
-                      >
-                        {t(meta.labelKey)}
-                      </span>
+                  <Press
+                    onClick={() => setDetail(o)}
+                    className="!block w-full rounded-2xl border border-border p-0 text-left"
+                  >
+                    <div className="flex items-center gap-3 p-3">
+                      {o.item_image ? (
+                        <img
+                          src={o.item_image}
+                          alt=""
+                          className="h-14 w-14 rounded-xl object-cover"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="h-14 w-14 rounded-xl bg-muted" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
+                          <span
+                            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                            style={{ backgroundColor: meta.bg, color: meta.color }}
+                          >
+                            {t(meta.labelKey)}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[12px] text-muted-foreground">{label}</p>
+                        <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(o.amount), o.currency)}</p>
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-[12px] text-muted-foreground">{label}</p>
-                    <p className="mt-0.5 text-[13px] font-bold">{formatMoney(Number(o.amount), o.currency)}</p>
-                  </div>
+                  </Press>
                 </motion.li>
               );
             })}
           </ul>
         )}
       </div>
+
+      <PushScreen
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail?.item_name ?? ""}
+        zIndex={70}
+      >
+        {detail && (
+          <div className="space-y-4 px-4 py-4">
+            <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
+              {detail.item_image ? (
+                <img src={detail.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+              ) : (
+                <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-semibold">{detail.item_name}</p>
+                <p className="mt-1 text-[13px] font-bold">
+                  {formatMoney(Number(detail.amount), detail.currency)}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border p-4">
+              <p className="mb-3 text-[13px] font-semibold">{t("timeline.title")}</p>
+              <OrderTimeline orderId={detail.id} />
+            </div>
+          </div>
+        )}
+      </PushScreen>
     </PushScreen>
   );
 }
+

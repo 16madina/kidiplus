@@ -332,6 +332,96 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          order_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          order_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          order_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event: string
+          id: string
+          meta: Json | null
+          order_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          meta?: Json | null
+          order_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          meta?: Json | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           address_id: string | null
@@ -875,6 +965,25 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _log_order_event: {
+        Args: {
+          _actor: string
+          _event: string
+          _meta?: Json
+          _order_id: string
+        }
+        Returns: undefined
+      }
+      _push_notification: {
+        Args: {
+          _body: string
+          _kind: string
+          _order_id?: string
+          _title: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       _release_order_escrow: {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
@@ -969,7 +1078,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
+      list_my_notifications: { Args: { _limit?: number }; Returns: Json }
       mark_admin_message_read: { Args: { _id: string }; Returns: Json }
+      mark_all_notifications_read: { Args: never; Returns: Json }
+      mark_notification_read: { Args: { _id: string }; Returns: Json }
       mark_order_shipped: { Args: { _order_id: string }; Returns: Json }
       my_moderation_state: { Args: never; Returns: Json }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }

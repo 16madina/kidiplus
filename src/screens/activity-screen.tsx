@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
-import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, PackageCheck, AlertTriangle } from "lucide-react";
+import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, PackageCheck, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
-import {
-  formatRelative,
-  initialNotifications,
-  orderDateShort,
-  type Notification,
-} from "@/lib/activity-mock";
+import { formatRelative, orderDateShort } from "@/lib/activity-mock";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,11 +16,19 @@ import {
   type OrderStatus,
   type FulfillmentStatus,
 } from "@/lib/orders-db";
-import { confirmOrderDelivered, disputeOrder } from "@/lib/escrow-db";
+import { confirmOrderDelivered, disputeOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
 import { SuspensionBanner } from "@/components/moderation/moderation-gate";
+import {
+  fetchMyNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  subscribeMyNotifications,
+  type NotificationRow,
+} from "@/lib/notifications-db";
+import { OrderTimeline } from "@/components/orders/order-timeline";
 
 type Tab = "notifs" | "orders";
 
@@ -34,26 +37,33 @@ export function ActivityScreen() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
-  const [notifs, setNotifs] = useState<Notification[]>([]);
+  const [notifs, setNotifs] = useState<NotificationRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
   const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
 
-  // Notifs still mocked; orders come from the DB.
+  // Real DB-backed notifications.
   useEffect(() => {
-    const to = setTimeout(() => {
-      setNotifs(initialNotifications());
+    if (!user) { setNotifs([]); setLoading(false); return; }
+    let alive = true;
+    const load = async () => {
+      const r = await fetchMyNotifications(50);
+      if (!alive) return;
+      setNotifs(r.rows);
       setLoading(false);
-    }, 300);
-    return () => clearTimeout(to);
-  }, []);
+    };
+    void load();
+    const unsub = subscribeMyNotifications(user.id, () => { void load(); });
+    return () => { alive = false; unsub(); };
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setOrders([]); return; }
     let alive = true;
     const load = async () => {
-      // Opportunistic cleanup so overdue rows are cancelled before display.
+      // Opportunistic cleanup + escrow auto-release/reminders.
       await expireOverdueOrders().catch(() => 0);
+      await releaseOverdueEscrow().catch(() => null);
       const rows = await fetchMyOrders(user.id);
       if (alive) setOrders(rows);
     };
@@ -63,12 +73,20 @@ export function ActivityScreen() {
   }, [user]);
 
   const removeNotif = (id: string) => {
+    // Soft-hide locally (no destructive server delete — mark read).
     setNotifs((prev) => prev.filter((n) => n.id !== id));
+    void markNotificationRead(id);
     toast(t("common.remove"));
   };
   const markRead = (id: string) => {
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)));
+    void markNotificationRead(id);
   };
+  const markAll = () => {
+    setNotifs((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+    void markAllNotificationsRead();
+  };
+
 
   return (
     <div className="flex h-full flex-col">
@@ -115,6 +133,16 @@ export function ActivityScreen() {
             >
               <SuspensionBanner />
               <AdminMessagesInbox />
+              {notifs.some((n) => !n.read_at) && (
+                <div className="flex justify-end px-4 pb-1 pt-2">
+                  <button
+                    onClick={markAll}
+                    className="text-[12px] font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    {t("notif.markAllRead")}
+                  </button>
+                </div>
+              )}
               {loading ? (
                 <NotifSkeletons />
               ) : notifs.length === 0 ? (
@@ -246,7 +274,7 @@ function NotifRow({
   onDelete,
   onTap,
 }: {
-  n: Notification;
+  n: NotificationRow;
   index: number;
   onDelete: () => void;
   onTap: () => void;
@@ -254,6 +282,8 @@ function NotifRow({
   const { t } = useTranslation();
   const x = useMotionValue(0);
   const [snapped, setSnapped] = useState(false);
+  const unread = !n.read_at;
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(n.created_at).getTime()) / 60000));
 
   return (
     <motion.li
@@ -264,7 +294,6 @@ function NotifRow({
       transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(index, 8) * 0.03 }}
       className="relative overflow-hidden"
     >
-      {/* delete action underneath */}
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-end"
         style={{ width: SWIPE_ACTION, backgroundColor: "oklch(0.6 0.24 27)" }}
@@ -304,30 +333,21 @@ function NotifRow({
           className="!block w-full p-0 text-left"
         >
           <div className="flex items-start gap-3 px-4 py-3">
-            <div className="relative shrink-0">
-              <img
-                src={n.avatar}
-                alt=""
-                className="h-11 w-11 rounded-full object-cover"
-                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                draggable={false}
-              />
-              <NotifKindBadge kind={n.kind} />
-            </div>
+            <NotifKindIcon kind={n.kind} />
             <div className="min-w-0 flex-1">
               <p className="text-[14px] leading-snug">
-                <span className={n.unread ? "font-semibold" : "font-medium text-foreground/85"}>
+                <span className={unread ? "font-semibold" : "font-medium text-foreground/85"}>
                   {n.title}
                 </span>
               </p>
               {n.body && (
-                <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{n.body}</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">{n.body}</p>
               )}
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatRelative(n.minutesAgo)}
+                {formatRelative(minutes)}
               </p>
             </div>
-            {n.unread && (
+            {unread && (
               <span
                 aria-label={t("common.notifications")}
                 className="mt-2 h-2 w-2 shrink-0 rounded-full"
@@ -341,25 +361,25 @@ function NotifRow({
   );
 }
 
-function NotifKindBadge({ kind }: { kind: Notification["kind"] }) {
-  const map: Record<Notification["kind"], { icon: React.ReactNode; bg: string }> = {
-    live: { icon: <Radio size={9} />, bg: "oklch(0.65 0.26 15)" },
-    shipped: { icon: <Truck size={9} />, bg: "oklch(0.7 0.17 55)" },
-    outbid: { icon: <Bell size={9} />, bg: "oklch(0.6 0.2 250)" },
-    sold: { icon: <Check size={9} />, bg: "oklch(0.6 0.17 155)" },
-    follow: { icon: <Bell size={9} />, bg: "oklch(0.55 0.16 300)" },
-    reminder: { icon: <Bell size={9} />, bg: "oklch(0.62 0.24 20)" },
-  };
-  const m = map[kind];
+function NotifKindIcon({ kind }: { kind: string }) {
+  let icon: React.ReactNode = <Bell size={18} />;
+  let bg = "oklch(0.6 0.2 250)";
+  if (kind === "order_shipped") { icon = <Truck size={18} />; bg = "oklch(0.6 0.16 60)"; }
+  else if (kind === "order_delivered") { icon = <PackageCheck size={18} />; bg = "oklch(0.55 0.18 155)"; }
+  else if (kind === "order_auto_released") { icon = <Check size={18} />; bg = "oklch(0.55 0.18 155)"; }
+  else if (kind === "order_reminder") { icon = <Bell size={18} />; bg = "oklch(0.62 0.24 20)"; }
+  else if (kind === "dispute_released" || kind === "dispute_refunded") { icon = <ShieldCheck size={18} />; bg = "oklch(0.55 0.16 300)"; }
+  else if (kind === "live") { icon = <Radio size={18} />; bg = "oklch(0.65 0.26 15)"; }
   return (
-    <span
-      className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2 ring-background"
-      style={{ backgroundColor: m.bg }}
+    <div
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white"
+      style={{ backgroundColor: bg }}
     >
-      {m.icon}
-    </span>
+      {icon}
+    </div>
   );
 }
+
 
 function NotifSkeletons() {
   return (
@@ -599,9 +619,15 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
         <div className="my-2 h-px bg-border" />
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency)} bold />
       </div>
+
+      <div className="rounded-2xl border border-border p-4">
+        <p className="mb-3 text-[13px] font-semibold">{t("timeline.title")}</p>
+        <OrderTimeline orderId={order.id} />
+      </div>
     </div>
   );
 }
+
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (

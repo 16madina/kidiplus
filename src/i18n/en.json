@@ -772,6 +772,26 @@
       "failed": "Send failed"
     }
   },
+  "timeline": {
+    "title": "History",
+    "empty": "No events yet.",
+    "by": "by",
+    "system": "Automatic",
+    "event": {
+      "created": "Order created",
+      "paid": "Payment received",
+      "shipped": "Shipped",
+      "delivered": "Delivery confirmed",
+      "autoReleased": "Funds auto-released",
+      "disputed": "Dispute opened",
+      "disputeReleased": "Dispute: released to seller",
+      "disputeRefunded": "Dispute: refunded",
+      "cancelled": "Cancelled"
+    }
+  },
+  "notif": {
+    "markAllRead": "Mark all as read"
+  },
   "legal": {
     "appLegal": "Legal documents — KiDi+",
     "lastUpdated": "Last updated",

@@ -20,6 +20,7 @@ import {
 } from "@/lib/moderation-admin";
 import { adminReleaseEscrow, adminRefundOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
 import { SanctionSheet } from "./sanction-sheet";
+import { OrderTimeline } from "@/components/orders/order-timeline";
 
 // -------- Reports Tab --------
 
@@ -89,6 +90,16 @@ export function ReportsTab({
                 </div>
                 <StatusPill status={r.status} />
               </div>
+
+              {r.target_type === "order" && (
+                <div className="mt-3 rounded-xl border border-border p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("timeline.title")}
+                  </p>
+                  <OrderTimeline orderId={r.target_id} showActors />
+                </div>
+              )}
+
 
               {r.status === "open" && (
                 <div className="mt-3 flex flex-wrap gap-2">
