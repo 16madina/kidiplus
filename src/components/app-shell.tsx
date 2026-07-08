@@ -131,8 +131,8 @@ function AuthGate() {
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
-  const { active: liveStream, close: closeLive } = useLiveViewer();
-  const { activeSeller, close: closeSeller } = useSellerProfile();
+  const { active: liveStream, close: closeLive, open: openLive } = useLiveViewer();
+  const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
