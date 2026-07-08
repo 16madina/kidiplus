@@ -21,6 +21,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDeviceToken } from "@/lib/device-tokens.functions";
+import { normalizePushData, openFromPush } from "@/lib/push-router";
 
 export type PushStatus = "unknown" | "granted" | "denied" | "prompt";
 
