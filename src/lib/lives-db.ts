@@ -263,6 +263,22 @@ export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
   return streams;
 }
 
+/** Fetch a single live stream by id (used for push deep-links). */
+export async function fetchLiveById(id: string): Promise<LiveStream | null> {
+  const { data, error } = await supabase
+    .from("lives")
+    .select(
+      `
+      id, seller_id, title, category, cover_url, room_name, viewer_count, started_at, currency,
+      seller:profiles!lives_seller_id_fkey(display_name, handle, avatar_url)
+      `,
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToStream(data as unknown as LivesRow);
+}
+
 /**
  * Realtime subscription to the lives feed.
  * Fires `onChange` after any INSERT/UPDATE/DELETE — caller refetches.
