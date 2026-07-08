@@ -451,7 +451,7 @@ function ChoiceCard({
   return (
     <Press
       onClick={onPress}
-      className="flex h-full min-h-[280px] w-full flex-col items-center justify-start gap-4 rounded-3xl p-5 text-center"
+      className="flex h-full min-h-[248px] w-full flex-col items-center justify-start gap-3 rounded-3xl p-5 text-center"
       style={{
         backgroundColor: "rgba(255,255,255,0.04)",
         border: `1px solid ${GOLD_DIM}`,
