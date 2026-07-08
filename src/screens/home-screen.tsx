@@ -18,6 +18,7 @@ import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
+import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 
 
 const PAGE = 12;
