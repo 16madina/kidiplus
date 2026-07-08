@@ -430,28 +430,35 @@ function ChoiceCard({
   return (
     <Press
       onClick={onPress}
-      className="!min-h-24 flex w-full items-center gap-4 rounded-3xl p-4 text-left"
+      className="flex h-full min-h-[280px] w-full flex-col items-center justify-start gap-4 rounded-3xl p-5 text-center"
       style={{
-        backgroundColor: "rgba(255,255,255,0.05)",
+        backgroundColor: "rgba(255,255,255,0.04)",
         border: `1px solid ${GOLD_DIM}`,
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
       }}
     >
       <div
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
+        className="mt-2 grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
         style={{
-          background: "linear-gradient(135deg, rgba(255,215,140,0.18), rgba(255,215,140,0.05))",
+          background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
           border: `1px solid ${GOLD_DIM}`,
         }}
       >
         {icon}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[16px] font-bold text-white" style={{ letterSpacing: "-0.01em" }}>
+      <div className="min-w-0">
+        <div
+          className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
+          style={{ letterSpacing: "-0.01em" }}
+        >
           {title}
         </div>
-        <div className="mt-0.5 text-[12.5px] leading-snug text-white/60">{subtitle}</div>
       </div>
+      <div
+        className="h-px w-16"
+        style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
+      />
+      <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
     </Press>
   );
 }
