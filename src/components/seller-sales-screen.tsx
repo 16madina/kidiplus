@@ -45,6 +45,7 @@ export function SellerSalesScreen({
   const revenueCurrency = profile?.currency ?? "EUR";
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [buyers, setBuyers] = useState<BuyerMap>({});
+  const [detail, setDetail] = useState<OrderRow | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
