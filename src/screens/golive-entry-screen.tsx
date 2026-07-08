@@ -215,16 +215,24 @@ export function GoLiveEntryScreen({
               aria-hidden
               className="pointer-events-none absolute inset-0 -z-10"
               style={{
-                filter: "blur(24px)",
-                background: "radial-gradient(60% 70% at 50% 55%, rgba(255,205,110,0.55), transparent 70%)",
+                filter: "blur(28px)",
+                background: "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
               }}
             />
-            <div className="relative">
-              <Logo size={80} />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                filter: "blur(12px)",
+                background: "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
+              }}
+            />
+            <div className="relative" style={{ filter: "drop-shadow(0 4px 20px rgba(255,205,110,0.35))" }}>
+              <Logo size={100} />
             </div>
             <div
               aria-hidden
-              className="mx-auto mt-2 h-px w-24"
+              className="mx-auto mt-2 h-px w-28"
               style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
             />
           </div>
