@@ -234,7 +234,7 @@ export function GoLiveEntryScreen({
 
       {/* Scrollable content */}
       <div className="min-h-0 flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-      <div className="px-5 pt-6 text-center">
+      <div className="px-5 pt-3 text-center">
 
         <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct")}
@@ -245,7 +245,7 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Choice cards */}
-      <div className="grid grid-cols-2 gap-3 px-5 pt-6">
+      <div className="grid grid-cols-2 gap-3 px-5 pt-4">
         <ChoiceCard
           icon={<Radio size={38} color={GOLD} />}
           title={t("golive.entry.startNow", "Commencer\nun live")}
