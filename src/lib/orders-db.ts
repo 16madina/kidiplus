@@ -8,6 +8,8 @@ import { computeFees } from "@/lib/fees";
 export type OrderStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
 export type OrderKind = "auction" | "fixed";
 export type PaymentMethod = "card" | "wave" | "orange_money" | "wallet";
+export type FulfillmentStatus = "awaiting" | "shipped" | "delivered" | "disputed";
+export type DeliveryMode = "zones" | "flat" | "courier";
 
 export type OrderRow = {
   id: string;
@@ -31,6 +33,16 @@ export type OrderRow = {
   paid_at: string | null;
   payment_deadline: string | null;
   cancelled_reason: string | null;
+  // Delivery + escrow (added in Migration 1)
+  delivery_fee: number;
+  delivery_mode: DeliveryMode | null;
+  delivery_zone: string | null;
+  address_id: string | null;
+  address_snapshot: Record<string, unknown> | null;
+  fulfillment_status: FulfillmentStatus;
+  shipped_at: string | null;
+  delivered_confirmed_at: string | null;
+  refund_status: "pending_manual" | "refunded_wallet" | "refunded_card" | "none" | null;
 };
 
 export type CreatePendingOrderInput = {
@@ -44,6 +56,12 @@ export type CreatePendingOrderInput = {
   amount: number; // item price expressed in the live/order currency
   /** Currency of the live (falls back to EUR). Order & fees use this. */
   currency?: string;
+  /** Delivery (all optional — omit when not applicable, e.g. digital goods). */
+  deliveryFee?: number;
+  deliveryMode?: DeliveryMode | null;
+  deliveryZone?: string | null;
+  addressId?: string | null;
+  addressSnapshot?: Record<string, unknown> | null;
 };
 
 /**
@@ -55,7 +73,8 @@ export type CreatePendingOrderInput = {
 export async function createPendingOrder(
   input: CreatePendingOrderInput,
 ): Promise<{ ok: true; order: OrderRow } | { ok: false; error: string }> {
-  const fees = computeFees(input.amount, 0, input.currency ?? "EUR");
+  const deliveryFee = Number(input.deliveryFee ?? 0);
+  const fees = computeFees(input.amount, deliveryFee, input.currency ?? "EUR");
   const { data, error } = await supabase
     .from("orders")
     .insert({
@@ -74,6 +93,11 @@ export async function createPendingOrder(
       currency: fees.currency,
       status: "pending",
       payment_method: "card",
+      delivery_fee: fees.shipping,
+      delivery_mode: input.deliveryMode ?? null,
+      delivery_zone: input.deliveryZone ?? null,
+      address_id: input.addressId ?? null,
+      address_snapshot: (input.addressSnapshot ?? null) as never,
     } as never)
     .select("*")
     .single();

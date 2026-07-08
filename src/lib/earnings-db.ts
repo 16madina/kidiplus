@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type SellerBalance = {
   seller_id: string;
   available: number;
+  /** Funds held in escrow — moves to `available` on delivery confirmation. */
+  pending: number;
   currency: string;
   updated_at: string;
 };
@@ -19,6 +21,7 @@ export type SellerEarning = {
   order_id: string;
   amount: number;
   balance_after: number;
+  status: "pending" | "released" | "reversed";
   created_at: string;
 };
 

@@ -18,6 +18,7 @@ import {
   type ReportRow,
   type SanctionRow,
 } from "@/lib/moderation-admin";
+import { adminReleaseEscrow, adminRefundOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
 import { SanctionSheet } from "./sanction-sheet";
 
 // -------- Reports Tab --------
@@ -36,6 +37,7 @@ export function ReportsTab({
 
   const load = async () => {
     setLoading(true);
+    await releaseOverdueEscrow().catch(() => null);
     setRows(await fetchAdminReports(status));
     setLoading(false);
   };
@@ -90,13 +92,47 @@ export function ReportsTab({
 
               {r.status === "open" && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {r.target_user_id && onOpenUser && (
+                  {r.target_type === "order" && (
+                    <>
+                      <Press
+                        onClick={async () => {
+                          haptic.medium();
+                          const rr = await adminReleaseEscrow(r.target_id);
+                          if (!rr.ok) { toast.error(rr.error); return; }
+                          toast.success(t("dispute.released"));
+                          await load();
+                        }}
+                        className="rounded-xl px-3 py-1.5 text-[12px] font-bold text-white"
+                        style={{ backgroundColor: "oklch(0.55 0.18 155)" }}
+                      >
+                        {t("dispute.release")}
+                      </Press>
+                      <Press
+                        onClick={async () => {
+                          haptic.medium();
+                          const rr = await adminRefundOrder(r.target_id);
+                          if (!rr.ok) { toast.error(rr.error); return; }
+                          toast.success(
+                            rr.refund_status === "refunded_wallet"
+                              ? t("dispute.refundedWallet")
+                              : t("dispute.refunded") + " — " + t("dispute.refundManualNote"),
+                          );
+                          await load();
+                        }}
+                        className="rounded-xl px-3 py-1.5 text-[12px] font-bold text-white"
+                        style={{ backgroundColor: "oklch(0.55 0.2 27)" }}
+                      >
+                        {t("dispute.refund")}
+                      </Press>
+                    </>
+                  )}
+                  {r.target_type !== "order" && r.target_user_id && onOpenUser && (
                     <Press onClick={() => onOpenUser(r.target_user_id!)}
                       className="rounded-xl border px-3 py-1.5 text-[12px] font-semibold">
                       {t("moderation.reports.viewTarget")}
                     </Press>
                   )}
-                  {r.target_user_id && (
+                  {r.target_type !== "order" && r.target_user_id && (
                     <Press onClick={() => { haptic.medium(); setSanctionTarget({ userId: r.target_user_id!, handle: r.target_label ?? null, reportId: r.id }); }}
                       className="rounded-xl px-3 py-1.5 text-[12px] font-bold text-white"
                       style={{ backgroundColor: "oklch(0.55 0.2 27)" }}>

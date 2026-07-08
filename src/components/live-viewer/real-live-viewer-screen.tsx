@@ -16,6 +16,7 @@ import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
 import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
+import { resolveDeliveryForCheckout } from "@/lib/delivery-checkout";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
@@ -216,6 +217,20 @@ export function RealLiveViewerScreen() {
         const prod = room.products.find((p) => p.id === evt.productId);
         if (prod) {
           void (async () => {
+            const dr = await resolveDeliveryForCheckout({
+              sellerId: active.sellerId!,
+              buyerId: user.id,
+            });
+            if (!dr.ok) {
+              // Auction can't auto-resolve — surface a toast; buyer must
+              // set a default address / a matching zone before paying.
+              const msg =
+                dr.reason === "no_address"
+                  ? t("delivery.noAddressBlock")
+                  : t("delivery.zoneMismatch");
+              toast.error(msg);
+              return;
+            }
             const res = await createPendingOrder({
               buyerId: user.id,
               sellerId: active.sellerId!,
@@ -226,6 +241,11 @@ export function RealLiveViewerScreen() {
               itemImage: prod.image_url,
               amount: evt.finalPrice,
               currency: liveCurrency,
+              deliveryFee: dr.delivery.deliveryFee,
+              deliveryMode: dr.delivery.deliveryMode,
+              deliveryZone: dr.delivery.deliveryZone,
+              addressId: dr.delivery.addressId,
+              addressSnapshot: dr.delivery.addressSnapshot,
             });
             if (res.ok) setPendingOrder(res.order);
             else toast.error(res.error);
@@ -348,6 +368,20 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
     if (!active?.liveId || !active?.sellerId) return;
+    // Resolve delivery BEFORE reserving stock so we don't hold stock the
+    // buyer can't actually pay for.
+    const dr = await resolveDeliveryForCheckout({
+      sellerId: active.sellerId,
+      buyerId: user.id,
+    });
+    if (!dr.ok) {
+      const msg =
+        dr.reason === "no_address"
+          ? t("delivery.noAddressBlock")
+          : t("delivery.zoneMismatch");
+      toast.error(msg);
+      return;
+    }
     const res = await purchaseFixedPriceRpc(p.id, user.id);
     if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
     const order = await createPendingOrder({
@@ -360,6 +394,11 @@ export function RealLiveViewerScreen() {
       itemImage: p.image_url,
       amount: Number(p.price),
       currency: liveCurrency,
+      deliveryFee: dr.delivery.deliveryFee,
+      deliveryMode: dr.delivery.deliveryMode,
+      deliveryZone: dr.delivery.deliveryZone,
+      addressId: dr.delivery.addressId,
+      addressSnapshot: dr.delivery.addressSnapshot,
     });
     if (order.ok) setPendingOrder(order.order);
     else toast.error(order.error);

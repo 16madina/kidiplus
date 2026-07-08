@@ -6,12 +6,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Wallet as WalletIcon, ArrowDownToLine } from "lucide-react";
+import { Wallet as WalletIcon, ArrowDownToLine, Clock, PackageCheck } from "lucide-react";
+import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useAuth } from "@/lib/auth-context";
 import { formatMoney } from "@/lib/money";
+import { haptic } from "@/lib/haptics";
 import {
   fetchMyBalance,
   fetchMyPayouts,
@@ -25,10 +27,12 @@ import {
   fetchProfilesByIds,
   subscribeOrders,
   type OrderRow,
+  type FulfillmentStatus,
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import { expireOverdueOrders } from "@/lib/lives-db";
+import { markOrderShipped, releaseOverdueEscrow } from "@/lib/escrow-db";
 
 type BuyerMap = Record<string, { display_name: string; handle: string }>;
 
@@ -60,7 +64,10 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
     if (!open || !user) return;
     let alive = true;
     const load = async () => {
-      await expireOverdueOrders().catch(() => 0);
+      await Promise.all([
+        expireOverdueOrders().catch(() => 0),
+        releaseOverdueEscrow().catch(() => null),
+      ]);
       const [b, os, ps] = await Promise.all([
         fetchMyBalance(user.id),
         fetchSellerOrders(user.id),
@@ -85,9 +92,18 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
   }, [open, user]);
 
   const available = balance?.available ?? 0;
+  const pending = balance?.pending ?? 0;
   const balanceCurrency = balance?.currency ?? currency;
 
   const fmt = (n: number, cur?: string) => formatMoney(n, cur ?? balanceCurrency, i18n.language);
+
+  const onShip = async (orderId: string) => {
+    haptic.medium();
+    const r = await markOrderShipped(orderId);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success(t("orders.shipped"));
+    setOrders((os) => os.map((o) => (o.id === orderId ? { ...o, fulfillment_status: "shipped", shipped_at: new Date().toISOString() } : o)));
+  };
 
   return (
     <PushScreen open={open} onClose={onClose} title={t("gains.title")} zIndex={65}>
@@ -124,6 +140,25 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
           </Press>
         </motion.div>
 
+        {/* Pending / escrow card */}
+        <div
+          className="mt-2 flex items-center justify-between rounded-2xl border border-border p-3"
+          style={{ backgroundColor: "oklch(0.98 0.02 80)" }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: "oklch(0.94 0.06 80)", color: "oklch(0.42 0.14 70)" }}>
+              <Clock size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-muted-foreground truncate">{t("gains.pending")}</p>
+              <p className="text-[16px] font-bold tabular-nums">{fmt(pending)}</p>
+            </div>
+          </div>
+        </div>
+        <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground">
+          {t("gains.escrowExplainer")}
+        </p>
+
         {/* Tabs */}
         <div className="mt-4 flex gap-1 rounded-full border border-border p-1">
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")}>
@@ -136,7 +171,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-3">
           {tab === "sales" ? (
-            <SalesList orders={orders} buyers={buyers} fmt={fmt} />
+            <SalesList orders={orders} buyers={buyers} fmt={fmt} onShip={onShip} />
           ) : (
             <PayoutsList payouts={payouts} fmt={fmt} tr={t} />
           )}
@@ -177,14 +212,23 @@ function TabBtn({
   );
 }
 
+const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: string }> = {
+  awaiting: { bg: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)", key: "orders.fulfillment.awaiting" },
+  shipped:  { bg: "oklch(0.94 0.06 60)",  color: "oklch(0.42 0.14 60)",  key: "orders.fulfillment.shipped" },
+  delivered:{ bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)",  key: "orders.fulfillment.delivered" },
+  disputed: { bg: "oklch(0.94 0.06 27)",  color: "oklch(0.45 0.18 27)",  key: "orders.fulfillment.disputed" },
+};
+
 function SalesList({
   orders,
   buyers,
   fmt,
+  onShip,
 }: {
   orders: OrderRow[];
   buyers: BuyerMap;
   fmt: (n: number, cur?: string) => string;
+  onShip: (orderId: string) => void;
 }) {
   const { t } = useTranslation();
   if (orders.length === 0) {
@@ -194,6 +238,9 @@ function SalesList({
     <ul className="space-y-2">
       {orders.map((o) => {
         const buyer = buyers[o.buyer_id];
+        const isPaid = o.status === "paid";
+        const canShip = isPaid && o.fulfillment_status === "awaiting";
+        const fm = FULFILL_META[o.fulfillment_status];
         return (
           <li key={o.id} className="rounded-2xl border border-border p-3">
             <div className="flex items-center gap-3">
@@ -203,7 +250,17 @@ function SalesList({
                 <div className="h-14 w-14 rounded-xl bg-muted" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-semibold">{o.item_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
+                  {isPaid && (
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{ backgroundColor: fm.bg, color: fm.color }}
+                    >
+                      {t(fm.key)}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
                   {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
@@ -230,6 +287,15 @@ function SalesList({
                 strong
               />
             </div>
+            {canShip && (
+              <Press
+                onClick={() => onShip(o.id)}
+                className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold text-white"
+                style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
+              >
+                <PackageCheck size={14} /> {t("orders.shipCta")}
+              </Press>
+            )}
           </li>
         );
       })}

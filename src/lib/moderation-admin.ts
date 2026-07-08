@@ -71,7 +71,7 @@ export type ReportRow = {
   reporter_id: string;
   reporter_handle: string | null;
   reporter_name: string | null;
-  target_type: "live" | "user" | "message";
+  target_type: "live" | "user" | "message" | "order";
   target_id: string;
   target_label: string | null;
   target_user_id: string | null;

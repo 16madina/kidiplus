@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   UserX,
   Trash2,
+  Truck,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -38,11 +39,13 @@ import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
+import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 
 import { haptic } from "@/lib/haptics";
@@ -57,6 +60,8 @@ export function ProfileScreen() {
   const [salesOpen, setSalesOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [addressesOpen, setAddressesOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -179,15 +184,23 @@ export function ProfileScreen() {
               onClick: () => setWalletOpen(true),
             },
             { icon: <CreditCard size={16} />, label: t("profile.menu.payments"), tint: "oklch(0.6 0.2 250)", onClick: () => toast(soon) },
-            { icon: <MapPin size={16} />, label: t("profile.menu.addresses"), tint: "oklch(0.6 0.17 155)", onClick: () => toast(soon) },
+            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
             { icon: <ShoppingBag size={16} />, label: t("profile.menu.purchases"), tint: "oklch(0.7 0.17 55)", onClick: () => toast(soon) },
             ...(profile?.is_seller
-              ? [{
-                  icon: <BadgeCheck size={16} />,
-                  label: t("gains.title"),
-                  tint: "oklch(0.65 0.16 60)",
-                  onClick: () => setSalesOpen(true),
-                }]
+              ? [
+                  {
+                    icon: <BadgeCheck size={16} />,
+                    label: t("gains.title"),
+                    tint: "oklch(0.65 0.16 60)",
+                    onClick: () => setSalesOpen(true),
+                  },
+                  {
+                    icon: <Truck size={16} />,
+                    label: t("delivery.title"),
+                    tint: "oklch(0.55 0.13 200)",
+                    onClick: () => setDeliveryOpen(true),
+                  },
+                ]
               : []),
             ...(serverAdmin === true
               ? [{
@@ -247,6 +260,8 @@ export function ProfileScreen() {
       <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
       <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
+      <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />
+      <SellerDeliverySettingsScreen open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
       <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />

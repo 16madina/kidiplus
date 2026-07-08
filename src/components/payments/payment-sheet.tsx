@@ -226,9 +226,20 @@ export function PaymentSheet({
                   </div>
                 </div>
 
-                {/* Total (buyer pays exactly item price) */}
+                {/* Fees breakdown: item + delivery (or courier note) = total */}
                 <dl className="mt-4 space-y-2 text-sm">
                   <Row label={t("pay.item")} value={fmt(Number(order.amount))} />
+                  {order.delivery_mode === "courier" ? (
+                    <Row label={t("delivery.fee")} value={t("delivery.courierNote")} />
+                  ) : Number(order.delivery_fee) > 0 ? (
+                    <Row
+                      label={
+                        t("delivery.fee") +
+                        (order.delivery_zone ? ` · ${order.delivery_zone}` : "")
+                      }
+                      value={fmt(Number(order.delivery_fee))}
+                    />
+                  ) : null}
                   <div className="my-2 h-px bg-border" />
                   <Row label={t("pay.total")} value={fmt(Number(order.total))} bold />
                 </dl>

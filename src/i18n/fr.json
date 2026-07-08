@@ -481,7 +481,28 @@
       "failed": "Échoué",
       "cancelled": "Annulé",
       "paymentTimeout": "Non payé — annulé"
-    }
+    },
+    "fulfillment": {
+      "awaiting": "À expédier",
+      "shipped": "Expédié",
+      "delivered": "Livré",
+      "disputed": "Litige"
+    },
+    "confirmDelivery": "Confirmer la réception ✅",
+    "reportProblem": "Signaler un problème",
+    "shipCta": "Marquer expédié 📦",
+    "shipped": "Marqué comme expédié",
+    "delivered": "Merci ! Le vendeur a reçu ses fonds",
+    "disputeOpened": "Litige ouvert — un modérateur va s'en occuper",
+    "disputeTitle": "Signaler un problème",
+    "disputeBody": "Explique ce qui ne va pas. Un modérateur reviendra vers vous.",
+    "disputeReason": "Motif",
+    "disputeReasons": {
+      "counterfeit": "Produit contrefait ou non conforme",
+      "fraud": "Fraude ou tentative d'arnaque",
+      "other": "Autre problème"
+    },
+    "disputeSubmit": "Ouvrir le litige"
   },
   "sales": {
     "title": "Mes ventes",
@@ -520,6 +541,8 @@
   "gains": {
     "title": "Mes gains",
     "available": "Solde disponible",
+    "pending": "En attente de livraison",
+    "escrowExplainer": "Les gains sont libérés à la confirmation de livraison (auto après 7 jours).",
     "withdraw": "Retirer mes gains",
     "price": "Prix",
     "net": "Net",
@@ -849,5 +872,78 @@
       "said": "{{name}} a dit + 🎉",
       "saidMe": "Tu as dit + 🎉"
     }
+  },
+  "address": {
+    "title": "Mes adresses",
+    "empty": "Aucune adresse enregistrée.",
+    "add": "Ajouter une adresse",
+    "edit": "Modifier l'adresse",
+    "delete": "Supprimer",
+    "setDefault": "Définir par défaut",
+    "default": "Par défaut",
+    "inUse": "Adresse utilisée par une commande",
+    "deleted": "Adresse supprimée",
+    "saved": "Adresse enregistrée",
+    "confirmDelete": "Supprimer cette adresse ?",
+    "fields": {
+      "label": "Nom (Maison, Bureau…)",
+      "fullName": "Nom complet",
+      "phone": "Téléphone",
+      "country": "Pays",
+      "city": "Ville",
+      "zoneOrCommune": "Commune / quartier",
+      "streetAddress": "Adresse (rue, numéro)",
+      "details": "Repère (ex : derrière la pharmacie X)"
+    },
+    "phoneRequired": "Le téléphone est requis.",
+    "cityRequired": "La ville est requise.",
+    "nameRequired": "Le nom est requis.",
+    "chooseForCheckout": "Choisir une adresse",
+    "quickAdd": "Ajouter une adresse rapidement"
+  },
+  "delivery": {
+    "title": "Livraison",
+    "menuLabel": "Livraison",
+    "settings": "Paramètres de livraison",
+    "mode": "Mode de livraison",
+    "modes": {
+      "flat": "Tarif fixe",
+      "zones": "Par zones",
+      "courier": "Payé au livreur"
+    },
+    "modeHelp": {
+      "flat": "Un seul tarif pour toutes les livraisons. Met 0 pour livrer gratuitement.",
+      "zones": "Un tarif par zone (ex : Abidjan – Cocody, Intérieur du pays).",
+      "courier": "L'acheteur paie les frais au livreur (cash à la livraison). Le produit reste payé dans l'app."
+    },
+    "flatFee": "Tarif fixe",
+    "zones": "Zones de livraison",
+    "addZone": "Ajouter une zone",
+    "zoneName": "Nom de la zone",
+    "zoneFee": "Prix",
+    "removeZone": "Retirer",
+    "saveCta": "Enregistrer",
+    "saved": "Paramètres enregistrés",
+    "fee": "Livraison",
+    "courierNote": "Frais de livraison : à payer au livreur 🛵",
+    "chooseZone": "Choisir une zone",
+    "noAddressBlock": "Ajoute une adresse de livraison pour continuer.",
+    "zoneMismatch": "Choisis une adresse dans une zone livrée par le vendeur.",
+    "sellerZones": "Zones livrées"
+  },
+  "escrow": {
+    "onHold": "En attente de livraison",
+    "released": "Fonds libérés",
+    "reversed": "Remboursé",
+    "autoReleaseHint": "Libération automatique 7 jours après l'expédition."
+  },
+  "dispute": {
+    "adminActions": "Résoudre le litige",
+    "release": "Libérer au vendeur",
+    "refund": "Rembourser l'acheteur",
+    "released": "Fonds libérés au vendeur",
+    "refunded": "Acheteur remboursé",
+    "refundedWallet": "Remboursé sur le portefeuille",
+    "refundManualNote": "Remboursement carte à effectuer manuellement dans Stripe."
   }
 }

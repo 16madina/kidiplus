@@ -13,6 +13,15 @@ import { normalizeCurrency, roundForCurrency, isZeroDecimal, type Currency } fro
 
 export const PLATFORM_FEE_PERCENT = 5;
 
+/**
+ * Escrow window: seller funds move from `pending` to `available` once the
+ * buyer confirms delivery, OR automatically after this many days from the
+ * shipped_at timestamp (mirrored in the SQL fn `release_overdue_escrow`).
+ * NOTE: delivery fee bypasses the platform commission and is passed through
+ * to the seller in full — see computeFees below.
+ */
+export const ESCROW_AUTO_RELEASE_DAYS = 7;
+
 /** Hours a winning bidder has to pay before the order auto-cancels. */
 export const AUCTION_PAYMENT_DEADLINE_HOURS = 24;
 
@@ -54,20 +63,22 @@ export type FeeBreakdown = {
 
 /**
  * Compute the full fee breakdown for an order.
- * Buyer total = amount (+ shipping if any). Platform commission is
- * withheld from the seller's payout.
+ * Buyer total = amount + delivery. Platform commission is 5% of `amount`
+ * (item only — delivery pays no commission and passes through to the seller
+ * in full). Seller net = (amount − commission) + delivery.
  */
 export function computeFees(
   amount: number,
-  shipping = 0,
+  delivery = 0,
   currency: string | null | undefined = "EUR",
 ): FeeBreakdown {
   const cur = normalizeCurrency(currency);
   const round = (n: number) => roundForCurrency(n, cur);
   const a = round(amount);
-  const s = round(shipping);
+  const s = round(delivery);
   const platformFee = round((a * PLATFORM_FEE_PERCENT) / 100);
-  const sellerNet = round(a - platformFee);
+  // Delivery bypasses commission: seller gets item-net + full delivery fee.
+  const sellerNet = round(a - platformFee + s);
   const total = round(a + s);
   return {
     amount: a,
