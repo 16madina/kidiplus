@@ -386,8 +386,10 @@ export function GoLiveEntryScreen({
           })}
         </motion.ul>
       </div>
+      </div>
 
       {/* Confirm cancel */}
+
       <AnimatePresence>
         {confirmCancel && (
           <motion.div
