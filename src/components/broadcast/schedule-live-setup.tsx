@@ -277,10 +277,10 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   return (
     <motion.div
       key="schedule-setup"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      transition={{ duration: 0.28, ease: EASE_IOS }}
+      initial={{ x: "100%", opacity: 0.6 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: "100%", opacity: 0.6 }}
+      transition={{ duration: 0.32, ease: EASE_IOS }}
       className="relative h-full w-full overflow-y-auto"
       style={{
         background:
@@ -293,9 +293,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         className="sticky top-0 z-30 flex items-center gap-3 px-4"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 10px)",
-          paddingBottom: 8,
+          paddingBottom: 10,
           background:
-            "linear-gradient(to bottom, oklch(0.11 0.03 260) 30%, transparent 100%)",
+            "linear-gradient(to bottom, oklch(0.11 0.03 260) 40%, transparent 100%)",
         }}
       >
         <Press
@@ -310,7 +310,39 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           <X size={20} />
         </Press>
         <div className="flex flex-1 items-center justify-center">
-          <Logo size={44} />
+          <div className="relative">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                filter: "blur(28px)",
+                background:
+                  "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
+              }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                filter: "blur(12px)",
+                background:
+                  "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
+              }}
+            />
+            <div
+              className="relative"
+              style={{ filter: "drop-shadow(0 4px 20px rgba(255,205,110,0.35))" }}
+            >
+              <Logo size={72} />
+            </div>
+            <div
+              aria-hidden
+              className="mx-auto mt-1.5 h-px w-24"
+              style={{
+                background: `linear-gradient(to right, transparent, ${GOLD}, transparent)`,
+              }}
+            />
+          </div>
         </div>
         <div className="h-11 w-11" />
       </div>
