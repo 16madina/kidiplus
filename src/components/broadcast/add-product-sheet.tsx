@@ -16,7 +16,9 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { PRODUCT_IMG_POOL } from "@/lib/broadcast-mock";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
+import { useBroadcast } from "@/lib/broadcast-context";
 import type { BProduct, SellMode } from "@/lib/broadcast-context";
+import { currencySymbol, bidRulesFor } from "@/lib/money";
 
 const GOLD = "oklch(0.82 0.14 85)";
 
@@ -29,16 +31,25 @@ export function AddProductSheet({
   onClose: () => void;
   onAdd: (p: Omit<BProduct, "id">) => void;
 }) {
+  const { currency } = useBroadcast();
+  const symbol = currencySymbol(currency);
+  // Sensible defaults per currency (XOF has much larger nominal amounts).
+  const defaults = currency === "XOF"
+    ? { start: 5000, price: 15000, step: 500 }
+    : { start: 10, price: 29, step: 1 };
+  const priceStep = bidRulesFor(currency).step;
+
   const [mode, setMode] = useState<SellMode>("auction");
   const [name, setName] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [startPrice, setStartPrice] = useState(10);
+  const [startPrice, setStartPrice] = useState(defaults.start);
   const [timerSec, setTimerSec] = useState(45);
-  const [price, setPrice] = useState(29);
+  const [price, setPrice] = useState(defaults.price);
   const [stock, setStock] = useState(5);
   const [bidIncrement, setBidIncrement] = useState<string>("");
   const [description, setDescription] = useState("");
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pickingSlotRef = useRef<number>(0);
