@@ -872,5 +872,78 @@
       "said": "{{name}} said + 🎉",
       "saidMe": "You said + 🎉"
     }
+  },
+  "address": {
+    "title": "My addresses",
+    "empty": "No addresses saved yet.",
+    "add": "Add address",
+    "edit": "Edit address",
+    "delete": "Delete",
+    "setDefault": "Set as default",
+    "default": "Default",
+    "inUse": "Address is used by an existing order",
+    "deleted": "Address deleted",
+    "saved": "Address saved",
+    "confirmDelete": "Delete this address?",
+    "fields": {
+      "label": "Label (Home, Office…)",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "country": "Country",
+      "city": "City",
+      "zoneOrCommune": "Neighborhood / commune",
+      "streetAddress": "Street address",
+      "details": "Landmark (e.g. behind the pharmacy)"
+    },
+    "phoneRequired": "Phone is required.",
+    "cityRequired": "City is required.",
+    "nameRequired": "Name is required.",
+    "chooseForCheckout": "Choose an address",
+    "quickAdd": "Quick add address"
+  },
+  "delivery": {
+    "title": "Delivery",
+    "menuLabel": "Delivery",
+    "settings": "Delivery settings",
+    "mode": "Delivery mode",
+    "modes": {
+      "flat": "Flat rate",
+      "zones": "Per zone",
+      "courier": "Pay the courier"
+    },
+    "modeHelp": {
+      "flat": "One rate for every delivery. Set 0 for free shipping.",
+      "zones": "One rate per zone (e.g. Abidjan — Cocody, Countryside).",
+      "courier": "Buyer pays the delivery fee to the courier in cash. The item stays paid in-app."
+    },
+    "flatFee": "Flat fee",
+    "zones": "Delivery zones",
+    "addZone": "Add zone",
+    "zoneName": "Zone name",
+    "zoneFee": "Fee",
+    "removeZone": "Remove",
+    "saveCta": "Save",
+    "saved": "Settings saved",
+    "fee": "Delivery",
+    "courierNote": "Delivery fee: paid to the courier 🛵",
+    "chooseZone": "Choose a zone",
+    "noAddressBlock": "Add a delivery address to continue.",
+    "zoneMismatch": "Pick an address in a zone the seller delivers to.",
+    "sellerZones": "Delivery zones"
+  },
+  "escrow": {
+    "onHold": "Pending delivery",
+    "released": "Funds released",
+    "reversed": "Refunded",
+    "autoReleaseHint": "Auto-released 7 days after shipping."
+  },
+  "dispute": {
+    "adminActions": "Resolve dispute",
+    "release": "Release to seller",
+    "refund": "Refund buyer",
+    "released": "Funds released to seller",
+    "refunded": "Buyer refunded",
+    "refundedWallet": "Refunded to wallet",
+    "refundManualNote": "Card refund must be issued manually in Stripe."
   }
 }
