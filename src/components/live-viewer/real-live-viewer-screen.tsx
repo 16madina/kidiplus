@@ -411,7 +411,9 @@ export function RealLiveViewerScreen() {
       const msg =
         dr.reason === "no_address"
           ? t("delivery.noAddressBlock")
-          : t("delivery.zoneMismatch");
+          : dr.reason === "no_country_coverage"
+            ? t("delivery.noCountryCoverage")
+            : t("delivery.zoneMismatch");
       toast.error(msg);
       return;
     }
