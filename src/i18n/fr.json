@@ -595,7 +595,31 @@
       "filterAll": "Tout",
       "empty": "Aucune commande."
     },
+    "payouts": {
+      "tab": {
+        "requested": "En attente",
+        "paid": "Payés",
+        "rejected": "Refusés"
+      },
+      "requestedAt": "Demandé le",
+      "processedAt": "Traité le",
+      "adminNote": "Note admin",
+      "proofLabel": "Preuve de paiement (capture d'écran)",
+      "proofChoose": "Ajouter une image",
+      "proofHint": "Optionnel — capture du transfert Wave, PayPal ou virement.",
+      "proofLoading": "Chargement de la preuve…",
+      "proofAlt": "Preuve de paiement",
+      "noteLabel": "Note interne (optionnelle)",
+      "notePh": "Ex. Payé via Wave à 15h32",
+      "rejectNoteLabel": "Motif du refus (visible par le vendeur)",
+      "rejectNotePh": "Ex. Numéro Wave invalide",
+      "confirmPaidTitle": "Confirmer le paiement",
+      "confirmRejectTitle": "Refuser la demande",
+      "confirmPaidCta": "Confirmer le paiement",
+      "confirmRejectCta": "Confirmer le refus"
+    },
     "lives": {
+
       "empty": "Aucun live.",
       "live": "EN DIRECT",
       "ended": "Terminé",
