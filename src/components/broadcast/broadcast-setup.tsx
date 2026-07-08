@@ -325,39 +325,108 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           />
         </div>
 
-        {/* Category pills */}
-        <div
-          className="flex gap-2 overflow-x-auto pb-1"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        >
-          {BROADCAST_CATEGORY_KEYS.map((c) => {
-            const active = c === b.category;
-            const label = t(
-              BROADCAST_CATEGORY_LABEL_KEY[c],
-              BROADCAST_CATEGORY_FR_FALLBACK[c],
-            );
-            return (
-              <Press
-                key={c}
-                onClick={() => {
-                  haptic.selection();
-                  b.setCategory(c);
-                }}
-                className="!min-h-9 h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold"
+        {/* Category pills — horizontally slidable + "Voir plus" dropdown */}
+        <div className="relative">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
+          >
+            {BROADCAST_CATEGORY_KEYS.map((c) => {
+              const active = c === b.category;
+              const label = t(
+                BROADCAST_CATEGORY_LABEL_KEY[c],
+                BROADCAST_CATEGORY_FR_FALLBACK[c],
+              );
+              return (
+                <Press
+                  key={c}
+                  onClick={() => {
+                    haptic.selection();
+                    b.setCategory(c);
+                  }}
+                  className="!min-h-9 h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold"
+                  style={{
+                    color: active ? "#0a0a12" : "white",
+                    background: active
+                      ? `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`
+                      : "transparent",
+                    border: active ? "none" : `1px solid ${GOLD_SOFT}`,
+                    boxShadow: active ? `0 6px 18px ${GOLD_SOFT}` : "none",
+                  }}
+                >
+                  {label}
+                </Press>
+              );
+            })}
+            <Press
+              onClick={() => {
+                haptic.selection();
+                setShowMoreCats((v) => !v);
+              }}
+              className="!min-h-9 h-9 shrink-0 gap-1 rounded-full px-3 text-[13px] font-semibold"
+              style={{
+                color: GOLD,
+                background: "transparent",
+                border: `1px solid ${GOLD_SOFT}`,
+              }}
+            >
+              <span>{t("broadcast.setup.seeMore", "Voir plus")}</span>
+              <ChevronDown
+                size={14}
                 style={{
-                  color: active ? "#0a0a12" : "white",
-                  background: active
-                    ? `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`
-                    : "transparent",
-                  border: active ? "none" : `1px solid ${GOLD_SOFT}`,
-                  boxShadow: active ? `0 6px 18px ${GOLD_SOFT}` : "none",
+                  transform: showMoreCats ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s",
                 }}
-              >
-                {label}
-              </Press>
-            );
-          })}
+              />
+            </Press>
+          </div>
+
+          {showMoreCats && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, ease: EASE_IOS }}
+              className="absolute inset-x-0 top-full z-40 mt-2 grid grid-cols-2 gap-2 rounded-2xl p-3"
+              style={{
+                background: "oklch(0.13 0.035 260 / 0.98)",
+                border: `1px solid ${GOLD_SOFT}`,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.55)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+              }}
+            >
+              {BROADCAST_CATEGORY_KEYS.map((c) => {
+                const active = c === b.category;
+                const label = t(
+                  BROADCAST_CATEGORY_LABEL_KEY[c],
+                  BROADCAST_CATEGORY_FR_FALLBACK[c],
+                );
+                return (
+                  <Press
+                    key={c}
+                    onClick={() => {
+                      haptic.selection();
+                      b.setCategory(c);
+                      setShowMoreCats(false);
+                    }}
+                    className="!min-h-10 h-10 justify-between rounded-xl px-3 text-[13px] font-medium"
+                    style={{
+                      color: active ? GOLD : "white",
+                      background: active
+                        ? "oklch(0.82 0.14 85 / 0.12)"
+                        : "oklch(0.16 0.04 260 / 0.6)",
+                      border: `1px solid ${active ? GOLD : "oklch(0.82 0.14 85 / 0.15)"}`,
+                    }}
+                  >
+                    <span className="truncate">{label}</span>
+                    {active && <Check size={14} />}
+                  </Press>
+                );
+              })}
+            </motion.div>
+          )}
         </div>
+
 
         {/* Products */}
         <div>
