@@ -21,15 +21,16 @@ npx cap add android
 npx cap add ios
 ```
 
-## 3. Synchroniser le web (le stub `dist/index.html` est déjà dans le repo)
+## 3. Synchroniser l'app native
 ```bash
+npm run native:prepare
 npx cap sync android
 # et/ou
 npx cap sync ios
 ```
 
-> Le WebView charge directement `https://kidiplus.lovable.app` (voir `capacitor.config.ts`).
-> Aucune build SPA locale n'est nécessaire — TanStack Start est SSR.
+> Le WebView Capacitor charge directement `https://kidiplus.lovable.app` via `server.url`.
+> Il ne faut pas rediriger depuis `dist/index.html`, sinon iOS peut ouvrir Safari avec sa barre de navigation.
 
 ## 4. Configurer Firebase (Push Notifications) — Android
 

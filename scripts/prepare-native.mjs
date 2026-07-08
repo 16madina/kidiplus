@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Prépare dist/index.html pour Capacitor (webDir=dist).
-// KiDi+ étant SSR (TanStack Start), le WebView charge l'URL distante.
+// L'URL distante est chargée directement par Capacitor via `server.url`.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -9,7 +9,6 @@ const html = `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta http-equiv="refresh" content="0; url=https://kidiplus.lovable.app" />
     <title>KiDi+</title>
     <style>
       html,body{margin:0;height:100%;background:#10162B;color:#E8C46A;
@@ -20,7 +19,6 @@ const html = `<!doctype html>
   </head>
   <body>
     <div class="k">KiDi+</div>
-    <script>location.replace("https://kidiplus.lovable.app");</script>
   </body>
 </html>
 `;

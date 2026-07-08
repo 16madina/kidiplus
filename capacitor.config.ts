@@ -6,16 +6,15 @@ const config: CapacitorConfig = {
   appName: "KiDi+",
   webDir: "dist",
   bundledWebRuntime: false,
-  // L'app native embarque le build web statique (dossier `dist`).
-  // Pour tester en live-reload sur ton réseau local, décommente `server.url`
-  // et mets l'IP LAN de ta machine qui fait tourner `npm run dev`.
-  // server: {
-  //   url: "http://192.168.1.10:8080",
-  //   cleartext: true,
-  // },
+  // KiDi+ est une app web SSR : iOS doit charger l'URL dans le WebView Capacitor,
+  // pas via une redirection depuis dist/index.html, sinon Safari s'ouvre.
+  server: {
+    url: "https://kidiplus.lovable.app",
+    allowNavigation: ["kidiplus.lovable.app", "kidiplus.com", "www.kidiplus.com"],
+  },
   ios: {
     contentInset: "never",
-    limitsNavigationsToAppBoundDomains: true,
+    limitsNavigationsToAppBoundDomains: false,
   },
   android: {
     allowMixedContent: false,
