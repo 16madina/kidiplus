@@ -160,7 +160,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative h-full w-full overflow-hidden bg-black"
     >
-      <BroadcastVideo facing={facing} enabled={true} fallbackImage={b.cover} />
+      <BroadcastVideo
+        key={previewRetryKey}
+        facing={facing}
+        enabled={true}
+        fallbackImage={b.cover}
+        onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
+      />
+
 
       {/* Top bar */}
       <div
