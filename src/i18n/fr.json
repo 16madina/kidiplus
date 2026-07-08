@@ -276,6 +276,38 @@
       "close": "Fermer"
     }
   },
+  "golive": {
+    "entry": {
+      "title": "Passe en direct ✨",
+      "subtitle": "Commence maintenant ou programme un live pour ta communauté.",
+      "startNow": "🔴 Commencer un live",
+      "startNowSub": "Passe en direct maintenant",
+      "schedule": "📅 Programmer un live",
+      "scheduleSub": "Annonce ton live à l'avance et prépare tes articles",
+      "myScheduled": "Mes lives programmés",
+      "emptyScheduled": "Aucun live programmé pour le moment.",
+      "startNowPill": "C'est l'heure !",
+      "startNowShort": "Démarrer",
+      "cancelled": "Live annulé",
+      "confirmCancelTitle": "Annuler ce live programmé ?",
+      "confirmCancelBody": "Ton live et ses articles seront supprimés définitivement."
+    }
+  },
+  "schedule": {
+    "upcomingTitle": "À venir 📅",
+    "planningTitle": "Programmer un live",
+    "editingTitle": "Modifier le live",
+    "datetimeLabel": "Date et heure du live",
+    "cta": "Programmer le live 📅",
+    "saveEdit": "Enregistrer les modifications",
+    "savedToast": "Live programmé 📅",
+    "updatedToast": "Live modifié",
+    "remindMe": "Me rappeler 🔔",
+    "reminderOn": "Rappel activé — retirer",
+    "reminderSet": "Rappel activé 🔔",
+    "reminderHint": "On te préviendra dès que le live commence."
+  },
+
   "profile": {
     "mySales": "Mes ventes",
     "editProfile": "Modifier le profil",
