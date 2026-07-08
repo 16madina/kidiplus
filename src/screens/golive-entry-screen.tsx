@@ -218,10 +218,9 @@ export function GoLiveEntryScreen({
               filter: "blur(22px)",
             }}
           />
-          <Logo
-            size={72}
-            style={{ filter: "drop-shadow(0 2px 10px rgba(255,205,110,0.28))" }}
-          />
+          <div style={{ filter: "drop-shadow(0 2px 10px rgba(255,205,110,0.28))" }}>
+            <Logo size={72} />
+          </div>
           <div
             aria-hidden
             className="mt-1 h-px w-24"
