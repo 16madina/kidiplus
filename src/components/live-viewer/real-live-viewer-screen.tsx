@@ -148,6 +148,12 @@ export function RealLiveViewerScreen() {
   // Sold celebration from server auction:end.
   // If the current user is the winner, open the payment sheet to pay for the item.
   const [confettiKey, setConfettiKey] = useState(0);
+  const [winnerReveal, setWinnerReveal] = useState<{
+    key: number;
+    name: string | null;
+    avatar: string | null;
+    isMe: boolean;
+  } | null>(null);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
     const evt = room.lastAuctionEnd;
@@ -162,6 +168,34 @@ export function RealLiveViewerScreen() {
       ...prev,
       systemMessage(`${t("live.soldTo", { name: winner })} · ${formatLive(evt.finalPrice)}`),
     ]);
+
+    // Winner reveal — animate for everyone if there is a real winner.
+    if (evt.winnerName) {
+      const isMe = !!user && evt.winnerId === user.id;
+      // Trust host-provided avatar first; fall back to a profile lookup so the
+      // reveal still shows a face when the payload lacks the URL.
+      setWinnerReveal({
+        key: Date.now(),
+        name: evt.winnerName,
+        avatar: evt.winnerAvatarUrl ?? null,
+        isMe,
+      });
+      if (!evt.winnerAvatarUrl && evt.winnerId) {
+        void (async () => {
+          const { data } = await supabase
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", evt.winnerId!)
+            .maybeSingle();
+          const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
+          if (url) {
+            setWinnerReveal((prev) =>
+              prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
+            );
+          }
+        })();
+      }
+    }
 
     // If I won and this is a real live with a known seller, either celebrate
     // an auto-paid wallet purchase or open the payment sheet.
@@ -199,12 +233,24 @@ export function RealLiveViewerScreen() {
         }
       }
     }
-  }, [room.lastAuctionEnd, t, user, active, room.products, liveCurrency]);
+  }, [room.lastAuctionEnd, t, user, active, room.products, liveCurrency, formatLive]);
+
+  // Sudden-death flash + haptic when the deadline is extended by a late bid.
+  const [suddenDeathTick, setSuddenDeathTick] = useState(0);
+  const seenExtRef = useRef<number | null>(null);
+  useEffect(() => {
+    const ext = room.lastExtension;
+    if (!ext || seenExtRef.current === ext.ts) return;
+    seenExtRef.current = ext.ts;
+    setSuddenDeathTick((n) => n + 1);
+    haptic.warning();
+  }, [room.lastExtension]);
 
   // Warning haptic near auction end.
   useEffect(() => {
     if (room.auctionStart && secondsLeft === 10) haptic.warning();
   }, [secondsLeft, room.auctionStart]);
+
 
   // Hearts / video tap
   const lastTap = useRef(0);
