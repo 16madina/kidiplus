@@ -296,12 +296,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    await endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
+    const productId = activeAuction.productId;
+    const res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
     room.broadcastAuctionEnd({
-      productId: activeAuction.productId,
-      winnerId,
-      winnerName,
-      finalPrice,
+      productId, winnerId, winnerName, finalPrice,
+      orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
     });
   };
 
