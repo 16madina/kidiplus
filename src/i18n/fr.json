@@ -305,7 +305,33 @@
     "remindMe": "Me rappeler 🔔",
     "reminderOn": "Rappel activé — retirer",
     "reminderSet": "Rappel activé 🔔",
-    "reminderHint": "On te préviendra dès que le live commence."
+    "reminderHint": "On te préviendra dès que le live commence.",
+    "form": {
+      "title": "Programmer un live ✨",
+      "editTitle": "Modifier le live",
+      "subtitle": "Prépare ton live, ajoute tes articles et annonce-le à ta communauté.",
+      "coverTitle": "Image de couverture",
+      "addCover": "Ajouter une image",
+      "infoTitle": "Informations du live",
+      "titleLabel": "Titre du live",
+      "categoryLabel": "Catégorie",
+      "descLabel": "Description",
+      "descPlaceholder": "Découvrez une sélection exclusive de sacs et accessoires haut de gamme.",
+      "dateTitle": "Date et heure",
+      "date": "Date",
+      "time": "Heure",
+      "pickDate": "Choisir",
+      "duration": "Durée estimée",
+      "productsTitle": "Articles à présenter",
+      "addProduct": "Ajouter un article",
+      "optionsTitle": "Options",
+      "optAuctions": "Activer les enchères",
+      "optBuyNow": "Achat immédiat",
+      "optNotify": "Notifier mes abonnés",
+      "optGifts": "Autoriser les cadeaux",
+      "cta": "Programmer mon live",
+      "hint": "Tu pourras modifier ton live avant sa diffusion."
+    }
   },
 
   "profile": {

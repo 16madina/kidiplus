@@ -27,6 +27,7 @@ import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { ScheduleLiveSetup } from "./schedule-live-setup";
 
 
 
@@ -187,9 +188,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
 
 
+  // Scheduled / edit flows use a dedicated numbered-card layout.
+  if (b.mode === "schedule" || b.mode === "edit") {
+    return <ScheduleLiveSetup onExit={onExit} />;
+  }
+
   return (
     <motion.div
       key="setup"
+
       initial={{ opacity: 0, scale: 1.02 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
@@ -455,13 +462,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             color: b.mode === "now" ? "white" : "black",
           }}
         >
-          {launching
-            ? t("common.loading")
-            : b.mode === "schedule"
-              ? t("schedule.cta", "Programmer le live 📅")
-              : b.mode === "edit"
-                ? t("schedule.saveEdit", "Enregistrer les modifications")
-                : t("broadcast.setup.start")}
+          {launching ? t("common.loading") : t("broadcast.setup.start")}
+
         </Press>
 
       </div>
