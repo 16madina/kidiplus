@@ -206,6 +206,14 @@ export function AuctionCard({
                 </Press>
               )}
             </div>
+            {auctionActive && urgent && secondsLeft > 0 && (
+              <div
+                className="mt-1.5 text-center text-[10.5px] font-semibold"
+                style={{ color: "oklch(0.82 0.14 85)" }}
+              >
+                {t("auction.suddenDeath.hint", "Toute enchère relance le chrono ⚡")}
+              </div>
+            )}
             {customPanel}
           </>
         ) : (
