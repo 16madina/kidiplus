@@ -16,6 +16,7 @@
     "native:ios": "npm run native:sync && npx cap open ios"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^8.3.0",
     "@capacitor/android": "^8.4.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.4.1",
