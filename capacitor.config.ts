@@ -55,7 +55,7 @@ const config: CapacitorConfig = {
       launchShowDuration: 1200,
       launchAutoHide: true, // safety net — bootstrapNative() also fades it
       launchFadeOutDuration: 250,
-      backgroundColor: "#0C1122", // KiDi+ deep navy
+      backgroundColor: "#10162B", // KiDi+ deep navy
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,
@@ -71,7 +71,7 @@ const config: CapacitorConfig = {
     StatusBar: {
       overlaysWebView: true,
       style: "LIGHT", // light content over navy splash
-      backgroundColor: "#0C1122",
+      backgroundColor: "#10162B",
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
