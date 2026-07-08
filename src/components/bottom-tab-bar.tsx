@@ -7,8 +7,8 @@ import {
   ExploreIcon,
   BellIcon,
   PersonIcon,
-  BroadcastIcon,
 } from "./brand/tab-icons";
+import kidiLiveBadge from "@/assets/kidi-live-badge.png.asset.json";
 
 type TabDef = {
   key: TabKey;
