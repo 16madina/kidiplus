@@ -29,6 +29,8 @@ export type OrderRow = {
   stripe_payment_intent_id: string | null;
   created_at: string;
   paid_at: string | null;
+  payment_deadline: string | null;
+  cancelled_reason: string | null;
 };
 
 export type CreatePendingOrderInput = {
