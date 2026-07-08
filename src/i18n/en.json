@@ -557,7 +557,13 @@
       "overview": "Overview",
       "users": "Users",
       "payments": "Payments",
-      "lives": "Lives"
+      "lives": "Lives",
+      "reports": "Reports"
+    },
+    "toDo": {
+      "title": "To handle",
+      "reports": "Open reports",
+      "payouts": "Pending payouts"
     },
     "kpi": {
       "gmv": "GMV",
