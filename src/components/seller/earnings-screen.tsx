@@ -277,24 +277,33 @@ function PayoutsList({
         const meta = payoutStatusMeta(p.status);
         const when = new Date(p.requested_at).toLocaleDateString(i18n.language);
         return (
-          <li key={p.id} className="flex items-center justify-between rounded-2xl border border-border p-3">
-            <div className="min-w-0">
-              <p className="text-[14px] font-semibold tabular-nums">
-                {fmt(Number(p.amount), p.currency)}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {tr(`payout.method.${p.method}`)} · {when}
-              </p>
+          <li key={p.id} className="rounded-2xl border border-border p-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold tabular-nums">
+                  {fmt(Number(p.amount), p.currency)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {tr(`payout.method.${p.method}`)} · {when}
+                </p>
+              </div>
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                style={{ backgroundColor: meta.bg, color: meta.color }}
+              >
+                {tr(meta.key)}
+              </span>
             </div>
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-              style={{ backgroundColor: meta.bg, color: meta.color }}
-            >
-              {tr(meta.key)}
-            </span>
+            {p.status === "rejected" && p.admin_note && (
+              <p className="mt-2 rounded-xl bg-muted p-2 text-[12px] leading-relaxed">
+                <span className="font-semibold">{tr("payout.rejectionReason")}: </span>
+                {p.admin_note}
+              </p>
+            )}
           </li>
         );
       })}
     </ul>
   );
 }
+

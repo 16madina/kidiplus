@@ -308,6 +308,7 @@ export type Database = {
       }
       payouts: {
         Row: {
+          admin_note: string | null
           amount: number
           currency: string
           destination: Json
@@ -315,11 +316,14 @@ export type Database = {
           method: string
           note: string | null
           processed_at: string | null
+          processed_by: string | null
+          proof_url: string | null
           requested_at: string
           seller_id: string
           status: string
         }
         Insert: {
+          admin_note?: string | null
           amount: number
           currency: string
           destination: Json
@@ -327,11 +331,14 @@ export type Database = {
           method: string
           note?: string | null
           processed_at?: string | null
+          processed_by?: string | null
+          proof_url?: string | null
           requested_at?: string
           seller_id: string
           status?: string
         }
         Update: {
+          admin_note?: string | null
           amount?: number
           currency?: string
           destination?: Json
@@ -339,6 +346,8 @@ export type Database = {
           method?: string
           note?: string | null
           processed_at?: string | null
+          processed_by?: string | null
+          proof_url?: string | null
           requested_at?: string
           seller_id?: string
           status?: string
@@ -627,7 +636,13 @@ export type Database = {
       }
       admin_overview_stats: { Args: never; Returns: Json }
       admin_process_payout: {
-        Args: { _action: string; _note?: string; _payout_id: string }
+        Args: {
+          _action: string
+          _admin_note?: string
+          _note?: string
+          _payout_id: string
+          _proof_url?: string
+        }
         Returns: Json
       }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }

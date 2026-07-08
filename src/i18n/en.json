@@ -518,6 +518,8 @@
     "successTitle": "Request sent ✅",
     "successBody": "Processed within 48h.",
     "emptyHistory": "No withdrawals yet.",
+    "rejectionReason": "Rejection reason",
+
     "method": {
       "label": "Method",
       "wave": "Wave",
@@ -593,7 +595,31 @@
       "filterAll": "All",
       "empty": "No orders."
     },
+    "payouts": {
+      "tab": {
+        "requested": "Pending",
+        "paid": "Paid",
+        "rejected": "Rejected"
+      },
+      "requestedAt": "Requested",
+      "processedAt": "Processed",
+      "adminNote": "Admin note",
+      "proofLabel": "Payment proof (screenshot)",
+      "proofChoose": "Add an image",
+      "proofHint": "Optional — screenshot of the Wave, PayPal or bank confirmation.",
+      "proofLoading": "Loading proof…",
+      "proofAlt": "Payment proof",
+      "noteLabel": "Internal note (optional)",
+      "notePh": "e.g. Paid via Wave at 3:32pm",
+      "rejectNoteLabel": "Rejection reason (visible to seller)",
+      "rejectNotePh": "e.g. Invalid Wave number",
+      "confirmPaidTitle": "Confirm payment",
+      "confirmRejectTitle": "Reject request",
+      "confirmPaidCta": "Confirm payment",
+      "confirmRejectCta": "Confirm rejection"
+    },
     "lives": {
+
       "empty": "No lives.",
       "live": "LIVE",
       "ended": "Ended",
