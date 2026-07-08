@@ -187,14 +187,14 @@ export function GoLiveEntryScreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: EASE_IOS }}
-      className="relative h-full w-full overflow-y-auto"
+      className="relative flex h-full w-full flex-col overflow-hidden"
       style={{
         background: `radial-gradient(120% 80% at 50% 0%, ${NAVY_A} 0%, ${NAVY_B} 60%, #000 100%)`,
       }}
     >
-      {/* Top bar */}
+      {/* Top bar — fixed, non-scrolling */}
       <div
-        className="sticky top-0 z-30 flex items-center justify-between px-3"
+        className="relative z-30 flex shrink-0 items-center justify-between px-3"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 8px)",
           paddingBottom: 8,
@@ -213,7 +213,7 @@ export function GoLiveEntryScreen({
           <div className="relative">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(28px)",
                 background: "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
@@ -221,7 +221,7 @@ export function GoLiveEntryScreen({
             />
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(12px)",
                 background: "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
@@ -240,7 +240,10 @@ export function GoLiveEntryScreen({
         <div className="h-11 w-11" />
       </div>
 
+      {/* Scrollable content */}
+      <div className="min-h-0 flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="px-5 pt-6 text-center">
+
         <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
           {t("golive.entry.title", "Passe en direct")}
         </h1>
@@ -383,8 +386,10 @@ export function GoLiveEntryScreen({
           })}
         </motion.ul>
       </div>
+      </div>
 
       {/* Confirm cancel */}
+
       <AnimatePresence>
         {confirmCancel && (
           <motion.div
@@ -464,7 +469,7 @@ function ChoiceCard({
         <div className="mt-2">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+            className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               filter: "blur(16px)",
               background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
