@@ -20,6 +20,7 @@ import {
 } from "@/lib/seller-profile-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
+import { PushDeniedBanner } from "@/components/push-denied-banner";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { LanguageProvider } from "@/i18n/language-context";
 import { WalletProvider } from "@/lib/wallet-context";
