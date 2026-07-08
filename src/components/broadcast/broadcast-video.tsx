@@ -164,6 +164,30 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       async function start() {
         if (!shouldRun) return teardown();
         setState("connecting");
+
+        // Step 0: on native, force the OS permission prompt BEFORE we hit
+        // LiveKit's track factory (which just calls getUserMedia and would
+        // fail silently if Info.plist / manifest entries are missing).
+        const preflight = await ensureCameraMicAccess({
+          video: { facingMode: facing },
+          audio: micEnabled,
+        });
+        if (cancelled) {
+          if (preflight.status === "granted") preflight.stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        if (preflight.status !== "granted") {
+          if (preflight.status === "denied_by_user") setState("denied");
+          else if (preflight.status === "config_missing") setState("config_missing");
+          else if (preflight.status === "no_device") setState("unavailable");
+          else if (preflight.status === "unsupported") setState("unsupported");
+          else setState("error");
+          return;
+        }
+        // Release the pre-flight stream — LiveKit will re-acquire under its
+        // own tracks (permission is now cached by the OS so no re-prompt).
+        preflight.stream.getTracks().forEach((t) => t.stop());
+
         let phase: "token" | "connect" | "camera" = "token";
         try {
           const { token, url } = await getToken(
