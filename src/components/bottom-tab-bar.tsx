@@ -8,7 +8,7 @@ import {
   BellIcon,
   PersonIcon,
 } from "./brand/tab-icons";
-import kidiLiveBadge from "@/assets/kidi-live-badge.png.asset.json";
+import kidiLiveBadge from "@/assets/kidi-live-round.png.asset.json";
 
 type TabDef = {
   key: TabKey;
