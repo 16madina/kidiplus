@@ -255,15 +255,29 @@ export function GoLiveEntryScreen({
       {/* Scheduled list */}
       <div className="px-5 pt-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-bold text-white">
+          <h2 className="flex items-center gap-2 text-[15px] font-bold text-white">
+            <Sparkles size={14} color={GOLD} />
             {t("golive.entry.myScheduled", "Mes lives programmés")}
           </h2>
           {loadingList && <Loader2 size={16} className="animate-spin text-white/60" />}
         </div>
         {!loadingList && scheduled.length === 0 && (
-          <p className="mt-3 text-[13px] text-white/50">
-            {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
-          </p>
+          <div
+            className="mt-3 grid place-items-center rounded-2xl px-6 py-10 text-center"
+            style={{
+              border: `1.5px dashed ${GOLD_DIM}`,
+              backgroundColor: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div className="relative mb-3">
+              <CalendarIcon size={54} color={GOLD} strokeWidth={1.5} style={{ opacity: 0.55 }} />
+              <Sparkles size={12} color={GOLD} className="absolute -left-3 -top-1" style={{ opacity: 0.7 }} />
+              <Sparkles size={10} color={GOLD} className="absolute -right-3 top-2" style={{ opacity: 0.6 }} />
+            </div>
+            <p className="text-[13px] text-white/55">
+              {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
+            </p>
+          </div>
         )}
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
