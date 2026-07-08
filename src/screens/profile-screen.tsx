@@ -32,6 +32,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
+import { usePush } from "@/lib/push";
 import { IOSSwitch } from "@/components/ios-switch";
 import { EASE_IOS } from "@/lib/motion";
 import { useSettings } from "@/lib/settings-context";
