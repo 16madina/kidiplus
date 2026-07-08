@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Sparkles, Camera, ChevronDown, Check } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
