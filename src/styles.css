@@ -217,3 +217,14 @@ html {
   min-width: 44px;
   min-height: 44px;
 }
+
+/* Splash video: never show media controls or play button (Android WebView). */
+.splash-video::-webkit-media-controls,
+.splash-video::-webkit-media-controls-panel,
+.splash-video::-webkit-media-controls-play-button,
+.splash-video::-webkit-media-controls-start-playback-button,
+.splash-video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
