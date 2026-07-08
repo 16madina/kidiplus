@@ -134,17 +134,24 @@ function BroadcastFlow() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <AnimatePresence mode="wait">
-        {stage === "entry" && (
+      {/* Entry stays mounted while setup is open so scroll and list state
+          are preserved when the user comes back. */}
+      {(stage === "entry" || stage === "setup") && (
+        <div
+          className="absolute inset-0"
+          style={{ visibility: stage === "entry" ? "visible" : "hidden" }}
+          aria-hidden={stage !== "entry"}
+        >
           <GoLiveEntryScreen
-            key="entry"
             onClose={closeToHome}
             onStartNow={() => goSetup()}
             onSchedule={() => goSetup()}
             onEdit={() => goSetup()}
             onStartScheduled={() => goLive()}
           />
-        )}
+        </div>
+      )}
+      <AnimatePresence mode="wait">
         {stage === "setup" && (
           <BroadcastSetup
             key="setup"
