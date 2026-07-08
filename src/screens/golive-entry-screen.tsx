@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2, Sparkles } from "lucide-react";
+import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -215,14 +215,24 @@ export function GoLiveEntryScreen({
               aria-hidden
               className="pointer-events-none absolute inset-0 -z-10"
               style={{
-                filter: "blur(18px)",
-                background: "radial-gradient(50% 60% at 50% 55%, rgba(255,205,110,0.45), transparent 70%)",
+                filter: "blur(28px)",
+                background: "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
               }}
             />
-            <Logo size={64} />
             <div
               aria-hidden
-              className="mx-auto mt-1 h-px w-20"
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                filter: "blur(12px)",
+                background: "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
+              }}
+            />
+            <div className="relative" style={{ filter: "drop-shadow(0 4px 20px rgba(255,205,110,0.35))" }}>
+              <Logo size={100} />
+            </div>
+            <div
+              aria-hidden
+              className="mx-auto mt-2 h-px w-28"
               style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
             />
           </div>
@@ -232,7 +242,7 @@ export function GoLiveEntryScreen({
 
       <div className="px-5 pt-6 text-center">
         <h1 className="text-[30px] font-black text-white" style={{ letterSpacing: "-0.02em" }}>
-          {t("golive.entry.title", "Passe en direct ✨")}
+          {t("golive.entry.title", "Passe en direct")}
         </h1>
         <p className="mt-2 text-[14px] leading-snug text-white/70">
           {t("golive.entry.subtitle", "Commence maintenant ou programme un live pour ta communauté.")}
@@ -270,8 +280,7 @@ export function GoLiveEntryScreen({
       {/* Scheduled list */}
       <div className="px-5 pt-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-[15px] font-bold text-white">
-            <Sparkles size={14} color={GOLD} />
+          <h2 className="text-[15px] font-bold text-white">
             {t("golive.entry.myScheduled", "Mes lives programmés")}
           </h2>
           {loadingList && <Loader2 size={16} className="animate-spin text-white/60" />}
@@ -284,10 +293,8 @@ export function GoLiveEntryScreen({
               backgroundColor: "rgba(255,255,255,0.02)",
             }}
           >
-            <div className="relative mb-3">
+            <div className="mb-3">
               <CalendarIcon size={54} color={GOLD} strokeWidth={1.5} style={{ opacity: 0.55 }} />
-              <Sparkles size={12} color={GOLD} className="absolute -left-3 -top-1" style={{ opacity: 0.7 }} />
-              <Sparkles size={10} color={GOLD} className="absolute -right-3 top-2" style={{ opacity: 0.6 }} />
             </div>
             <p className="text-[13px] text-white/55">
               {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
@@ -428,8 +435,6 @@ export function GoLiveEntryScreen({
 
       <style>{`
         @keyframes kidiPulse { 0%,100% { box-shadow: 0 6px 18px ${GOLD_DIM}; transform: scale(1); } 50% { box-shadow: 0 10px 28px ${GOLD}; transform: scale(1.03); } }
-        @keyframes kidiTwinkle { 0%,100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
-        .sparkle-twinkle { animation: kidiTwinkle 2.4s ease-in-out infinite; }
       `}</style>
     </motion.div>
   );
@@ -456,49 +461,41 @@ function ChoiceCard({
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
       }}
     >
-      <div className="relative mt-2">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 rounded-full"
-          style={{
-            filter: "blur(16px)",
-            background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
-          }}
-        />
-        <div
-          className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
-          style={{
-            background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
-            border: `1px solid ${GOLD_DIM}`,
-            boxShadow: `inset 0 0 0 1px rgba(255,215,140,0.08), 0 0 22px rgba(255,205,110,0.18)`,
-          }}
-        >
-          {icon}
+        <div className="mt-2">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+            style={{
+              filter: "blur(16px)",
+              background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
+            }}
+          />
+          <div
+            className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
+            style={{
+              background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
+              border: `1px solid ${GOLD_DIM}`,
+              boxShadow: `inset 0 0 0 1px rgba(255,215,140,0.08), 0 0 22px rgba(255,205,110,0.18)`,
+            }}
+          >
+            {icon}
+          </div>
         </div>
-        <Sparkles size={10} color={GOLD} className="absolute -right-1 -top-1 sparkle-twinkle" style={{ animationDelay: "0s" }} />
-        <Sparkles size={8} color={GOLD} className="absolute -left-2 top-3 sparkle-twinkle" style={{ animationDelay: "0.8s" }} />
-        <Sparkles size={9} color={GOLD} className="absolute -bottom-1 right-2 sparkle-twinkle" style={{ animationDelay: "1.4s" }} />
-      </div>
-      <div className="min-w-0">
-        <div
-          className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
-          style={{ letterSpacing: "-0.01em" }}
-        >
-          {title}
+        <div className="min-w-0">
+          <div
+            className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
+            style={{ letterSpacing: "-0.01em" }}
+          >
+            {title}
+          </div>
         </div>
-      </div>
-      <div className="relative flex items-center">
-        <div
-          className="h-px w-20"
-          style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
-        />
-        <span
-          aria-hidden
-          className="absolute left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full sparkle-twinkle"
-          style={{ backgroundColor: GOLD, boxShadow: `0 0 8px ${GOLD}` }}
-        />
-      </div>
-      <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
+        <div className="flex items-center">
+          <div
+            className="h-px w-20"
+            style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
+          />
+        </div>
+        <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
     </Press>
   );
 }
