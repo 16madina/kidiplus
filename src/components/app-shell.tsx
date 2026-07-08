@@ -134,6 +134,8 @@ function AppShellInner() {
   // Native bootstrap (status bar, splash, keyboard, theme sync).
   useEffect(() => {
     void bootstrapNative();
+    // Opportunistic cleanup — cancel overdue unpaid auction orders on app load.
+    void import("@/lib/lives-db").then((m) => m.expireOverdueOrders()).catch(() => 0);
   }, []);
 
   // Android hardware back button: close sheets/live viewer first, then minimize.
