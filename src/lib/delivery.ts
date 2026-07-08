@@ -8,6 +8,7 @@ import { normalizeCurrency, type Currency } from "@/lib/money";
 export type DeliveryMode = "zones" | "flat" | "courier";
 
 export type DeliveryZone = {
+  country: string; // ISO-2 upper (e.g. "CI", "FR"). Empty allowed for legacy rows.
   name: string;
   fee: number;
 };
@@ -90,7 +91,31 @@ export type DeliveryResolution =
   | { kind: "flat" | "courier"; fee: number; zoneName: null }
   | { kind: "zone"; fee: number; zoneName: string }
   | { kind: "needs_zone"; fee: 0; zoneName: null }
+  | { kind: "no_country"; fee: 0; zoneName: null }
   | { kind: "unavailable"; fee: 0; zoneName: null };
+
+const normText = (s: string | null | undefined) =>
+  (s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+const normCountry = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+
+/** Zones filtered to the buyer's country. Zones with an empty/legacy country
+ *  are treated as matching (backwards compatible). */
+export function zonesForCountry(
+  zones: DeliveryZone[],
+  country: string | null | undefined,
+): DeliveryZone[] {
+  const c = normCountry(country);
+  if (!c) return zones;
+  return zones.filter((z) => {
+    const zc = normCountry(z.country);
+    return !zc || zc === c;
+  });
+}
 
 /**
  * Given the seller's settings + the buyer's chosen address (may be null),
@@ -98,8 +123,7 @@ export type DeliveryResolution =
  *
  * - "flat"    → flat_fee.
  * - "courier" → 0 in-app; buyer pays the courier cash on delivery.
- * - "zones"   → try to match address.zone_or_commune to a zone name
- *               (case + accent-insensitive). If ambiguous or missing → needs_zone.
+ * - "zones"   → filter zones to the buyer country first, then match by name.
  */
 export function resolveDeliveryFee(
   settings: SellerDeliverySettings | null,
@@ -114,17 +138,13 @@ export function resolveDeliveryFee(
   const zones = Array.isArray(settings.zones) ? settings.zones : [];
   if (zones.length === 0) return { kind: "needs_zone", fee: 0, zoneName: null };
 
-  const norm = (s: string | null | undefined) =>
-    (s ?? "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
+  const inCountry = zonesForCountry(zones, address?.country);
+  if (inCountry.length === 0) return { kind: "no_country", fee: 0, zoneName: null };
 
-  const wanted = norm(explicitZoneName ?? address?.zone_or_commune ?? "");
+  const wanted = normText(explicitZoneName ?? address?.zone_or_commune ?? "");
   if (!wanted) return { kind: "needs_zone", fee: 0, zoneName: null };
 
-  const matches = zones.filter((z) => norm(z.name) === wanted);
+  const matches = inCountry.filter((z) => normText(z.name) === wanted);
   if (matches.length === 1) {
     return { kind: "zone", fee: Number(matches[0].fee) || 0, zoneName: matches[0].name };
   }

@@ -19,7 +19,7 @@ export type CheckoutDelivery = {
 
 export type ResolveResult =
   | { ok: true; delivery: CheckoutDelivery }
-  | { ok: false; reason: "no_address" | "needs_zone" | "no_matching_zone" };
+  | { ok: false; reason: "no_address" | "needs_zone" | "no_matching_zone" | "no_country_coverage" };
 
 /** Resolve delivery for the current buyer + seller. Uses the buyer's default
  *  address unless one is passed explicitly. */
@@ -46,12 +46,9 @@ export async function resolveDeliveryForCheckout(args: {
   if (!address) return { ok: false, reason: "no_address" };
 
   const res = resolveDeliveryFee(effective, address, args.explicitZoneName ?? null);
-  if (res.kind === "needs_zone") {
-    return { ok: false, reason: "needs_zone" };
-  }
-  if (res.kind === "unavailable") {
-    return { ok: false, reason: "no_matching_zone" };
-  }
+  if (res.kind === "no_country") return { ok: false, reason: "no_country_coverage" };
+  if (res.kind === "needs_zone") return { ok: false, reason: "needs_zone" };
+  if (res.kind === "unavailable") return { ok: false, reason: "no_matching_zone" };
 
   const zone = res.kind === "zone" ? res.zoneName : null;
   return {

@@ -1,13 +1,13 @@
 // SellerDeliverySettingsScreen — configure the seller's delivery mode.
 //
 // Mode "flat"    → one flat fee.
-// Mode "zones"   → add/remove zones with (name, fee).
+// Mode "zones"   → add/remove zones with (country, name, fee).
 // Mode "courier" → buyer pays courier cash on delivery; app charges 0.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Truck, Plus, Trash2 } from "lucide-react";
+import { Truck, Plus, Trash2, ChevronDown } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
@@ -18,6 +18,13 @@ import {
   upsertDeliverySettings,
 } from "@/lib/delivery-db";
 import type { DeliveryMode, DeliveryZone } from "@/lib/delivery";
+import {
+  COUNTRIES,
+  countryLabel,
+  countryFlag,
+  defaultCountryFromCurrency,
+  suggestionsFor,
+} from "@/lib/delivery-zones-data";
 
 export function SellerDeliverySettingsScreen({
   open,
@@ -29,10 +36,15 @@ export function SellerDeliverySettingsScreen({
   const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
   const currency = profile?.currency ?? "EUR";
+  const sellerCountry = (profile?.country ?? "").toUpperCase() ||
+    defaultCountryFromCurrency(currency);
+
   const [mode, setMode] = useState<DeliveryMode>("flat");
   const [flatFee, setFlatFee] = useState<string>("0");
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [busy, setBusy] = useState(false);
+  const [openSuggestIdx, setOpenSuggestIdx] = useState<number | null>(null);
+  const [countryPickerIdx, setCountryPickerIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -40,9 +52,13 @@ export function SellerDeliverySettingsScreen({
       const s = await fetchDeliverySettingsOrDefault(user.id);
       setMode(s.mode);
       setFlatFee(String(s.flat_fee ?? 0));
-      setZones(s.zones ?? []);
+      // backfill missing country with seller's country
+      setZones((s.zones ?? []).map((z) => ({
+        ...z,
+        country: z.country || sellerCountry,
+      })));
     })();
-  }, [open, user]);
+  }, [open, user, sellerCountry]);
 
   const save = async () => {
     if (!user) return;
@@ -50,7 +66,11 @@ export function SellerDeliverySettingsScreen({
     haptic.selection();
     const cleanFlat = Number(flatFee.replace(/,/g, ".")) || 0;
     const cleanZones = zones
-      .map((z) => ({ name: z.name.trim(), fee: Number(String(z.fee).replace(/,/g, ".")) || 0 }))
+      .map((z) => ({
+        country: (z.country || sellerCountry).toUpperCase(),
+        name: z.name.trim(),
+        fee: Number(String(z.fee).replace(/,/g, ".")) || 0,
+      }))
       .filter((z) => z.name.length > 0);
     const r = await upsertDeliverySettings(user.id, {
       mode,
@@ -62,6 +82,21 @@ export function SellerDeliverySettingsScreen({
     haptic.success();
     toast.success(t("delivery.saved"));
     onClose();
+  };
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, { idx: number; zone: DeliveryZone }[]>();
+    zones.forEach((z, idx) => {
+      const key = (z.country || sellerCountry).toUpperCase();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({ idx, zone: z });
+    });
+    return Array.from(map.entries());
+  }, [zones, sellerCountry]);
+
+  const addZone = () => {
+    setZones((zs) => [...zs, { country: sellerCountry, name: "", fee: 0 }]);
+    setOpenSuggestIdx(zones.length);
   };
 
   return (
@@ -117,56 +152,137 @@ export function SellerDeliverySettingsScreen({
         )}
 
         {mode === "zones" && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-[12px] font-semibold text-muted-foreground">{t("delivery.zones")}</p>
             {zones.length === 0 && (
               <p className="rounded-xl border border-dashed border-border p-3 text-center text-[12px] text-muted-foreground">
                 {t("delivery.addZone")}
               </p>
             )}
-            <ul className="space-y-2">
-              {zones.map((z, idx) => (
-                <li key={idx} className="flex items-center gap-2 rounded-xl border border-border p-2">
-                  <input
-                    value={z.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, name: val } : x)));
-                    }}
-                    placeholder={t("delivery.zoneName")}
-                    className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-[13px] outline-none"
-                  />
-                  <input
-                    value={String(z.fee)}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, fee: Number(val.replace(/,/g, ".")) || 0 } : x)));
-                    }}
-                    inputMode="decimal"
-                    placeholder={t("delivery.zoneFee")}
-                    className="w-24 shrink-0 rounded-lg border border-border bg-background px-2 py-1.5 text-right text-[13px] tabular-nums outline-none"
-                  />
-                  <Press
-                    onClick={() => setZones((zs) => zs.filter((_, i) => i !== idx))}
-                    aria-label={t("delivery.removeZone")}
-                    className="!min-h-9 !min-w-9 rounded-lg"
-                  >
-                    <Trash2 size={14} />
-                  </Press>
-                </li>
-              ))}
-            </ul>
+
+            {grouped.map(([countryCode, items]) => (
+              <div key={countryCode} className="space-y-2">
+                <p className="flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <span>{countryLabel(countryCode, i18n.language)}</span>
+                </p>
+                <ul className="space-y-2">
+                  {items.map(({ idx, zone: z }) => {
+                    const suggestions = suggestionsFor(z.country || sellerCountry)
+                      .filter((s) =>
+                        !z.name.trim()
+                          ? true
+                          : s.toLowerCase().includes(z.name.trim().toLowerCase()),
+                      )
+                      .slice(0, 8);
+                    const showSuggest = openSuggestIdx === idx && suggestions.length > 0;
+                    return (
+                      <li key={idx} className="rounded-xl border border-border p-2 space-y-2">
+                        {/* Row 1: country + name */}
+                        <div className="flex items-center gap-2 relative">
+                          <Press
+                            onClick={() =>
+                              setCountryPickerIdx(countryPickerIdx === idx ? null : idx)
+                            }
+                            className="!min-h-9 shrink-0 rounded-lg border border-border bg-background px-2 text-[13px] flex items-center gap-1"
+                            aria-label={t("delivery.zoneCountry", "Pays")}
+                          >
+                            <span>{countryFlag(z.country || sellerCountry) || "🌍"}</span>
+                            <ChevronDown size={12} />
+                          </Press>
+                          <input
+                            value={z.name}
+                            onFocus={() => setOpenSuggestIdx(idx)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, name: val } : x)));
+                              setOpenSuggestIdx(idx);
+                            }}
+                            onBlur={() => window.setTimeout(() => setOpenSuggestIdx((v) => (v === idx ? null : v)), 150)}
+                            placeholder={t("delivery.zoneName")}
+                            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-[13px] outline-none"
+                          />
+                          <input
+                            value={String(z.fee)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, fee: Number(val.replace(/,/g, ".")) || 0 } : x)));
+                            }}
+                            inputMode="decimal"
+                            placeholder={t("delivery.zoneFee")}
+                            className="w-20 shrink-0 rounded-lg border border-border bg-background px-2 py-1.5 text-right text-[13px] tabular-nums outline-none"
+                          />
+                          <Press
+                            onClick={() => setZones((zs) => zs.filter((_, i) => i !== idx))}
+                            aria-label={t("delivery.removeZone")}
+                            className="!min-h-9 !min-w-9 rounded-lg"
+                          >
+                            <Trash2 size={14} />
+                          </Press>
+
+                          {showSuggest && (
+                            <ul className="absolute left-11 right-28 top-full z-10 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                              {suggestions.map((s) => (
+                                <li key={s}>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, name: s } : x)));
+                                      setOpenSuggestIdx(null);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-[13px] hover:bg-muted"
+                                  >
+                                    {s}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {countryPickerIdx === idx && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setCountryPickerIdx(null)}
+                              />
+                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-64 w-56 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                                {COUNTRIES.map((c) => (
+                                  <li key={c.code}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)));
+                                        setCountryPickerIdx(null);
+                                      }}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
+                                    >
+                                      <span>{c.flag}</span>
+                                      <span>{i18n.language.startsWith("en") ? c.nameEn : c.name}</span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                        {z.fee > 0 && (
+                          <p className="pl-11 text-[11px] text-muted-foreground tabular-nums">
+                            {formatMoney(z.fee, currency, i18n.language)}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+
             <Press
-              onClick={() => setZones((zs) => [...zs, { name: "", fee: 0 }])}
+              onClick={addZone}
               className="!min-h-10 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-[13px] font-semibold"
             >
               <Plus size={14} /> {t("delivery.addZone")}
             </Press>
-            {zones.length > 0 && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                {t("delivery.sellerZones")}: {zones.map((z) => `${z.name} · ${formatMoney(z.fee, currency, i18n.language)}`).join(" · ")}
-              </p>
-            )}
           </div>
         )}
 

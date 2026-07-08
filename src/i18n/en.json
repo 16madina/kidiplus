@@ -1036,6 +1036,8 @@
     "chooseZone": "Choose a zone",
     "noAddressBlock": "Add a delivery address to continue.",
     "zoneMismatch": "Pick an address in a zone the seller delivers to.",
+    "noCountryCoverage": "This seller doesn't ship to your country yet.",
+    "zoneCountry": "Country",
     "sellerZones": "Delivery zones"
   },
   "escrow": {
