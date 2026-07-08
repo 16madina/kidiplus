@@ -3,11 +3,6 @@ import { motion } from "framer-motion";
 import splashAsset from "@/assets/splash.mp4.asset.json";
 import { EASE_IOS } from "@/lib/motion";
 
-// 1×1 navy PNG (#10162B) — used as poster so Android WebView doesn't flash
-// a white frame or a play-button placeholder before playback starts.
-const NAVY_POSTER =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [exiting, setExiting] = useState(false);
@@ -26,17 +21,27 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.setTimeout(onDone, 260);
     };
 
-    // Programmatic muted setup — Android WebView often ignores the HTML
-    // `muted` attribute alone, so force it here before play().
-    v.muted = true;
-    v.defaultMuted = true;
-    v.playsInline = true;
-    // @ts-expect-error webkit-only
-    v.webkitPlaysInline = true;
-    v.loop = false;
-    v.controls = false;
-    v.disablePictureInPicture = true;
-    v.setAttribute("preload", "auto");
+    const forceSilentInlineAutoplay = () => {
+      // Android WebView can ignore HTML attributes until the JS properties are
+      // set on the media element itself, before every play() attempt.
+      v.muted = true;
+      v.defaultMuted = true;
+      v.playsInline = true;
+      // @ts-expect-error webkit-only
+      v.webkitPlaysInline = true;
+      v.loop = false;
+      v.controls = false;
+      v.disablePictureInPicture = true;
+      v.removeAttribute("controls");
+      v.setAttribute("autoplay", "");
+      v.setAttribute("muted", "");
+      v.setAttribute("playsinline", "");
+      v.setAttribute("webkit-playsinline", "true");
+      v.setAttribute("x5-playsinline", "true");
+      v.setAttribute("preload", "auto");
+    };
+
+    forceSilentInlineAutoplay();
 
     // Safety net if 'ended' never fires (some Android WebViews).
     const timeout = window.setTimeout(finish, 6500);
@@ -45,6 +50,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     let skipTimeout = 0;
 
     const tryPlay = () => {
+      forceSilentInlineAutoplay();
       const p = v.play();
       if (p && typeof p.then === "function") {
         p.catch(() => {
@@ -53,11 +59,16 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       }
     };
     tryPlay();
+    window.requestAnimationFrame(tryPlay);
 
+    v.addEventListener("loadedmetadata", tryPlay);
+    v.addEventListener("canplay", tryPlay);
     v.addEventListener("ended", finish);
     return () => {
       window.clearTimeout(timeout);
       window.clearTimeout(skipTimeout);
+      v.removeEventListener("loadedmetadata", tryPlay);
+      v.removeEventListener("canplay", tryPlay);
       v.removeEventListener("ended", finish);
     };
   }, [onDone]);
@@ -73,12 +84,13 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       <video
         ref={videoRef}
         src={splashAsset.url}
-        poster={NAVY_POSTER}
         autoPlay
         muted
+        defaultMuted
         playsInline
         {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
         preload="auto"
+        controls={false}
         disablePictureInPicture
         controlsList="nodownload noplaybackrate nofullscreen"
         className="splash-video h-full w-full object-cover"
