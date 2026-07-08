@@ -114,6 +114,33 @@ export function ProfileScreen() {
     return () => { alive = false; };
   }, [profile?.avatar_url]);
 
+  // Live-updating sales count (paid orders where the current user is seller).
+  // Followers/subscriptions tables don't exist yet — show 0 for those.
+  const [salesCount, setSalesCount] = useState<number | null>(null);
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) { setSalesCount(null); return; }
+    let alive = true;
+    const load = async () => {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("seller_id", userId)
+        .eq("status", "paid");
+      if (alive) setSalesCount(count ?? 0);
+    };
+    void load();
+    const channel = supabase
+      .channel(`profile-sales-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${userId}` },
+        () => { void load(); },
+      )
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, [profile?.id]);
+
   const handleSignOut = async () => {
     setSigningOut(true);
     try { await signOut(); haptic.success(); }
