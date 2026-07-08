@@ -273,7 +273,7 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Scheduled list */}
-      <div className="px-5 pt-8" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
+      <div className="px-5 pt-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}>
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-bold text-white">
             {t("golive.entry.myScheduled", "Mes lives programmés")}
@@ -282,7 +282,7 @@ export function GoLiveEntryScreen({
         </div>
         {!loadingList && scheduled.length === 0 && (
           <div
-            className="mt-3 grid place-items-center rounded-2xl px-6 py-10 text-center"
+            className="mt-3 grid place-items-center rounded-2xl px-6 py-8 text-center"
             style={{
               border: `1.5px dashed ${GOLD_DIM}`,
               backgroundColor: "rgba(255,255,255,0.02)",
