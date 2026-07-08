@@ -129,14 +129,40 @@ export function subscribeAllPayouts(onChange: () => void): () => void {
 export async function adminProcessPayout(
   payoutId: string,
   action: "paid" | "rejected",
-  note?: string,
+  opts?: { proofUrl?: string | null; adminNote?: string | null; note?: string | null },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data, error } = await sb.rpc("admin_process_payout", {
     _payout_id: payoutId,
     _action: action,
-    _note: note ?? null,
+    _note: opts?.note ?? null,
+    _proof_url: opts?.proofUrl ?? null,
+    _admin_note: opts?.adminNote ?? null,
   });
   if (error) return { ok: false, error: error.message };
   const r = (data ?? {}) as any;
   return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
+
+// Upload a payment-proof image to the private payout-proofs bucket.
+// Returns the storage path (not a URL). Use signPayoutProofUrl to render it.
+export async function uploadPayoutProof(
+  payoutId: string,
+  file: File,
+): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${payoutId}/${Date.now()}.${ext}`;
+  const { error } = await (supabase as any).storage
+    .from("payout-proofs")
+    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, path };
+}
+
+export async function signPayoutProofUrl(path: string, expiresIn = 60 * 10): Promise<string | null> {
+  const { data, error } = await (supabase as any).storage
+    .from("payout-proofs")
+    .createSignedUrl(path, expiresIn);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl as string;
+}
+
