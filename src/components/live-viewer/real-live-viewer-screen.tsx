@@ -15,7 +15,7 @@ import { pushStatusBarLight } from "@/lib/native";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
-import { createPendingOrder, type OrderRow } from "@/lib/orders-db";
+import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
