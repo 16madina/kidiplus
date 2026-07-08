@@ -28,6 +28,12 @@ export async function resolveAvatarUrl(
   return data.signedUrl;
 }
 
+export function bustAvatarCache(url: string | null, version?: string | number | null) {
+  if (!url) return null;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${encodeURIComponent(String(version ?? Date.now()))}`;
+}
+
 export function invalidateAvatar(value: string | null | undefined) {
   if (value) cache.delete(value);
 }
