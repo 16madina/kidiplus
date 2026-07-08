@@ -302,6 +302,7 @@ export function useLiveRoom(params: {
       liveStatus,
       auctionStart,
       lastAuctionEnd,
+      lastExtension,
       lastBid,
       sendChat: (text: string) => {
         const trimmed = text.trim();
@@ -329,13 +330,21 @@ export function useLiveRoom(params: {
         setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
         void channelRef.current?.send({ type: "broadcast", event: "auction:end", payload: evt });
       },
+      broadcastAuctionExtend: (evt) => {
+        const full: AuctionExtendEvt = { ...evt, ts: Date.now() };
+        setAuctionStart((cur) =>
+          cur && cur.productId === full.productId ? { ...cur, deadlineMs: full.deadlineMs } : cur,
+        );
+        setLastExtension(full);
+        void channelRef.current?.send({ type: "broadcast", event: "auction:extend", payload: full });
+      },
       systemMessage: (text: string) => {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
         setChat((prev) => [...prev, evt].slice(-80));
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastBid,
+      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid,
       identity, displayName,
     ],
   );
