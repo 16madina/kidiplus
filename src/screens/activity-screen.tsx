@@ -133,6 +133,16 @@ export function ActivityScreen() {
             >
               <SuspensionBanner />
               <AdminMessagesInbox />
+              {notifs.some((n) => !n.read_at) && (
+                <div className="flex justify-end px-4 pb-1 pt-2">
+                  <button
+                    onClick={markAll}
+                    className="text-[12px] font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    {t("notif.markAllRead")}
+                  </button>
+                </div>
+              )}
               {loading ? (
                 <NotifSkeletons />
               ) : notifs.length === 0 ? (
