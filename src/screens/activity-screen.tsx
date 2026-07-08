@@ -162,6 +162,18 @@ export function ActivityScreen() {
                     index={i}
                     onOpen={() => setOpenOrder(o)}
                     onPay={() => setPayOrder(o)}
+                    onConfirm={async () => {
+                      const r = await confirmOrderDelivered(o.id);
+                      if (!r.ok) { toast.error(r.error); return; }
+                      toast.success(t("orders.delivered"));
+                      setOrders((os) => os.map((x) => (x.id === o.id ? { ...x, fulfillment_status: "delivered", delivered_confirmed_at: new Date().toISOString() } : x)));
+                    }}
+                    onDispute={async () => {
+                      const r = await disputeOrder(o.id, "other");
+                      if (!r.ok) { toast.error(r.error); return; }
+                      toast.success(t("orders.disputeOpened"));
+                      setOrders((os) => os.map((x) => (x.id === o.id ? { ...x, fulfillment_status: "disputed" } : x)));
+                    }}
                   />
                 ))
               )}
