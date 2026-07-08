@@ -97,9 +97,9 @@ export function AddProductSheet({
     setName("");
     setImages([]);
     setImageFile(null);
-    setStartPrice(10);
+    setStartPrice(defaults.start);
     setTimerSec(45);
-    setPrice(29);
+    setPrice(defaults.price);
     setStock(5);
     setBidIncrement("");
     setDescription("");
