@@ -196,8 +196,8 @@ export function GoLiveEntryScreen({
       <div
         className="relative z-30 flex shrink-0 items-center justify-between px-3"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top) + 8px)",
-          paddingBottom: 8,
+          paddingTop: "calc(env(safe-area-inset-top) + 2px)",
+          paddingBottom: 6,
         }}
       >
         <Press
