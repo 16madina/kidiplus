@@ -35,7 +35,7 @@ export function AddProductSheet({
   const symbol = currencySymbol(currency);
   // Sensible defaults per currency (XOF has much larger nominal amounts).
   const defaults = currency === "XOF"
-    ? { start: 5000, price: 15000, step: 500 }
+    ? { start: 500, price: 1000, step: 500 }
     : { start: 10, price: 29, step: 1 };
   const priceStep = bidRulesFor(currency).step;
 
