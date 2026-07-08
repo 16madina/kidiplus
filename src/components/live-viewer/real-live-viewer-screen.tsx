@@ -159,33 +159,43 @@ export function RealLiveViewerScreen() {
       systemMessage(`${t("live.soldTo", { name: winner })} · ${formatLive(evt.finalPrice)}`),
     ]);
 
-    // If I won and this is a real live with a known seller, open the payment sheet.
+    // If I won and this is a real live with a known seller, either celebrate
+    // an auto-paid wallet purchase or open the payment sheet.
     if (
       user &&
       evt.winnerId === user.id &&
       active?.liveId &&
       active?.sellerId
     ) {
-      const prod = room.products.find((p) => p.id === evt.productId);
-      if (prod) {
+      if (evt.autoPaid) {
+        toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+      } else if (evt.orderId) {
         void (async () => {
-          const res = await createPendingOrder({
-            buyerId: user.id,
-            sellerId: active.sellerId!,
-            liveId: active.liveId!,
-            productId: prod.id,
-            kind: "auction",
-            itemName: prod.name,
-            itemImage: prod.image_url,
-            amount: evt.finalPrice,
-            currency: liveCurrency,
-          });
-          if (res.ok) setPendingOrder(res.order);
-          else toast.error(res.error);
+          const order = await fetchOrderById(evt.orderId!);
+          if (order) setPendingOrder(order);
         })();
+      } else {
+        const prod = room.products.find((p) => p.id === evt.productId);
+        if (prod) {
+          void (async () => {
+            const res = await createPendingOrder({
+              buyerId: user.id,
+              sellerId: active.sellerId!,
+              liveId: active.liveId!,
+              productId: prod.id,
+              kind: "auction",
+              itemName: prod.name,
+              itemImage: prod.image_url,
+              amount: evt.finalPrice,
+              currency: liveCurrency,
+            });
+            if (res.ok) setPendingOrder(res.order);
+            else toast.error(res.error);
+          })();
+        }
       }
     }
-  }, [room.lastAuctionEnd, t, user, active, room.products]);
+  }, [room.lastAuctionEnd, t, user, active, room.products, liveCurrency]);
 
   // Warning haptic near auction end.
   useEffect(() => {
