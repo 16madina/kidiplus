@@ -34,14 +34,14 @@ export const Route = createFileRoute("/api/admin/test-push")({
         try { body = await request.json(); } catch {}
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        let targetUserId = userData.user.id;
-        if (body.email) {
-          const { data: prof, error } = await supabaseAdmin
-            .from("profiles").select("id").eq("email", body.email).maybeSingle();
-          if (error) return Response.json({ error: error.message }, { status: 500 });
-          if (!prof) return Response.json({ error: `No profile for ${body.email}` }, { status: 404 });
-          targetUserId = prof.id;
-        }
+        let targetUserId: string | null = null;
+        const targetEmail = body.email;
+        if (!targetEmail) return Response.json({ error: "email required" }, { status: 400 });
+        const { data: prof, error } = await supabaseAdmin
+          .from("profiles").select("id").eq("email", targetEmail).maybeSingle();
+        if (error) return Response.json({ error: error.message }, { status: 500 });
+        if (!prof) return Response.json({ error: `No profile for ${targetEmail}` }, { status: 404 });
+        targetUserId = prof.id;
 
         const { sendFcmToUser } = await import("@/lib/fcm.server");
         try {
