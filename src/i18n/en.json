@@ -481,7 +481,28 @@
       "failed": "Failed",
       "cancelled": "Cancelled",
       "paymentTimeout": "Unpaid — cancelled"
-    }
+    },
+    "fulfillment": {
+      "awaiting": "To ship",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "disputed": "Dispute"
+    },
+    "confirmDelivery": "Confirm delivery ✅",
+    "reportProblem": "Report a problem",
+    "shipCta": "Mark shipped 📦",
+    "shipped": "Marked as shipped",
+    "delivered": "Thanks! The seller has been paid",
+    "disputeOpened": "Dispute opened — a moderator will follow up",
+    "disputeTitle": "Report a problem",
+    "disputeBody": "Explain what went wrong. A moderator will get back to you.",
+    "disputeReason": "Reason",
+    "disputeReasons": {
+      "counterfeit": "Counterfeit or wrong item",
+      "fraud": "Fraud or scam attempt",
+      "other": "Other problem"
+    },
+    "disputeSubmit": "Open dispute"
   },
   "sales": {
     "title": "My sales",
@@ -520,6 +541,8 @@
   "gains": {
     "title": "My earnings",
     "available": "Available balance",
+    "pending": "Pending delivery",
+    "escrowExplainer": "Funds are released when the buyer confirms delivery (auto after 7 days).",
     "withdraw": "Withdraw earnings",
     "price": "Price",
     "net": "Net",
