@@ -81,6 +81,11 @@ export async function createPendingOrder(
   return { ok: true, order: data as OrderRow };
 }
 
+export async function fetchOrderById(orderId: string): Promise<OrderRow | null> {
+  const { data } = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
+  return (data ?? null) as OrderRow | null;
+}
+
 export async function fetchMyOrders(buyerId: string, limit = 50): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from("orders")
