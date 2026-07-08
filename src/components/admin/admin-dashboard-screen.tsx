@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
-  CreditCard, Radio, Search, ChevronRight,
+  CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
@@ -21,8 +21,12 @@ import {
   type OverviewStats, type AdminUserRow, type AdminPayoutRow,
   type AdminOrderRow, type AdminLiveRow, type CurrencyMap,
 } from "@/lib/admin-db";
-import { adminProcessPayout, subscribeAllPayouts } from "@/lib/earnings-db";
+import {
+  adminProcessPayout, subscribeAllPayouts,
+  uploadPayoutProof, signPayoutProofUrl,
+} from "@/lib/earnings-db";
 import { useAuth } from "@/lib/auth-context";
+
 
 type Tab = "overview" | "users" | "payments" | "lives";
 
