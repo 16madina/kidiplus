@@ -1,5 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
-import { Camera } from "lucide-react";
+import { Camera, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
 import {
   Room,
@@ -41,6 +43,8 @@ export type BroadcastVideoProps = {
   /** Bump this to force a fresh token + reconnect (host retry). */
   retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
+  /** Called when the user taps "Retry" on the error overlay (preview mode). */
+  onRequestRetry?: () => void;
 };
 
 export type BroadcastStatus =
@@ -48,6 +52,7 @@ export type BroadcastStatus =
   | "connecting"
   | "granted"
   | "denied"
+  | "unavailable"
   | "unsupported"
   | "token_failed"
   | "connect_failed"
