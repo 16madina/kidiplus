@@ -19,7 +19,7 @@ import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-
 import { resolveDeliveryForCheckout } from "@/lib/delivery-checkout";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
