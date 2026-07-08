@@ -592,6 +592,7 @@
       "sellerBal": "Seller balance",
       "purchases": "Purchases",
       "sales": "Sales",
+      "unpaidTimeouts": "Unpaid auction wins",
       "joined": "Joined",
       "detail": "User detail",
       "recentOrders": "Recent orders",
