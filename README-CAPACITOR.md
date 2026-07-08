@@ -27,14 +27,14 @@ browser.
 ## Build & run
 
 ```bash
-# 1. Build the web bundle
-bun run build
+# 1. Prepare the Capacitor webDir placeholder
+bun run native:prepare
 
 # 2. First-time only — add the native projects
 bunx cap add ios
 bunx cap add android
 
-# 3. Sync the built web assets + plugins into the native projects
+# 3. Sync Capacitor config + plugins into the native projects
 bunx cap sync
 
 # 4. Open in the respective IDE
@@ -50,7 +50,7 @@ bunx cap open android  # requires Android Studio + JDK 17
 
 ## Live reload against dev server
 
-Uncomment `server.url` in `capacitor.config.ts` and set your machine's LAN IP:
+Temporarily replace `server.url` in `capacitor.config.ts` with your machine's LAN IP:
 
 ```ts
 server: { url: "http://192.168.1.10:8080", cleartext: true }
