@@ -1,9 +1,10 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Sparkles, Camera } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
+import { Logo } from "@/components/brand/logo";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
@@ -26,8 +27,10 @@ import {
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
+
+const GOLD = "oklch(0.82 0.14 85)";
+const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
 
 
 
