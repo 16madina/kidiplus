@@ -557,7 +557,13 @@
       "overview": "Overview",
       "users": "Users",
       "payments": "Payments",
-      "lives": "Lives"
+      "lives": "Lives",
+      "reports": "Reports"
+    },
+    "toDo": {
+      "title": "To handle",
+      "reports": "Open reports",
+      "payouts": "Pending payouts"
     },
     "kpi": {
       "gmv": "GMV",
@@ -628,6 +634,93 @@
     },
     "onlyAdmins": "Admins only.",
     "approxEurTotal": "≈ EUR (indicative)"
+  },
+  "moderation": {
+    "reason": "Reason",
+    "suspendedUntil": "Account suspended until {{date}}",
+    "suspendedIndefinite": "Account suspended",
+    "banned": {
+      "title": "Account permanently banned",
+      "body": "Your account has been banned following a violation of KiDi+ community guidelines.",
+      "support": "For any question, contact support@kidiplus.com"
+    },
+    "types": {
+      "warning": "Warning",
+      "suspension": "Suspension",
+      "ban": "Ban"
+    },
+    "durations": { "h24": "24 h", "d7": "7 days", "d30": "30 days" },
+    "sanction": {
+      "title": "User sanction",
+      "for": "Sanction for",
+      "type": "Sanction type",
+      "duration": "Duration",
+      "reason": "Reason (visible to the user)",
+      "reasonPh": "e.g. Abusive language in chat",
+      "reasonHint": "3 characters minimum. The user will receive this text.",
+      "internalNote": "Internal note (optional)",
+      "internalNotePh": "Context, evidence…",
+      "recap": "Recap",
+      "until": "until",
+      "apply": "Apply sanction",
+      "banConfirm": "I confirm the permanent ban of this account.",
+      "done": "Sanction applied",
+      "failed": "Failed to apply"
+    },
+    "sanctions": {
+      "empty": "No sanctions.",
+      "active": "ACTIVE",
+      "revoked": "REVOKED",
+      "expired": "expired",
+      "revoke": "Revoke sanction",
+      "revokedOk": "Sanction revoked"
+    },
+    "reports": {
+      "empty": "No reports.",
+      "reported": "reported a",
+      "viewTarget": "View target",
+      "action": "Handle",
+      "dismiss": "Dismiss",
+      "dismissTitle": "Dismiss report",
+      "dismissNotePh": "Internal note (optional)",
+      "dismissConfirm": "Confirm dismiss",
+      "dismissed": "Report dismissed",
+      "resolution": "Resolution",
+      "filter": { "open": "Open", "actioned": "Actioned", "dismissed": "Dismissed", "all": "All" },
+      "status": { "open": "Open", "reviewed": "Seen", "actioned": "Actioned", "dismissed": "Dismissed" }
+    },
+    "targetType": { "user": "user", "live": "live", "message": "message" },
+    "lives": {
+      "endBtn": "End this live",
+      "endConfirm": "Confirm",
+      "ended": "Live ended"
+    },
+    "userDetail": {
+      "statusBadge": "Status",
+      "sendMessage": "Send a message",
+      "warn": "Warn",
+      "suspend": "Suspend",
+      "ban": "Ban",
+      "sanctionsTitle": "Sanctions"
+    },
+    "errors": {
+      "account_banned": "Account banned.",
+      "account_suspended": "Account suspended."
+    }
+  },
+  "adminMsg": {
+    "section": "Official messages",
+    "detailTitle": "KiDi+ message",
+    "communityRef": "See our community guidelines to learn more.",
+    "compose": {
+      "title": "New message",
+      "for": "Recipient:",
+      "titlePh": "Message title",
+      "bodyPh": "Write your message…",
+      "send": "Send",
+      "sent": "Message sent",
+      "failed": "Send failed"
+    }
   },
   "legal": {
     "appLegal": "Legal documents — KiDi+",

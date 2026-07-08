@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sent_by: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sent_by: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sent_by?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -377,6 +415,7 @@ export type Database = {
           is_admin: boolean
           is_seller: boolean
           language: string
+          moderation_status: string
           terms_accepted_at: string | null
           terms_version: string | null
         }
@@ -394,6 +433,7 @@ export type Database = {
           is_admin?: boolean
           is_seller?: boolean
           language?: string
+          moderation_status?: string
           terms_accepted_at?: string | null
           terms_version?: string | null
         }
@@ -411,6 +451,7 @@ export type Database = {
           is_admin?: boolean
           is_seller?: boolean
           language?: string
+          moderation_status?: string
           terms_accepted_at?: string | null
           terms_version?: string | null
         }
@@ -423,6 +464,9 @@ export type Database = {
           note: string | null
           reason: string
           reporter_id: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
           target_id: string
           target_type: string
@@ -434,6 +478,9 @@ export type Database = {
           note?: string | null
           reason: string
           reporter_id: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           target_id: string
           target_type: string
@@ -445,6 +492,9 @@ export type Database = {
           note?: string | null
           reason?: string
           reporter_id?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           target_id?: string
           target_type?: string
@@ -525,6 +575,53 @@ export type Database = {
           {
             foreignKeyName: "seller_earnings_seller_id_fkey"
             columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sanctions: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          issued_by: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          issued_by: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          issued_by?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sanctions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -618,6 +715,17 @@ export type Database = {
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
       account_deletion_check: { Args: never; Returns: Json }
+      admin_end_live: { Args: { _live_id: string }; Returns: Json }
+      admin_issue_sanction: {
+        Args: {
+          _expires_at?: string
+          _note?: string
+          _reason: string
+          _type: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       admin_list_lives: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
@@ -630,6 +738,11 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_reports: {
+        Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
+      admin_list_sanctions: { Args: { _user_id: string }; Returns: Json }
       admin_list_users: {
         Args: { _limit?: number; _offset?: number; _search?: string }
         Returns: Json
@@ -645,16 +758,30 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_resolve_report: {
+        Args: { _note?: string; _report_id: string; _status: string }
+        Returns: Json
+      }
+      admin_revoke_sanction: { Args: { _sanction_id: string }; Returns: Json }
+      admin_send_message: {
+        Args: { _body: string; _title: string; _user_id: string }
+        Returns: Json
+      }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       anonymize_my_account: { Args: never; Returns: Json }
+      assert_user_active: { Args: never; Returns: undefined }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
         Returns: Json
       }
+      current_moderation_status: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
+      mark_admin_message_read: { Args: { _id: string }; Returns: Json }
+      my_moderation_state: { Args: never; Returns: Json }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
       place_live_bid:
         | {

@@ -23,6 +23,7 @@ export type Profile = {
   country: string | null;
   currency: "XOF" | "EUR" | "CAD";
   language: "fr" | "en";
+  moderation_status?: "active" | "suspended" | "banned";
   created_at: string;
 };
 

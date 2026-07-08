@@ -20,6 +20,8 @@ import {
   type OrderRow,
   type OrderStatus,
 } from "@/lib/orders-db";
+import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
+import { SuspensionBanner } from "@/components/moderation/moderation-gate";
 
 type Tab = "notifs" | "orders";
 
@@ -104,6 +106,8 @@ export function ActivityScreen() {
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="pt-2"
             >
+              <SuspensionBanner />
+              <AdminMessagesInbox />
               {loading ? (
                 <NotifSkeletons />
               ) : notifs.length === 0 ? (

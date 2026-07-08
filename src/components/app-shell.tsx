@@ -31,6 +31,7 @@ import { AuthFlow } from "./auth/auth-flow";
 import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
 import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
+import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
 
@@ -102,6 +103,7 @@ function AuthGate() {
         >
           <ImmersiveProvider>
             <AppShellInner />
+            <ModerationBanGate>{null}</ModerationBanGate>
           </ImmersiveProvider>
         </motion.div>
       ) : (

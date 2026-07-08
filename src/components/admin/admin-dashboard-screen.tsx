@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
+  Flag, MessageSquare, ShieldAlert, AlertTriangle,
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
@@ -26,9 +27,14 @@ import {
   uploadPayoutProof, signPayoutProofUrl,
 } from "@/lib/earnings-db";
 import { useAuth } from "@/lib/auth-context";
+import { fetchAdminReports } from "@/lib/moderation-admin";
+import {
+  ReportsTab, ComposeMessageSheet, UserSanctionsHistory, EndLiveButton,
+} from "./moderation-pieces";
+import { SanctionSheet } from "./sanction-sheet";
 
 
-type Tab = "overview" | "users" | "payments" | "lives";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -44,10 +50,11 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
         <>
           <TabBar tab={tab} onTab={setTab} />
           <div className="px-4 py-4 pb-24">
-            {tab === "overview" && open && <OverviewTab />}
+            {tab === "overview" && open && <OverviewTab onGoTab={setTab} />}
             {tab === "users" && open && <UsersTab />}
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
+            {tab === "reports" && open && <ReportsTab />}
           </div>
         </>
       )}
@@ -65,6 +72,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; icon: React.ReactNode; label: string }> = [
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
+    { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
   ];
@@ -90,17 +98,18 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
 
 // ---------- Overview ----------
 
-function OverviewTab() {
+function OverviewTab({ onGoTab }: { onGoTab: (t: Tab) => void }) {
   const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openReports, setOpenReports] = useState(0);
 
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const s = await fetchOverviewStats();
+      const [s, reports] = await Promise.all([fetchOverviewStats(), fetchAdminReports("open")]);
       if (!alive) return;
-      setStats(s); setLoading(false);
+      setStats(s); setOpenReports(reports.length); setLoading(false);
     };
     void load();
     const id = window.setInterval(() => void load(), 60_000);
@@ -113,6 +122,34 @@ function OverviewTab() {
   const c = stats.counts;
   return (
     <div className="space-y-4">
+      {/* À traiter */}
+      <Section title={t("admin.toDo.title")}>
+        <div className="grid grid-cols-2 gap-2">
+          <Press onClick={() => onGoTab("reports")}
+            className="flex items-center justify-between rounded-2xl border p-3 text-left"
+            style={{ borderColor: openReports > 0 ? "oklch(0.55 0.2 27 / 0.5)" : "var(--border)" }}>
+            <div>
+              <p className="text-[22px] font-bold tabular-nums" style={{ color: openReports > 0 ? "oklch(0.55 0.2 27)" : undefined }}>
+                {fmtInt(openReports, i18n.language)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{t("admin.toDo.reports")}</p>
+            </div>
+            <Flag size={16} className="text-muted-foreground" />
+          </Press>
+          <Press onClick={() => onGoTab("payments")}
+            className="flex items-center justify-between rounded-2xl border p-3 text-left"
+            style={{ borderColor: stats.pending_payouts.count > 0 ? "oklch(0.62 0.18 60 / 0.5)" : "var(--border)" }}>
+            <div>
+              <p className="text-[22px] font-bold tabular-nums" style={{ color: stats.pending_payouts.count > 0 ? "oklch(0.55 0.16 60)" : undefined }}>
+                {fmtInt(stats.pending_payouts.count, i18n.language)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{t("admin.toDo.payouts")}</p>
+            </div>
+            <CreditCard size={16} className="text-muted-foreground" />
+          </Press>
+        </div>
+      </Section>
+
       <Section title={t("admin.kpi.gmv")}>
         <MoneyByCurrency map={stats.gmv} approx />
       </Section>
@@ -312,10 +349,15 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
 function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<any | null>(null);
+  const [sanctionOpen, setSanctionOpen] = useState<{ type: "warning" | "suspension" | "ban" } | null>(null);
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [sanctionsReload, setSanctionsReload] = useState(0);
+  const modStatus = (data?.profile?.moderation_status ?? "active") as "active" | "suspended" | "banned";
+
   useEffect(() => {
     if (!user) { setData(null); return; }
     void fetchAdminUserDetail(user.id).then(setData);
-  }, [user]);
+  }, [user, sanctionsReload]);
 
   return (
     <PushScreen open={!!user} onClose={onClose} title={t("admin.users.detail")} zIndex={80}>
@@ -323,10 +365,11 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
         <div className="space-y-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <Avatar url={user.avatar_url} name={user.display_name} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-[16px] font-bold">{user.display_name}</p>
               <p className="truncate text-[12px] text-muted-foreground">@{user.handle} · {user.email}</p>
             </div>
+            <ModStatusBadge status={modStatus} />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -336,13 +379,39 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
             <StatTile label={t("admin.users.sales")} value={String(user.sales_count)} />
           </div>
 
+          {/* Moderation actions */}
+          <div className="grid grid-cols-4 gap-2">
+            <Press onClick={() => setMsgOpen(true)}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold">
+              <MessageSquare size={14} />{t("moderation.userDetail.sendMessage")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "warning" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.7 0.16 90 / 0.4)", color: "oklch(0.6 0.16 90)" }}>
+              <AlertTriangle size={14} />{t("moderation.userDetail.warn")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "suspension" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.62 0.18 60 / 0.4)", color: "oklch(0.55 0.16 60)" }}>
+              <ShieldAlert size={14} />{t("moderation.userDetail.suspend")}
+            </Press>
+            <Press onClick={() => setSanctionOpen({ type: "ban" })}
+              className="flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-[10px] font-semibold"
+              style={{ borderColor: "oklch(0.55 0.2 27 / 0.4)", color: "oklch(0.55 0.2 27)" }}>
+              <X size={14} />{t("moderation.userDetail.ban")}
+            </Press>
+          </div>
+
+          <Section title={t("moderation.userDetail.sanctionsTitle")}>
+            <UserSanctionsHistory userId={user.id} reloadKey={sanctionsReload} />
+          </Section>
+
           {data && (
             <>
               <Section title={t("admin.users.recentOrders")}>
                 <MiniList
                   items={(data.orders ?? []).slice(0, 10).map((o: any) => ({
-                    key: o.id,
-                    left: o.item_name,
+                    key: o.id, left: o.item_name,
                     sub: `${o.status} · ${new Date(o.created_at).toLocaleDateString(i18n.language)}`,
                     right: formatMoney(Number(o.total), normalizeCurrency(o.currency), i18n.language),
                   }))}
@@ -351,8 +420,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.recentLives")}>
                 <MiniList
                   items={(data.lives ?? []).slice(0, 10).map((l: any) => ({
-                    key: l.id,
-                    left: l.title,
+                    key: l.id, left: l.title,
                     sub: `${l.status} · ${new Date(l.started_at).toLocaleDateString(i18n.language)}`,
                     right: `${l.viewer_count} 👀`,
                   }))}
@@ -361,8 +429,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.walletTx")}>
                 <MiniList
                   items={(data.wallet_transactions ?? []).slice(0, 10).map((tx: any) => ({
-                    key: tx.id,
-                    left: tx.type,
+                    key: tx.id, left: tx.type,
                     sub: new Date(tx.created_at).toLocaleString(i18n.language),
                     right: formatMoney(Number(tx.amount), normalizeCurrency(user.wallet_currency), i18n.language),
                   }))}
@@ -371,8 +438,7 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               <Section title={t("admin.users.earnings")}>
                 <MiniList
                   items={(data.earnings ?? []).slice(0, 10).map((e: any) => ({
-                    key: e.id,
-                    left: e.order_id.slice(0, 8),
+                    key: e.id, left: e.order_id.slice(0, 8),
                     sub: new Date(e.created_at).toLocaleString(i18n.language),
                     right: formatMoney(Number(e.amount), normalizeCurrency(user.seller_currency), i18n.language),
                   }))}
@@ -380,15 +446,41 @@ function UserDetailSheet({ user, onClose }: { user: AdminUserRow | null; onClose
               </Section>
             </>
           )}
-
-          <div className="rounded-2xl border border-dashed border-border p-4 text-center text-[11px] text-muted-foreground">
-            {t("admin.users.moderationSoon")}
-          </div>
         </div>
       )}
+      <SanctionSheet
+        open={!!sanctionOpen}
+        onClose={() => setSanctionOpen(null)}
+        targetUserId={user?.id ?? null}
+        targetHandle={user?.handle ?? null}
+        onDone={() => { setSanctionOpen(null); setSanctionsReload((n) => n + 1); }}
+      />
+      <ComposeMessageSheet
+        open={msgOpen}
+        onClose={() => setMsgOpen(false)}
+        targetUserId={user?.id ?? null}
+        targetHandle={user?.handle ?? null}
+      />
     </PushScreen>
   );
 }
+
+function ModStatusBadge({ status }: { status: "active" | "suspended" | "banned" }) {
+  const { t } = useTranslation();
+  const map = {
+    active: { color: "oklch(0.62 0.16 155)", label: "Actif" },
+    suspended: { color: "oklch(0.62 0.18 60)", label: t("moderation.types.suspension") },
+    banned: { color: "oklch(0.55 0.2 27)", label: t("moderation.types.ban") },
+  } as const;
+  const m = map[status];
+  return (
+    <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+      style={{ backgroundColor: `color-mix(in oklch, ${m.color} 18%, transparent)`, color: m.color }}>
+      {m.label}
+    </span>
+  );
+}
+
 
 function MiniList({ items }: { items: Array<{ key: string; left: string; sub: string; right: string }> }) {
   if (items.length === 0) return <p className="rounded-2xl border border-border p-3 text-[12px] text-muted-foreground">—</p>;
@@ -701,11 +793,8 @@ function LivesTab() {
   const [rows, setRows] = useState<AdminLiveRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
-    void fetchAdminLives().then((r) => { if (alive) { setRows(r); setLoading(false); } });
-    return () => { alive = false; };
-  }, []);
+  const load = async () => { setRows(await fetchAdminLives()); setLoading(false); };
+  useEffect(() => { void load(); }, []);
 
   if (loading) return <Skeleton />;
   if (rows.length === 0) return <p className="py-16 text-center text-[13px] text-muted-foreground">{t("admin.lives.empty")}</p>;
@@ -731,6 +820,9 @@ function LivesTab() {
                 <span>{t("admin.lives.gmv")}: <b className="text-foreground tabular-nums">{formatMoney(Number(l.gmv), normalizeCurrency(l.currency), i18n.language)}</b></span>
                 <span>#{l.orders_count}</span>
               </div>
+              {l.status === "live" && (
+                <EndLiveButton liveId={l.id} onEnded={() => void load()} />
+              )}
             </div>
           </div>
         </li>
@@ -738,3 +830,4 @@ function LivesTab() {
     </ul>
   );
 }
+
