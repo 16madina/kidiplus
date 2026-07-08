@@ -169,14 +169,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
-    void endAuctionInDb(activeAuction.productId, winnerName, finalPrice);
-    room.broadcastAuctionEnd({
-      productId: activeAuction.productId,
-      winnerId,
-      winnerName,
-      finalPrice,
-    });
-  }, [timeLeft, activeAuction, activeProduct, room]);
+    const productId = activeAuction.productId;
+    void (async () => {
+      const res = await finalizeAuctionInDb({
+        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+      });
+      room.broadcastAuctionEnd({
+        productId, winnerId, winnerName, finalPrice,
+        orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
+      });
+    })();
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId]);
 
   // React to auction:end (from ourselves too) — flash + confetti + system msg.
   const seenEndRef = useRef<string | null>(null);
