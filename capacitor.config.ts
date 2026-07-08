@@ -6,15 +6,13 @@ const config: CapacitorConfig = {
   appName: "KiDi+",
   webDir: "dist",
   bundledWebRuntime: false,
-  // KiDi+ tourne sur TanStack Start (SSR) — il n'y a pas de build SPA statique
-  // à embarquer dans l'APK. Le WebView natif charge donc directement l'app
-  // publiée. Pour tester une build locale, commente `url` et mets ton IP LAN.
-  server: {
-    url: "https://kidiplus.lovable.app",
-    // url: "http://192.168.1.10:8080", // dev local (Vite sur ta machine)
-    cleartext: true,
-    androidScheme: "https",
-  },
+  // L'app native embarque le build web statique (dossier `dist`).
+  // Pour tester en live-reload sur ton réseau local, décommente `server.url`
+  // et mets l'IP LAN de ta machine qui fait tourner `npm run dev`.
+  // server: {
+  //   url: "http://192.168.1.10:8080",
+  //   cleartext: true,
+  // },
   ios: {
     contentInset: "never",
     limitsNavigationsToAppBoundDomains: true,
