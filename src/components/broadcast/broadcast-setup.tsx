@@ -19,11 +19,15 @@ import { makeRoomName } from "@/lib/livekit";
 import {
   blobUrlToFile,
   createLiveInDb,
+  createScheduledLiveInDb,
+  updateScheduledLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
+import { Calendar as CalendarIcon } from "lucide-react";
+
 
 
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
@@ -66,9 +70,51 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     haptic.selection();
   };
 
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
+  const isSchedule = b.mode === "schedule" || b.mode === "edit";
+  const scheduleValid = !isSchedule || (b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000);
+  const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
   const [launching, setLaunching] = useState(false);
 
+  // Datetime picker bounds — now+15min to now+30d, formatted for datetime-local.
+  const toLocalInput = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
+  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
+
+  const uploadProducts = async () =>
+    Promise.all(
+      b.products.map(async (p, index) => {
+        let imagePath: string | null = null;
+        if (p.imageFile) {
+          imagePath = await uploadLiveImage("live-products", p.imageFile, b.hostIdentity!);
+        } else if (p.image && isBlobUrl(p.image)) {
+          const file = await blobUrlToFile(p.image, `${p.name || "product"}.jpg`);
+          imagePath = await uploadLiveImage("live-products", file, b.hostIdentity!);
+        } else {
+          imagePath = p.image || null;
+        }
+        return {
+          name: p.name,
+          imagePath,
+          mode: p.mode,
+          startPrice: p.startPrice,
+          price: p.price,
+          stock: p.stock,
+          timerSeconds: p.timerSec,
+          position: index,
+        };
+      }),
+    );
+
+  const uploadCover = async (): Promise<string | null> => {
+    if (b.coverFile) return uploadLiveImage("live-covers", b.coverFile, b.hostIdentity!);
+    if (b.cover && !isBlobUrl(b.cover) && !b.cover.startsWith("http")) return b.cover;
+    if (b.cover && !isBlobUrl(b.cover)) return b.cover;
+    return null;
+  };
 
   const launch = async () => {
     if (!canLaunch || launching) return;
@@ -79,57 +125,43 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     haptic.medium();
     setLaunching(true);
     try {
-      const seed = b.hostIdentity.slice(0, 8) || "seller";
-      const room = makeRoomName(seed);
+      const coverPath = await uploadCover();
+      const productsForDb = await uploadProducts();
 
-      // 1. Upload cover if the seller picked a File (blob url).
-      let coverPath: string | null = null;
-      if (b.coverFile) {
-        coverPath = await uploadLiveImage(
-          "live-covers",
-          b.coverFile,
-          b.hostIdentity,
-        );
-      } else if (b.cover && !isBlobUrl(b.cover)) {
-        // Absolute URL — store as-is.
-        coverPath = b.cover;
+      if (b.mode === "schedule") {
+        const seed = b.hostIdentity.slice(0, 8) || "seller";
+        const room = makeRoomName(seed);
+        await createScheduledLiveInDb({
+          sellerId: b.hostIdentity,
+          title: b.title.trim(),
+          category: b.category,
+          coverPath,
+          roomName: room,
+          currency: b.currency,
+          products: productsForDb,
+          scheduledAt: new Date(b.scheduledAt!).toISOString(),
+        });
+        toast.success(t("schedule.savedToast", "Live programmé 📅"));
+        onExit();
+        return;
       }
 
-      // 2. Upload each product image; fall back to the existing URL.
-      const productsForDb = await Promise.all(
-        b.products.map(async (p, index) => {
-          let imagePath: string | null = null;
-          if (p.imageFile) {
-            imagePath = await uploadLiveImage(
-              "live-products",
-              p.imageFile,
-              b.hostIdentity!,
-            );
-          } else if (p.image && isBlobUrl(p.image)) {
-            // Convert stray blob to File and upload.
-            const file = await blobUrlToFile(p.image, `${p.name || "product"}.jpg`);
-            imagePath = await uploadLiveImage(
-              "live-products",
-              file,
-              b.hostIdentity!,
-            );
-          } else {
-            imagePath = p.image || null;
-          }
-          return {
-            name: p.name,
-            imagePath,
-            mode: p.mode,
-            startPrice: p.startPrice,
-            price: p.price,
-            stock: p.stock,
-            timerSeconds: p.timerSec,
-            position: index,
-          };
-        }),
-      );
+      if (b.mode === "edit" && b.editingLiveId) {
+        await updateScheduledLiveInDb(b.editingLiveId, {
+          title: b.title.trim(),
+          category: b.category,
+          coverPath,
+          scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          products: productsForDb,
+        });
+        toast.success(t("schedule.updatedToast", "Live modifié"));
+        onExit();
+        return;
+      }
 
-      // 3. Insert live + products.
+      // mode === "now"
+      const seed = b.hostIdentity.slice(0, 8) || "seller";
+      const room = makeRoomName(seed);
       const { liveId, productIds } = await createLiveInDb({
         sellerId: b.hostIdentity,
         title: b.title.trim(),
@@ -154,6 +186,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
 
 
+
   return (
     <motion.div
       key="setup"
@@ -163,13 +196,23 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative h-full w-full overflow-hidden bg-black"
     >
-      <BroadcastVideo
-        key={previewRetryKey}
-        facing={facing}
-        enabled={true}
-        fallbackImage={b.cover}
-        onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
-      />
+      {b.mode === "now" ? (
+        <BroadcastVideo
+          key={previewRetryKey}
+          facing={facing}
+          enabled={true}
+          fallbackImage={b.cover}
+          onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
+        />
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 60%, #000 100%)",
+          }}
+        />
+      )}
 
 
       {/* Top bar */}
@@ -189,22 +232,31 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         >
           <X size={22} />
         </Press>
-        <Press
-          onClick={() => {
-            haptic.selection();
-            setFacing((f) => (f === "user" ? "environment" : "user"));
-          }}
-          aria-label={t("broadcast.live.flipCam")}
-          className="!min-h-11 !min-w-11 rounded-full text-white"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.4)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-        >
-          <RefreshCw size={20} />
-        </Press>
+        {b.mode === "now" ? (
+          <Press
+            onClick={() => {
+              haptic.selection();
+              setFacing((f) => (f === "user" ? "environment" : "user"));
+            }}
+            aria-label={t("broadcast.live.flipCam")}
+            className="!min-h-11 !min-w-11 rounded-full text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <RefreshCw size={20} />
+          </Press>
+        ) : (
+          <div className="text-[13px] font-bold text-white/80">
+            {b.mode === "edit"
+              ? t("schedule.editingTitle", "Modifier le live")
+              : t("schedule.planningTitle", "Programmer un live")}
+          </div>
+        )}
       </div>
+
 
       {/* Form overlay */}
       <div
@@ -357,6 +409,34 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           </motion.div>
         </div>
 
+        {/* Schedule datetime (schedule + edit modes) */}
+        {isSchedule && (
+          <label
+            className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.10)",
+              border: "1px solid oklch(0.82 0.14 85 / 0.4)",
+            }}
+          >
+            <CalendarIcon size={18} color="oklch(0.82 0.14 85)" />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="text-[11px] font-semibold text-white/70">
+                {t("schedule.datetimeLabel", "Date et heure du live")}
+              </span>
+              <input
+                type="datetime-local"
+                min={minDt}
+                max={maxDt}
+                value={currentDtValue}
+                onChange={(e) => b.setScheduledAt(e.target.value ? new Date(e.target.value).toISOString() : null)}
+                className="bg-transparent text-[14px] font-medium text-white outline-none"
+                style={{ colorScheme: "dark" }}
+                lang={"fr-FR"}
+              />
+            </div>
+          </label>
+        )}
+
         {/* Launch */}
         <Press
           onClick={launch}
@@ -365,12 +445,25 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold text-white disabled:opacity-40"
           style={{
             background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            boxShadow: "0 8px 24px rgba(255, 40, 60, 0.35)",
+              b.mode === "now"
+                ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))"
+                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+            boxShadow:
+              b.mode === "now"
+                ? "0 8px 24px rgba(255, 40, 60, 0.35)"
+                : "0 8px 24px oklch(0.82 0.14 85 / 0.35)",
+            color: b.mode === "now" ? "white" : "black",
           }}
         >
-          {launching ? t("common.loading") : t("broadcast.setup.start")}
+          {launching
+            ? t("common.loading")
+            : b.mode === "schedule"
+              ? t("schedule.cta", "Programmer le live 📅")
+              : b.mode === "edit"
+                ? t("schedule.saveEdit", "Enregistrer les modifications")
+                : t("broadcast.setup.start")}
         </Press>
+
       </div>
 
       <AddProductSheet

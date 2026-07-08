@@ -139,7 +139,10 @@ function AppShellInner() {
   useEffect(() => {
     void bootstrapNative();
     // Opportunistic cleanup — cancel overdue unpaid auction orders on app load.
-    void import("@/lib/lives-db").then((m) => m.expireOverdueOrders()).catch(() => 0);
+    void import("@/lib/lives-db").then((m) => {
+      m.expireOverdueOrders().catch(() => 0);
+      m.cancelStaleScheduledLives().catch(() => 0);
+    });
   }, []);
 
   // Cross-screen tab navigation (dispatched via CustomEvent "kidi:navigate-tab").

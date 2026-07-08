@@ -7,7 +7,9 @@ import {
   type ReactNode,
 } from "react";
 
-export type BroadcastStage = "setup" | "live" | "summary";
+export type BroadcastStage = "entry" | "setup" | "live" | "summary";
+export type BroadcastMode = "now" | "schedule" | "edit";
+
 export type SellMode = "auction" | "fixed";
 
 export type BProduct = {
@@ -47,9 +49,17 @@ export type BroadcastSession = {
 
 type Ctx = {
   stage: BroadcastStage;
+  goEntry: () => void;
   goSetup: () => void;
   goLive: () => void;
   goSummary: () => void;
+
+  mode: BroadcastMode;
+  setMode: (m: BroadcastMode) => void;
+  scheduledAt: string | null; // ISO
+  setScheduledAt: (v: string | null) => void;
+  editingLiveId: string | null;
+  setEditingLiveId: (v: string | null) => void;
 
   // setup form
   title: string;
@@ -63,6 +73,7 @@ type Ctx = {
   products: BProduct[];
   addProduct: (p: Omit<BProduct, "id">) => void;
   removeProduct: (id: string) => void;
+  clearProducts: () => void;
   setProductDbIds: (ids: string[]) => void;
 
   // session (readonly-ish accessors are fine)
@@ -89,6 +100,7 @@ type Ctx = {
 
 
 
+
 const BroadcastContext = createContext<Ctx | null>(null);
 
 const emptySession = (): BroadcastSession => ({
@@ -101,7 +113,10 @@ const emptySession = (): BroadcastSession => ({
 });
 
 export function BroadcastProvider({ children }: { children: ReactNode }) {
-  const [stage, setStage] = useState<BroadcastStage>("setup");
+  const [stage, setStage] = useState<BroadcastStage>("entry");
+  const [mode, setMode] = useState<BroadcastMode>("now");
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
+  const [editingLiveId, setEditingLiveId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>("Fashion");
   const [cover, setCover] = useState<string | null>(null);
@@ -123,6 +138,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const removeProduct = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   }, []);
+  const clearProducts = useCallback(() => setProducts([]), []);
   const setProductDbIds = useCallback((ids: string[]) => {
     setProducts((prev) =>
       prev.map((p, i) => (ids[i] ? { ...p, dbId: ids[i] } : p)),
@@ -135,7 +151,10 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => {
-    setStage("setup");
+    setStage("entry");
+    setMode("now");
+    setScheduledAt(null);
+    setEditingLiveId(null);
     setTitle("");
     setCategory("Fashion");
     setCover(null);
@@ -149,14 +168,18 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       stage,
+      goEntry: () => setStage("entry"),
       goSetup: () => setStage("setup"),
       goLive: () => setStage("live"),
       goSummary: () => setStage("summary"),
+      mode, setMode,
+      scheduledAt, setScheduledAt,
+      editingLiveId, setEditingLiveId,
       title, setTitle,
       category, setCategory,
       cover, setCover,
       coverFile, setCoverFile,
-      products, addProduct, removeProduct, setProductDbIds,
+      products, addProduct, removeProduct, clearProducts, setProductDbIds,
       session, setSession,
       roomName, setRoomName,
       liveId, setLiveId,
@@ -164,8 +187,9 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       currency, setCurrency,
       reset,
     }),
-    [stage, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, addProduct, removeProduct, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
   );
+
 
 
 

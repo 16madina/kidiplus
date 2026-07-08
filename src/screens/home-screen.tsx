@@ -18,6 +18,7 @@ import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
+import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 
 
 const PAGE = 12;
@@ -276,6 +277,9 @@ export function HomeScreen() {
           <FilterPills active={filter} onChange={setFilter} />
         </div>
 
+        {/* Upcoming scheduled lives */}
+        <UpcomingLivesRow />
+
         {/* Section title */}
         <h2
           className="px-4 pb-2 pt-5 text-left text-[20px] font-semibold"
@@ -283,6 +287,7 @@ export function HomeScreen() {
         >
           {t("home.livesNearYou")}
         </h2>
+
 
         <div className="px-4">
           <AnimatePresence mode="wait">
