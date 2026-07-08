@@ -609,9 +609,15 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
         <div className="my-2 h-px bg-border" />
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency)} bold />
       </div>
+
+      <div className="rounded-2xl border border-border p-4">
+        <p className="mb-3 text-[13px] font-semibold">{t("timeline.title")}</p>
+        <OrderTimeline orderId={order.id} />
+      </div>
     </div>
   );
 }
+
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
