@@ -297,11 +297,6 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             ) : (
               <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
                 <ImageIcon size={24} strokeWidth={1.6} />
-                <Sparkles
-                  size={10}
-                  className="absolute right-1.5 top-1.5"
-                  style={{ color: GOLD }}
-                />
               </div>
             )}
           </Press>
