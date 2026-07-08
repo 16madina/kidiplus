@@ -260,6 +260,8 @@ export function ProfileScreen() {
       <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
       <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
+      <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />
+      <SellerDeliverySettingsScreen open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
       <LegalScreen open={legalOpen === "privacy"} onClose={() => setLegalOpen(null)} kind="privacy" />
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
