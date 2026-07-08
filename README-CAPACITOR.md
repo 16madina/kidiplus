@@ -103,6 +103,7 @@ so both http and https on `localhost` are accepted automatically.
 | App shows Safari-style bottom bar | `server.url` is set → WebView loaded a remote origin as a "web app" | Ensure `server.url` is commented out in `capacitor.config.ts`; rebuild + `cap sync` |
 | Stuck on default blue Capacitor splash | JS never boots (missing bundled `dist/`) or API allowlist blocks `capacitor://localhost` startup fetch | Run `node scripts/prepare-native.mjs`, confirm `dist/index.html` exists, then `cap sync`. Verify the origin allowlist includes `capacitor://localhost`. |
 | Tapping an in-app link opens Safari | Target host missing from `server.allowNavigation` | Add the host to the array in `capacitor.config.ts` |
+| Android splash video shows a large play button | Android WebView default video poster overlay | Apply the `MainActivity.java` patch below, then run `npx cap sync android` and Run in Android Studio |
 
 ## Android — production build & run (Windows + Android Studio)
 
@@ -115,6 +116,55 @@ npx cap open android
 ```
 
 Then in Android Studio: pick your device (or emulator) → press ▶ Run.
+
+### Android — remove the native video play overlay
+
+If the intro splash video shows a large Android play button, edit this native file on your machine:
+
+`android/app/src/main/java/com/kidiplus/app/MainActivity.java`
+
+Use this exact content:
+
+```java
+package com.kidiplus.app;
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
+
+public class MainActivity extends BridgeActivity {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    WebSettings settings = this.bridge.getWebView().getSettings();
+    settings.setMediaPlaybackRequiresUserGesture(false);
+
+    this.bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(this.bridge) {
+      @Override
+      public Bitmap getDefaultVideoPoster() {
+        Bitmap bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawARGB(0, 0, 0, 0);
+        return bitmap;
+      }
+    });
+  }
+}
+```
+
+Then run:
+
+```bat
+node scripts/prepare-native.mjs
+npx cap sync android
+```
+
+Finally press ▶ Run in Android Studio.
 
 ### Debugging a black / stuck screen on Android
 

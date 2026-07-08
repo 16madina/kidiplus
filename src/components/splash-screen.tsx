@@ -86,7 +86,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         src={splashAsset.url}
         autoPlay
         muted
-        defaultMuted
         playsInline
         {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
         preload="auto"
