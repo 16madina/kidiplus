@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "322016174668",
+    "project_id": "kidiplus-a079a",
+    "storage_bucket": "kidiplus-a079a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:322016174668:android:b49ec77673e6d4ebe2cae9",
+        "android_client_info": {
+          "package_name": "com.kidiplus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQGe6gPtqVAGc7A-i_Y-QxbVVpSD1NQEg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
