@@ -108,20 +108,28 @@ export function BottomTabBar({
         </div>
 
         {/* Raised center action — sits above the pill, aligned to the notch */}
-        <div className="pointer-events-none absolute inset-x-0 -top-5 z-10 flex justify-center">
-          <Press
+        <div className="pointer-events-none absolute inset-x-0 -top-5 z-20 flex justify-center">
+          <button
+            type="button"
             aria-label={t("tabs.live")}
             onClick={() => onChange("live")}
-            className="pointer-events-auto relative h-[72px] w-[72px] overflow-visible rounded-2xl"
-            style={{
-              filter:
-                "drop-shadow(0 10px 20px rgba(232,185,59,0.45)) drop-shadow(0 4px 8px rgba(0,0,0,0.28))",
-            }}
+            className="pointer-events-auto relative block h-[72px] w-[72px] cursor-pointer bg-transparent p-0 outline-none"
           >
+            {/* Soft gold glow behind the badge */}
+            <span
+              aria-hidden
+              className="absolute inset-1 rounded-2xl"
+              style={{
+                boxShadow:
+                  "0 10px 24px rgba(232,185,59,0.45), 0 4px 10px rgba(0,0,0,0.28)",
+              }}
+            />
             <img
               src={kidiLiveBadge.url}
               alt=""
-              className="h-full w-full object-contain"
+              width={72}
+              height={72}
+              className="relative block h-full w-full object-contain"
               draggable={false}
             />
             {isBroadcasting && (
@@ -142,8 +150,9 @@ export function BottomTabBar({
                 />
               </span>
             )}
-          </Press>
+          </button>
         </div>
+
       </div>
     </nav>
   );

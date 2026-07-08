@@ -1,53 +1,27 @@
-## Problème exact
-Le splash vidéo est bien présent, mais Android WebView affiche encore son overlay natif de démarrage vidéo. D’après la recherche et le code actuel, les attributs web (`autoplay`, `muted`, `playsInline`, CSS pseudo-controls) ne suffisent pas toujours : Android peut afficher un poster/play natif via `WebChromeClient.getDefaultVideoPoster()` même quand `setMediaPlaybackRequiresUserGesture(false)` est activé.
+# Rendre visible le logo KiDi+ au centre de la barre
 
-## Plan
-1. Garder la vidéo splash sur Android et iOS, sans skip Android.
-2. Renforcer `src/components/splash-screen.tsx` pour empêcher toute UI native :
-   - ajouter explicitement `controls={false}` côté JSX,
-   - retirer l’attribut `poster` sur Android si besoin, car il peut déclencher l’overlay natif,
-   - forcer `muted/defaultMuted/playsInline/controls=false` avant chaque `play()`.
-3. Ajouter une aide native Android documentée dans le repo, puisque le dossier `android/` n’est pas présent ici :
-   - fichier cible sur ta machine : `android/app/src/main/java/com/kidiplus/app/MainActivity.java`,
-   - en plus de `setMediaPlaybackRequiresUserGesture(false)`, remplacer le poster vidéo natif Android par un bitmap transparent via `BridgeWebChromeClient.getDefaultVideoPoster()`.
-4. Mettre à jour la doc native Android (`README-CAPACITOR.md` / `BUILD_NATIVE.md`) avec le snippet exact à copier, puis les commandes :
-   - `node scripts/prepare-native.mjs`
-   - `npx cap sync android`
-   - Run depuis Android Studio.
-5. Typecheck après modification.
+## Ce qui ne va pas
 
-## Snippet natif à viser
-```java
-package com.kidiplus.app;
+Sur ta capture, l'encoche de la pilule est bien là, mais le logo au-dessus est invisible. Deux causes possibles :
 
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.os.Bundle;
-import android.webkit.WebSettings;
+1. Le `<Press>` (motion.button en `inline-flex`) peut réduire l'`<img>` à sa taille intrinsèque au lieu de la contraindre à 72×72, donc l'image s'affiche minuscule ou vide.
+2. Le `filter: drop-shadow(...)` appliqué sur le bouton s'applique aussi à l'image transparente — s'il y a un souci de rendu, l'image peut disparaître.
 
-import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.BridgeWebChromeClient;
+## Ce que je vais changer (`src/components/bottom-tab-bar.tsx`)
 
-public class MainActivity extends BridgeActivity {
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
+1. **Remplacer `<Press>` par un `<button>` natif** pour le bouton central, avec :
+   - `block` (pas flex) + `h-[72px] w-[72px]`
+   - un `<img>` avec `width={72} height={72}` explicites + `className="h-full w-full object-contain block"`
+   - `draggable={false}` conservé
 
-    WebSettings settings = this.bridge.getWebView().getSettings();
-    settings.setMediaPlaybackRequiresUserGesture(false);
+2. **Retirer le `filter: drop-shadow`** sur le bouton, le remplacer par une ombre douce dorée dessinée derrière le logo via un pseudo-cercle (`::before` ou un `<span>` `absolute inset-0 rounded-2xl` avec `boxShadow`), pour ne pas dépendre du filter qui peut mal rendre l'image PNG.
 
-    this.bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(this.bridge) {
-      @Override
-      public Bitmap getDefaultVideoPoster() {
-        Bitmap bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        canvas.drawARGB(0, 0, 0, 0);
-        return bitmap;
-      }
-    });
-  }
-}
-```
+3. **Ajouter un `bg-transparent` explicite** et `z-20` sur le bouton, pour être sûr qu'il passe au-dessus de la pilule (qui a `backdrop-filter` créant un stacking context).
 
-## Important
-Oui, une modification native est nécessaire sur ta machine : ce bouton vient d’Android WebView, pas de React. Le repo actuel n’a pas le dossier `android/`, donc je ne peux pas l’appliquer directement ici.
+4. **Conserver** : l'encoche de la pilule (mask radial-gradient), la position `-top-5`, l'indicateur "en direct" (ping rouge).
+
+## Vérification après changement
+
+- Ouvrir la preview et confirmer que le logo apparaît bien au centre au-dessus de la barre.
+- Vérifier qu'il reste cliquable (ouvre l'écran Live).
+- Vérifier sur viewport mobile (375px) que le logo reste centré et proportionné.
