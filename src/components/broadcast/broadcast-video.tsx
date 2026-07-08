@@ -330,17 +330,38 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               }}
             >
               <Camera size={28} />
-              <p className="text-[13px] font-semibold">
+              <p className="max-w-[260px] text-center text-[13px] font-semibold">
                 {state === "connecting"
-                  ? "Connexion au live…"
+                  ? t("broadcast.camera.connecting", "Connexion au live…")
                   : state === "denied"
-                    ? "Autorise la caméra"
-                    : state === "unsupported"
-                      ? "Caméra indisponible"
-                      : state === "error"
-                        ? "Connexion impossible"
-                        : "Aperçu caméra"}
+                    ? t(
+                        "broadcast.camera.denied",
+                        "Autorise la caméra dans Réglages > KiDi+",
+                      )
+                    : state === "unavailable"
+                      ? t("broadcast.camera.unavailable", "Caméra indisponible")
+                      : state === "unsupported"
+                        ? t("broadcast.camera.unsupported", "Caméra non supportée")
+                        : state === "error" ||
+                            state === "token_failed" ||
+                            state === "connect_failed"
+                          ? t("broadcast.camera.connectFailed", "Connexion impossible")
+                          : t("broadcast.camera.preview", "Aperçu caméra")}
               </p>
+              {onRequestRetry &&
+                (state === "denied" ||
+                  state === "unavailable" ||
+                  state === "unsupported" ||
+                  state === "error") && (
+                  <Press
+                    onClick={onRequestRetry}
+                    className="!min-h-9 mt-1 inline-flex items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-black"
+                    style={{ backgroundColor: "white" }}
+                  >
+                    <RefreshCw size={14} />
+                    {t("broadcast.camera.retry", "Réessayer")}
+                  </Press>
+                )}
             </div>
           </div>
         )}
