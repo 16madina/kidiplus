@@ -815,5 +815,15 @@
       "priceChanged": "Price changed — new min bid: {{amount}}",
       "aboveCap": "Max {{amount}}"
     }
+  },
+  "auction": {
+    "suddenDeath": {
+      "flash": "⚡ Sudden death — auction extended!",
+      "hint": "Any bid resets the clock ⚡"
+    },
+    "winner": {
+      "you": "You won!",
+      "other": "{{name}} won!"
+    }
   }
 }
