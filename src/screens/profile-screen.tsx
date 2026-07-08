@@ -24,6 +24,7 @@ import {
   ShoppingBag,
   UserPen,
   Store,
+  Camera,
 } from "lucide-react";
 
 import { toast } from "sonner";
