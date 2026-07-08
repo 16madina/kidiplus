@@ -518,6 +518,8 @@
     "successTitle": "Demande envoyée ✅",
     "successBody": "Traitement sous 48h.",
     "emptyHistory": "Aucun retrait pour le moment.",
+    "rejectionReason": "Motif du refus",
+
     "method": {
       "label": "Méthode",
       "wave": "Wave",
