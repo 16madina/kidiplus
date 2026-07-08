@@ -252,6 +252,13 @@ export function useLiveRoom(params: {
       setLastAuctionEnd(evt);
       setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
     });
+    ch.on("broadcast", { event: "auction:extend" }, ({ payload }) => {
+      const evt = payload as AuctionExtendEvt;
+      setAuctionStart((cur) =>
+        cur && cur.productId === evt.productId ? { ...cur, deadlineMs: evt.deadlineMs } : cur,
+      );
+      setLastExtension(evt);
+    });
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
