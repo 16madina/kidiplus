@@ -213,7 +213,7 @@ export function GoLiveEntryScreen({
           <div className="relative">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(28px)",
                 background: "radial-gradient(70% 80% at 50% 55%, rgba(255,205,110,0.65), transparent 70%)",
@@ -221,7 +221,7 @@ export function GoLiveEntryScreen({
             />
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 -z-10"
+              className="pointer-events-none absolute inset-0"
               style={{
                 filter: "blur(12px)",
                 background: "radial-gradient(50% 50% at 50% 55%, rgba(255,255,255,0.25), transparent 70%)",
@@ -464,7 +464,7 @@ function ChoiceCard({
         <div className="mt-2">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+            className="pointer-events-none absolute inset-0 rounded-full"
             style={{
               filter: "blur(16px)",
               background: "radial-gradient(circle, rgba(255,205,110,0.45), transparent 70%)",
