@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { AUCTION_EXTENSION_WINDOW_SECONDS, AUCTION_EXTENSION_RESET_SECONDS } from "@/lib/fees";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
+import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
