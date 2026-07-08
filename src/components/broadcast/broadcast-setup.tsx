@@ -207,7 +207,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       <div
         className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-8 pb-safe"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
           background:
             "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.85) 100%)",
         }}
