@@ -426,7 +426,11 @@ export function GoLiveEntryScreen({
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes kidiPulse { 0%,100% { box-shadow: 0 6px 18px ${GOLD_DIM}; transform: scale(1); } 50% { box-shadow: 0 10px 28px ${GOLD}; transform: scale(1.03); } }`}</style>
+      <style>{`
+        @keyframes kidiPulse { 0%,100% { box-shadow: 0 6px 18px ${GOLD_DIM}; transform: scale(1); } 50% { box-shadow: 0 10px 28px ${GOLD}; transform: scale(1.03); } }
+        @keyframes kidiTwinkle { 0%,100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
+        .sparkle-twinkle { animation: kidiTwinkle 2.4s ease-in-out infinite; }
+      `}</style>
     </motion.div>
   );
 }
