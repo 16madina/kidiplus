@@ -205,8 +205,16 @@ function SalesList({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-semibold">{o.item_name}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {buyer ? `@${buyer.handle}` : t("sales.buyer")} · {t(`orders.status.${o.status}`)}
+                  {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
+                  {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
+                    ? t("orders.status.paymentTimeout")
+                    : t(`orders.status.${o.status}`)}
                 </p>
+                {o.status === "pending" && o.kind === "auction" && o.payment_deadline && (
+                  <p className="mt-0.5 text-[11px] font-semibold" style={{ color: "oklch(0.5 0.16 60)" }}>
+                    {t("orders.payBefore", { date: new Date(o.payment_deadline).toLocaleString() })}
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
