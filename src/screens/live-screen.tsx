@@ -8,6 +8,7 @@ import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
 import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
+import { GoLiveEntryScreen } from "@/screens/golive-entry-screen";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
@@ -94,7 +95,7 @@ export function LiveScreen() {
 
 function BroadcastFlow() {
   const { t } = useTranslation();
-  const { stage, goSetup, goSummary, reset, setHost, setCurrency } = useBroadcast();
+  const { stage, goEntry, goSetup, goLive, goSummary, reset, setHost, setCurrency } = useBroadcast();
   const { profile, user } = useAuth();
   const [dangling, setDangling] = useState<Array<{ id: string; title: string }>>([]);
   const [endingAll, setEndingAll] = useState(false);
@@ -107,7 +108,7 @@ function BroadcastFlow() {
   }, [user, profile, setHost, setCurrency]);
 
   useEffect(() => {
-    if (!user || stage !== "setup") return;
+    if (!user || stage !== "entry") return;
     let alive = true;
     void import("@/lib/lives-db").then(({ findDanglingLives }) =>
       findDanglingLives(user.id).then((rows) => {
@@ -126,28 +127,39 @@ function BroadcastFlow() {
     toast.success(t("live.danglingEnded", "Lives précédents terminés"));
   };
 
+  const closeToHome = () => {
+    reset();
+    window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "home" }));
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       <AnimatePresence mode="wait">
+        {stage === "entry" && (
+          <GoLiveEntryScreen
+            key="entry"
+            onClose={closeToHome}
+            onStartNow={() => goSetup()}
+            onSchedule={() => goSetup()}
+            onEdit={() => goSetup()}
+            onStartScheduled={() => goLive()}
+          />
+        )}
         {stage === "setup" && (
           <BroadcastSetup
             key="setup"
-            onExit={() => {
-              reset();
-              window.dispatchEvent(
-                new CustomEvent("kidi:navigate-tab", { detail: "home" }),
-              );
-            }}
+            onExit={() => goEntry()}
           />
         )}
         {stage === "live" && (
           <BroadcastLive key="live" onEnd={() => goSummary()} />
         )}
         {stage === "summary" && (
-          <BroadcastSummary key="summary" onDone={() => goSetup()} />
+          <BroadcastSummary key="summary" onDone={() => goEntry()} />
         )}
       </AnimatePresence>
-      {stage === "setup" && dangling.length > 0 && (
+      {stage === "entry" && dangling.length > 0 && (
+
         <div
           className="absolute inset-x-3 z-40 rounded-2xl px-3 py-2.5 text-white shadow-lg"
           style={{

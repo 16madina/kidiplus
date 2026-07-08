@@ -187,8 +187,12 @@ export async function findDanglingLives(
     .eq("status", "live")
     .lt("started_at", cutoff)
     .order("started_at", { ascending: false });
-  return data ?? [];
+  return (data ?? [])
+    .filter((r): r is { id: string; title: string; started_at: string; room_name: string } =>
+      r.started_at !== null,
+    );
 }
+
 
 // -------------------------------------------------------------------------
 // Feed reads
@@ -489,3 +493,228 @@ export function subscribeToLivesFeed(onChange: () => void): () => void {
     supabase.removeChannel(channel);
   };
 }
+
+// -------------------------------------------------------------------------
+// Scheduled lives (Whatnot-style pre-announced lives)
+// -------------------------------------------------------------------------
+
+export type ScheduledLiveRow = {
+  id: string;
+  seller_id: string;
+  title: string;
+  category: string | null;
+  cover_url: string | null;
+  scheduled_at: string | null;
+  currency: string | null;
+  status: string;
+  products?: LiveProductRow[];
+};
+
+export type ScheduledLiveWithSeller = ScheduledLiveRow & {
+  seller: {
+    display_name: string | null;
+    handle: string | null;
+    avatar_url: string | null;
+  } | null;
+  product_count: number;
+};
+
+/** Create a live in the 'scheduled' state — cover + products persisted now. */
+export async function createScheduledLiveInDb(
+  input: CreateLiveInput & { scheduledAt: string },
+): Promise<{ liveId: string; productIds: string[] }> {
+  const { data: live, error } = await supabase
+    .from("lives")
+    .insert({
+      seller_id: input.sellerId,
+      title: input.title,
+      category: input.category,
+      cover_url: input.coverPath,
+      room_name: input.roomName,
+      status: "scheduled",
+      scheduled_at: input.scheduledAt,
+      ...(input.currency ? { currency: input.currency } : {}),
+    })
+    .select("id")
+    .single();
+  if (error || !live) throw error ?? new Error("Failed to schedule live");
+
+  const productIds: string[] = [];
+  if (input.products.length > 0) {
+    const rows = input.products.map((p) => ({
+      live_id: live.id,
+      name: p.name,
+      image_url: p.imagePath,
+      mode: p.mode,
+      start_price: p.startPrice,
+      price: p.price,
+      stock: p.stock,
+      timer_seconds: p.timerSeconds,
+      status: "upcoming" as const,
+      position: p.position,
+    }));
+    const { data: prods, error: pErr } = await supabase
+      .from("live_products")
+      .insert(rows)
+      .select("id, position");
+    if (pErr) throw pErr;
+    const byPos = new Map<number, string>();
+    for (const r of prods ?? []) byPos.set(r.position, r.id);
+    for (let i = 0; i < input.products.length; i++) {
+      const id = byPos.get(input.products[i].position);
+      if (id) productIds.push(id);
+    }
+  }
+  return { liveId: live.id, productIds };
+}
+
+/** Update the metadata of a scheduled live and replace its product list. */
+export async function updateScheduledLiveInDb(
+  liveId: string,
+  patch: {
+    title: string;
+    category: string;
+    coverPath: string | null;
+    scheduledAt: string;
+    products: CreateLiveInput["products"];
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from("lives")
+    .update({
+      title: patch.title,
+      category: patch.category,
+      cover_url: patch.coverPath,
+      scheduled_at: patch.scheduledAt,
+    })
+    .eq("id", liveId)
+    .eq("status", "scheduled");
+  if (error) throw error;
+
+  // Replace products wholesale.
+  await supabase.from("live_products").delete().eq("live_id", liveId);
+  if (patch.products.length > 0) {
+    const rows = patch.products.map((p) => ({
+      live_id: liveId,
+      name: p.name,
+      image_url: p.imagePath,
+      mode: p.mode,
+      start_price: p.startPrice,
+      price: p.price,
+      stock: p.stock,
+      timer_seconds: p.timerSeconds,
+      status: "upcoming" as const,
+      position: p.position,
+    }));
+    const { error: pErr } = await supabase.from("live_products").insert(rows);
+    if (pErr) throw pErr;
+  }
+}
+
+/** Cancel = delete (products cascade). */
+export async function cancelScheduledLiveInDb(liveId: string): Promise<void> {
+  const { error } = await supabase
+    .from("lives")
+    .delete()
+    .eq("id", liveId)
+    .eq("status", "scheduled");
+  if (error) throw error;
+}
+
+/** Flip a scheduled live to 'live' and return the row so the caller can broadcast. */
+export async function startScheduledLiveInDb(liveId: string): Promise<{
+  ok: boolean;
+  roomName?: string;
+  productIds?: string[];
+  error?: string;
+}> {
+  const { data, error } = await supabase
+    .from("lives")
+    .update({ status: "live", started_at: new Date().toISOString() })
+    .eq("id", liveId)
+    .eq("status", "scheduled")
+    .select("id, room_name")
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: error?.message ?? "start_failed" };
+  const { data: prods } = await supabase
+    .from("live_products")
+    .select("id")
+    .eq("live_id", liveId)
+    .order("position", { ascending: true });
+  return {
+    ok: true,
+    roomName: data.room_name,
+    productIds: (prods ?? []).map((p) => p.id),
+  };
+}
+
+/** Seller's own scheduled lives, newest first. */
+export async function fetchMyScheduledLives(sellerId: string): Promise<ScheduledLiveRow[]> {
+  const { data } = await supabase
+    .from("lives")
+    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status")
+    .eq("seller_id", sellerId)
+    .eq("status", "scheduled")
+    .order("scheduled_at", { ascending: true });
+  return (data ?? []) as ScheduledLiveRow[];
+}
+
+/** Fetch a single scheduled live with its products (used by edit flow). */
+export async function fetchScheduledLiveWithProducts(
+  liveId: string,
+): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
+  const { data } = await supabase
+    .from("lives")
+    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status")
+    .eq("id", liveId)
+    .maybeSingle();
+  if (!data) return null;
+  const prods = await fetchLiveProducts(liveId);
+  return { ...(data as ScheduledLiveRow), products: prods };
+}
+
+/** Public feed: upcoming scheduled lives visible to buyers. */
+export async function fetchUpcomingScheduledLives(
+  limit = 20,
+): Promise<ScheduledLiveWithSeller[]> {
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("lives")
+    .select(
+      `
+      id, seller_id, title, category, cover_url, scheduled_at, currency, status,
+      seller:profiles!lives_seller_id_fkey(display_name, handle, avatar_url),
+      live_products(count)
+      `,
+    )
+    .eq("status", "scheduled")
+    .gt("scheduled_at", cutoff)
+    .order("scheduled_at", { ascending: true })
+    .limit(limit);
+  if (!data) return [];
+  const rows = data as unknown as Array<
+    ScheduledLiveRow & {
+      seller: ScheduledLiveWithSeller["seller"];
+      live_products: Array<{ count: number }>;
+    }
+  >;
+  const resolved = await Promise.all(
+    rows.map(async (r) => ({
+      ...r,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+      product_count: r.live_products?.[0]?.count ?? 0,
+    })),
+  );
+  return resolved;
+}
+
+/** Opportunistic cleanup: cancel scheduled lives whose slot passed > 24h ago. */
+export async function cancelStaleScheduledLives(): Promise<void> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await supabase
+    .from("lives")
+    .delete()
+    .eq("status", "scheduled")
+    .lt("scheduled_at", cutoff);
+}
+

@@ -300,6 +300,32 @@ export type Database = {
           },
         ]
       }
+      live_reminders: {
+        Row: {
+          created_at: string
+          live_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          live_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          live_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_reminders_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lives: {
         Row: {
           category: string | null
@@ -308,8 +334,9 @@ export type Database = {
           ended_at: string | null
           id: string
           room_name: string
+          scheduled_at: string | null
           seller_id: string
-          started_at: string
+          started_at: string | null
           status: string
           title: string
           viewer_count: number
@@ -321,8 +348,9 @@ export type Database = {
           ended_at?: string | null
           id?: string
           room_name: string
+          scheduled_at?: string | null
           seller_id: string
-          started_at?: string
+          started_at?: string | null
           status?: string
           title: string
           viewer_count?: number
@@ -334,8 +362,9 @@ export type Database = {
           ended_at?: string | null
           id?: string
           room_name?: string
+          scheduled_at?: string | null
           seller_id?: string
-          started_at?: string
+          started_at?: string | null
           status?: string
           title?: string
           viewer_count?: number
@@ -1117,6 +1146,7 @@ export type Database = {
       mark_notification_read: { Args: { _id: string }; Returns: Json }
       mark_order_shipped: { Args: { _order_id: string }; Returns: Json }
       my_moderation_state: { Args: never; Returns: Json }
+      notify_live_reminders: { Args: { _live_id: string }; Returns: number }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
       place_live_bid:
         | {
