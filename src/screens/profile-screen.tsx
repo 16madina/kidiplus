@@ -176,6 +176,7 @@ export function ProfileScreen() {
                   className="h-full w-full rounded-full object-cover"
                   style={{ background: NAVY_TOP }}
                   draggable={false}
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
                 />
               ) : (
                 <div
