@@ -154,8 +154,8 @@ function AppShellInner() {
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
   }, []);
 
-  const { open: openLive } = useLiveViewer();
-  const { open: openSeller } = useSellerProfile();
+
+
 
   // Deep-link router: reacts to push taps + in-app notification taps.
   useEffect(() => {
