@@ -1,59 +1,80 @@
-## Seller Earnings System — Implementation Plan
+# Delivery + Escrow
 
-Big multi-part change (fee model flip + DB + seller UI + admin). Confirm before I ship.
+Massive but well-scoped. I'll do it in **3 migrations + code**, in this order, so each layer stabilizes before the next.
 
-### Part 0 — Fee model flip (buyer pays price only)
-- `src/lib/fees.ts`: keep `PLATFORM_FEE_PERCENT = 5`, add `computeSellerFees(amount, currency)` returning `{ amount, platformFee, sellerNet, currency }`. Deprecate `processingFee` in new totals (kept as column, always 0 going forward).
-- `src/lib/orders-db.ts` `createPendingOrder`: `total = amount`, `platform_fee = round(amount * 5%)`, `processing_fee = 0`, `seller_net = amount − platform_fee`.
-- `PaymentSheet`: remove "Frais de service" / processing line. Show only item price = total.
-- `SellerSalesScreen` rows: `prix → commission KiDi+ −5% → net` breakdown.
+## Migration 1 — Schema
 
-### Part 1 — DB migration (single migration, GRANTs + RLS)
-Tables:
-- `seller_balances(seller_id pk→profiles, available numeric ≥0, currency, updated_at)`
-- `seller_earnings(id, seller_id, order_id UNIQUE→orders, amount, balance_after, created_at)`
-- `payouts(id, seller_id→profiles, amount, currency, method ∈ wave|orange_money|bank_transfer, destination jsonb, status ∈ requested|processing|paid|rejected default requested, note, requested_at, processed_at)`
-- `profiles.is_admin boolean default false`
+- `seller_delivery_settings`: `seller_id pk → profiles`, `mode ('zones'|'flat'|'courier') default 'flat'`, `flat_fee numeric default 0`, `zones jsonb default '[]'`, `updated_at`. RLS: owner CRUD, `authenticated` SELECT (buyers need fees at checkout).
+- `addresses`: `id`, `user_id`, `label`, `full_name`, `phone NOT NULL`, `country`, `city`, `zone_or_commune`, `street_address`, `details`, `is_default`. RLS: owner CRUD only. Trigger: only one `is_default=true` per user (unset others on set).
+- `orders`: add `delivery_fee`, `delivery_mode`, `delivery_zone`, `address_id → addresses`, `address_snapshot jsonb`, `fulfillment_status ('awaiting'|'shipped'|'delivered'|'disputed') default 'awaiting'`, `shipped_at`, `delivered_confirmed_at`.
+- `seller_balances`: add `pending numeric default 0 check (pending >= 0)`.
+- `seller_earnings`: add `status ('pending'|'released'|'reversed') default 'pending'`.
+- `reports`: extend `target_type` check to include `'order'`.
 
-RLS: sellers SELECT own balance/earnings/payouts. No client INSERT/UPDATE anywhere on these tables. Admins SELECT all payouts.
+## Migration 2 — Escrow RPCs (SECURITY DEFINER, atomic)
 
-RPCs (SECURITY DEFINER):
-- `credit_seller_earning(_order_id)` — idempotent via unique `order_id`; reads `orders.seller_net`; creates balance row lazily in seller's currency; called from webhook + `pay_order_with_wallet`.
-- `request_payout(_amount, _method, _destination jsonb)` — caller = seller; min 5000 XOF / 10 EUR / 15 CAD; debits `available`; inserts payout.
-- `admin_process_payout(_payout_id, _action)` — checks `is_admin`; `paid` → status+processed_at; `rejected` → credit back atomically.
-- Extend refund logic: reverse seller credit; block if insufficient.
-- Modify `pay_order_with_wallet` to also call `credit_seller_earning`.
+- **Rewrite `credit_seller_earning`**: credits `seller_balances.pending` (not `available`), inserts `seller_earnings` with `status='pending'`.
+- `mark_order_shipped(_order_id)`: seller-only, paid orders → `fulfillment_status='shipped'`, `shipped_at=now()`.
+- `confirm_order_delivered(_order_id)`: buyer-only, shipped or awaiting → `fulfillment_status='delivered'`, moves `seller_net` from `pending → available`, earnings row `→ 'released'`.
+- `dispute_order(_order_id, _reason)`: buyer-only → `fulfillment_status='disputed'`, inserts `reports` row `(target_type='order', target_id=order.id, reason)`. Funds stay pending.
+- `admin_release_escrow(_order_id)`: admin only → same effect as `confirm_order_delivered` + closes report.
+- `admin_refund_order(_order_id)`: admin only → reverses `pending`, marks earnings `'reversed'`. Wallet-paid: refund to `wallets` + `wallet_transactions` row. Card-paid: annotate order for manual Stripe refund. Closes report.
+- `release_overdue_escrow()`: shipped >7d, not delivered, not disputed → release. Called opportunistically like `expire_overdue_orders` (app load, Mes gains open, admin open).
 
-### Part 2 — Seller UI ("Mes gains")
-- New `src/components/seller/earnings-screen.tsx` replacing entry to `SellerSalesScreen`:
-  - Gold gradient balance card (realtime via `seller_balances` channel).
-  - "Retirer mes gains" button → `WithdrawSheet`.
-  - Tabs: **Ventes** (existing list with new breakdown) + **Retraits** (payout history with status pills).
-- `src/components/seller/withdraw-sheet.tsx`: amount (prefill=available, min/max validation), method picker (Wave green, Orange orange, Bank navy), destination fields conditional on method, confirm step, success state, haptics.
-- `src/lib/earnings-db.ts`: fetchers + realtime subscriptions.
+Uses existing `has_role(_user_id, 'admin')`. Constant `ESCROW_AUTO_RELEASE_DAYS = 7` mirrored client-side in `fees.ts` (comment only — server owns the truth).
 
-### Part 3 — Admin mini-dashboard
-- `src/components/admin/admin-payouts-screen.tsx`: list oldest-first, realtime, copyable destination, "Marquer payé" / "Rejeter" (confirm dialog), counters (en attente / payés ce mois).
-- Profile menu: add "Administration" row visible only when `profile.is_admin`.
-- Extend `profiles` type + auth-context to expose `is_admin`.
+## Migration 3 — Storage & indices
+
+Indices on `addresses(user_id, is_default)`, `orders(fulfillment_status, shipped_at)` for the overdue job.
+
+## Code changes
+
+### New files
+- `src/lib/delivery.ts` — types, currency-aware address form spec (XOF: minimal; EUR/CAD: full postal), delivery fee resolver `resolveDeliveryFee(seller_settings, address)`.
+- `src/lib/delivery-db.ts` — CRUD for `seller_delivery_settings`.
+- `src/lib/addresses-db.ts` — CRUD for `addresses`.
+- `src/lib/escrow-db.ts` — RPC wrappers, realtime helpers.
+- `src/components/seller/delivery-settings-sheet.tsx` — mode picker + zones editor.
+- `src/components/buyer/address-book-sheet.tsx` — list, add, edit, delete, set default.
+- `src/components/buyer/address-form.tsx` — currency-aware fields.
+- `src/components/checkout/delivery-picker.tsx` — inline in payment sheet: address + optional zone → fee.
+
+### Modified files
+- `src/lib/fees.ts` — add `ESCROW_AUTO_RELEASE_DAYS = 7`, note delivery fee has no commission.
+- `src/lib/lives-db.ts` — checkout paths (fixed-price + auction winner autopay) pass `address_id`, `address_snapshot`, `delivery_fee`, `delivery_mode`, `delivery_zone`; call `release_overdue_escrow()` alongside `expire_overdue_orders()`.
+- `src/routes/api/checkout.ts` + `checkout.confirm.ts` + `stripe-webhook.ts` — Stripe amount includes delivery fee; `credit_seller_earning` now credits pending (server RPC change, no callsite refactor).
+- Auction-winner autopay: if seller mode='zones' and no way to auto-pick a zone → skip autopay, open payment sheet with `DeliveryPicker`.
+- `src/components/payments/*` (payment sheet) — insert `DeliveryPicker`, show fee breakdown line "Livraison : 1 000 FCFA" (or "à payer au livreur 🛵" for `courier`), total = item + delivery.
+- `src/screens/profile-screen.tsx` — new "Mes adresses" and (if seller) "Livraison" menu entries.
+- Seller Mes gains screen — balance card shows Disponible + En attente de livraison; sales rows show fulfillment pill + "Marquer expédié 📦" button + explainer line.
+- `src/screens/activity-screen.tsx` — order rows: fulfillment pill, "Confirmer la réception ✅" on shipped, "Signaler un problème" secondary.
+- Admin Signalements — order disputes show two actions: "Libérer au vendeur" / "Rembourser l'acheteur".
 
 ### i18n
-Add `gains.*`, `payout.*`, `admin.*` keys to `fr.json` and `en.json`.
+- `delivery.*` (modes, zones, courier note), `address.*` (form labels per market), `escrow.*` (pending, released, auto-release), `dispute.*` (buyer button, admin resolution) in both `fr.json` and `en.json`.
 
-### Admin flag
-After migration, I'll give you the exact SQL to promote yourself once you share your handle:
-```sql
-UPDATE profiles SET is_admin = true WHERE handle = '<your_handle>';
-```
+## What I'll skip vs. gold-plate
 
-### Money flow (sanity)
-Buyer pays 10 000 XOF → order.total=10 000, platform_fee=500, seller_net=9 500 → on `paid`, webhook calls `credit_seller_earning` → seller balance +9 500 → seller requests payout 9 500 Wave → admin marks paid → status=paid, processed_at set. If rejected → 9 500 credited back.
+- **Skip**: automatic Stripe refund via API (kept as manual note per your spec "keep it simple"). Admin UI shows the refund is pending + provides amount/PI id to refund manually.
+- **Skip**: pickup/carrier tracking, multiple addresses per order, cross-border rules.
+- **Include**: XOF vs EUR/CAD form divergence, address snapshotting, auto-release safety net, all three UIs, full i18n.
 
-### Test path
-1. Buy fixed-price product via card 4242 → check seller_balances +net, seller_earnings row.
-2. Buy via wallet → same effect through `pay_order_with_wallet`.
-3. Request payout → verify balance debits.
-4. Admin reject → balance restored. Admin pay → status flips.
-5. Refund → seller balance reversed.
+## Ambiguities I'm resolving with defaults (tell me if wrong)
 
-Confirm and I'll implement in one pass (migration first for approval, then code).
+1. **Delivery fee currency** — always the SELLER's currency (matches the item). Buyer sees the same currency as the item price. Payment total = item + delivery in seller's currency, wallet check uses buyer's wallet in seller's currency (existing pattern in `wallet-topup`).
+2. **Auction autopay with zones mode + buyer has address in a zone whose name matches** — I'll try exact case-insensitive match on `address.zone_or_commune` vs `zones[].name`; if unique match → autopay with that fee; otherwise fall back to opening payment sheet.
+3. **"Payé au livreur" (courier)** — `delivery_fee=0` in-app; the order + escrow flow otherwise identical. Fulfillment confirmation still required to release funds.
+4. **Existing paid orders (pre-migration)** — I'll backfill `fulfillment_status='delivered'`, `delivered_confirmed_at=paid_at`, all existing pending → available. This keeps old sellers whole.
+5. **Address deletion** — soft rule: if referenced by any order, block delete with a toast "Adresse utilisée par une commande"; otherwise hard delete. Orders keep `address_snapshot` regardless.
+
+## Test path (two accounts)
+
+1. **Seller A**: Profile → Livraison → "Par zones", add "Abidjan — Cocody · 1 000 XOF". Publishes a fixed-price product.
+2. **Buyer B**: Profile → Mes adresses → add default (phone + Cocody). Opens live, taps buy → payment sheet shows item + `Livraison : 1 000 XOF` + total. Pays with wallet.
+3. **Seller A**: Mes gains → balance shows `Disponible: 0` / `En attente: item − commission`. Ventes row → "Marquer expédié 📦" → pill flips to "Expédié".
+4. **Buyer B**: Activité → order pill "Expédié" → "Confirmer la réception ✅" → toast, pill flips to "Livré".
+5. **Seller A**: balance moves pending → disponible. Payout request now succeeds.
+6. **Dispute path**: repeat with Buyer B tapping "Signaler un problème" instead → admin sees it in Signalements → picks "Rembourser l'acheteur" → Buyer B wallet credited, Seller A pending reversed.
+7. **Auto-release path**: manually SQL-shift `shipped_at` back 8 days → open Mes gains → `release_overdue_escrow` runs → funds released.
+
+Once you approve, I'll ship Migration 1, then Migration 2, then all code + i18n in one push.
