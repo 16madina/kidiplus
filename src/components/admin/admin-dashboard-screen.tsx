@@ -50,10 +50,11 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
         <>
           <TabBar tab={tab} onTab={setTab} />
           <div className="px-4 py-4 pb-24">
-            {tab === "overview" && open && <OverviewTab />}
+            {tab === "overview" && open && <OverviewTab onGoTab={setTab} />}
             {tab === "users" && open && <UsersTab />}
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
+            {tab === "reports" && open && <ReportsTab />}
           </div>
         </>
       )}
@@ -71,6 +72,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; icon: React.ReactNode; label: string }> = [
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
+    { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
   ];
