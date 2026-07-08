@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import splashAsset from "@/assets/splash.mp4.asset.json";
+import logoAsset from "@/assets/logo.png.asset.json";
 import { EASE_IOS } from "@/lib/motion";
+import { Capacitor } from "@capacitor/core";
+
 
 // 1×1 navy PNG (#10162B) — used as poster so Android WebView doesn't flash
 // a white frame or a play-button placeholder before playback starts.
