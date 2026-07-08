@@ -17,6 +17,15 @@ export const PLATFORM_FEE_PERCENT = 5;
 export const AUCTION_PAYMENT_DEADLINE_HOURS = 24;
 
 /**
+ * Anti-snipe / "sudden death" — if a bid lands while fewer than this many
+ * seconds remain on the auction clock, the deadline resets to
+ * AUCTION_EXTENSION_RESET_SECONDS from now (for everyone, in sync).
+ * Extensions can chain indefinitely while bids keep coming.
+ */
+export const AUCTION_EXTENSION_WINDOW_SECONDS = 10;
+export const AUCTION_EXTENSION_RESET_SECONDS = 10;
+
+/**
  * Minimum payout amount per currency. Single source of truth used by both
  * the withdraw sheet (UI validation + hint text) and mirrored in the
  * `request_payout` SQL function.
