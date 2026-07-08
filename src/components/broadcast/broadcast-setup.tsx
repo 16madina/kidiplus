@@ -188,9 +188,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
 
 
+  // Scheduled / edit flows use a dedicated numbered-card layout.
+  if (b.mode === "schedule" || b.mode === "edit") {
+    return <ScheduleLiveSetup onExit={onExit} />;
+  }
+
   return (
     <motion.div
       key="setup"
+
       initial={{ opacity: 0, scale: 1.02 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
