@@ -103,6 +103,7 @@ function AuthGate() {
         >
           <ImmersiveProvider>
             <AppShellInner />
+            <ModerationBanGate>{null}</ModerationBanGate>
           </ImmersiveProvider>
         </motion.div>
       ) : (
