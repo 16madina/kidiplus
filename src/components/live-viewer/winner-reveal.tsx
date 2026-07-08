@@ -1,84 +1,125 @@
-// Winner reveal animation: KiDi+ badge logo scales in, holds ~0.6s, then does
-// a 3D flip revealing the winner's NAME in huge gold letters with "A DIT +"
-// underneath. No card background — pure text over the video. Transform/opacity
-// only, no sound.
+// Winner reveal overlay — Whatnot-style.
 //
-// Used by both host and viewer screens on `room.lastAuctionEnd`.
-import { useEffect, useState } from "react";
+// Sequence (~3.2s, identical on host + viewers):
+//   0.00-0.60s  KiDi+ logo scales in (spring), soft gold glow.
+//   0.60-1.00s  3D flip (rotateY) → winner card: avatar in gold ring,
+//               display name (tasteful, ellipsized), "a dit + 🎉" in gold.
+//   1.00-2.80s  Hold.
+//   2.80-3.20s  Fade + slight scale down, then onDone().
+//
+// Dismissal is driven by a single setTimeout scheduled on mount and cleaned up
+// on unmount. `onDone` is stored in a ref so parent re-renders (frequent on
+// the host: auction ticks, chat, presence) do NOT re-run the timer effect and
+// clear the pending timeouts — that was the host-side freeze.
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import logoBadge from "@/assets/kidi-logo-badge.png.asset.json";
+import { Logo } from "@/components/brand/logo";
 
-type Phase = "logo" | "flip" | "winner" | "done";
+type Phase = "logo" | "flip" | "hold" | "out";
+
+const TIMINGS = {
+  flip: 600,     // start rotateY at 600ms
+  hold: 1000,    // fully revealed at 1000ms
+  out: 2800,     // begin fade-out
+  done: 3200,    // unmount signal
+} as const;
+
+function firstName(full: string | null | undefined): string {
+  if (!full) return "—";
+  const trimmed = full.trim();
+  const space = trimmed.indexOf(" ");
+  return space === -1 ? trimmed : trimmed.slice(0, space);
+}
 
 export function WinnerReveal({
   open,
   winnerName,
+  winnerAvatarUrl,
+  isMe = false,
   onDone,
 }: {
   open: boolean;
   winnerName: string | null;
-  /** Kept for API compatibility — no longer rendered. */
   winnerAvatarUrl?: string | null;
-  /** Kept for API compatibility — no longer changes the copy. */
   isMe?: boolean;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("logo");
 
+  // Keep the latest onDone without re-triggering the timer effect.
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
+  // Drive the animation lifecycle. Only depends on `open` — timers survive
+  // parent re-renders (host bid ticks, chat, presence).
   useEffect(() => {
     if (!open) {
       setPhase("logo");
       return;
     }
-    const t1 = setTimeout(() => setPhase("flip"), 700);
-    const t2 = setTimeout(() => setPhase("winner"), 1100);
-    const t3 = setTimeout(() => setPhase("done"), 3600);
-    const t4 = setTimeout(() => onDone(), 4000);
+    setPhase("logo");
+    const t1 = setTimeout(() => setPhase("flip"), TIMINGS.flip);
+    const t2 = setTimeout(() => setPhase("hold"), TIMINGS.hold);
+    const t3 = setTimeout(() => setPhase("out"), TIMINGS.out);
+    const t4 = setTimeout(() => onDoneRef.current(), TIMINGS.done);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
     };
-  }, [open, onDone]);
+  }, [open]);
 
   if (!open) return null;
 
-  const displayName = (winnerName ?? "—").toUpperCase();
-  const saidLabel = t("auction.winner.said", "A DIT +");
-
-  const rotateY = phase === "logo" ? 0 : 180;
+  const flipped = phase !== "logo";
+  const fadingOut = phase === "out";
+  const shownName = firstName(winnerName);
+  const said = isMe
+    ? t("auction.winner.saidMe", "Tu as dit + 🎉")
+    : t("auction.winner.said", "{{name}} a dit + 🎉", { name: shownName });
 
   return (
     <AnimatePresence>
-      {phase !== "done" && (
+      {!fadingOut && (
         <motion.div
           key="winner-reveal"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
-          className="pointer-events-none absolute inset-0 z-50 grid place-items-center"
-          style={{ perspective: 1400 }}
+          transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+          className="pointer-events-none absolute inset-0 z-50 grid place-items-center px-6"
+          style={{
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+            perspective: 1400,
+          }}
         >
           <motion.div
-            initial={{ scale: 0.35, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, rotateY }}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{
+              scale: fadingOut ? 0.94 : 1,
+              opacity: 1,
+              rotateY: flipped ? 180 : 0,
+            }}
             transition={{
-              scale: { type: "spring", stiffness: 240, damping: 15 },
+              scale: { type: "spring", stiffness: 260, damping: 18 },
               opacity: { duration: 0.25 },
-              rotateY: { duration: 0.6, ease: [0.32, 0.72, 0, 1] },
+              rotateY: { duration: 0.55, ease: [0.32, 0.72, 0, 1] },
             }}
             className="relative flex items-center justify-center"
             style={{
-              width: "min(78vw, 420px)",
-              height: "min(78vw, 420px)",
+              width: "min(78vw, 320px)",
+              minHeight: 220,
               transformStyle: "preserve-3d",
             }}
           >
-            {/* Front — bare logo, no card */}
+            {/* FRONT — the real KiDi+ logo, transparent, gold glow */}
             <div
               className="absolute inset-0 flex items-center justify-center"
               style={{
@@ -86,73 +127,85 @@ export function WinnerReveal({
                 WebkitBackfaceVisibility: "hidden",
               }}
             >
-              <img
-                src={logoBadge.url}
-                alt="KiDi+"
-                draggable={false}
-                className="h-full w-full object-contain"
+              <div
                 style={{
                   filter:
-                    "drop-shadow(0 18px 40px rgba(0,0,0,0.55)) drop-shadow(0 0 24px oklch(0.82 0.14 85 / 0.35))",
+                    "drop-shadow(0 12px 28px rgba(0,0,0,0.55)) drop-shadow(0 0 22px oklch(0.82 0.14 85 / 0.45))",
                 }}
-              />
+              >
+                <Logo size={112} />
+              </div>
             </div>
 
-            {/* Back — winner name, no background */}
+            {/* BACK — winner card, no heavy background, just polished text */}
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
               style={{
                 transform: "rotateY(180deg)",
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
               }}
             >
-              <motion.p
-                initial={{ y: 14, opacity: 0, scale: 0.9 }}
-                animate={
-                  phase === "winner" || phase === "flip"
-                    ? { y: 0, opacity: 1, scale: 1 }
-                    : { y: 14, opacity: 0, scale: 0.9 }
-                }
-                transition={{
-                  delay: 0.15,
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 18,
-                }}
-                className="font-black leading-none tracking-tight"
+              {/* Avatar in gold ring */}
+              <div
+                className="grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full"
                 style={{
-                  fontSize: "clamp(44px, 12vw, 96px)",
+                  padding: 3,
                   background:
-                    "linear-gradient(180deg, oklch(0.92 0.12 90), oklch(0.72 0.16 75))",
+                    "linear-gradient(135deg, oklch(0.9 0.14 90), oklch(0.7 0.16 70))",
+                  boxShadow:
+                    "0 10px 24px rgba(0,0,0,0.5), 0 0 18px oklch(0.82 0.14 85 / 0.5)",
+                }}
+              >
+                {winnerAvatarUrl ? (
+                  <img
+                    src={winnerAvatarUrl}
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="grid h-full w-full place-items-center rounded-full text-[28px] font-black"
+                    style={{
+                      background: "oklch(0.16 0.05 260)",
+                      color: "oklch(0.9 0.14 90)",
+                    }}
+                  >
+                    {(shownName[0] ?? "?").toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              {/* Display name — tasteful, single line, ellipsized */}
+              <p
+                className="max-w-[60vw] truncate text-white"
+                style={{
+                  fontSize: "clamp(20px, 5vw, 24px)",
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
+                  textShadow: "0 2px 10px rgba(0,0,0,0.65)",
+                }}
+              >
+                {winnerName ?? "—"}
+              </p>
+
+              {/* Gold accent line */}
+              <p
+                className="italic"
+                style={{
+                  fontSize: "clamp(15px, 3.6vw, 18px)",
+                  fontWeight: 700,
+                  background:
+                    "linear-gradient(180deg, oklch(0.94 0.12 90), oklch(0.74 0.16 75))",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
-                  textShadow: "0 6px 24px rgba(0,0,0,0.55)",
-                  filter:
-                    "drop-shadow(0 4px 12px rgba(0,0,0,0.55)) drop-shadow(0 0 18px oklch(0.82 0.14 85 / 0.4))",
-                  letterSpacing: "-0.02em",
+                  textShadow: "0 2px 8px rgba(0,0,0,0.35)",
                 }}
               >
-                {displayName}
-              </motion.p>
-              <motion.p
-                initial={{ y: 10, opacity: 0 }}
-                animate={
-                  phase === "winner" || phase === "flip"
-                    ? { y: 0, opacity: 1 }
-                    : { y: 10, opacity: 0 }
-                }
-                transition={{ delay: 0.32, duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-                className="mt-3 font-black uppercase text-white"
-                style={{
-                  fontSize: "clamp(18px, 4.2vw, 30px)",
-                  letterSpacing: "0.22em",
-                  textShadow: "0 3px 12px rgba(0,0,0,0.7)",
-                }}
-              >
-                {saidLabel}
-              </motion.p>
+                {said}
+              </p>
             </div>
           </motion.div>
         </motion.div>

@@ -585,6 +585,7 @@ export function RealLiveViewerScreen() {
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiKey} />
       <WinnerReveal
+        key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}
         winnerName={winnerReveal?.name ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
