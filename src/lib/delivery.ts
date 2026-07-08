@@ -8,6 +8,7 @@ import { normalizeCurrency, type Currency } from "@/lib/money";
 export type DeliveryMode = "zones" | "flat" | "courier";
 
 export type DeliveryZone = {
+  country: string; // ISO-2 upper (e.g. "CI", "FR"). Empty allowed for legacy rows.
   name: string;
   fee: number;
 };
