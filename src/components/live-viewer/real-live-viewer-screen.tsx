@@ -713,6 +713,18 @@ export function RealLiveViewerScreen() {
         </Press>
       </div>
 
+      {isModerator && user && active?.liveId && !liveEnded && (
+        <ModeratorDock
+          liveId={active.liveId}
+          userId={user.id}
+          products={room.products}
+          activeAuction={room.auctionStart}
+          currency={liveCurrency}
+          locale={i18n.language}
+          broadcastAuctionStart={room.broadcastAuctionStart}
+        />
+      )}
+
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiKey} />
       <WinnerReveal
