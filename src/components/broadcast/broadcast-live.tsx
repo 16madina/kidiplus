@@ -893,7 +893,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       </p>
                     </div>
                     {p.mode === "auction" ? (
-                      soldOut ? (
+                      p.status === "unsold" ? (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
+                            style={{ backgroundColor: "oklch(0.55 0.05 250)" }}
+                          >
+                            {t("live.unsold")}
+                          </span>
+                          <Press
+                            onClick={async () => {
+                              const res = await relaunchUnsoldProductInDb(p.id);
+                              if (!res.ok) toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+                              else { haptic.success(); toast.success(t("live.relaunched")); }
+                            }}
+                            className="!min-h-10 rounded-full bg-foreground px-4 text-[13px] font-bold text-background"
+                          >
+                            {t("live.relaunch")}
+                          </Press>
+                        </div>
+                      ) : soldOut ? (
                         <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
                           {t("live.sold")}
                         </span>
