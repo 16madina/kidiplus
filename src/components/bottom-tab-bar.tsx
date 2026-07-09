@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Press } from "./press";
@@ -8,7 +9,12 @@ import {
   BellIcon,
   PersonIcon,
 } from "./brand/tab-icons";
-import kidiLiveBadge from "@/assets/kidi-live-round.png.asset.json";
+// Bundle the live badge as a real hashed same-origin asset. The previous
+// asset-JSON import pointed at Lovable's `/__l5e/` CDN path, which can fail
+// on some mobile browsers (data-saver, strict CSP, flaky networks) and left
+// the raised Live button as a broken-image icon. Vite import → /assets/*.
+import kidiLiveBadgeUrl from "@/assets/img/kidi-live-round.png";
+import kidiLiveBadgeFallback from "@/assets/kidi-live-round.png.asset.json";
 
 type TabDef = {
   key: TabKey;
