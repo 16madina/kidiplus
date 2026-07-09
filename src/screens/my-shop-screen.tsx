@@ -96,6 +96,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
                       src={imgs[p.id]!}
                       alt=""
                       className="h-full w-full object-cover"
+                      onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
                       onError={() => setImgs((prev) => { const n = { ...prev }; delete n[p.id]; return n; })}
                     />
                   ) : (
