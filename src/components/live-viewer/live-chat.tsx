@@ -18,13 +18,31 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
 
-  // Only render the last VISIBLE_MSGS messages — the parent may accumulate
-  // more, but we window the DOM to bound reconciliation cost.
+  // Détecte un "burst" : si beaucoup de nouveaux messages en peu de temps,
+  // on désactive les animations d'entrée / layout (elles causent le reflow
+  // qui fait tomber le fps à 0 sur un Burst 1k+).
+  const lastCountRef = useRef(messages.length);
+  const lastTsRef = useRef(performance.now());
+  const [burstMode, setBurstMode] = useState(false);
+  useEffect(() => {
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTsRef.current);
+    const delta = messages.length - lastCountRef.current;
+    const rate = (delta * 1000) / dt;
+    lastCountRef.current = messages.length;
+    lastTsRef.current = now;
+    if (rate > BURST_THRESHOLD_PER_SEC) {
+      setBurstMode(true);
+      const t = setTimeout(() => setBurstMode(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [messages]);
+
+  // Only render the last VISIBLE_MSGS messages
   const visible = useMemo(
     () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
     [messages],
   );
-
 
   // Track if user scrolled away from bottom
   useEffect(() => {
@@ -41,16 +59,17 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Auto-scroll when new message arrives and user is pinned
+  // Auto-scroll when new message arrives and user is pinned.
+  // En burst on utilise scroll instantané (pas "smooth") pour ne pas empiler
+  // 60 animations de scroll par seconde.
   useEffect(() => {
     if (!pinned) return;
     const el = scrollerRef.current;
     if (!el) return;
-    // next tick so incoming item is measured
     requestAnimationFrame(() => {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      el.scrollTo({ top: el.scrollHeight, behavior: burstMode ? "auto" : "smooth" });
     });
-  }, [messages, pinned]);
+  }, [messages, pinned, burstMode]);
 
   const jumpDown = () => {
     const el = scrollerRef.current;
