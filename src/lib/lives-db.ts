@@ -440,6 +440,20 @@ export async function stopFixedInDb(productId: string): Promise<void> {
   await supabase.from("live_products").update({ status: "upcoming" }).eq("id", productId);
 }
 
+/** Relaunch an unsold auction product: sends it back to the queue as
+ *  'upcoming' at the end, so the host can retry the auction later. */
+export async function relaunchUnsoldProductInDb(
+  productId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc("relaunch_unsold_product", {
+    _product_id: productId,
+  } as never);
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true };
+}
+
 /** Insert a bid AND bump the product price so realtime subscribers see it.
  *  Pass `amount` to place a custom bid; omit to let the server use current + step. */
 export async function placeBidInDb(args: {
