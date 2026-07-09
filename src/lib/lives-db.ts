@@ -340,6 +340,7 @@ export async function createLiveProductInDb(args: {
   price: number;
   stock: number;
   timerSeconds: number;
+  shopProductId?: string | null;
 }): Promise<{ ok: boolean; error?: string; id?: string; imagePath?: string | null }> {
   let imagePath: string | null = null;
   try {
@@ -375,6 +376,7 @@ export async function createLiveProductInDb(args: {
       timer_seconds: args.timerSeconds,
       status: "upcoming",
       position,
+      ...(args.shopProductId ? { shop_product_id: args.shopProductId } : {}),
     })
     .select("id")
     .single();
