@@ -591,7 +591,7 @@ export function RealLiveViewerScreen() {
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <Press
-              onClick={() => openSeller(active.seller)}
+              onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir le profil de ${active.seller}`}
               className="!block flex min-w-0 items-center gap-2 p-0 text-left"
             >
