@@ -4,10 +4,13 @@ import { ChevronDown } from "lucide-react";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
 
-// Windowing cap for the rendered chat — even if the parent buffers more,
-// we only ever render the last N to keep the DOM/React reconciler cheap
-// under 1k+ concurrent viewers with heavy chat throughput.
-const VISIBLE_MSGS = 120;
+// Windowing cap — kept low: 40 lignes suffisent visuellement et évitent
+// que Framer Motion `layout` déclenche un reflow O(n) sur chaque burst.
+// Au-delà, le navigateur mesure plus vite qu'il n'affiche → fps 0.
+const VISIBLE_MSGS = 40;
+// Sous cette fréquence d'arrivée on garde l'anim d'entrée jolie.
+// Au-dessus (burst), on la coupe pour ne pas geler la page.
+const BURST_THRESHOLD_PER_SEC = 30;
 
 
 export function LiveChat({ messages }: { messages: ChatMsg[] }) {
