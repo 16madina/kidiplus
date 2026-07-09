@@ -172,7 +172,7 @@ export async function updateShopProduct(id: string, patch: ShopUpdate): Promise<
     dbPatch.images = images;
     dbPatch.image_url = images[0] ?? null;
   }
-  await supabase.from("shop_products").update(dbPatch).eq("id", id);
+  await supabase.from("shop_products").update(dbPatch as never).eq("id", id);
 }
 
 export async function archiveShopProduct(id: string): Promise<void> {
