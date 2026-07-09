@@ -191,6 +191,10 @@ function AppShellInner() {
         setActive("profile");
         return;
       }
+      if (kind === "home" || kind === "welcome") {
+        setActive("home");
+        return;
+      }
       // Fallback → activity tab.
       setActive("activity");
     };
