@@ -5,36 +5,38 @@ import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
-import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import type { LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
-import {
-  getSellerInfo,
-  makeSellerInfoFromProfile,
-  type SellerProduct,
-} from "@/lib/seller-mock";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
-  TRENDS,
   type BrowseCategory,
-  type Trend,
 } from "@/lib/browse-mock";
 import { formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
 import { useLanguage } from "@/i18n/language-context";
 import {
-  fetchActiveSellerNames,
+  fetchActiveSellers,
   searchSellerProfiles,
   type SellerProfile,
 } from "@/lib/sellers-db";
-
-const ALL_STREAMS = makeStreams(0, 24);
+import { searchActiveLives } from "@/lib/lives-db";
+import {
+  searchActiveShopProducts,
+  resolveShopImage,
+  type ShopProductWithSeller,
+} from "@/lib/shop-db";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { FollowButton } from "@/components/follow-button";
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 
 type SellerScope = "all" | "live";
+
+type TrendItem = { id: string; label: string; viewers: number; image: string | null };
+
 
 
 export function SearchScreen() {
