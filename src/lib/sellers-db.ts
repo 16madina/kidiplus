@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveLives } from "@/lib/lives-db";
+import type { LiveStream } from "@/lib/live-mock";
 
 export type SellerProfile = {
   id: string;
@@ -8,11 +9,11 @@ export type SellerProfile = {
   avatar_url: string | null;
   bio: string | null;
   is_seller: boolean;
+  followers_count: number;
 };
 
 /**
- * Search seller profiles by display name, handle, or bio.
- * Requires an authenticated session (profiles SELECT policy is auth-only).
+ * Search seller profiles by display name or handle (real DB, auth-only).
  */
 export async function searchSellerProfiles(
   query: string,
@@ -23,22 +24,36 @@ export async function searchSellerProfiles(
   const q = `%${trimmed}%`;
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, handle, avatar_url, bio, is_seller")
+    .select("id, display_name, handle, avatar_url, bio, is_seller, followers_count")
     .eq("is_seller", true)
-    .or(`display_name.ilike.${q},handle.ilike.${q},bio.ilike.${q}`)
+    .or(`display_name.ilike.${q},handle.ilike.${q}`)
     .limit(limit);
 
   if (error) {
     console.error("[searchSellerProfiles]", error);
     return [];
   }
-  return (data as SellerProfile[] | null) ?? [];
+  return ((data ?? []) as unknown as SellerProfile[]).map((p) => ({
+    ...p,
+    followers_count: Number(p.followers_count ?? 0),
+  }));
 }
 
-/**
- * Returns the set of seller display names currently broadcasting a live stream.
- */
-export async function fetchActiveSellerNames(): Promise<Set<string>> {
+/** Currently-broadcasting sellers, keyed by seller id. Also returns their live streams. */
+export async function fetchActiveSellers(): Promise<{
+  ids: Set<string>;
+  names: Set<string>;
+  lives: LiveStream[];
+}> {
   const lives = await fetchActiveLives(100);
-  return new Set(lives.map((s) => s.seller));
+  return {
+    ids: new Set(lives.map((s) => s.sellerId).filter((x): x is string => !!x)),
+    names: new Set(lives.map((s) => s.seller)),
+    lives,
+  };
+}
+
+/** Back-compat wrapper (still used by earlier code paths). */
+export async function fetchActiveSellerNames(): Promise<Set<string>> {
+  return (await fetchActiveSellers()).names;
 }
