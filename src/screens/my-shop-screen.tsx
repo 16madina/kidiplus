@@ -83,7 +83,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {items.map((p) => (
               <div key={p.id} className={`overflow-hidden rounded-2xl border border-border bg-card ${p.active ? "" : "opacity-60"}`}>
                 <div className="relative aspect-square bg-muted">
