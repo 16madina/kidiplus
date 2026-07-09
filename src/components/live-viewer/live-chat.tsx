@@ -105,27 +105,31 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
           }}
         >
           <div className="flex flex-col justify-end gap-1.5 pt-8">
-            <AnimatePresence initial={false}>
-              {visible.map((m) => (
-                <motion.div
-                  key={m.id}
-                  layout
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    duration: 0.15,
-                    ease: [0.32, 0.72, 0, 1],
-                    layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
-                  }}
-                >
+            {burstMode ? (
+              // Chemin rapide : pas de Framer, pas de layout, pas de reflow.
+              visible.map((m) => (
+                <div key={m.id}>
                   <ChatBubble msg={m} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
+                </div>
+              ))
+            ) : (
+              <AnimatePresence initial={false}>
+                {visible.map((m) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
+                  >
+                    <ChatBubble msg={m} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
         </div>
+
 
         <AnimatePresence>
           {showJump && (
