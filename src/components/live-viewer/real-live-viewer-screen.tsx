@@ -746,6 +746,7 @@ export function RealLiveViewerScreen() {
       )}
 
       <FloatingHearts trigger={room.heartTick} />
+      {stressOn && <StressTestPanel room={room} />}
       <Confetti trigger={confettiKey} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
