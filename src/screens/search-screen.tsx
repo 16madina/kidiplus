@@ -115,16 +115,21 @@ export function SearchScreen() {
     if (!searching) return [];
     const byName = new Map<string, ReturnType<typeof getSellerInfo>>();
 
+    // Sellers are "live" if they appear in either the real active lives feed or the mock live results.
+    const liveNames = new Set<string>();
+    liveResults.forEach((s) => liveNames.add(s.seller));
+    activeSellerNames.forEach((name) => liveNames.add(name));
+
     // 1. Real seller profiles from the database.
     dbSellers.forEach((profile) => {
-      const isLive = activeSellerNames.has(profile.display_name);
+      const isLive = liveNames.has(profile.display_name);
       if (sellerScope === "live" && !isLive) return;
       byName.set(profile.display_name, makeSellerInfoFromProfile(profile));
     });
 
     // 2. Mock sellers tied to currently-live streams (keeps fallback content working).
     ALL_STREAMS.forEach((s) => {
-      if (sellerScope === "live" && !activeSellerNames.has(s.seller)) return;
+      if (sellerScope === "live" && !liveNames.has(s.seller)) return;
       if (!s.seller.toLowerCase().includes(q)) return;
       if (!byName.has(s.seller)) {
         byName.set(s.seller, getSellerInfo(s.seller));
@@ -132,7 +137,8 @@ export function SearchScreen() {
     });
 
     return Array.from(byName.values());
-  }, [q, searching, dbSellers, activeSellerNames, sellerScope]);
+  }, [q, searching, dbSellers, activeSellerNames, sellerScope, liveResults]);
+
 
 
   const productResults = useMemo<Array<SellerProduct & { seller: string }>>(() => {
