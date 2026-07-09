@@ -1,3 +1,4 @@
+// Bottom tab bar with a raised gold "Live" badge in the center.
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Press } from "./press";
@@ -8,7 +9,12 @@ import {
   BellIcon,
   PersonIcon,
 } from "./brand/tab-icons";
-import kidiLiveBadge from "@/assets/kidi-live-round.png.asset.json";
+// Bundle the live badge as a real hashed same-origin asset. The previous
+// asset-JSON import pointed at Lovable's `/__l5e/` CDN path, which can fail
+// on some mobile browsers (data-saver, strict CSP, flaky networks) and left
+// the raised Live button as a broken-image icon. Vite import → /assets/*.
+import kidiLiveBadgeUrl from "@/assets/img/kidi-live-round.png";
+import kidiLiveBadgeFallback from "@/assets/kidi-live-round.png.asset.json";
 
 type TabDef = {
   key: TabKey;
@@ -126,13 +132,31 @@ export function BottomTabBar({
                 }}
               />
               <img
-                src={kidiLiveBadge.url}
+                src={kidiLiveBadgeUrl}
                 alt=""
                 width={60}
                 height={60}
                 data-loaded="true"
                 className="relative block h-full w-full object-contain"
                 draggable={false}
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  // First fall back to the CDN URL, then to a gold disc.
+                  if (img.src !== kidiLiveBadgeFallback.url) {
+                    img.src = kidiLiveBadgeFallback.url;
+                    return;
+                  }
+                  img.style.display = "none";
+                  const parent = img.parentElement;
+                  if (parent && !parent.querySelector("[data-live-fallback]")) {
+                    const disc = document.createElement("span");
+                    disc.setAttribute("data-live-fallback", "");
+                    disc.style.cssText =
+                      "position:absolute;inset:0;border-radius:9999px;display:grid;place-items:center;background:linear-gradient(135deg,#E8B93B,#C8A24B);color:#10162B;font-weight:800;font-size:12px;letter-spacing:0.02em;";
+                    disc.textContent = "LIVE";
+                    parent.appendChild(disc);
+                  }
+                }}
               />
               {isBroadcasting && (
                 <span
