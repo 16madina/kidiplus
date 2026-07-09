@@ -20,6 +20,7 @@ import {
   activateFixedInDb,
   stopFixedInDb,
   createLiveProductInDb,
+  relaunchUnsoldProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import type { AuctionStartEvt } from "@/lib/live-room";
