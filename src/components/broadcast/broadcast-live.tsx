@@ -62,6 +62,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [productsOpen, setProductsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
+  const [canFlip, setCanFlip] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filter, setFilter] = useState<FilterKey>(() => {
+    if (typeof window === "undefined") return "none";
+    return (sessionStorage.getItem("kp:host:filter") as FilterKey | null) ?? "none";
+  });
+  const videoHandleRef = useRef<BroadcastVideoHandle>(null);
+  const { user } = useAuth();
+  const { moderators } = useModerators(b.liveId);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
