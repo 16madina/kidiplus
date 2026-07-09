@@ -206,13 +206,14 @@ export function SearchScreen() {
     setTab(0);
   };
 
-  const openTrend = (t: Trend) => {
-    commitRecent(t.name);
-    setRawQuery(t.name);
-    setQuery(t.name);
+  const openTrend = (tr: TrendItem) => {
+    commitRecent(tr.label);
+    setRawQuery(tr.label);
+    setQuery(tr.label);
     setFocused(true);
     setTab(0);
   };
+
 
   const sortedCategories = useMemo(() => {
     switch (sort) {
