@@ -136,17 +136,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured auto-advances: on load, and whenever the current featured is sold
-  // out or removed, jump to the next non-sold product (or clear if none left).
+  // Featured auto-advances FORWARD only. When the current featured is
+  // finished (sold / unsold / out) or removed, we pick the next product by
+  // ascending position whose status is 'upcoming' — never loop back to an
+  // earlier item. When none remain, `featuredId` is cleared and the "all
+  // done" state renders.
   useEffect(() => {
     if (room.products.length === 0) {
       if (featuredId) setFeaturedId("");
       return;
     }
     const cur = room.products.find((p) => p.id === featuredId);
-    const done = cur && (cur.status === "sold" || cur.status === "out");
+    const done = cur && (cur.status === "sold" || cur.status === "out" || cur.status === "unsold");
     if (!cur || done) {
-      const next = room.products.find((p) => p.status !== "sold" && p.status !== "out");
+      const curPos = cur?.position ?? -1;
+      const sorted = [...room.products].sort((a, b) => a.position - b.position);
+      const next = sorted.find(
+        (p) => p.position > curPos && p.status === "upcoming",
+      );
       setFeaturedId(next?.id ?? "");
     }
   }, [room.products, featuredId]);
