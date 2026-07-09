@@ -763,15 +763,53 @@ function LiveDot() {
   );
 }
 
+/* -------------------------------- Scope filter -------------------------------- */
+
+function SellerScopeFilter({
+  value,
+  onChange,
+}: {
+  value: SellerScope;
+  onChange: (v: SellerScope) => void;
+}) {
+  const { t } = useTranslation();
+  const options: { key: SellerScope; label: string }[] = [
+    { key: "all", label: t("search.sellerScope.all") },
+    { key: "live", label: t("search.sellerScope.live") },
+  ];
+  return (
+    <div className="mb-3 flex gap-1 rounded-full bg-muted p-1">
+      {options.map((opt) => {
+        const active = opt.key === value;
+        return (
+          <Press
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            className="!min-h-8 flex-1 rounded-full text-[13px] font-semibold"
+            style={{
+              backgroundColor: active ? "var(--accent)" : "transparent",
+              color: active ? "var(--accent-foreground)" : "var(--muted-foreground)",
+            }}
+          >
+            {opt.label}
+          </Press>
+        );
+      })}
+    </div>
+  );
+}
+
 /* -------------------------------- Sellers -------------------------------- */
 
 function SellerRow({
   info,
   index,
+  isLive,
   onOpen,
 }: {
   info: ReturnType<typeof getSellerInfo>;
   index: number;
+  isLive?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
@@ -799,6 +837,12 @@ function SellerRow({
             <p className="truncate text-[14px] font-semibold">{info.name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
               {formatFollowersLabel(info.followers, lang)}
+              {isLive && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold text-live">
+                  <Radio size={10} className="animate-pulse" />
+                  {t("live.liveBadge")}
+                </span>
+              )}
             </p>
           </div>
         </Press>
@@ -824,6 +868,7 @@ function SellerRow({
     </motion.li>
   );
 }
+
 
 function EmptyResults({ query }: { query: string }) {
   const { t } = useTranslation();
