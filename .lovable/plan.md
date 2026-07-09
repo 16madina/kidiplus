@@ -1,103 +1,140 @@
-# Go Live Entry Screen + Scheduled Lives
+# Broadcast host overhaul + Live Moderators
 
-## Overview
-Replace the direct-to-setup Go Live tap with a branded choice screen (Start now / Schedule) and add end-to-end scheduling: create, edit, cancel, start-when-ready, viewer "coming up" section with reminders.
+Big scope — grouping into 4 parallel workstreams. Approving this plan runs a DB migration for moderators; the rest is code only.
 
-## Flow
+## 1. Compact top bar (broadcast-live.tsx)
 
-### Seller
-```
-Tap Go Live (center tab)
-   │
-   ▼
-Entry Screen (navy gradient, KiDi+ branding, X close)
- ├── 🔴 Commencer un live      → existing setup → live
- ├── 📅 Programmer un live     → setup + date/time → scheduled
- └── Mes lives programmés (list)
-        • Démarrer maintenant  → flips to live, lands in broadcast
-        • Modifier             → setup pre-filled, save updates row
-        • Annuler (confirm)    → delete row + products
+Rebuild the top row so nothing overflows at 320pt:
+
+```text
+[● 00:28] [👁 1]                        [📦³] [❌ Fin]
 ```
 
-If a scheduled live's time has arrived, its row shows a pulsing gold "C'est l'heure ! Démarrer" pill.
+- Merge red dot + timer into one glass pill: pulsing red dot + `mm:ss` (no "EN DIRECT" text).
+- Viewer count: eye icon + number, glass pill.
+- Products: icon-only glass button (📦) with count badge; no text.
+- REMOVE the top-bar refresh/flip button (moves to the rail).
+- "Terminer" becomes a compact red icon+word pill (`min-w-0`, tight padding).
+- Stats strip (Ventes / Articles) stays below, one size smaller.
+- Layout uses `grid-cols-[auto_auto_1fr_auto_auto]` + `min-w-0` to guarantee no overflow.
 
-### Viewer
-- Home feed gets a "À venir 📅" horizontal section listing `status='scheduled' AND scheduled_at > now() - 1h`.
-- Card = cover + seller + title + date chip ("Ce soir 20h", "Demain 14h", "Jeu. 12 juin 15:00").
-- Tap opens a preview sheet (cover, seller + Suivre, title, product count, scheduled date, "Me rappeler 🔔").
-- Reminder button inserts into `live_reminders (user_id, live_id)`.
-- Scheduled lives are never joinable; the viewer route only opens when `status='live'`.
+## 2. Right-side tool rail (new component `HostToolRail`)
 
-## Data Model
+Vertical column pinned to the right edge, vertically centered above the featured card, safe-area aware. TikTok-style 44pt circular glass buttons, tiny label under each:
 
-Migration:
-- `ALTER TABLE lives` drop existing status check; re-add including `'scheduled'`.
-- `ALTER TABLE lives ADD COLUMN scheduled_at timestamptz` (nullable).
-- Index on `(status, scheduled_at)` for feed queries.
-- New `live_reminders` table:
-  - `user_id uuid` + `live_id uuid` composite PK
-  - FKs to `auth.users` (cascade) and `public.lives` (cascade)
-  - `created_at timestamptz default now()`
-  - GRANTs: `authenticated` (all), `service_role` (all)
-  - RLS: owner-only (`auth.uid() = user_id`), plus a permissive read for the live's seller so start-hook can fanout via RLS if needed (we'll use `supabaseAdmin` for fanout, so seller-read policy is optional; keep strict owner-only).
+- 🎤 mic on/off
+- 📷 camera on/off
+- 🔄 flip camera (hidden when only 1 videoinput device)
+- ✨ filters (hidden when `captureStream` unavailable)
+- ➕ add product
 
-Ghost cleanup: extend `expireOverdueOrders`-style opportunistic call — new `cancelStaleScheduledLives()` deletes scheduled rows where `scheduled_at < now() - interval '24 hours'`.
+Bottom-center dock becomes chat-only (mic/cam buttons removed from there).
 
-## Server-side pieces
+## 3. Fix camera flip (broadcast-video.tsx)
 
-- `lives-db.ts`:
-  - `createScheduledLive(...)` — insert `status='scheduled'`, `scheduled_at`, upload cover + products immediately (reuse existing product-image upload path).
-  - `updateScheduledLive(id, patch)` — title/cover/scheduled_at + product diff (simplest: replace all products).
-  - `cancelScheduledLive(id)` — delete row (products cascade).
-  - `startScheduledLive(id)` — `UPDATE lives SET status='live', started_at=now(), room_name=... WHERE id=... AND status='scheduled' AND seller_id=auth.uid()` (RLS enforces seller). Returns the row.
-  - `fetchMyScheduledLives(sellerId)`.
-  - `fetchUpcomingScheduledLives()` — public feed query, `status='scheduled' AND scheduled_at > now() - interval '1 hour'`, order by `scheduled_at asc`, limit 20.
-  - `cancelStaleScheduledLives()` — opportunistic cleanup.
-- `live-reminders-db.ts`:
-  - `addReminder(liveId)`, `removeReminder(liveId)`, `hasReminder(liveId)`.
-- Start-transition fanout: in `startScheduledLive` (client-side, so no server fn needed for MVP), after flipping to live, insert `notifications` rows for every `live_reminders.user_id`. Use a simple `.from('live_reminders').select('user_id')` then bulk insert via existing notifications helper. If notifications table already has a fanout pattern for live starts, reuse it; otherwise plain insert.
+- Track the current `facingMode` in a ref; on flip button, call `localParticipant.getTrackPublication(Video).videoTrack.restartTrack({ facingMode })` when live; on the setup preview, re-`getUserMedia` with the new constraint.
+- Detect single-camera devices with `navigator.mediaDevices.enumerateDevices()` and expose an `canFlip` flag through `onStatus`/a new callback so the rail hides the button.
+- Haptic + 180° spin animation on tap.
 
-## UI
+## 4. Camera filters (new `camera-filter-pipeline.ts` + rail integration)
 
-### New files
-- `src/screens/golive-entry-screen.tsx` — the choice screen.
-- `src/components/broadcast/scheduled-lives-list.tsx` — seller's scheduled list.
-- `src/components/broadcast/schedule-datetime-sheet.tsx` — French-locale date/time picker (native `<input type="datetime-local">` styled as a big pill, min = now+15min, max = now+30d).
-- `src/components/home/upcoming-lives-row.tsx` — viewer horizontal carousel.
-- `src/components/home/scheduled-live-sheet.tsx` — preview sheet with Me rappeler.
-- `src/lib/live-reminders-db.ts`.
+Real filter — not CSS on the local preview:
 
-### Modified
-- `src/screens/live-screen.tsx` — new stages: `entry`, `setup` (existing), `schedule` (setup variant with datetime), `live`, `summary`. Entry is the default when seller has no in-progress flow. `mode: 'now' | 'schedule' | 'edit'` on the setup component drives CTA label + submission path.
-- `src/lib/broadcast-context.tsx` — extra state: `mode`, `scheduledAt`, `editingLiveId`. New actions: `goEntry`, `goSchedule`, `startFromScheduled(id)`, `loadScheduledIntoForm(id)`.
-- `src/components/broadcast/broadcast-setup.tsx` — accept `mode`, render datetime block in schedule/edit mode, CTA text switches ("Lancer le live" / "Programmer le live 📅" / "Enregistrer les modifications"), submission calls the right db helper. Keep the existing camera preview only in `mode==='now'`.
-- `src/lib/lives-db.ts` — new helpers + extend `LiveRow` types.
-- `src/screens/home-screen.tsx` — mount `UpcomingLivesRow` above/below grid depending on live count.
-- Opportunistic cleanup call: `cancelStaleScheduledLives()` invoked alongside `expireOverdueOrders` in `src/components/app-shell.tsx`.
-- `src/i18n/fr.json` + `src/i18n/en.json` — `golive.entry.*`, `schedule.*`.
+1. Get the raw camera `MediaStreamTrack` (max 720p already enforced by LiveKit config; add `resolution: { width: 1280, height: 720 }` if not).
+2. Draw it into an offscreen `<canvas>` via a hidden `<video>` element inside a `requestAnimationFrame` loop, applying `ctx.filter = "brightness(1.1) contrast(1.05) …"` per preset.
+3. `canvas.captureStream(30)` → replace the published video track using LiveKit's `LocalTrack.replaceTrack(newTrack)` (or unpublish/publish if replace is unavailable).
+4. "Aucun" stops the rAF loop and republishes the raw track (zero overhead).
+5. Basic fps guard: sample `performance.now()` deltas over 2s; if avg fps < 18, toast "Filtres indisponibles sur cet appareil" and revert to raw.
+6. Hide the Filters button when `HTMLCanvasElement.prototype.captureStream` is missing.
 
-### Design language
-Entry screen: full-bleed navy gradient (`oklch(0.18 0.05 260)` → `oklch(0.12 0.03 260)`) matching existing dark surfaces, KiDi+ wordmark up top, X (top-left, safe-area), two big cards with rounded-3xl, gold 1px border (`oklch(0.78 0.13 85)` at 40%), soft inner shadow, icon in a gold-tinted circle, title in white bold, subtitle muted. Press states use existing `<Press>` scale. Below the two cards, a compact list of scheduled lives if any.
+Presets (CSS filter strings):
+- Aucun: none
+- Lumineux: `brightness(1.12) contrast(1.06)`
+- Chaleur: `saturate(1.15) sepia(0.12) hue-rotate(-8deg)`
+- Doux: `brightness(1.05) blur(0.6px) contrast(0.95)`
+- N&B: `grayscale(1) contrast(1.05)`
+- Vif: `saturate(1.35) contrast(1.12)`
 
-## Guardrails / assumptions
-- One-scheduled-live edit reuses the existing setup UI to keep behaviour identical; on save we replace all products (users editing a schedule expect this).
-- "Me rappeler" fanout runs client-side in `startScheduledLive` — good enough for MVP, avoids new cron.
-- Datetime picker uses native `<input type="datetime-local">` styled to match; keeps things reliable across iOS/Android/web with French locale via `Intl.DateTimeFormat('fr-FR')` for display.
-- If no live-start push infra exists, insert in-app notifications only; do not attempt to send FCM push (avoids new server plumbing).
+Picker UI: tapping the Filters rail button toggles a horizontal chip strip anchored just left of the rail. Selected chip gets a gold ring. Persisted in `sessionStorage`.
 
-## Order of work
-1. Migration (status check + `scheduled_at` + `live_reminders`).
-2. `lives-db.ts` + `live-reminders-db.ts` helpers.
-3. i18n keys.
-4. `broadcast-context.tsx` + `live-screen.tsx` stages.
-5. `golive-entry-screen.tsx`, scheduled list, schedule sheet.
-6. `broadcast-setup.tsx` mode support.
-7. Viewer: `UpcomingLivesRow`, `ScheduledLiveSheet`, home wiring.
-8. Opportunistic cleanup hook in app-shell.
-9. Typecheck.
+## 5. Add product mid-live (already exists — verify + wire)
 
-## What the buyer sees (summary)
-- New "À venir 📅" row on home listing upcoming lives with a friendly date chip.
-- Tap → preview sheet with cover, seller (+Suivre), product count, scheduled time, and "Me rappeler 🔔".
-- Reminder is stored per user; when the seller flips the schedule to live, the buyer gets an in-app notification and can then join the live normally through the existing home grid.
-- Scheduled cards never open the live viewer directly.
+`AddProductSheet` + `onAddProductMidLive` already exist in `broadcast-live.tsx`. Wire the new rail's "+" button to open the same sheet. Also verify the "Ajouter un article" row appears at the top of the Products bottom sheet (add if missing).
+
+## 6. Live moderators (DB + UX)
+
+### DB migration
+
+```sql
+create table public.live_moderators (
+  live_id  uuid not null references public.lives(id) on delete cascade,
+  user_id  uuid not null references public.profiles(id) on delete cascade,
+  added_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  primary key (live_id, user_id)
+);
+grant select, insert, delete on public.live_moderators to authenticated;
+grant all on public.live_moderators to service_role;
+alter table public.live_moderators enable row level security;
+
+-- Any authenticated user can read moderators for a live
+create policy "read moderators" on public.live_moderators
+  for select to authenticated using (true);
+
+-- Only the live's host can add / remove moderators
+create policy "host manages moderators" on public.live_moderators
+  for insert to authenticated
+  with check (exists (select 1 from public.lives l where l.id = live_id and l.user_id = auth.uid()));
+create policy "host removes moderators" on public.live_moderators
+  for delete to authenticated
+  using (exists (select 1 from public.lives l where l.id = live_id and l.user_id = auth.uid()));
+
+-- Extend live_products policies: seller OR moderator can manage products
+create or replace function public.is_live_moderator(_live_id uuid, _user_id uuid)
+returns boolean language sql stable security definer set search_path=public as $$
+  select exists(select 1 from public.live_moderators where live_id=_live_id and user_id=_user_id)
+$$;
+
+-- Replace existing seller-only INSERT/UPDATE policies on live_products
+-- to also allow moderators (see migration file for full policy names).
+
+alter publication supabase_realtime add table public.live_moderators;
+```
+
+### Client
+
+- New `src/lib/moderators-db.ts`: `fetchModerators`, `addModerator`, `removeModerator`, `useIsModerator(liveId)` hook (realtime `postgres_changes` on `live_moderators` filtered by `live_id=eq.<liveId>` and `user_id=eq.<me>`).
+- HOST UX: tapping a chat message author opens a mini profile sheet with "Nommer modérateur 🛡️" / "Retirer modérateur". Products sheet gets a "Modérateurs" section listing current mods with a remove action + an "Ajouter" flow that opens the same author-picker (or an input).
+- MODERATOR UX (viewer side): when `useIsModerator` returns true for the current live, show a 🛡️ badge next to their own chat messages (LiveChat already renders per-user color; add an optional `isModerator` flag), and surface a compact "Gérer" dock button that opens a moderator products sheet with feature / start auction / put on sale actions + add-product. Start-auction is allowed for moderators. End-live and end-auction stay host-only (finalize uses server-authoritative logic; keep the RPC seller-only for now).
+
+### i18n (fr + en)
+
+`moderator.title`, `moderator.promote`, `moderator.demote`, `moderator.badge`, `moderator.list`, `moderator.empty`, `moderator.manage`, `moderator.startAuction`, `moderator.addProduct`, `moderator.confirmDemote`.
+
+## Files touched
+
+- `src/components/broadcast/broadcast-live.tsx` — top bar rebuild, remove bottom center mic/cam, mount rail.
+- `src/components/broadcast/broadcast-video.tsx` — flip + filter pipeline hooks.
+- `src/components/broadcast/host-tool-rail.tsx` — new.
+- `src/components/broadcast/filter-picker.tsx` — new.
+- `src/lib/camera-filter-pipeline.ts` — new.
+- `src/lib/moderators-db.ts` — new.
+- `src/components/live-viewer/moderator-dock.tsx` — new (viewer moderator surface).
+- `src/components/live-viewer/live-chat.tsx` — add shield badge.
+- `src/components/live-viewer/real-live-viewer-screen.tsx` — wire moderator surface.
+- `src/i18n/fr.json`, `src/i18n/en.json` — moderator keys + rail labels.
+- `supabase/migrations/<ts>_live_moderators.sql` — table + policies + policy update on live_products.
+
+## Testing checklist
+
+- 320pt viewport: top bar has no clipped element; "Terminer" fully visible.
+- Rail vertically stacked, doesn't collide with featured card or safe-area.
+- Camera flip actually toggles the published track (viewers see the new camera).
+- Single-camera device: flip button hidden.
+- Each filter visible to a second-tab viewer within ~1s of selection.
+- Slow device fps guard: force a heavy filter on low-end → reverts + toast.
+- "Aucun" republishes raw (verify by checking CPU drops / no rAF running).
+- Add-product from rail: new row appears in queue for host + viewers.
+- Host promotes a viewer → viewer sees shield badge + moderator dock within 2s.
+- Moderator can add product + start auction; cannot end live or end auction.
+- Removing a moderator revokes badge + dock within 2s.
