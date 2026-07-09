@@ -1,4 +1,4 @@
-import { useState } from "react";
+// Bottom tab bar with a raised gold "Live" badge in the center.
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Press } from "./press";
