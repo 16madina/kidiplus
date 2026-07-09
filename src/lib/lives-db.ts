@@ -7,6 +7,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { LiveStream } from "@/lib/live-mock";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 
 // -------------------------------------------------------------------------
 // Storage
