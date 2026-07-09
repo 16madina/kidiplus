@@ -186,6 +186,39 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string
+          followed_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          followed_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          followed_id?: string
+          follower_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_followed_id_fkey"
+            columns: ["followed_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_bids: {
         Row: {
           amount: number
@@ -293,6 +326,7 @@ export type Database = {
           name: string
           position: number
           price: number
+          shop_product_id: string | null
           sold_to_identity: string | null
           start_price: number
           status: string
@@ -311,6 +345,7 @@ export type Database = {
           name: string
           position?: number
           price?: number
+          shop_product_id?: string | null
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -329,6 +364,7 @@ export type Database = {
           name?: string
           position?: number
           price?: number
+          shop_product_id?: string | null
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -342,6 +378,13 @@ export type Database = {
             columns: ["live_id"]
             isOneToOne: false
             referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_products_shop_product_id_fkey"
+            columns: ["shop_product_id"]
+            isOneToOne: false
+            referencedRelation: "shop_products"
             referencedColumns: ["id"]
           },
         ]
@@ -719,12 +762,16 @@ export type Database = {
           currency: string
           display_name: string
           email: string
+          followers_count: number
+          following_count: number
           handle: string
           id: string
           is_admin: boolean
           is_seller: boolean
           language: string
           moderation_status: string
+          rating_avg: number
+          rating_count: number
           terms_accepted_at: string | null
           terms_version: string | null
         }
@@ -737,12 +784,16 @@ export type Database = {
           currency?: string
           display_name: string
           email: string
+          followers_count?: number
+          following_count?: number
           handle: string
           id: string
           is_admin?: boolean
           is_seller?: boolean
           language?: string
           moderation_status?: string
+          rating_avg?: number
+          rating_count?: number
           terms_accepted_at?: string | null
           terms_version?: string | null
         }
@@ -755,12 +806,16 @@ export type Database = {
           currency?: string
           display_name?: string
           email?: string
+          followers_count?: number
+          following_count?: number
           handle?: string
           id?: string
           is_admin?: boolean
           is_seller?: boolean
           language?: string
           moderation_status?: string
+          rating_avg?: number
+          rating_count?: number
           terms_accepted_at?: string | null
           terms_version?: string | null
         }
@@ -921,6 +976,108 @@ export type Database = {
           },
           {
             foreignKeyName: "seller_earnings_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          order_id: string
+          rating: number
+          reviewer_id: string
+          seller_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          rating: number
+          reviewer_id: string
+          seller_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          reviewer_id?: string
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_reviews_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_products: {
+        Row: {
+          active: boolean
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          seller_id: string
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          currency: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price: number
+          seller_id: string
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          seller_id?: string
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_products_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1177,6 +1334,10 @@ export type Database = {
         Args: { _live_id: string; _user_id: string }
         Returns: boolean
       }
+      leave_review: {
+        Args: { _comment?: string; _order_id: string; _rating: number }
+        Returns: Json
+      }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
       list_my_notifications: { Args: { _limit?: number }; Returns: Json }
@@ -1209,6 +1370,7 @@ export type Database = {
           name: string
           position: number
           price: number
+          shop_product_id: string | null
           sold_to_identity: string | null
           start_price: number
           status: string
