@@ -215,11 +215,14 @@ export function ViewerLiveVideo({
           >
             {status === "connecting"
               ? "Connexion au live…"
-              : status === "waiting"
-                ? "Le live va commencer…"
-                : status === "ended"
-                  ? "Live terminé"
-                  : "Connexion impossible"}
+              : status === "reconnecting"
+                ? "Reconnexion…"
+                : status === "waiting"
+                  ? "Le live va commencer…"
+                  : status === "ended"
+                    ? "Live terminé"
+                    : "Connexion impossible"}
+
           </div>
         </div>
       )}
