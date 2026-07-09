@@ -50,6 +50,10 @@ export function SearchScreen() {
   ]);
   const [browseLoading, setBrowseLoading] = useState(true);
   const [sort, setSort] = useState<CategorySort>("recommended");
+  const [sellerScope, setSellerScope] = useState<SellerScope>("all");
+  const [dbSellers, setDbSellers] = useState<SellerProfile[]>([]);
+  const [activeSellerNames, setActiveSellerNames] = useState<Set<string>>(new Set());
+  const [sellerLoading, setSellerLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
@@ -59,6 +63,34 @@ export function SearchScreen() {
     const handle = setTimeout(() => setQuery(rawQuery.trim()), 200);
     return () => clearTimeout(handle);
   }, [rawQuery]);
+
+  // Load seller profiles + live seller names from the backend whenever the query changes.
+  useEffect(() => {
+    if (!searching) {
+      setDbSellers([]);
+      setActiveSellerNames(new Set());
+      setSellerLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSellerLoading(true);
+    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
+      .then(([profiles, liveNames]) => {
+        if (cancelled) return;
+        setDbSellers(profiles);
+        setActiveSellerNames(liveNames);
+      })
+      .catch((err) => {
+        console.error("[SearchScreen] seller search failed", err);
+      })
+      .finally(() => {
+        if (!cancelled) setSellerLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query, searching]);
+
 
   // First-paint skeleton for the browse (Tendances + Catégories) section
   useEffect(() => {
