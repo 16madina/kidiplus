@@ -749,3 +749,50 @@ export async function cancelStaleScheduledLives(): Promise<void> {
     .lt("scheduled_at", cutoff);
 }
 
+
+// -------------------------------------------------------------------------
+// Seller-scoped feed (used by seller profile screen)
+// -------------------------------------------------------------------------
+export type SellerLiveEntry = {
+  id: string;
+  title: string;
+  status: "live" | "scheduled" | "ended";
+  cover_url: string | null;
+  started_at: string | null;
+  scheduled_at: string | null;
+  ended_at: string | null;
+  viewer_count: number;
+  room_name: string;
+  category: string | null;
+  currency: string | null;
+};
+
+export async function fetchSellerLives(
+  sellerId: string,
+  limit = 30,
+): Promise<SellerLiveEntry[]> {
+  const { data } = await supabase
+    .from("lives")
+    .select("id, title, status, cover_url, started_at, scheduled_at, ended_at, viewer_count, room_name, category, currency")
+    .eq("seller_id", sellerId)
+    .order("started_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  const rows = (data as SellerLiveEntry[] | null) ?? [];
+  const resolved = await Promise.all(
+    rows.map(async (r) => ({
+      ...r,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+    })),
+  );
+  // Sort: live first, then scheduled (upcoming), then ended.
+  const rank = (s: string) => (s === "live" ? 0 : s === "scheduled" ? 1 : 2);
+  resolved.sort((a, b) => {
+    const r = rank(a.status) - rank(b.status);
+    if (r !== 0) return r;
+    if (a.status === "scheduled" && b.status === "scheduled") {
+      return (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "");
+    }
+    return (b.started_at ?? b.scheduled_at ?? "").localeCompare(a.started_at ?? a.scheduled_at ?? "");
+  });
+  return resolved;
+}
