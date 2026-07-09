@@ -21,11 +21,15 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   // Real paid orders for this live (if any). Falls back to the mock sales
   // recorded locally when the seller's live wasn't backed by a DB row.
   const [realOrders, setRealOrders] = useState<OrderRow[] | null>(null);
+  const [giftsTotal, setGiftsTotal] = useState<{ count: number; sellerNet: number } | null>(null);
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
     void fetchOrdersForLive(liveId).then((rows) => {
       if (alive) setRealOrders(rows.filter((r) => r.status === "paid"));
+    });
+    void fetchLiveGiftsTotal(liveId).then((g) => {
+      if (alive) setGiftsTotal({ count: g.count, sellerNet: g.sellerNet });
     });
     return () => { alive = false; };
   }, [liveId]);
