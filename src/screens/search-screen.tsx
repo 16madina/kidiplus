@@ -265,13 +265,14 @@ export function SearchScreen() {
                   key={info.name}
                   info={info}
                   index={i}
-                  isLive={activeSellerNames.has(info.name)}
+                  isLive={liveSellerNames.has(info.name)}
                   onOpen={() => {
                     commitRecent(query);
                     openSeller(info.name);
                   }}
                 />
               ))}
+
             </ul>
           )}
         </div>
