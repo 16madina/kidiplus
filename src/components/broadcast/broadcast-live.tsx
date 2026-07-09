@@ -482,83 +482,74 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }
       />
 
-      {/* Top bar */}
+      {/* Compact top bar — fits at 320pt width. Grid layout: leading pills |
+          spacer | trailing controls. Every pill has min-w-0 so text can
+          truncate without pushing the end button off-screen. */}
       <div
-        className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3"
+        className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-1.5 px-2"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-white"
-            style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
-          >
-            <motion.span
-              animate={{ opacity: [1, 0.35, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-              className="h-1.5 w-1.5 rounded-full bg-white"
-            />
-            <span className="text-[11px] font-bold tracking-wide">{t("live.onAir", "EN DIRECT")}</span>
-          </div>
-          <div
-            className="rounded-full px-2 py-1 text-[11px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {fmtDuration(duration)}
-          </div>
+        {/* Live pill: pulsing red dot + timer merged (no "EN DIRECT" text). */}
+        <div
+          className="flex items-center gap-1.5 rounded-full px-2 py-1 text-white"
+          style={{
+            backgroundColor: "rgba(220, 30, 40, 0.95)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <motion.span
+            animate={{ opacity: [1, 0.35, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+            className="h-1.5 w-1.5 rounded-full bg-white"
+          />
+          <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <Eye size={13} />
-            {room.viewerCount}
-          </div>
-          <Press
-            onClick={() => { haptic.selection(); setProductsOpen(true); }}
-            aria-label={t("live.openProducts")}
-            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B] inline-flex items-center gap-1"
-            style={{ backgroundColor: "white" }}
-          >
-            <Package size={14} />
-            {t("live.openProducts")}
-            {room.products.length > 0 && (
-              <span className="ml-0.5 rounded-full bg-[#10162B] px-1.5 text-[10px] font-bold text-white">
-                {room.products.length}
-              </span>
-            )}
-          </Press>
-          <Press
-            onClick={() => {
-              haptic.selection();
-              setFacing((f) => (f === "user" ? "environment" : "user"));
-            }}
-            aria-label={t("broadcast.live.flipCam")}
-            className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <RefreshCw size={16} />
-          </Press>
-          <Press
-            onClick={() => setConfirmEnd(true)}
-            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-white"
-            style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
-          >
-            {t("live.endLive", "Terminer")}
-          </Press>
+        {/* Viewer count */}
+        <div
+          className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Eye size={12} />
+          {room.viewerCount}
         </div>
+        {/* Spacer */}
+        <div className="min-w-0" />
+        {/* Products icon-only pill with count badge */}
+        <Press
+          onClick={() => { haptic.selection(); setProductsOpen(true); }}
+          aria-label={t("live.openProducts")}
+          className="!min-h-9 !min-w-9 relative h-9 w-9 rounded-full text-white"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Package size={16} />
+          {room.products.length > 0 && (
+            <span
+              className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold text-[#10162B]"
+              style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
+            >
+              {room.products.length}
+            </span>
+          )}
+        </Press>
+        {/* End-live pill: compact icon+word, red. */}
+        <Press
+          onClick={() => setConfirmEnd(true)}
+          aria-label={t("live.endLive")}
+          className="!min-h-9 h-9 min-w-0 shrink-0 rounded-full pl-2 pr-3 text-[12px] font-bold text-white inline-flex items-center gap-1"
+          style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
+        >
+          <X size={14} />
+          <span className="truncate">{t("live.endLive")}</span>
+        </Press>
       </div>
 
       {/* Video connection error overlay with retry */}
