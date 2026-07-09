@@ -13,6 +13,8 @@ import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { useState } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
+
 
 export function LiveScreen() {
   const { t } = useTranslation();
