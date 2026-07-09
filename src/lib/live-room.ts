@@ -90,9 +90,6 @@ export type LiveRoomState = {
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
   broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
   systemMessage: (text: string) => void;
-  /** Local-only injectors for stress testing. Do NOT broadcast. */
-  injectLocalChat: (msgs: ChatEvt[]) => void;
-  injectLocalHearts: (n: number) => void;
 };
 
 const COLOR_POOL = [
@@ -413,17 +410,6 @@ export function useLiveRoom(params: {
       systemMessage: (text: string) => {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
         setChat((prev) => [...prev, evt].slice(-60));
-      },
-      injectLocalChat: (msgs: ChatEvt[]) => {
-        if (msgs.length === 0) return;
-        setChat((prev) => {
-          const next = prev.concat(msgs);
-          return next.length > 60 ? next.slice(next.length - 60) : next;
-        });
-      },
-      injectLocalHearts: (n: number) => {
-        if (n <= 0) return;
-        setHeartTick((v) => v + n);
       },
     }),
     [
