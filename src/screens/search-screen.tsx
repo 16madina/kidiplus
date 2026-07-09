@@ -9,7 +9,6 @@ import { makeStreams, type LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import {
-  formatCompact,
   getSellerInfo,
   makeSellerInfoFromProfile,
   type SellerProduct,
