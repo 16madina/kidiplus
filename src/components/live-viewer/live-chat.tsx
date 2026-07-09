@@ -134,7 +134,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   );
 }
 
-function ChatBubble({ msg }: { msg: ChatMsg }) {
+const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
   if (msg.system) {
     return (
       <div
