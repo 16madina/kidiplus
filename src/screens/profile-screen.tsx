@@ -81,6 +81,7 @@ export function ProfileScreen() {
   const [addressesOpen, setAddressesOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
