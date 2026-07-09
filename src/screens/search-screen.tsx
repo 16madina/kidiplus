@@ -838,11 +838,15 @@ function SellerRow({
             <p className="truncate text-[12px] text-muted-foreground">
               {formatFollowersLabel(info.followers, lang)}
               {isLive && (
-                <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold text-live">
+                <span
+                  className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold"
+                  style={{ color: "var(--live)" }}
+                >
                   <Radio size={10} className="animate-pulse" />
                   {t("live.liveBadge")}
                 </span>
               )}
+
             </p>
           </div>
         </Press>
