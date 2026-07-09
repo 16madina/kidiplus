@@ -285,17 +285,35 @@ function SellerProfileInner({
             style={{ opacity: heroOpacity, scale: heroScale, y: heroTranslate, transformOrigin: "50% 0%" }}
           >
             <div className="flex flex-col items-center text-center">
-              {avatar ? (
-                <img
-                  src={avatar} alt=""
-                  className="h-20 w-20 rounded-full object-cover ring-2 ring-border"
-                  draggable={false}
-                />
-              ) : (
-                <div className="grid h-20 w-20 place-items-center rounded-full bg-muted text-[24px] font-bold text-muted-foreground ring-2 ring-border">
-                  {(profile.display_name || "?").slice(0, 1).toUpperCase()}
-                </div>
-              )}
+              <div
+                className="grid place-items-center rounded-full"
+                style={{
+                  background: "#E8B93B",
+                  padding: 3,
+                  height: 96,
+                  width: 96,
+                  boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
+                }}
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt=""
+                    className="h-full w-full rounded-full object-cover"
+                    style={{ background: "#10162B" }}
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                    draggable={false}
+                  />
+                ) : (
+                  <div
+                    className="grid h-full w-full place-items-center rounded-full text-[28px] font-bold text-white"
+                    style={{ background: "#10162B" }}
+                  >
+                    {(profile.display_name || "?").slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-2 flex items-center gap-1">
                 <h1 className="text-[20px] font-bold tracking-tight">{profile.display_name}</h1>
                 {profile.is_seller && (
