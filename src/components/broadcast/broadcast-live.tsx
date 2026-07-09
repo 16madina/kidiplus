@@ -4,11 +4,9 @@ import {
   Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
-import { FilterPicker } from "./filter-picker";
 import { useModerators, addModerator, removeModerator } from "@/lib/moderators-db";
 import { useAuth } from "@/lib/auth-context";
 import type { BroadcastVideoHandle } from "./broadcast-video";
-import type { FilterKey } from "@/lib/camera-filter-pipeline";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
