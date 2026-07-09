@@ -190,6 +190,9 @@ function AppShellInner() {
         if (p.seller_handle) { openSeller(p.seller_handle); return; }
         setActive("profile");
         return;
+      if (kind === "home" || kind === "welcome") {
+        setActive("home");
+        return;
       }
       // Fallback → activity tab.
       setActive("activity");
