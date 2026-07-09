@@ -644,10 +644,9 @@ function TrendsRow({
   trends,
   onTap,
 }: {
-  trends: Trend[];
-  onTap: (t: Trend) => void;
+  trends: TrendItem[];
+  onTap: (t: TrendItem) => void;
 }) {
-  const { t } = useTranslation();
   const { lang } = useLanguage();
   return (
     <div
@@ -660,21 +659,14 @@ function TrendsRow({
     >
       <div
         className="grid grid-flow-col grid-rows-2"
-        style={{
-          gap: 8,
-          gridAutoColumns: "260px",
-        }}
+        style={{ gap: 8, gridAutoColumns: "260px" }}
       >
         {trends.map((trend, i) => (
           <motion.div
             key={trend.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.2,
-              ease: EASE_IOS,
-              delay: Math.min(i, 8) * 0.025,
-            }}
+            transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(i, 8) * 0.025 }}
             style={{ scrollSnapAlign: "start" }}
           >
             <Press
@@ -682,16 +674,22 @@ function TrendsRow({
               className="!min-h-0 flex w-full items-center gap-3 rounded-2xl bg-muted p-2 text-left"
               style={{ height: 64 }}
             >
-              <img
-                src={trend.image}
-                alt=""
-                loading="lazy"
-                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                draggable={false}
-              />
+              {trend.image ? (
+                <img
+                  src={trend.image}
+                  alt=""
+                  loading="lazy"
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-background/50 text-muted-foreground">
+                  <Radio size={16} />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-bold">{t(trend.nameKey)}</p>
+                <p className="truncate text-[14px] font-bold">{trend.label}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <LiveDot />
                   <span className="truncate text-[12px] text-muted-foreground">
@@ -706,6 +704,7 @@ function TrendsRow({
     </div>
   );
 }
+
 
 function TrendsSkeleton() {
   return (
