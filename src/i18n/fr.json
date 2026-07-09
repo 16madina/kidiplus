@@ -209,7 +209,7 @@
     "unsoldFlash": "Invendu — {{name}} 😕",
     "relaunch": "Relancer",
     "relaunched": "Produit relancé",
-    "filterSlow": "Filtres indisponibles sur cet appareil",
+    "flipFailed": "Impossible de changer de caméra",
     "endLive": "Terminer",
     "confirmEnd": "Terminer ce live ?",
     "confirmEndBody": "Tu ne pourras pas reprendre ce live une fois terminé.",
