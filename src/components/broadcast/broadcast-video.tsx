@@ -316,7 +316,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           }
           await room.localParticipant.publishTrack(track);
           localVideoTrackRef.current = track;
-          if (videoRef.current) track.attach(videoRef.current);
+          sourceCameraTrackRef.current = track.mediaStreamTrack;
+          if (videoRef.current) {
+            track.attach(videoRef.current);
+            videoRef.current.play().catch(() => {});
+          }
           setState("granted");
         } catch (err) {
           console.error("[livekit host] failed", { phase, err });
