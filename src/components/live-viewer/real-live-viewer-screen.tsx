@@ -126,11 +126,13 @@ export function RealLiveViewerScreen() {
     return () => clearTimeout(t);
   }, [liveEnded, close]);
 
-  // Featured product: server auction pick, else first non-sold.
+  // Featured product: server auction pick, else the next 'upcoming' product
+  // by position. Never loops back to earlier items — matches host behavior.
   const activeAuctionId = room.auctionStart?.productId ?? null;
   const currentProduct = useMemo(() => {
     if (activeAuctionId) return room.products.find((p) => p.id === activeAuctionId) ?? null;
-    return room.products.find((p) => p.status !== "sold" && p.status !== "out") ?? null;
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    return sorted.find((p) => p.status === "upcoming") ?? null;
   }, [room.products, activeAuctionId]);
 
   // Auction countdown from broadcast deadline.
