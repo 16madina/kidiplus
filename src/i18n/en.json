@@ -209,7 +209,7 @@
     "unsoldFlash": "Unsold — {{name}} 😕",
     "relaunch": "Relaunch",
     "relaunched": "Product relaunched",
-    "filterSlow": "Filters unavailable on this device",
+    "flipFailed": "Couldn't switch camera",
     "endLive": "End",
     "confirmEnd": "End this live?",
     "confirmEndBody": "You won't be able to resume this live once ended.",
