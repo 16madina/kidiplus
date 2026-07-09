@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
+import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
