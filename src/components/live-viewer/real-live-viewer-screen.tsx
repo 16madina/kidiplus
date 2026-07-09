@@ -2,7 +2,7 @@
 // Chat / hearts / auction / buy are wired through Supabase Realtime + DB.
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
+import { Send, Heart, Gift, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
