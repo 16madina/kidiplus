@@ -35,7 +35,19 @@ export function useStressTestEnabled(): boolean {
     if (typeof window === "undefined") return;
     const check = () => {
       const p = new URLSearchParams(window.location.search);
-      setOn(p.get("stress") === "1" || localStorage.getItem("kidi_stress") === "1");
+      // Si ?stress=1 est dans l'URL, on l'active ET on le mémorise pour qu'il
+      // survive à la navigation vers un live (sinon le param est perdu).
+      if (p.get("stress") === "1") {
+        localStorage.setItem("kidi_stress", "1");
+        setOn(true);
+        return;
+      }
+      if (p.get("stress") === "0") {
+        localStorage.removeItem("kidi_stress");
+        setOn(false);
+        return;
+      }
+      setOn(localStorage.getItem("kidi_stress") === "1");
     };
     check();
     window.addEventListener("popstate", check);
