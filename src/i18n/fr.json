@@ -108,7 +108,12 @@
       "sellers": "Vendeurs",
       "products": "Produits"
     },
+    "sellerScope": {
+      "all": "Tous les vendeurs",
+      "live": "En live"
+    },
     "emptyResults": "Aucun résultat pour «{{query}}»",
+
     "cats": {
       "beauty": "Beauté",
       "womenFashion": "Mode femme",

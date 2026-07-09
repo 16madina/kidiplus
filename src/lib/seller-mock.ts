@@ -40,6 +40,22 @@ export type SellerInfo = {
   ratingBreakdown: [number, number, number, number, number]; // 5..1
 };
 
+/** Build a SellerInfo from a real profile, keeping mock-derived stats but using real name/avatar/bio. */
+export function makeSellerInfoFromProfile(
+  profile: { display_name: string; handle: string; avatar_url: string | null; bio: string | null },
+  liveStream?: LiveStream,
+): SellerInfo {
+  const base = getSellerInfo(profile.display_name);
+  return {
+    ...base,
+    name: profile.display_name,
+    avatar: profile.avatar_url ?? base.avatar,
+    bio: profile.bio ?? base.bio,
+    liveStream,
+  };
+}
+
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;

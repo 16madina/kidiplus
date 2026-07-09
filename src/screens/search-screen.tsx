@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Clock, X, SearchX } from "lucide-react";
+import { Search, Clock, X, SearchX, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
@@ -9,8 +9,8 @@ import { makeStreams, type LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import {
-  formatCompact,
   getSellerInfo,
+  makeSellerInfoFromProfile,
   type SellerProduct,
 } from "@/lib/seller-mock";
 import { formatMoney } from "@/lib/money";
@@ -21,13 +21,21 @@ import {
   type BrowseCategory,
   type Trend,
 } from "@/lib/browse-mock";
-import { formatCount, formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
+import { formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
 import { useLanguage } from "@/i18n/language-context";
+import {
+  fetchActiveSellerNames,
+  searchSellerProfiles,
+  type SellerProfile,
+} from "@/lib/sellers-db";
 
 const ALL_STREAMS = makeStreams(0, 24);
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
+
+type SellerScope = "all" | "live";
+
 
 export function SearchScreen() {
   const { t } = useTranslation();
@@ -41,6 +49,10 @@ export function SearchScreen() {
   ]);
   const [browseLoading, setBrowseLoading] = useState(true);
   const [sort, setSort] = useState<CategorySort>("recommended");
+  const [sellerScope, setSellerScope] = useState<SellerScope>("all");
+  const [dbSellers, setDbSellers] = useState<SellerProfile[]>([]);
+  const [activeSellerNames, setActiveSellerNames] = useState<Set<string>>(new Set());
+  const [sellerLoading, setSellerLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
@@ -51,6 +63,8 @@ export function SearchScreen() {
     return () => clearTimeout(handle);
   }, [rawQuery]);
 
+
+
   // First-paint skeleton for the browse (Tendances + Catégories) section
   useEffect(() => {
     const t = setTimeout(() => setBrowseLoading(false), 450);
@@ -59,6 +73,33 @@ export function SearchScreen() {
 
   const searching = query.length > 0;
   const q = query.toLowerCase();
+
+  // Load seller profiles + live seller names from the backend whenever the query changes.
+  useEffect(() => {
+    if (!searching) {
+      setDbSellers([]);
+      setActiveSellerNames(new Set());
+      setSellerLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSellerLoading(true);
+    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
+      .then(([profiles, liveNames]) => {
+        if (cancelled) return;
+        setDbSellers(profiles);
+        setActiveSellerNames(liveNames);
+      })
+      .catch((err) => {
+        console.error("[SearchScreen] seller search failed", err);
+      })
+      .finally(() => {
+        if (!cancelled) setSellerLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query, searching]);
 
   const liveResults = useMemo<LiveStream[]>(() => {
     if (!searching) return [];
@@ -72,12 +113,33 @@ export function SearchScreen() {
 
   const sellerResults = useMemo(() => {
     if (!searching) return [];
-    const set = new Set<string>();
-    ALL_STREAMS.forEach((s) => {
-      if (s.seller.toLowerCase().includes(q)) set.add(s.seller);
+    const byName = new Map<string, ReturnType<typeof getSellerInfo>>();
+
+    // Sellers are "live" if they appear in either the real active lives feed or the mock live results.
+    const liveNames = new Set<string>();
+    liveResults.forEach((s) => liveNames.add(s.seller));
+    activeSellerNames.forEach((name) => liveNames.add(name));
+
+    // 1. Real seller profiles from the database.
+    dbSellers.forEach((profile) => {
+      const isLive = liveNames.has(profile.display_name);
+      if (sellerScope === "live" && !isLive) return;
+      byName.set(profile.display_name, makeSellerInfoFromProfile(profile));
     });
-    return Array.from(set).map((n) => getSellerInfo(n));
-  }, [q, searching]);
+
+    // 2. Mock sellers tied to currently-live streams (keeps fallback content working).
+    ALL_STREAMS.forEach((s) => {
+      if (sellerScope === "live" && !liveNames.has(s.seller)) return;
+      if (!s.seller.toLowerCase().includes(q)) return;
+      if (!byName.has(s.seller)) {
+        byName.set(s.seller, getSellerInfo(s.seller));
+      }
+    });
+
+    return Array.from(byName.values());
+  }, [q, searching, dbSellers, activeSellerNames, sellerScope, liveResults]);
+
+
 
   const productResults = useMemo<Array<SellerProduct & { seller: string }>>(() => {
     if (!searching) return [];
@@ -97,7 +159,16 @@ export function SearchScreen() {
     return out.slice(0, 40);
   }, [q, searching]);
 
+  // Combined set of seller names currently broadcasting (real DB lives + mock live results).
+  const liveSellerNames = useMemo(() => {
+    const set = new Set<string>();
+    liveResults.forEach((s) => set.add(s.seller));
+    activeSellerNames.forEach((name) => set.add(name));
+    return set;
+  }, [liveResults, activeSellerNames]);
+
   const commitRecent = (term: string) => {
+
     const t = term.trim();
     if (!t) return;
     setRecent((r) => [t, ...r.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 8));
@@ -172,7 +243,20 @@ export function SearchScreen() {
       label: `${t("search.tabs.sellers")}${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
       content: (
         <div className="px-4 py-2">
-          {sellerResults.length === 0 ? (
+          <SellerScopeFilter value={sellerScope} onChange={setSellerScope} />
+          {sellerLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5">
+                  <div className="skeleton h-11 w-11 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 w-1/2 rounded" />
+                    <div className="skeleton h-3 w-1/3 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sellerResults.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <ul className="divide-y divide-border/60">
@@ -181,17 +265,20 @@ export function SearchScreen() {
                   key={info.name}
                   info={info}
                   index={i}
+                  isLive={liveSellerNames.has(info.name)}
                   onOpen={() => {
                     commitRecent(query);
                     openSeller(info.name);
                   }}
                 />
               ))}
+
             </ul>
           )}
         </div>
       ),
     },
+
     {
       key: "produits",
       label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
@@ -691,15 +778,53 @@ function LiveDot() {
   );
 }
 
+/* -------------------------------- Scope filter -------------------------------- */
+
+function SellerScopeFilter({
+  value,
+  onChange,
+}: {
+  value: SellerScope;
+  onChange: (v: SellerScope) => void;
+}) {
+  const { t } = useTranslation();
+  const options: { key: SellerScope; label: string }[] = [
+    { key: "all", label: t("search.sellerScope.all") },
+    { key: "live", label: t("search.sellerScope.live") },
+  ];
+  return (
+    <div className="mb-3 flex gap-1 rounded-full bg-muted p-1">
+      {options.map((opt) => {
+        const active = opt.key === value;
+        return (
+          <Press
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            className="!min-h-8 flex-1 rounded-full text-[13px] font-semibold"
+            style={{
+              backgroundColor: active ? "var(--accent)" : "transparent",
+              color: active ? "var(--accent-foreground)" : "var(--muted-foreground)",
+            }}
+          >
+            {opt.label}
+          </Press>
+        );
+      })}
+    </div>
+  );
+}
+
 /* -------------------------------- Sellers -------------------------------- */
 
 function SellerRow({
   info,
   index,
+  isLive,
   onOpen,
 }: {
   info: ReturnType<typeof getSellerInfo>;
   index: number;
+  isLive?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
@@ -727,6 +852,16 @@ function SellerRow({
             <p className="truncate text-[14px] font-semibold">{info.name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
               {formatFollowersLabel(info.followers, lang)}
+              {isLive && (
+                <span
+                  className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold"
+                  style={{ color: "var(--live)" }}
+                >
+                  <Radio size={10} className="animate-pulse" />
+                  {t("live.liveBadge")}
+                </span>
+              )}
+
             </p>
           </div>
         </Press>
@@ -752,6 +887,7 @@ function SellerRow({
     </motion.li>
   );
 }
+
 
 function EmptyResults({ query }: { query: string }) {
   const { t } = useTranslation();
