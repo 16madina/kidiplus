@@ -306,7 +306,7 @@ export type LiveProductRow = {
   price: number;
   stock: number;
   timer_seconds: number;
-  status: "upcoming" | "active" | "sold" | "out";
+  status: "upcoming" | "active" | "sold" | "out" | "unsold";
   sold_to_identity: string | null;
   final_price: number | null;
   position: number;
