@@ -1,13 +1,27 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
+
+// Windowing cap for the rendered chat — even if the parent buffers more,
+// we only ever render the last N to keep the DOM/React reconciler cheap
+// under 1k+ concurrent viewers with heavy chat throughput.
+const VISIBLE_MSGS = 120;
+
 
 export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
+
+  // Only render the last VISIBLE_MSGS messages — the parent may accumulate
+  // more, but we window the DOM to bound reconciliation cost.
+  const visible = useMemo(
+    () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
+    [messages],
+  );
+
 
   // Track if user scrolled away from bottom
   useEffect(() => {
@@ -70,7 +84,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
         >
           <div className="flex flex-col justify-end gap-1.5 pt-8">
             <AnimatePresence initial={false}>
-              {messages.map((m) => (
+              {visible.map((m) => (
                 <motion.div
                   key={m.id}
                   layout
@@ -87,6 +101,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
                 </motion.div>
               ))}
             </AnimatePresence>
+
           </div>
         </div>
 
@@ -119,7 +134,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   );
 }
 
-function ChatBubble({ msg }: { msg: ChatMsg }) {
+const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
   if (msg.system) {
     return (
       <div
@@ -154,4 +169,5 @@ function ChatBubble({ msg }: { msg: ChatMsg }) {
       </div>
     </div>
   );
-}
+});
+

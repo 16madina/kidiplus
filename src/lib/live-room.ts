@@ -289,7 +289,7 @@ export function useLiveRoom(params: {
       const p = payload as ChatEvt;
       setChat((prev) => {
         const next = [...prev, p];
-        return next.length > 80 ? next.slice(next.length - 80) : next;
+        return next.length > 150 ? next.slice(next.length - 150) : next;
       });
     });
     ch.on("broadcast", { event: "heart" }, () => {
@@ -316,18 +316,36 @@ export function useLiveRoom(params: {
       setViewerCount(Math.max(1, Object.keys(state).length));
     });
 
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 1_000;
     ch.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
+        retryDelay = 1_000;
         await ch.track({ identity, name: displayName, host: isHost, joined_at: Date.now() });
         setReady(true);
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        // Supabase realtime doesn't auto-resubscribe on error/close — do it
+        // ourselves with exponential backoff so a network blip during a
+        // live doesn't kill chat/hearts/presence for the rest of the
+        // session. 15s ceiling keeps recovery fast without stampeding.
+        setReady(false);
+        if (retryTimer != null) return;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          try { void ch.subscribe(); } catch { /* channel already gone */ }
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 15_000);
       }
     });
 
+
     return () => {
+      if (retryTimer != null) clearTimeout(retryTimer);
       setReady(false);
       supabase.removeChannel(ch);
       channelRef.current = null;
     };
+
   }, [liveId, identity, displayName, isHost]);
 
   // Host: periodically persist viewer_count so feed cards reflect reality.
@@ -365,7 +383,7 @@ export function useLiveRoom(params: {
           text: trimmed,
         };
         // Optimistic local echo + broadcast to others.
-        setChat((prev) => [...prev, evt].slice(-80));
+        setChat((prev) => [...prev, evt].slice(-150));
         void channelRef.current?.send({ type: "broadcast", event: "chat", payload: evt });
       },
       sendHeart: () => {
@@ -391,7 +409,7 @@ export function useLiveRoom(params: {
       },
       systemMessage: (text: string) => {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
-        setChat((prev) => [...prev, evt].slice(-80));
+        setChat((prev) => [...prev, evt].slice(-150));
       },
     }),
     [

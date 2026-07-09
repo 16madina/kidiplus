@@ -25,10 +25,12 @@ export type ViewerLiveVideoProps = {
 
 export type ViewerStatus =
   | "connecting"
-  | "waiting"   // connected but no host publishing yet
-  | "live"      // remote video attached
-  | "ended"    // host disconnected after having been live
+  | "waiting"      // connected but no host publishing yet
+  | "live"         // remote video attached
+  | "reconnecting" // livekit transient reconnect in progress
+  | "ended"        // host disconnected after having been live
   | "error";
+
 
 export function ViewerLiveVideo({
   room,
@@ -139,6 +141,20 @@ export function ViewerLiveVideo({
           else setStatus("error");
         });
 
+        // LiveKit auto-reconnects on network drops — surface the transient
+        // state so viewers see "Reconnexion…" instead of an ended overlay.
+        r.on(RoomEvent.Reconnecting, () => {
+          if (cancelled) return;
+          clearEndTimer();
+          setStatus("reconnecting");
+        });
+        r.on(RoomEvent.Reconnected, () => {
+          if (cancelled) return;
+          clearEndTimer();
+          setStatus(hadVideo ? "live" : "waiting");
+        });
+
+
         // Attach any tracks already subscribed at connect time.
         r.remoteParticipants.forEach((p) => {
           p.trackPublications.forEach((pub) => {
@@ -199,11 +215,14 @@ export function ViewerLiveVideo({
           >
             {status === "connecting"
               ? "Connexion au live…"
-              : status === "waiting"
-                ? "Le live va commencer…"
-                : status === "ended"
-                  ? "Live terminé"
-                  : "Connexion impossible"}
+              : status === "reconnecting"
+                ? "Reconnexion…"
+                : status === "waiting"
+                  ? "Le live va commencer…"
+                  : status === "ended"
+                    ? "Live terminé"
+                    : "Connexion impossible"}
+
           </div>
         </div>
       )}
