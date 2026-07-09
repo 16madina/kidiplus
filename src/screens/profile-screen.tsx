@@ -48,6 +48,7 @@ import { LegalScreen } from "@/components/legal/legal-screen";
 import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
+import { MyShopScreen } from "@/screens/my-shop-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +81,7 @@ export function ProfileScreen() {
   const [addressesOpen, setAddressesOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -115,7 +117,6 @@ export function ProfileScreen() {
   }, [profile?.avatar_url]);
 
   // Live-updating sales count (paid orders where the current user is seller).
-  // Followers/subscriptions tables don't exist yet — show 0 for those.
   const [salesCount, setSalesCount] = useState<number | null>(null);
   useEffect(() => {
     const userId = profile?.id;
@@ -140,6 +141,43 @@ export function ProfileScreen() {
       .subscribe();
     return () => { alive = false; supabase.removeChannel(channel); };
   }, [profile?.id]);
+
+  // Live-updating followers / following counts (denormalized on profiles, kept
+  // fresh via realtime on follows).
+  const [followers, setFollowers] = useState<number>(0);
+  const [following, setFollowing] = useState<number>(0);
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) { setFollowers(0); setFollowing(0); return; }
+    setFollowers(profile?.followers_count ?? 0);
+    setFollowing(profile?.following_count ?? 0);
+    let alive = true;
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("followers_count, following_count")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!alive) return;
+      const p = data as { followers_count?: number; following_count?: number } | null;
+      setFollowers(p?.followers_count ?? 0);
+      setFollowing(p?.following_count ?? 0);
+    };
+    const channel = supabase
+      .channel(`profile-follows-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "follows", filter: `followed_id=eq.${userId}` },
+        () => { void refresh(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "follows", filter: `follower_id=eq.${userId}` },
+        () => { void refresh(); },
+      )
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, [profile?.id, profile?.followers_count, profile?.following_count]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -270,11 +308,11 @@ export function ProfileScreen() {
             >
               {/* Stats */}
               <div className="grid grid-cols-3">
-                <HeroStat label={t("profile.stats.followers")} value="0" />
+                <HeroStat label={t("profile.stats.followers")} value={String(followers)} />
                 <HeroStatDivider />
                 <HeroStat label={t("profile.stats.sales")} value={salesCount === null ? "—" : String(salesCount)} />
                 <HeroStatDivider />
-                <HeroStat label={t("profile.stats.following")} value="0" />
+                <HeroStat label={t("profile.stats.following")} value={String(following)} />
               </div>
 
               <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
@@ -321,6 +359,9 @@ export function ProfileScreen() {
           index={0}
           items={[
             { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
+            ...(profile?.is_seller
+              ? [{ icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) }]
+              : []),
             { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
             ...(profile?.is_seller
               ? [{ icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) }]
@@ -398,6 +439,7 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
     </div>
   );
 }

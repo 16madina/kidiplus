@@ -27,6 +27,8 @@ export type BProduct = {
   stock: number;
   /** DB id (public.live_products.id) once the live has been created. */
   dbId?: string;
+  /** Optional link back to the seller's shop_products row (traceability + stock sync). */
+  shopProductId?: string;
 };
 
 

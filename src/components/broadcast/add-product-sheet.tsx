@@ -26,10 +26,12 @@ export function AddProductSheet({
   open,
   onClose,
   onAdd,
+  onPickFromShop,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (p: Omit<BProduct, "id">) => void;
+  onPickFromShop?: () => void;
 }) {
   const { currency } = useBroadcast();
   const symbol = currencySymbol(currency);
@@ -138,6 +140,17 @@ export function AddProductSheet({
             <X size={22} />
           </Press>
         </div>
+
+        {onPickFromShop && (
+          <Press
+            onClick={onPickFromShop}
+            className="!min-h-14 mb-4 h-14 w-full rounded-2xl text-[14px] font-bold text-white"
+            style={{ background: "linear-gradient(135deg, oklch(0.5 0.18 260), oklch(0.42 0.14 265))" }}
+          >
+            📦 Choisir depuis ma boutique
+          </Press>
+        )}
+
 
         {/* 3 photo slots */}
         <div className="grid grid-cols-3 gap-3">

@@ -1,4 +1,53 @@
 {
+  "follow": {
+    "follow": "Suivre",
+    "following": "Abonné"
+  },
+  "shop": {
+    "title": "Ma boutique",
+    "short": "Boutique",
+    "add": "Ajouter un article",
+    "editItem": "Modifier l'article",
+    "name": "Nom",
+    "description": "Description (optionnel)",
+    "price": "Prix",
+    "startPrice": "Prix départ",
+    "durationSec": "Durée (s)",
+    "stock": "Stock",
+    "active": "Actif",
+    "archived": "Archivé",
+    "archive": "Archiver",
+    "reactivate": "Réactiver",
+    "reactivated": "Réactivé",
+    "empty": "Aucun article. Ajoutes-en pour les utiliser dans tes prochains lives.",
+    "emptyPicker": "Aucun article actif. Ajoute des articles depuis Ma boutique.",
+    "pickPhoto": "Ajouter une photo",
+    "pickFromShop": "Choisir depuis ma boutique",
+    "pickTitle": "Choisir depuis ma boutique",
+    "configTitle": "Configurer les articles",
+    "pickConfirm": "Continuer ({{n}})",
+    "addToLive": "Ajouter au live",
+    "fixed": "Prix fixe",
+    "auction": "Enchère",
+    "added": "Article ajouté",
+    "updated": "Article modifié",
+    "imageOnly": "Image uniquement",
+    "imageTooBig": "Image trop lourde (max 5 Mo)"
+  },
+  "reviews": {
+    "leave": "Laisser un avis ⭐",
+    "edit": "Modifier ton avis",
+    "rate": "Comment évalues-tu cette commande ?",
+    "commentPlaceholder": "Un commentaire (optionnel)…",
+    "submit": "Envoyer",
+    "thanks": "Merci pour ton avis !",
+    "empty": "Aucun avis pour le moment."
+  },
+  "sellerProfile": {
+    "shopEmpty": "Boutique vide pour le moment.",
+    "livesEmpty": "Aucun live pour le moment.",
+    "availableInLives": "Disponible pendant les lives"
+  },
   "moderator": {
     "title": "Modérateurs",
     "empty": "Aucun modérateur. Promeus un spectateur pour t'aider à gérer les produits.",

@@ -1,4 +1,53 @@
 {
+  "follow": {
+    "follow": "Follow",
+    "following": "Following"
+  },
+  "shop": {
+    "title": "My shop",
+    "short": "Shop",
+    "add": "Add item",
+    "editItem": "Edit item",
+    "name": "Name",
+    "description": "Description (optional)",
+    "price": "Price",
+    "startPrice": "Start price",
+    "durationSec": "Duration (s)",
+    "stock": "Stock",
+    "active": "Active",
+    "archived": "Archived",
+    "archive": "Archive",
+    "reactivate": "Reactivate",
+    "reactivated": "Reactivated",
+    "empty": "No items yet. Add some to use them in your next lives.",
+    "emptyPicker": "No active items. Add items in My shop.",
+    "pickPhoto": "Add a photo",
+    "pickFromShop": "Pick from my shop",
+    "pickTitle": "Pick from my shop",
+    "configTitle": "Configure items",
+    "pickConfirm": "Continue ({{n}})",
+    "addToLive": "Add to live",
+    "fixed": "Fixed",
+    "auction": "Auction",
+    "added": "Item added",
+    "updated": "Item updated",
+    "imageOnly": "Image only",
+    "imageTooBig": "Image too large (max 5 MB)"
+  },
+  "reviews": {
+    "leave": "Leave a review ⭐",
+    "edit": "Edit your review",
+    "rate": "How would you rate this order?",
+    "commentPlaceholder": "A comment (optional)…",
+    "submit": "Submit",
+    "thanks": "Thanks for your review!",
+    "empty": "No reviews yet."
+  },
+  "sellerProfile": {
+    "shopEmpty": "Shop is empty for now.",
+    "livesEmpty": "No lives yet.",
+    "availableInLives": "Available during lives"
+  },
   "moderator": {
     "title": "Moderators",
     "empty": "No moderators yet. Promote a viewer to help you manage products.",

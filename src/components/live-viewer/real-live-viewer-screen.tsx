@@ -38,6 +38,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
+import { FollowButton } from "@/components/follow-button";
 
 
 
@@ -590,7 +591,7 @@ export function RealLiveViewerScreen() {
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <Press
-              onClick={() => openSeller(active.seller)}
+              onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir le profil de ${active.seller}`}
               className="!block flex min-w-0 items-center gap-2 p-0 text-left"
             >
@@ -605,25 +606,7 @@ export function RealLiveViewerScreen() {
                 </p>
               </div>
             </Press>
-            <Press
-              onClick={() => {
-                haptic.medium();
-                setFollowing((v) => {
-                  const next = !v;
-                  if (next) void requestWithPrePrompt(
-                    `Active les notifications pour ne rater aucun live de ${active.seller} 🔔`,
-                  );
-                  return next;
-                });
-              }}
-              hapticOnTap={false}
-              className="!min-h-8 ml-1 rounded-full px-3 text-[12px] font-bold"
-              style={following
-                ? { backgroundColor: "transparent", color: "white", border: "1.5px solid rgba(255,255,255,0.8)" }
-                : { backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
-            >
-              {following ? t("live.following") : t("live.follow")}
-            </Press>
+            <FollowButton sellerId={active.sellerId ?? null} size="sm" variant="solid" />
           </div>
 
           <div className="flex items-center gap-1.5">

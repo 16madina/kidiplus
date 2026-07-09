@@ -29,6 +29,7 @@ import {
   type NotificationRow,
 } from "@/lib/notifications-db";
 import { OrderTimeline } from "@/components/orders/order-timeline";
+import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchOrderById } from "@/lib/orders-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
 
@@ -604,18 +605,17 @@ function OrderDetailScreen({ order, onClose }: { order: OrderRow | null; onClose
 
 function OrderDetailBody({ order }: { order: OrderRow }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const meta = statusMeta(order.status);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const isBuyer = !!user && user.id === order.buyer_id;
+  const canReview = isBuyer && order.fulfillment_status === "delivered";
 
   return (
     <div className="space-y-4 px-4 py-4">
       <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
         {order.item_image ? (
-          <img
-            src={order.item_image}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-xl object-cover"
-            draggable={false}
-          />
+          <img src={order.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" draggable={false} />
         ) : (
           <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
         )}
@@ -644,10 +644,26 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency)} bold />
       </div>
 
+      {canReview && (
+        <Press
+          onClick={() => setReviewOpen(true)}
+          className="!min-h-12 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white"
+          style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
+        >
+          <Check size={16} /> {t("reviews.leave", { defaultValue: "Laisser un avis ⭐" })}
+        </Press>
+      )}
+
       <div className="rounded-2xl border border-border p-4">
         <p className="mb-3 text-[13px] font-semibold">{t("timeline.title")}</p>
         <OrderTimeline orderId={order.id} />
       </div>
+
+      <LeaveReviewSheet
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        orderId={order.id}
+      />
     </div>
   );
 }
