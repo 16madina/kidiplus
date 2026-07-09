@@ -18,10 +18,11 @@ export type PickedShopItem = Omit<BProduct, "id"> & { shopProductId: string };
 
 type ItemConfig = {
   mode: "fixed" | "auction";
-  price: number;
-  startPrice: number;
-  timerSec: number;
+  price: string;
+  startPrice: string;
+  timerSec: string;
 };
+
 
 export function ShopPickerSheet({
   open,
