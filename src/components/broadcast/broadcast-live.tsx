@@ -31,7 +31,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
-  createLiveProductInDb,
+  createLiveProductInDb, relaunchUnsoldProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,17 +136,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured auto-advances: on load, and whenever the current featured is sold
-  // out or removed, jump to the next non-sold product (or clear if none left).
+  // Featured auto-advances FORWARD only. When the current featured is
+  // finished (sold / unsold / out) or removed, we pick the next product by
+  // ascending position whose status is 'upcoming' — never loop back to an
+  // earlier item. When none remain, `featuredId` is cleared and the "all
+  // done" state renders.
   useEffect(() => {
     if (room.products.length === 0) {
       if (featuredId) setFeaturedId("");
       return;
     }
     const cur = room.products.find((p) => p.id === featuredId);
-    const done = cur && (cur.status === "sold" || cur.status === "out");
+    const done = cur && (cur.status === "sold" || cur.status === "out" || cur.status === "unsold");
     if (!cur || done) {
-      const next = room.products.find((p) => p.status !== "sold" && p.status !== "out");
+      const curPos = cur?.position ?? -1;
+      const sorted = [...room.products].sort((a, b) => a.position - b.position);
+      const next = sorted.find(
+        (p) => p.position > curPos && p.status === "upcoming",
+      );
       setFeaturedId(next?.id ?? "");
     }
   }, [room.products, featuredId]);
@@ -263,27 +270,32 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    const key = `${evt.productId}-${evt.finalPrice}`;
+    const key = `${evt.productId}-${evt.finalPrice}-${evt.winnerId ?? "none"}`;
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
-    const label = evt.winnerName
-      ? t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice)
-      : `${t("live.sold")} · ${fmt(evt.finalPrice)}`;
+    // No winner → UNSOLD: no confetti, no winner reveal, no sale flash.
+    if (!evt.winnerName || !evt.winnerId) {
+      const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
+      setLastSaleFlash(label);
+      room.systemMessage(label);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
+      return;
+    }
+    const label = t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice);
     setLastSaleFlash(label);
     setConfettiTrigger((n) => n + 1);
     haptic.success();
     room.systemMessage(label + (prod ? ` — ${prod.name}` : ""));
-    if (evt.winnerName) {
-      setWinnerReveal({
-        key: Date.now(),
-        name: evt.winnerName,
-        avatar: evt.winnerAvatarUrl ?? null,
-      });
-    }
+    setWinnerReveal({
+      key: Date.now(),
+      name: evt.winnerName,
+      avatar: evt.winnerAvatarUrl ?? null,
+    });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room]);
+  }, [room.lastAuctionEnd, room.products, t, room, fmt]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
@@ -881,7 +893,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       </p>
                     </div>
                     {p.mode === "auction" ? (
-                      soldOut ? (
+                      p.status === "unsold" ? (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
+                            style={{ backgroundColor: "oklch(0.55 0.05 250)" }}
+                          >
+                            {t("live.unsold")}
+                          </span>
+                          <Press
+                            onClick={async () => {
+                              const res = await relaunchUnsoldProductInDb(p.id);
+                              if (!res.ok) toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+                              else { haptic.success(); toast.success(t("live.relaunched")); }
+                            }}
+                            className="!min-h-10 rounded-full bg-foreground px-4 text-[13px] font-bold text-background"
+                          >
+                            {t("live.relaunch")}
+                          </Press>
+                        </div>
+                      ) : soldOut ? (
                         <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
                           {t("live.sold")}
                         </span>

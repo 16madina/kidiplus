@@ -1223,6 +1223,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      relaunch_unsold_product: { Args: { _product_id: string }; Returns: Json }
       release_overdue_escrow: { Args: never; Returns: Json }
       request_payout: {
         Args: { _amount: number; _destination: Json; _method: string }
