@@ -61,11 +61,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [addOpen, setAddOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
   const [canFlip, setCanFlip] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterKey>(() => {
-    if (typeof window === "undefined") return "none";
-    return (sessionStorage.getItem("kp:host:filter") as FilterKey | null) ?? "none";
-  });
+  const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
   const { moderators } = useModerators(b.liveId);
