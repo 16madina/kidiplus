@@ -31,9 +31,13 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     if (!user) return;
     const rows = await listMyShopProducts(user.id);
     setItems(rows);
-    // Resolve images in parallel.
+    // Resolve images in parallel and merge into cache (avoid blanking existing ones).
     const entries = await Promise.all(rows.map(async (r) => [r.id, await resolveShopImage(r.image_url)] as const));
-    setImgs(Object.fromEntries(entries));
+    setImgs((prev) => {
+      const next = { ...prev };
+      for (const [id, url] of entries) if (url) next[id] = url;
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -88,7 +92,12 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
               <div key={p.id} className={`overflow-hidden rounded-2xl border border-border bg-card ${p.active ? "" : "opacity-60"}`}>
                 <div className="relative aspect-square bg-muted">
                   {imgs[p.id] ? (
-                    <img src={imgs[p.id]!} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={imgs[p.id]!}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      onError={() => setImgs((prev) => { const n = { ...prev }; delete n[p.id]; return n; })}
+                    />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={28} /></div>
                   )}
