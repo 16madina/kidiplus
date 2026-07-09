@@ -746,10 +746,18 @@ export function RealLiveViewerScreen() {
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Heart size={17} fill="currentColor" />
         </Press>
-        <Press aria-label="Plus"
+        <Press
+          onClick={liveEnded ? undefined : () => { haptic.light(); setGiftTrayOpen(true); }}
+          disabled={liveEnded}
+          aria-label={t("gifts.open", "Cadeaux")}
           className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Plus size={18} />
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            border: "1px solid oklch(0.75 0.14 85 / 0.5)",
+          }}>
+          <Gift size={17} />
         </Press>
       </div>
 
