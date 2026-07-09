@@ -350,8 +350,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
     setFeaturedId(p.id);
     endingRef.current = null;
-    await startAuctionInDb(p.id);
-    const deadlineMs = Date.now() + p.timer_seconds * 1000;
+    // Ask the server to flip the row to active AND persist the deadline. We
+    // then broadcast the SAME absolute epoch ms to every viewer, and the
+    // host's own countdown reads from broadcastAuctionStart(...) — a single
+    // deadline source keeps host, viewers, and late joiners in sync (±1s
+    // clock drift). Fall back to a local computation if the RPC fails so
+    // the auction still runs.
+    const res = await startAuctionInDb(p.id);
+    const deadlineMs = res.ok && res.deadlineMs ? res.deadlineMs : Date.now() + p.timer_seconds * 1000;
     room.broadcastAuctionStart({
       productId: p.id,
       deadlineMs,
@@ -359,6 +365,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     });
     room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${fmt(p.start_price)}`);
   };
+
 
   const endAuctionNow = async () => {
     if (!activeAuction || !activeProduct) return;

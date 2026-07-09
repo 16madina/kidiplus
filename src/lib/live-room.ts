@@ -130,7 +130,9 @@ export function useLiveRoom(params: {
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Load initial products.
+  // Load initial products + rehydrate an already-running auction so late
+  // joiners see the same countdown as everyone else. `auction_deadline_at`
+  // is stored on the live_products row by the start_auction RPC.
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
@@ -151,6 +153,21 @@ export function useLiveRoom(params: {
       if (!alive) return;
       setProducts(hydrated);
       setLiveStatus((liveRes.data?.status as "live" | "ended" | undefined) ?? null);
+      // Rehydrate any active auction whose deadline is still in the future.
+      const running = hydrated.find(
+        (row) =>
+          row.mode === "auction" &&
+          row.status === "active" &&
+          row.auction_deadline_at &&
+          new Date(row.auction_deadline_at).getTime() > Date.now(),
+      );
+      if (running && running.auction_deadline_at) {
+        setAuctionStart({
+          productId: running.id,
+          deadlineMs: new Date(running.auction_deadline_at).getTime(),
+          timerSec: running.timer_seconds,
+        });
+      }
       if (bidRes.data) {
         setLastBid({
           productId: bidRes.data.product_id,
@@ -166,6 +183,7 @@ export function useLiveRoom(params: {
     };
   }, [liveId]);
 
+
   // Postgres realtime for products + bids.
   useEffect(() => {
     if (!liveId) return;
@@ -175,10 +193,26 @@ export function useLiveRoom(params: {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "lives", filter: `id=eq.${liveId}` },
         (payload) => {
-          const row = payload.new as { status?: "live" | "ended" };
-          setLiveStatus(row.status ?? null);
+          // CRITICAL: only transition to "ended" when the row's status column
+          // ACTUALLY becomes "ended" (a real state change from "live" to
+          // "ended"). Realtime UPDATEs also fire for viewer_count writes and
+          // any other column write; payload.new is the full row so a bare
+          // read of row.status is safe, but we still explicitly guard against
+          // partial payloads (REPLICA IDENTITY DEFAULT), and we never
+          // downgrade a known status to null from a realtime frame — the
+          // initial load is the only source of truth for that.
+          const newRow = payload.new as { status?: "live" | "ended" };
+          const oldRow = payload.old as { status?: "live" | "ended" } | null;
+          if (newRow.status === "ended" && oldRow?.status !== "ended") {
+            setLiveStatus("ended");
+          } else if (newRow.status === "live") {
+            setLiveStatus("live");
+          }
+          // Any other update (viewer_count, ended_at without status, sparse
+          // payload) is ignored — we do NOT touch liveStatus.
         },
       )
+
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
@@ -187,8 +221,25 @@ export function useLiveRoom(params: {
           void hydrateImage(row).then((r) =>
             setProducts((prev) => prev.map((p) => (p.id === r.id ? r : p))),
           );
+          // Fallback deadline sync — if the broadcast frame was missed, this
+          // ensures viewers still adopt the persisted absolute deadline.
+          if (
+            row.mode === "auction" &&
+            row.status === "active" &&
+            row.auction_deadline_at
+          ) {
+            const deadlineMs = new Date(row.auction_deadline_at).getTime();
+            if (Number.isFinite(deadlineMs) && deadlineMs > Date.now()) {
+              setAuctionStart((cur) =>
+                cur && cur.productId === row.id && cur.deadlineMs === deadlineMs
+                  ? cur
+                  : { productId: row.id, deadlineMs, timerSec: row.timer_seconds },
+              );
+            }
+          }
         },
       )
+
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },

@@ -35,7 +35,7 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { open: openStream } = useLiveViewer();
+  const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -304,8 +304,14 @@ export function HomeScreen() {
                     <LiveCardSkeleton key={`sk-${i}`} />
                   ))
                 : filtered.map((s, i) => (
-                    <LiveCard key={s.id} stream={s} index={i} onPress={openStream} />
+                    <LiveCard
+                      key={s.id}
+                      stream={s}
+                      index={i}
+                      onPress={() => openList(filtered, i)}
+                    />
                   ))}
+
             </motion.div>
           </AnimatePresence>
 

@@ -51,6 +51,34 @@ export function ViewerLiveVideo({
     if (!appActive) return;
     let cancelled = false;
     let hadVideo = false;
+    // Debounce transitions to "ended". LiveKit routinely fires a brief
+    // TrackUnsubscribed / ParticipantDisconnected during host publish
+    // renegotiations (e.g. when the host opens a native prompt, switches
+    // camera, or briefly loses network). Immediately flashing "Live terminé"
+    // on the viewer during those hiccups was the source of the wrongly-ended
+    // overlay when the host started an auction. We wait 4s of continued
+    // absence before we consider the video actually ended.
+    let endTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearEndTimer = () => {
+      if (endTimer) {
+        clearTimeout(endTimer);
+        endTimer = null;
+      }
+    };
+    const scheduleEnd = () => {
+      clearEndTimer();
+      if (!hadVideo) {
+        setStatus("waiting");
+        return;
+      }
+      // Optimistically show a soft "reconnexion" state, then commit to
+      // "ended" only if no new video track subscribes within the window.
+      setStatus("waiting");
+      endTimer = setTimeout(() => {
+        endTimer = null;
+        if (!cancelled) setStatus("ended");
+      }, 4_000);
+    };
 
     async function start() {
       setStatus("connecting");
@@ -68,6 +96,7 @@ export function ViewerLiveVideo({
           if (track.kind === Track.Kind.Video && videoRef.current) {
             track.attach(videoRef.current);
             hadVideo = true;
+            clearEndTimer();
             setStatus("live");
           } else if (track.kind === Track.Kind.Audio && audioRef.current) {
             track.attach(audioRef.current);
@@ -85,18 +114,19 @@ export function ViewerLiveVideo({
               track.detach();
             } catch {}
             if (track.kind === Track.Kind.Video) {
-              setStatus(hadVideo ? "ended" : "waiting");
+              scheduleEnd();
             }
           },
         );
 
         r.on(RoomEvent.ParticipantDisconnected, (_p: RemoteParticipant) => {
           const anyoneLeft = r.remoteParticipants.size > 0;
-          if (!anyoneLeft && hadVideo) setStatus("ended");
+          if (!anyoneLeft && hadVideo) scheduleEnd();
         });
 
         r.on(RoomEvent.Disconnected, () => {
-          setStatus(hadVideo ? "ended" : "error");
+          if (hadVideo) scheduleEnd();
+          else setStatus("error");
         });
 
         // Attach any tracks already subscribed at connect time.
@@ -116,6 +146,7 @@ export function ViewerLiveVideo({
     void start();
     return () => {
       cancelled = true;
+      clearEndTimer();
       const r = roomRef.current;
       roomRef.current = null;
       void disconnectRoom(r);
@@ -123,6 +154,7 @@ export function ViewerLiveVideo({
       if (audioRef.current) audioRef.current.srcObject = null;
     };
   }, [room, identity, name, appActive]);
+
 
   const showPoster = status !== "live";
 

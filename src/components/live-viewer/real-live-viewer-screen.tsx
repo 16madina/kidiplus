@@ -61,7 +61,7 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
 
 export function RealLiveViewerScreen() {
   const { t, i18n } = useTranslation();
-  const { active, close } = useLiveViewer();
+  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
   const { requestWithPrePrompt } = usePush();
@@ -492,7 +492,45 @@ export function RealLiveViewerScreen() {
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
-      <div className="absolute inset-0 z-10" onClick={onVideoTap} aria-hidden />
+      {/* Video interaction layer: tap for hearts + vertical swipe to cycle
+          between currently-live streams (TikTok / Whatnot style). Chat,
+          composer, product sheets and moderation menus sit on higher z
+          layers and receive their own events before this one. */}
+      <motion.div
+        className="absolute inset-0 z-10"
+        aria-hidden
+        drag="y"
+        dragElastic={{ top: hasNext ? 0.55 : 0.12, bottom: hasPrev ? 0.55 : 0.15 }}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        onDrag={(_, info) => dragY.set(info.offset.y)}
+        onTap={onVideoTap}
+        onDragEnd={(_, info) => {
+          const strong = Math.abs(info.offset.y) > 80 || Math.abs(info.velocity.y) > 600;
+          const up = info.offset.y < 0;
+          const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          if (up && strong && hasNext) {
+            void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              nextLive();
+            });
+            return;
+          }
+          if (!up && strong && hasPrev) {
+            void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              prevLive();
+            });
+            return;
+          }
+          // Down-drag past close threshold with no previous live → dismiss.
+          if (!up && info.offset.y > 160) {
+            close();
+            return;
+          }
+          animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
+        }}
+      />
+
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
         style={{ backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))" }} />
