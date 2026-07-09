@@ -801,9 +801,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Bottom area is intentionally left to chat + featured card only.
-          Mic / camera / flip / filters / add-product all live on the right
-          tool rail (see <HostToolRail /> below). */}
+      {/* Bottom area is chat + featured card only. Mic / cam / flip / filters /
+          add live on the right tool rail. */}
+      <HostToolRail
+        micOn={micOn}
+        camOn={cameraOn}
+        canFlip={canFlip}
+        canFilter={true}
+        filtersOpen={filtersOpen}
+        onToggleMic={() => setMicOn((m) => !m)}
+        onToggleCam={() => setCameraOn((c) => !c)}
+        onFlip={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        onAddProduct={() => setAddOpen(true)}
+      />
+      <FilterPicker
+        open={filtersOpen}
+        active={filter}
+        onPick={async (k) => {
+          setFilter(k);
+          try { sessionStorage.setItem("kp:host:filter", k); } catch {}
+          const h = videoHandleRef.current;
+          if (!h) return;
+          const res = await h.setFilter(k);
+          if (!res.ok) {
+            if (res.reason === "slow") {
+              toast.error(t("live.filterSlow", "Filtres indisponibles sur cet appareil"));
+            }
+            setFilter("none");
+            try { sessionStorage.setItem("kp:host:filter", "none"); } catch {}
+          }
+        }}
+      />
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
       <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={85}>
