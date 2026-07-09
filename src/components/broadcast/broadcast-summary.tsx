@@ -10,6 +10,7 @@ import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
+import { fetchLiveGiftsTotal } from "@/lib/live-gifts-db";
 import { Logo } from "@/components/brand/logo";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
