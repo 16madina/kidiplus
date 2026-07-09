@@ -321,6 +321,10 @@ export function useLiveRoom(params: {
       );
       setLastExtension(evt);
     });
+    ch.on("broadcast", { event: "gift" }, ({ payload }) => {
+      const p = payload as GiftEvt;
+      setLastGift(p);
+    });
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
