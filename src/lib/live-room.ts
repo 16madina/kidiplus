@@ -434,7 +434,7 @@ export function useLiveRoom(params: {
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid,
+      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid, lastGift,
       identity, displayName,
     ],
   );
