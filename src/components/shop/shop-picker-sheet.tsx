@@ -226,8 +226,9 @@ export function ShopPickerSheet({
                       <div className="mt-3">
                         <label className="text-[11px] font-semibold uppercase text-muted-foreground">{`${t("shop.price")} (${symbol})`}</label>
                         <input
-                          type="number" inputMode="decimal" value={c.price} min={0}
-                          onChange={(e) => update({ price: Math.max(0, Number(e.target.value) || 0) })}
+                          type="text" inputMode="decimal" value={c.price}
+                          onChange={(e) => update({ price: e.target.value.replace(/[^0-9.,]/g, "") })}
+                          onBlur={(e) => update({ price: String(Math.max(0, Number(e.target.value.replace(",", ".")) || 0)) })}
                           className="mt-1 h-10 w-full rounded-lg border bg-muted px-3 text-[14px]"
                           style={{ borderColor: "var(--border)" }}
                         />
@@ -237,8 +238,9 @@ export function ShopPickerSheet({
                         <div>
                           <label className="text-[11px] font-semibold uppercase text-muted-foreground">{`${t("shop.startPrice", { defaultValue: "Prix départ" })} (${symbol})`}</label>
                           <input
-                            type="number" inputMode="decimal" value={c.startPrice} min={0}
-                            onChange={(e) => update({ startPrice: Math.max(0, Number(e.target.value) || 0) })}
+                            type="text" inputMode="decimal" value={c.startPrice}
+                            onChange={(e) => update({ startPrice: e.target.value.replace(/[^0-9.,]/g, "") })}
+                            onBlur={(e) => update({ startPrice: String(Math.max(0, Number(e.target.value.replace(",", ".")) || 0)) })}
                             className="mt-1 h-10 w-full rounded-lg border bg-muted px-3 text-[14px]"
                             style={{ borderColor: "var(--border)" }}
                           />
@@ -246,14 +248,16 @@ export function ShopPickerSheet({
                         <div>
                           <label className="text-[11px] font-semibold uppercase text-muted-foreground">{t("shop.durationSec", { defaultValue: "Durée (s)" })}</label>
                           <input
-                            type="number" inputMode="numeric" value={c.timerSec} min={10}
-                            onChange={(e) => update({ timerSec: Math.max(10, Number(e.target.value) || 10) })}
+                            type="text" inputMode="numeric" value={c.timerSec}
+                            onChange={(e) => update({ timerSec: e.target.value.replace(/[^0-9]/g, "") })}
+                            onBlur={(e) => update({ timerSec: String(Math.max(10, Number(e.target.value) || 10)) })}
                             className="mt-1 h-10 w-full rounded-lg border bg-muted px-3 text-[14px]"
                             style={{ borderColor: "var(--border)" }}
                           />
                         </div>
                       </div>
                     )}
+
                   </div>
                 );
               })}
