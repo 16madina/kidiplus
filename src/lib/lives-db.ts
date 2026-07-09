@@ -273,6 +273,54 @@ export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
   return streams;
 }
 
+/** Search currently-live streams by title, category, or seller display_name/handle. */
+export async function searchActiveLives(query: string, limit = 40): Promise<LiveStream[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const q = `%${trimmed}%`;
+  const { data, error } = await supabase
+    .from("lives")
+    .select(
+      `id, seller_id, title, category, cover_url, room_name, viewer_count, started_at, currency,
+       seller:profiles!lives_seller_id_fkey(display_name, handle, avatar_url)`,
+    )
+    .eq("status", "live")
+    .or(`title.ilike.${q},category.ilike.${q}`)
+    .limit(limit);
+  if (error || !data) return [];
+  const rows = data as unknown as LivesRow[];
+  // Also allow matching by seller name/handle client-side (Supabase can't OR across joined table easily).
+  const filtered = rows.filter((r) => {
+    const t = trimmed.toLowerCase();
+    return (
+      r.title?.toLowerCase().includes(t) ||
+      r.category?.toLowerCase().includes(t) ||
+      r.seller?.display_name?.toLowerCase().includes(t) ||
+      r.seller?.handle?.toLowerCase().includes(t)
+    );
+  });
+  // Merge: server-filtered rows already include title/category; add name-matched via another query if empty.
+  let base = filtered.length ? filtered : rows;
+  if (!base.length) {
+    const { data: d2 } = await supabase
+      .from("lives")
+      .select(
+        `id, seller_id, title, category, cover_url, room_name, viewer_count, started_at, currency,
+         seller:profiles!lives_seller_id_fkey(display_name, handle, avatar_url)`,
+      )
+      .eq("status", "live")
+      .limit(limit);
+    base = ((d2 ?? []) as unknown as LivesRow[]).filter((r) => {
+      const t = trimmed.toLowerCase();
+      return (
+        r.seller?.display_name?.toLowerCase().includes(t) ||
+        r.seller?.handle?.toLowerCase().includes(t)
+      );
+    });
+  }
+  return Promise.all(base.map(rowToStream));
+}
+
 /** Fetch a single live stream by id (used for push deep-links). */
 export async function fetchLiveById(id: string): Promise<LiveStream | null> {
   const { data, error } = await supabase

@@ -117,6 +117,42 @@ export async function listSellerActiveShopProducts(sellerId: string): Promise<Sh
   return (data ?? []).map((r) => rowToProduct(r as Record<string, unknown>));
 }
 
+export type ShopProductWithSeller = ShopProduct & {
+  seller_display_name: string;
+  seller_handle: string;
+  seller_avatar_url: string | null;
+};
+
+/** Real full-text-ish search over active shop products (by name), joined with seller profile. */
+export async function searchActiveShopProducts(
+  query: string,
+  limit = 40,
+): Promise<ShopProductWithSeller[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const q = `%${trimmed}%`;
+  const { data, error } = await supabase
+    .from("shop_products")
+    .select(
+      `*, seller:profiles!shop_products_seller_id_fkey(display_name, handle, avatar_url)`,
+    )
+    .eq("active", true)
+    .ilike("name", q)
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map((r) => {
+    const row = r as Record<string, unknown>;
+    const p = rowToProduct(row);
+    const s = (row.seller ?? {}) as { display_name?: string; handle?: string; avatar_url?: string | null };
+    return {
+      ...p,
+      seller_display_name: s.display_name ?? "Vendeur",
+      seller_handle: s.handle ?? "",
+      seller_avatar_url: s.avatar_url ?? null,
+    };
+  });
+}
+
 export type ShopProductInput = {
   name: string;
   description?: string | null;

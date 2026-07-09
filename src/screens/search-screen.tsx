@@ -5,36 +5,38 @@ import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
-import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import type { LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
-import {
-  getSellerInfo,
-  makeSellerInfoFromProfile,
-  type SellerProduct,
-} from "@/lib/seller-mock";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
-  TRENDS,
   type BrowseCategory,
-  type Trend,
 } from "@/lib/browse-mock";
 import { formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
 import { useLanguage } from "@/i18n/language-context";
 import {
-  fetchActiveSellerNames,
+  fetchActiveSellers,
   searchSellerProfiles,
   type SellerProfile,
 } from "@/lib/sellers-db";
-
-const ALL_STREAMS = makeStreams(0, 24);
+import { searchActiveLives } from "@/lib/lives-db";
+import {
+  searchActiveShopProducts,
+  resolveShopImage,
+  type ShopProductWithSeller,
+} from "@/lib/shop-db";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { FollowButton } from "@/components/follow-button";
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 
 type SellerScope = "all" | "live";
+
+type TrendItem = { id: string; label: string; viewers: number; image: string | null };
+
 
 
 export function SearchScreen() {
@@ -51,8 +53,21 @@ export function SearchScreen() {
   const [sort, setSort] = useState<CategorySort>("recommended");
   const [sellerScope, setSellerScope] = useState<SellerScope>("all");
   const [dbSellers, setDbSellers] = useState<SellerProfile[]>([]);
-  const [activeSellerNames, setActiveSellerNames] = useState<Set<string>>(new Set());
+  const [sellerAvatars, setSellerAvatars] = useState<Record<string, string | null>>({});
+  const [activeSellerIds, setActiveSellerIds] = useState<Set<string>>(new Set());
+  const [activeLives, setActiveLives] = useState<LiveStream[]>([]);
   const [sellerLoading, setSellerLoading] = useState(false);
+
+  const [liveResults, setLiveResults] = useState<LiveStream[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  const [productResults, setProductResults] = useState<ShopProductWithSeller[]>([]);
+  const [productImgs, setProductImgs] = useState<Record<string, string | null>>({});
+  const [productLoading, setProductLoading] = useState(false);
+
+  // Trends: derived from currently-live streams grouped by category.
+  const [trends, setTrends] = useState<TrendItem[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
@@ -63,109 +78,111 @@ export function SearchScreen() {
     return () => clearTimeout(handle);
   }, [rawQuery]);
 
-
-
   // First-paint skeleton for the browse (Tendances + Catégories) section
   useEffect(() => {
-    const t = setTimeout(() => setBrowseLoading(false), 450);
+    const t = setTimeout(() => setBrowseLoading(false), 300);
     return () => clearTimeout(t);
   }, []);
 
   const searching = query.length > 0;
-  const q = query.toLowerCase();
 
-  // Load seller profiles + live seller names from the backend whenever the query changes.
+  // Load trends (grouped active lives) on browse view.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { lives } = await fetchActiveSellers();
+      if (cancelled) return;
+      const byCat = new Map<string, { viewers: number; image: string | null }>();
+      for (const l of lives) {
+        const key = l.category ?? "Autres";
+        const prev = byCat.get(key) ?? { viewers: 0, image: null };
+        byCat.set(key, {
+          viewers: prev.viewers + (l.viewers || 0),
+          image: prev.image ?? l.thumbnail ?? null,
+        });
+      }
+      const list: TrendItem[] = Array.from(byCat.entries())
+        .map(([label, v]) => ({ id: label, label, viewers: v.viewers, image: v.image }))
+        .sort((a, b) => b.viewers - a.viewers)
+        .slice(0, 8);
+      setTrends(list);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load real seller profiles + active seller ids whenever the query changes.
   useEffect(() => {
     if (!searching) {
       setDbSellers([]);
-      setActiveSellerNames(new Set());
+      setSellerAvatars({});
+      setActiveSellerIds(new Set());
+      setActiveLives([]);
+      setLiveResults([]);
+      setProductResults([]);
+      setProductImgs({});
       setSellerLoading(false);
+      setLiveLoading(false);
+      setProductLoading(false);
       return;
     }
     let cancelled = false;
     setSellerLoading(true);
-    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
-      .then(([profiles, liveNames]) => {
+    setLiveLoading(true);
+    setProductLoading(true);
+
+    void Promise.all([
+      searchSellerProfiles(query, 30),
+      fetchActiveSellers(),
+      searchActiveLives(query, 40),
+      searchActiveShopProducts(query, 40),
+    ])
+      .then(async ([profiles, active, lives, products]) => {
         if (cancelled) return;
         setDbSellers(profiles);
-        setActiveSellerNames(liveNames);
+        setActiveSellerIds(active.ids);
+        setActiveLives(active.lives);
+        setLiveResults(lives);
+        setProductResults(products);
+
+        // Resolve avatars for sellers in parallel.
+        const entries = await Promise.all(
+          profiles.map(async (p) => [p.id, await resolveAvatarUrl(p.avatar_url)] as const),
+        );
+        if (!cancelled) {
+          setSellerAvatars(Object.fromEntries(entries));
+        }
+
+        // Resolve product cover images in parallel.
+        const pEntries = await Promise.all(
+          products.map(async (p) => [p.id, await resolveShopImage(p.image_url)] as const),
+        );
+        if (!cancelled) {
+          setProductImgs(Object.fromEntries(pEntries));
+        }
       })
-      .catch((err) => {
-        console.error("[SearchScreen] seller search failed", err);
-      })
+      .catch((err) => console.error("[SearchScreen] search failed", err))
       .finally(() => {
-        if (!cancelled) setSellerLoading(false);
+        if (cancelled) return;
+        setSellerLoading(false);
+        setLiveLoading(false);
+        setProductLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+
+    return () => { cancelled = true; };
   }, [query, searching]);
 
-  const liveResults = useMemo<LiveStream[]>(() => {
-    if (!searching) return [];
-    return ALL_STREAMS.filter(
-      (s) =>
-        s.seller.toLowerCase().includes(q) ||
-        s.title.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q),
-    );
-  }, [q, searching]);
-
   const sellerResults = useMemo(() => {
-    if (!searching) return [];
-    const byName = new Map<string, ReturnType<typeof getSellerInfo>>();
+    if (sellerScope === "live") {
+      return dbSellers.filter((p) => activeSellerIds.has(p.id));
+    }
+    return dbSellers;
+  }, [dbSellers, activeSellerIds, sellerScope]);
 
-    // Sellers are "live" if they appear in either the real active lives feed or the mock live results.
-    const liveNames = new Set<string>();
-    liveResults.forEach((s) => liveNames.add(s.seller));
-    activeSellerNames.forEach((name) => liveNames.add(name));
+  // For LiveCard rendering in the Lives tab, use real active lives filtered by query
+  // (already returned by searchActiveLives). No mock streams.
+  const liveResultsToRender = liveResults;
+  void activeLives; // reserved for future use
 
-    // 1. Real seller profiles from the database.
-    dbSellers.forEach((profile) => {
-      const isLive = liveNames.has(profile.display_name);
-      if (sellerScope === "live" && !isLive) return;
-      byName.set(profile.display_name, makeSellerInfoFromProfile(profile));
-    });
-
-    // 2. Mock sellers tied to currently-live streams (keeps fallback content working).
-    ALL_STREAMS.forEach((s) => {
-      if (sellerScope === "live" && !liveNames.has(s.seller)) return;
-      if (!s.seller.toLowerCase().includes(q)) return;
-      if (!byName.has(s.seller)) {
-        byName.set(s.seller, getSellerInfo(s.seller));
-      }
-    });
-
-    return Array.from(byName.values());
-  }, [q, searching, dbSellers, activeSellerNames, sellerScope, liveResults]);
-
-
-
-  const productResults = useMemo<Array<SellerProduct & { seller: string }>>(() => {
-    if (!searching) return [];
-    const out: Array<SellerProduct & { seller: string }> = [];
-    ALL_STREAMS.forEach((s) => {
-      const info = getSellerInfo(s.seller);
-      info.products.forEach((p) => {
-        if (
-          p.name.toLowerCase().includes(q) ||
-          s.category.toLowerCase().includes(q) ||
-          s.seller.toLowerCase().includes(q)
-        ) {
-          out.push({ ...p, seller: s.seller });
-        }
-      });
-    });
-    return out.slice(0, 40);
-  }, [q, searching]);
-
-  // Combined set of seller names currently broadcasting (real DB lives + mock live results).
-  const liveSellerNames = useMemo(() => {
-    const set = new Set<string>();
-    liveResults.forEach((s) => set.add(s.seller));
-    activeSellerNames.forEach((name) => set.add(name));
-    return set;
-  }, [liveResults, activeSellerNames]);
 
   const commitRecent = (term: string) => {
 
@@ -189,13 +206,14 @@ export function SearchScreen() {
     setTab(0);
   };
 
-  const openTrend = (t: Trend) => {
-    commitRecent(t.name);
-    setRawQuery(t.name);
-    setQuery(t.name);
+  const openTrend = (tr: TrendItem) => {
+    commitRecent(tr.label);
+    setRawQuery(tr.label);
+    setQuery(tr.label);
     setFocused(true);
     setTab(0);
   };
+
 
   const sortedCategories = useMemo(() => {
     switch (sort) {
@@ -215,14 +233,20 @@ export function SearchScreen() {
   const tabs: TabDef[] = [
     {
       key: "lives",
-      label: `${t("search.tabs.lives")}${liveResults.length ? ` (${liveResults.length})` : ""}`,
+      label: `${t("search.tabs.lives")}${liveResultsToRender.length ? ` (${liveResultsToRender.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
-          {liveResults.length === 0 ? (
+          {liveLoading ? (
+            <div className="grid grid-cols-2 gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ aspectRatio: "3 / 4", borderRadius: 18 }} />
+              ))}
+            </div>
+          ) : liveResultsToRender.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {liveResults.map((s, i) => (
+              {liveResultsToRender.map((s, i) => (
                 <LiveCard
                   key={s.id}
                   stream={s}
@@ -260,31 +284,36 @@ export function SearchScreen() {
             <EmptyResults query={query} />
           ) : (
             <ul className="divide-y divide-border/60">
-              {sellerResults.map((info, i) => (
+              {sellerResults.map((p, i) => (
                 <SellerRow
-                  key={info.name}
-                  info={info}
+                  key={p.id}
+                  profile={p}
+                  avatar={sellerAvatars[p.id] ?? null}
                   index={i}
-                  isLive={liveSellerNames.has(info.name)}
+                  isLive={activeSellerIds.has(p.id)}
                   onOpen={() => {
                     commitRecent(query);
-                    openSeller(info.name);
+                    openSeller(p.handle || p.display_name);
                   }}
                 />
               ))}
-
             </ul>
           )}
         </div>
       ),
     },
-
     {
       key: "produits",
       label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
-          {productResults.length === 0 ? (
+          {productLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ aspectRatio: "1 / 1", borderRadius: 18 }} />
+              ))}
+            </div>
+          ) : productResults.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -298,27 +327,35 @@ export function SearchScreen() {
                   <Press
                     onClick={() => {
                       commitRecent(query);
-                      openSeller(p.seller);
+                      openSeller(p.seller_handle || p.seller_display_name);
                     }}
                     className="!block h-full w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
                   >
                     <div className="relative w-full" style={{ aspectRatio: "1 / 1" }}>
-                      <img
-                        src={p.image}
-                        alt=""
-                        loading="lazy"
-                        className="absolute inset-0 h-full w-full object-cover"
-                        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                        draggable={false}
-                      />
+                      {productImgs[p.id] ? (
+                        <img
+                          src={productImgs[p.id]!}
+                          alt=""
+                          loading="lazy"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center text-muted-foreground">
+                          <Search size={22} />
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <p className="truncate text-[13px] font-medium">{p.name}</p>
                       <div className="flex items-center justify-between">
                         <span className="truncate text-[11px] text-muted-foreground">
-                          @{p.seller}
+                          {p.seller_display_name}
                         </span>
-                        <span className="text-[13px] font-bold">{formatMoney(p.price, "EUR")}</span>
+                        <span className="text-[13px] font-bold">
+                          {formatMoney(Number(p.price), normalizeCurrency(p.currency))}
+                        </span>
                       </div>
                     </div>
                   </Press>
@@ -330,6 +367,7 @@ export function SearchScreen() {
       ),
     },
   ];
+
 
   // The "results" pane covers both a typed query AND the focused-but-empty
   // state (recent searches). Anything else is the default browse view.
@@ -511,31 +549,28 @@ export function SearchScreen() {
                 overscrollBehavior: "contain",
               }}
             >
-              {/* Tendances du jour */}
-              <div className="pt-4">
-                <div className="flex items-end justify-between px-4">
-                  <h2
-                    className="text-[22px] font-bold"
-                    style={{ letterSpacing: "-0.01em" }}
-                  >
-                    {t("search.trending")}
-                  </h2>
-                  <Press
-                    className="!min-h-8 text-[13px] font-semibold text-muted-foreground"
-                    onClick={() => {}}
-                  >
-                    {t("common.seeAll")}
-                  </Press>
-                </div>
+              {/* Tendances du jour — real active-live categories, hidden if none */}
+              {(browseLoading || trends.length > 0) && (
+                <div className="pt-4">
+                  <div className="flex items-end justify-between px-4">
+                    <h2
+                      className="text-[22px] font-bold"
+                      style={{ letterSpacing: "-0.01em" }}
+                    >
+                      {t("search.trending")}
+                    </h2>
+                  </div>
 
-                <div className="pt-3">
-                  {browseLoading ? (
-                    <TrendsSkeleton />
-                  ) : (
-                    <TrendsRow trends={TRENDS} onTap={openTrend} />
-                  )}
+                  <div className="pt-3">
+                    {browseLoading ? (
+                      <TrendsSkeleton />
+                    ) : (
+                      <TrendsRow trends={trends} onTap={openTrend} />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
 
               {/* Catégories */}
               <div className="pt-7">
@@ -609,10 +644,9 @@ function TrendsRow({
   trends,
   onTap,
 }: {
-  trends: Trend[];
-  onTap: (t: Trend) => void;
+  trends: TrendItem[];
+  onTap: (t: TrendItem) => void;
 }) {
-  const { t } = useTranslation();
   const { lang } = useLanguage();
   return (
     <div
@@ -625,21 +659,14 @@ function TrendsRow({
     >
       <div
         className="grid grid-flow-col grid-rows-2"
-        style={{
-          gap: 8,
-          gridAutoColumns: "260px",
-        }}
+        style={{ gap: 8, gridAutoColumns: "260px" }}
       >
         {trends.map((trend, i) => (
           <motion.div
             key={trend.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.2,
-              ease: EASE_IOS,
-              delay: Math.min(i, 8) * 0.025,
-            }}
+            transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(i, 8) * 0.025 }}
             style={{ scrollSnapAlign: "start" }}
           >
             <Press
@@ -647,16 +674,22 @@ function TrendsRow({
               className="!min-h-0 flex w-full items-center gap-3 rounded-2xl bg-muted p-2 text-left"
               style={{ height: 64 }}
             >
-              <img
-                src={trend.image}
-                alt=""
-                loading="lazy"
-                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                draggable={false}
-              />
+              {trend.image ? (
+                <img
+                  src={trend.image}
+                  alt=""
+                  loading="lazy"
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-background/50 text-muted-foreground">
+                  <Radio size={16} />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-bold">{t(trend.nameKey)}</p>
+                <p className="truncate text-[14px] font-bold">{trend.label}</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <LiveDot />
                   <span className="truncate text-[12px] text-muted-foreground">
@@ -671,6 +704,7 @@ function TrendsRow({
     </div>
   );
 }
+
 
 function TrendsSkeleton() {
   return (
@@ -819,19 +853,21 @@ function SellerScopeFilter({
 /* -------------------------------- Sellers -------------------------------- */
 
 function SellerRow({
-  info,
+  profile,
+  avatar,
   index,
   isLive,
   onOpen,
 }: {
-  info: ReturnType<typeof getSellerInfo>;
+  profile: SellerProfile;
+  avatar: string | null;
   index: number;
   isLive?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
-  const [following, setFollowing] = useState(false);
+  const initial = (profile.display_name || profile.handle || "?").slice(0, 1).toUpperCase();
   return (
     <motion.li
       initial={{ opacity: 0, y: 6 }}
@@ -843,17 +879,26 @@ function SellerRow({
           onClick={onOpen}
           className="!block flex flex-1 items-center gap-3 p-0 text-left"
         >
-          <img
-            src={info.avatar}
-            alt=""
-            className="h-11 w-11 shrink-0 rounded-full object-cover"
-            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-            draggable={false}
-          />
+          {avatar ? (
+            <img
+              src={avatar}
+              alt=""
+              className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-border"
+              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              draggable={false}
+            />
+          ) : (
+            <div
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted text-[15px] font-bold text-muted-foreground ring-2 ring-border"
+              aria-hidden
+            >
+              {initial}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold">{info.name}</p>
+            <p className="truncate text-[14px] font-semibold">{profile.display_name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
-              {formatFollowersLabel(info.followers, lang)}
+              @{profile.handle} · {formatFollowersLabel(profile.followers_count, lang)}
               {isLive && (
                 <span
                   className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold"
@@ -863,32 +908,15 @@ function SellerRow({
                   {t("live.liveBadge")}
                 </span>
               )}
-
             </p>
           </div>
         </Press>
-        <Press
-          onClick={() => setFollowing((v) => !v)}
-          className="!min-h-9 rounded-full px-3 text-[12px] font-semibold"
-          style={
-            following
-              ? {
-                  backgroundColor: "transparent",
-                  color: "var(--foreground)",
-                  border: "1.5px solid var(--border)",
-                }
-              : {
-                  backgroundColor: "var(--accent)",
-                  color: "var(--accent-foreground)",
-                }
-          }
-        >
-          {following ? t("live.following") : t("live.follow")}
-        </Press>
+        <FollowButton sellerId={profile.id} size="sm" />
       </div>
     </motion.li>
   );
 }
+
 
 
 function EmptyResults({ query }: { query: string }) {
