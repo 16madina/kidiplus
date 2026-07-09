@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { LocalStressLiveScreen } from "@/components/live-viewer/local-stress-live-screen";
 
 export const Route = createFileRoute("/live")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    stress: search.stress === "1" ? "1" : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "KiDi+ — Test live local" },
@@ -20,7 +23,7 @@ export const Route = createFileRoute("/live")({
 });
 
 function LiveRoute() {
-  const search = Route.useSearch() as Record<string, unknown>;
+  const search = Route.useSearch();
   if (search.stress === "1") return <LocalStressLiveScreen />;
 
   return (
