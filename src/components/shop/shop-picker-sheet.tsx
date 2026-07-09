@@ -196,7 +196,7 @@ export function ShopPickerSheet({
                   <div key={p.id} className="mb-3 rounded-2xl border border-border bg-card p-3">
                     <div className="flex items-center gap-3">
                       {imgs[p.id] ? (
-                        <img src={imgs[p.id]!} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                        <img src={imgs[p.id]!} alt="" className="h-14 w-14 rounded-xl object-cover" onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")} />
                       ) : (
                         <div className="grid h-14 w-14 place-items-center rounded-xl bg-muted text-muted-foreground"><Package size={20} /></div>
                       )}
