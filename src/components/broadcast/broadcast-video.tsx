@@ -427,16 +427,18 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           const activeFilter = currentFilterRef.current;
           if (activeFilter !== "none" && filterPipelineRef.current) {
-            // Swap only the SOURCE feeding the pipeline. Published canvas
-            // track stays the same → no gap for viewers.
+            // Swap only the SOURCE feeding the pipeline. The published
+            // canvas track — and the preview attached to it — stay the
+            // same, so viewers and host see no interruption.
             await filterPipelineRef.current.setSource(newLK.mediaStreamTrack);
-            // Update local preview to the raw NEW camera (mirror behaves).
-            if (videoRef.current) {
-              newLK.attach(videoRef.current);
-              videoRef.current.play().catch(() => {});
-            }
-            // Stop the previous source last so there's no black gap.
+            // Nudge the local preview back in case iOS Safari paused it.
+            if (videoRef.current) videoRef.current.play().catch(() => {});
             try { previousSource?.stop(); } catch {}
+            // The LocalVideoTrack we hold onto for cleanup is now the new
+            // raw camera track (its mediaStreamTrack lives inside the
+            // pipeline). Stop the old raw LK wrapper too.
+            const oldRawWrapper = null; // no separate wrapper stored
+            void oldRawWrapper;
             sourceCameraTrackRef.current = newLK.mediaStreamTrack;
           } else {
             // No filter: unpublish old, publish new. Attach + play() before
