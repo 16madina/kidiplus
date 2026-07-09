@@ -825,42 +825,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </Press>
         </div>
 
-        <div
-          className="flex justify-end gap-2 overflow-x-auto pl-[30%] pr-3 pb-1"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        >
-          {(() => {
-            const nextAuctionId = !activeAuction
-              ? room.products.find((p) => p.mode === "auction" && p.status !== "sold")?.id ?? null
-              : null;
-            return room.products.map((p) => {
-              const soldOut = p.mode === "auction"
-                ? p.status === "sold"
-                : p.stock <= 0 || p.status === "out";
-              const auctionActive = activeAuction?.productId === p.id;
-              const onSale = p.mode === "fixed" && p.status === "active";
-              const isFeatured = p.id === featuredId;
-              const isNextAuction = p.id === nextAuctionId;
-              return (
-                <SellerProductCard
-                  key={p.id}
-                  product={{ ...p, image_url: imgFor(p) }}
-                  currency={cur}
-                  locale={i18n.language}
-                  soldOut={soldOut}
-                  featured={isFeatured}
-                  auctionActive={auctionActive}
-                  isNextAuction={isNextAuction}
-                  onSale={onSale}
-                  onStartAuction={() => startAuction(p)}
-                  onEndAuction={endAuctionNow}
-                  onToggleFixed={() => toggleFixedSale(p)}
-                  onFeature={() => { haptic.selection(); setFeaturedId(p.id); }}
-                />
-              );
-            });
-          })()}
-        </div>
+        {/* Product queue lives in the top-right "Produits" bottom sheet only.
+            The featured/active auction is surfaced by the compact card in the
+            top-right — no duplicate carousel here. */}
       </div>
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
