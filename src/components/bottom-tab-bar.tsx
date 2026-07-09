@@ -132,13 +132,31 @@ export function BottomTabBar({
                 }}
               />
               <img
-                src={kidiLiveBadge.url}
+                src={kidiLiveBadgeUrl}
                 alt=""
                 width={60}
                 height={60}
                 data-loaded="true"
                 className="relative block h-full w-full object-contain"
                 draggable={false}
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  // First fall back to the CDN URL, then to a gold disc.
+                  if (img.src !== kidiLiveBadgeFallback.url) {
+                    img.src = kidiLiveBadgeFallback.url;
+                    return;
+                  }
+                  img.style.display = "none";
+                  const parent = img.parentElement;
+                  if (parent && !parent.querySelector("[data-live-fallback]")) {
+                    const disc = document.createElement("span");
+                    disc.setAttribute("data-live-fallback", "");
+                    disc.style.cssText =
+                      "position:absolute;inset:0;border-radius:9999px;display:grid;place-items:center;background:linear-gradient(135deg,#E8B93B,#C8A24B);color:#10162B;font-weight:800;font-size:12px;letter-spacing:0.02em;";
+                    disc.textContent = "LIVE";
+                    parent.appendChild(disc);
+                  }
+                }}
               />
               {isBroadcasting && (
                 <span
