@@ -582,15 +582,21 @@ function AvisTab({ sellerId }: { sellerId: string }) {
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    const reload = async () => {
       const r = await listSellerReviews(sellerId);
       if (!alive) return;
       setRows(r);
       const entries = await Promise.all(r.map(async (row) => [row.reviewer_id, await resolveAvatarUrl(row.reviewer?.avatar_url ?? null)] as const));
       if (alive) setAvatars(Object.fromEntries(entries));
-    })();
-    return () => { alive = false; };
+    };
+    void reload();
+    const ch = supabase
+      .channel(`reviews-${sellerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "seller_reviews", filter: `seller_id=eq.${sellerId}` }, () => { void reload(); })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(ch); };
   }, [sellerId]);
+
 
   if (rows === null) return <div className="grid place-items-center py-14"><Loader2 className="animate-spin text-muted-foreground" /></div>;
   if (rows.length === 0) {
