@@ -1,4 +1,6 @@
 // Persistent seller shop catalog. Photos live in the private "shop-products" bucket.
+// A shop product now supports up to 5 photos. `image_url` remains the cover
+// (mirrors `images[0]`) for backward compatibility with existing consumers.
 import { supabase } from "@/integrations/supabase/client";
 
 export type ShopProduct = {
@@ -7,6 +9,7 @@ export type ShopProduct = {
   name: string;
   description: string | null;
   image_url: string | null;
+  images: string[]; // storage paths in the "shop-products" bucket (cover is index 0)
   price: number;
   currency: string;
   stock: number;
@@ -16,10 +19,12 @@ export type ShopProduct = {
 };
 
 const signedCache = new Map<string, { url: string; expiresAt: number }>();
-const localPreviewCache = new Map<string, string>(); // path -> blob: URL (session-only)
-const SIGN_TTL_SEC = 60 * 60 * 22; // 22h — refresh before 24h expiry
+const localPreviewCache = new Map<string, string>(); // storage path -> blob: URL
+const SIGN_TTL_SEC = 60 * 60 * 22; // refresh before 24h expiry
 
-// Seed a local blob preview so the UI can show it instantly right after upload.
+export const MAX_SHOP_IMAGES = 5;
+export const MIN_SHOP_IMAGES = 3;
+
 export function seedShopImagePreview(path: string, blobUrl: string) {
   const prev = localPreviewCache.get(path);
   if (prev && prev !== blobUrl) {
@@ -48,6 +53,11 @@ export async function resolveShopImage(value: string | null | undefined): Promis
   return data.signedUrl;
 }
 
+export async function resolveShopImages(paths: readonly (string | null | undefined)[]): Promise<string[]> {
+  const out = await Promise.all(paths.map((p) => resolveShopImage(p)));
+  return out.filter((v): v is string => !!v);
+}
+
 export async function uploadShopProductImage(file: File, userId: string): Promise<string> {
   const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const rand = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -60,9 +70,32 @@ export async function uploadShopProductImage(file: File, userId: string): Promis
     contentType: file.type || undefined,
   });
   if (error) throw error;
-  // Seed a local blob preview so subsequent listings show the image instantly.
   try { seedShopImagePreview(path, URL.createObjectURL(file)); } catch { /* ignore */ }
   return path;
+}
+
+function normalizeImages(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string" && v.length > 0);
+}
+
+function rowToProduct(row: Record<string, unknown>): ShopProduct {
+  const images = normalizeImages(row.images);
+  const image_url = (row.image_url as string | null) ?? images[0] ?? null;
+  return {
+    id: row.id as string,
+    seller_id: row.seller_id as string,
+    name: row.name as string,
+    description: (row.description as string | null) ?? null,
+    image_url,
+    images: images.length > 0 ? images : (image_url ? [image_url] : []),
+    price: Number(row.price),
+    currency: row.currency as string,
+    stock: Number(row.stock),
+    active: row.active as boolean,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  };
 }
 
 export async function listMyShopProducts(userId: string): Promise<ShopProduct[]> {
@@ -71,7 +104,7 @@ export async function listMyShopProducts(userId: string): Promise<ShopProduct[]>
     .select("*")
     .eq("seller_id", userId)
     .order("created_at", { ascending: false });
-  return (data as ShopProduct[] | null) ?? [];
+  return (data ?? []).map((r) => rowToProduct(r as Record<string, unknown>));
 }
 
 export async function listSellerActiveShopProducts(sellerId: string): Promise<ShopProduct[]> {
@@ -81,13 +114,13 @@ export async function listSellerActiveShopProducts(sellerId: string): Promise<Sh
     .eq("seller_id", sellerId)
     .eq("active", true)
     .order("created_at", { ascending: false });
-  return (data as ShopProduct[] | null) ?? [];
+  return (data ?? []).map((r) => rowToProduct(r as Record<string, unknown>));
 }
 
 export type ShopProductInput = {
   name: string;
   description?: string | null;
-  imagePath?: string | null;
+  imagePaths?: string[];
   price: number;
   currency: string;
   stock: number;
@@ -97,13 +130,16 @@ export async function createShopProduct(
   sellerId: string,
   input: ShopProductInput,
 ): Promise<ShopProduct> {
+  const images = (input.imagePaths ?? []).slice(0, MAX_SHOP_IMAGES);
+  const cover = images[0] ?? null;
   const { data, error } = await supabase
     .from("shop_products")
     .insert({
       seller_id: sellerId,
       name: input.name.trim(),
       description: input.description?.trim() || null,
-      image_url: input.imagePath ?? null,
+      image_url: cover,
+      images: images as unknown as never,
       price: input.price,
       currency: input.currency,
       stock: input.stock,
@@ -112,14 +148,31 @@ export async function createShopProduct(
     .select("*")
     .single();
   if (error || !data) throw error ?? new Error("insert failed");
-  return data as ShopProduct;
+  return rowToProduct(data as Record<string, unknown>);
 }
 
-export async function updateShopProduct(
-  id: string,
-  patch: Partial<Pick<ShopProduct, "name" | "description" | "image_url" | "price" | "stock" | "active">>,
-): Promise<void> {
-  await supabase.from("shop_products").update(patch).eq("id", id);
+type ShopUpdate = {
+  name?: string;
+  description?: string | null;
+  imagePaths?: string[];
+  price?: number;
+  stock?: number;
+  active?: boolean;
+};
+
+export async function updateShopProduct(id: string, patch: ShopUpdate): Promise<void> {
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.description !== undefined) dbPatch.description = patch.description;
+  if (patch.price !== undefined) dbPatch.price = patch.price;
+  if (patch.stock !== undefined) dbPatch.stock = patch.stock;
+  if (patch.active !== undefined) dbPatch.active = patch.active;
+  if (patch.imagePaths !== undefined) {
+    const images = patch.imagePaths.slice(0, MAX_SHOP_IMAGES);
+    dbPatch.images = images;
+    dbPatch.image_url = images[0] ?? null;
+  }
+  await supabase.from("shop_products").update(dbPatch).eq("id", id);
 }
 
 export async function archiveShopProduct(id: string): Promise<void> {
