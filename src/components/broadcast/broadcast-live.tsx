@@ -500,6 +500,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         retryKey={retryKey}
         onStatus={setVideoStatus}
         onCanFlipChange={setCanFlip}
+        onFlipRevert={(prev) => setFacing(prev)}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
