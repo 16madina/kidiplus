@@ -90,9 +90,6 @@ export type LiveRoomState = {
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
   broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
   systemMessage: (text: string) => void;
-  /** Local-only injectors for stress testing. Do NOT broadcast. */
-  injectLocalChat: (msgs: ChatEvt[]) => void;
-  injectLocalHearts: (n: number) => void;
 };
 
 const COLOR_POOL = [
