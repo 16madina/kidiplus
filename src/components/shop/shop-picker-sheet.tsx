@@ -152,7 +152,7 @@ export function ShopPickerSheet({
                       >
                         <div className="relative aspect-square bg-muted">
                           {imgs[p.id] ? (
-                            <img src={imgs[p.id]!} alt="" className="h-full w-full object-cover" />
+                            <img src={imgs[p.id]!} alt="" className="h-full w-full object-cover" onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")} />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={28} /></div>
                           )}
