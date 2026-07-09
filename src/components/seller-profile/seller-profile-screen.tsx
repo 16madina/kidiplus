@@ -452,15 +452,21 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    const reload = async () => {
       const rows = await listSellerActiveShopProducts(sellerId);
       if (!alive) return;
       setItems(rows);
       const entries = await Promise.all(rows.map(async (r) => [r.id, await resolveShopImage(r.image_url)] as const));
       if (alive) setImgs(Object.fromEntries(entries));
-    })();
-    return () => { alive = false; };
+    };
+    void reload();
+    const ch = supabase
+      .channel(`shop-public-${sellerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${sellerId}` }, () => { void reload(); })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(ch); };
   }, [sellerId]);
+
 
   if (items === null) {
     return <div className="grid place-items-center py-14"><Loader2 className="animate-spin text-muted-foreground" /></div>;
