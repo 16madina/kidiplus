@@ -359,6 +359,9 @@ export function ProfileScreen() {
           index={0}
           items={[
             { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
+            ...(profile?.is_seller
+              ? [{ icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) }]
+              : []),
             { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
             ...(profile?.is_seller
               ? [{ icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) }]
@@ -436,6 +439,7 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "terms"} onClose={() => setLegalOpen(null)} kind="terms" />
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
     </div>
   );
 }
