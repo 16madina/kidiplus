@@ -6,7 +6,7 @@ import { FloatingHearts } from "./floating-hearts";
 import { StressTestPanel } from "./stress-test-panel";
 import type { ChatEvt, LiveRoomState } from "@/lib/live-room";
 
-const MAX_CHAT = 150;
+const MAX_CHAT = 60;
 
 export function LocalStressLiveScreen() {
   const [chat, setChat] = useState<ChatEvt[]>([

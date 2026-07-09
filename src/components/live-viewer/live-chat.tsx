@@ -4,10 +4,13 @@ import { ChevronDown } from "lucide-react";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
 
-// Windowing cap for the rendered chat — even if the parent buffers more,
-// we only ever render the last N to keep the DOM/React reconciler cheap
-// under 1k+ concurrent viewers with heavy chat throughput.
-const VISIBLE_MSGS = 120;
+// Windowing cap — kept low: 40 lignes suffisent visuellement et évitent
+// que Framer Motion `layout` déclenche un reflow O(n) sur chaque burst.
+// Au-delà, le navigateur mesure plus vite qu'il n'affiche → fps 0.
+const VISIBLE_MSGS = 40;
+// Sous cette fréquence d'arrivée on garde l'anim d'entrée jolie.
+// Au-dessus (burst), on la coupe pour ne pas geler la page.
+const BURST_THRESHOLD_PER_SEC = 30;
 
 
 export function LiveChat({ messages }: { messages: ChatMsg[] }) {
@@ -15,13 +18,31 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
 
-  // Only render the last VISIBLE_MSGS messages — the parent may accumulate
-  // more, but we window the DOM to bound reconciliation cost.
+  // Détecte un "burst" : si beaucoup de nouveaux messages en peu de temps,
+  // on désactive les animations d'entrée / layout (elles causent le reflow
+  // qui fait tomber le fps à 0 sur un Burst 1k+).
+  const lastCountRef = useRef(messages.length);
+  const lastTsRef = useRef(performance.now());
+  const [burstMode, setBurstMode] = useState(false);
+  useEffect(() => {
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTsRef.current);
+    const delta = messages.length - lastCountRef.current;
+    const rate = (delta * 1000) / dt;
+    lastCountRef.current = messages.length;
+    lastTsRef.current = now;
+    if (rate > BURST_THRESHOLD_PER_SEC) {
+      setBurstMode(true);
+      const t = setTimeout(() => setBurstMode(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [messages]);
+
+  // Only render the last VISIBLE_MSGS messages
   const visible = useMemo(
     () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
     [messages],
   );
-
 
   // Track if user scrolled away from bottom
   useEffect(() => {
@@ -38,16 +59,17 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Auto-scroll when new message arrives and user is pinned
+  // Auto-scroll when new message arrives and user is pinned.
+  // En burst on utilise scroll instantané (pas "smooth") pour ne pas empiler
+  // 60 animations de scroll par seconde.
   useEffect(() => {
     if (!pinned) return;
     const el = scrollerRef.current;
     if (!el) return;
-    // next tick so incoming item is measured
     requestAnimationFrame(() => {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      el.scrollTo({ top: el.scrollHeight, behavior: burstMode ? "auto" : "smooth" });
     });
-  }, [messages, pinned]);
+  }, [messages, pinned, burstMode]);
 
   const jumpDown = () => {
     const el = scrollerRef.current;
@@ -83,27 +105,31 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
           }}
         >
           <div className="flex flex-col justify-end gap-1.5 pt-8">
-            <AnimatePresence initial={false}>
-              {visible.map((m) => (
-                <motion.div
-                  key={m.id}
-                  layout
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    duration: 0.15,
-                    ease: [0.32, 0.72, 0, 1],
-                    layout: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
-                  }}
-                >
+            {burstMode ? (
+              // Chemin rapide : pas de Framer, pas de layout, pas de reflow.
+              visible.map((m) => (
+                <div key={m.id}>
                   <ChatBubble msg={m} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
+                </div>
+              ))
+            ) : (
+              <AnimatePresence initial={false}>
+                {visible.map((m) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
+                  >
+                    <ChatBubble msg={m} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
         </div>
+
 
         <AnimatePresence>
           {showJump && (
