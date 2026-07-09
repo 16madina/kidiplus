@@ -239,19 +239,19 @@ function AppShellInner() {
       style={{ isolation: "isolate" }}
     >
       <TabPane visible={active === "home"}>
-        <HomeScreen />
+        <ErrorBoundary boundary="tab_home"><HomeScreen /></ErrorBoundary>
       </TabPane>
       <TabPane visible={active === "search"}>
-        <SearchScreen />
+        <ErrorBoundary boundary="tab_search"><SearchScreen /></ErrorBoundary>
       </TabPane>
       <TabPane visible={active === "live"}>
-        <LiveScreen />
+        <ErrorBoundary boundary="tab_live"><LiveScreen /></ErrorBoundary>
       </TabPane>
       <TabPane visible={active === "activity"}>
-        <ActivityScreen />
+        <ErrorBoundary boundary="tab_activity"><ActivityScreen /></ErrorBoundary>
       </TabPane>
       <TabPane visible={active === "profile"}>
-        <ProfileScreen />
+        <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
 
       {!immersive && !liveStream && (
@@ -259,12 +259,21 @@ function AppShellInner() {
       )}
 
       <AnimatePresence>
-        {liveStream && <LiveViewerScreen />}
+        {liveStream && (
+          <ErrorBoundary boundary="live_viewer" onReset={closeLive}>
+            <LiveViewerScreen />
+          </ErrorBoundary>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
-        {activeSeller && <SellerProfileScreen />}
+        {activeSeller && (
+          <ErrorBoundary boundary="seller_profile" onReset={closeSeller}>
+            <SellerProfileScreen />
+          </ErrorBoundary>
+        )}
       </AnimatePresence>
+
 
       <Toaster
         position="top-center"
