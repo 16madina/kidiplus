@@ -226,10 +226,13 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     row.seller?.display_name?.trim() ||
     row.seller?.handle ||
     "Vendeur";
+  // Avatars live in the `avatars` bucket (not `live-covers`). Route through
+  // resolveAvatarUrl so both absolute URLs and bucket paths work, matching
+  // the resolution used on the profile screen and elsewhere.
   const avatar =
-    (row.seller?.avatar_url &&
-      (await resolveLiveImage("live-covers", row.seller.avatar_url))) ||
+    (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) ||
     `https://i.pravatar.cc/80?u=${encodeURIComponent(row.seller_id)}`;
+
   const category = (row.category as LiveStream["category"]) ?? "Fashion";
   const cur = (row.currency ?? "EUR").toUpperCase();
   return {
