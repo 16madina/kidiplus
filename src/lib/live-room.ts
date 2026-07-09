@@ -316,12 +316,28 @@ export function useLiveRoom(params: {
       setViewerCount(Math.max(1, Object.keys(state).length));
     });
 
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 1_000;
     ch.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
+        retryDelay = 1_000;
         await ch.track({ identity, name: displayName, host: isHost, joined_at: Date.now() });
         setReady(true);
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        // Supabase realtime doesn't auto-resubscribe on error/close — do it
+        // ourselves with exponential backoff so a network blip during a
+        // live doesn't kill chat/hearts/presence for the rest of the
+        // session. 15s ceiling keeps recovery fast without stampeding.
+        setReady(false);
+        if (retryTimer != null) return;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          try { void ch.subscribe(); } catch { /* channel already gone */ }
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 15_000);
       }
     });
+
 
     return () => {
       setReady(false);
