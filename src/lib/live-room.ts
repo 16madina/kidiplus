@@ -340,10 +340,12 @@ export function useLiveRoom(params: {
 
 
     return () => {
+      if (retryTimer != null) clearTimeout(retryTimer);
       setReady(false);
       supabase.removeChannel(ch);
       channelRef.current = null;
     };
+
   }, [liveId, identity, displayName, isHost]);
 
   // Host: periodically persist viewer_count so feed cards reflect reality.
