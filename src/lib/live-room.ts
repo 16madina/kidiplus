@@ -411,17 +411,6 @@ export function useLiveRoom(params: {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
         setChat((prev) => [...prev, evt].slice(-60));
       },
-      injectLocalChat: (msgs: ChatEvt[]) => {
-        if (msgs.length === 0) return;
-        setChat((prev) => {
-          const next = prev.concat(msgs);
-          return next.length > 60 ? next.slice(next.length - 60) : next;
-        });
-      },
-      injectLocalHearts: (n: number) => {
-        if (n <= 0) return;
-        setHeartTick((v) => v + n);
-      },
     }),
     [
       ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid,
