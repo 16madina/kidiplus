@@ -16,18 +16,34 @@ export type ShopProduct = {
 };
 
 const signedCache = new Map<string, { url: string; expiresAt: number }>();
-const SIGN_TTL_SEC = 60 * 60 * 24;
+const localPreviewCache = new Map<string, string>(); // path -> blob: URL (session-only)
+const SIGN_TTL_SEC = 60 * 60 * 22; // 22h — refresh before 24h expiry
+
+// Seed a local blob preview so the UI can show it instantly right after upload.
+export function seedShopImagePreview(path: string, blobUrl: string) {
+  const prev = localPreviewCache.get(path);
+  if (prev && prev !== blobUrl) {
+    try { URL.revokeObjectURL(prev); } catch { /* ignore */ }
+  }
+  localPreviewCache.set(path, blobUrl);
+}
 
 export async function resolveShopImage(value: string | null | undefined): Promise<string | null> {
   if (!value) return null;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  const local = localPreviewCache.get(value);
+  if (local) return local;
   const key = `shop-products::${value}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
-  const { data } = await supabase.storage
+  const { data, error } = await supabase.storage
     .from("shop-products")
     .createSignedUrl(value, SIGN_TTL_SEC);
-  if (!data?.signedUrl) return null;
+  if (error || !data?.signedUrl) {
+    // eslint-disable-next-line no-console
+    console.warn("[shop-db] signed url failed", value, error?.message);
+    return null;
+  }
   signedCache.set(key, { url: data.signedUrl, expiresAt: Date.now() + SIGN_TTL_SEC * 1000 });
   return data.signedUrl;
 }
@@ -44,6 +60,8 @@ export async function uploadShopProductImage(file: File, userId: string): Promis
     contentType: file.type || undefined,
   });
   if (error) throw error;
+  // Seed a local blob preview so subsequent listings show the image instantly.
+  try { seedShopImagePreview(path, URL.createObjectURL(file)); } catch { /* ignore */ }
   return path;
 }
 
