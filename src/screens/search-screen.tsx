@@ -229,7 +229,20 @@ export function SearchScreen() {
       label: `${t("search.tabs.sellers")}${sellerResults.length ? ` (${sellerResults.length})` : ""}`,
       content: (
         <div className="px-4 py-2">
-          {sellerResults.length === 0 ? (
+          <SellerScopeFilter value={sellerScope} onChange={setSellerScope} />
+          {sellerLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5">
+                  <div className="skeleton h-11 w-11 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 w-1/2 rounded" />
+                    <div className="skeleton h-3 w-1/3 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sellerResults.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <ul className="divide-y divide-border/60">
@@ -238,6 +251,7 @@ export function SearchScreen() {
                   key={info.name}
                   info={info}
                   index={i}
+                  isLive={activeSellerNames.has(info.name)}
                   onOpen={() => {
                     commitRecent(query);
                     openSeller(info.name);
@@ -249,6 +263,7 @@ export function SearchScreen() {
         </div>
       ),
     },
+
     {
       key: "produits",
       label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
