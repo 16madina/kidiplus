@@ -73,6 +73,14 @@ export type AuctionExtendEvt = {
   ts: number;
 };
 
+export type GiftEvt = {
+  id: string;
+  giftKey: string;
+  senderId: string;
+  senderName: string;
+  ts: number;
+};
+
 export type LiveRoomState = {
   ready: boolean;
   viewerCount: number;
@@ -84,8 +92,10 @@ export type LiveRoomState = {
   lastAuctionEnd: AuctionEndEvt | null;
   lastExtension: AuctionExtendEvt | null;
   lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
+  lastGift: GiftEvt | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
+  broadcastGift: (evt: Omit<GiftEvt, "ts" | "id">) => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
   broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
