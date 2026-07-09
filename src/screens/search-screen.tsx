@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Clock, X, SearchX } from "lucide-react";
+import { Search, Clock, X, SearchX, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
@@ -11,6 +11,7 @@ import { useSellerProfile } from "@/lib/seller-profile-context";
 import {
   formatCompact,
   getSellerInfo,
+  makeSellerInfoFromProfile,
   type SellerProduct,
 } from "@/lib/seller-mock";
 import { formatMoney } from "@/lib/money";
@@ -23,11 +24,19 @@ import {
 } from "@/lib/browse-mock";
 import { formatCount, formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
 import { useLanguage } from "@/i18n/language-context";
+import {
+  fetchActiveSellerNames,
+  searchSellerProfiles,
+  type SellerProfile,
+} from "@/lib/sellers-db";
 
 const ALL_STREAMS = makeStreams(0, 24);
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
+
+type SellerScope = "all" | "live";
+
 
 export function SearchScreen() {
   const { t } = useTranslation();
