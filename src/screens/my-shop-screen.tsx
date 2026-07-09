@@ -463,7 +463,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
       )}
 
       {/* Categories + grid */}
-      <section className="mt-6 pb-8">
+      <section ref={gridRef} className="mt-6 pb-8 scroll-mt-4">
         <h2 className="px-4 font-serif text-[19px] font-bold" style={{ color: NAVY }}>
           Toutes les catégories
         </h2>
