@@ -24,6 +24,10 @@ export type Profile = {
   currency: "XOF" | "EUR" | "CAD";
   language: "fr" | "en";
   moderation_status?: "active" | "suspended" | "banned";
+  followers_count?: number;
+  following_count?: number;
+  rating_avg?: number;
+  rating_count?: number;
   created_at: string;
 };
 

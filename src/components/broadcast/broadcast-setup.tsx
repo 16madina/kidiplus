@@ -7,6 +7,7 @@ import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
+import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
 import {
   BROADCAST_CATEGORY_KEYS,
@@ -39,6 +40,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [showAdd, setShowAdd] = useState(false);
+  const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [showMoreCats, setShowMoreCats] = useState(false);
 
@@ -100,6 +102,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           stock: p.stock,
           timerSeconds: p.timerSec,
           position: index,
+          shopProductId: p.shopProductId ?? null,
         };
       }),
     );
@@ -476,6 +479,18 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               <Plus size={22} strokeWidth={2} />
               <span className="text-[10px] font-semibold">{t("common.add", "Ajouter")}</span>
             </Press>
+            <Press
+              onClick={() => setShowShopPicker(true)}
+              className="!min-h-20 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl p-0 text-white"
+              style={{
+                border: `1.5px solid ${GOLD_SOFT}`,
+                background: "oklch(0.16 0.04 260 / 0.7)",
+              }}
+              aria-label={t("shop.pickFromShop", "Ma boutique")}
+            >
+              <span style={{ fontSize: 22 }}>📦</span>
+              <span className="text-[10px] font-semibold">{t("shop.short", "Boutique")}</span>
+            </Press>
           </motion.div>
         </div>
 
@@ -499,6 +514,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={(p) => b.addProduct(p)}
+      />
+      <ShopPickerSheet
+        open={showShopPicker}
+        onClose={() => setShowShopPicker(false)}
+        onConfirm={(items) => {
+          for (const it of items) b.addProduct(it);
+        }}
       />
     </motion.div>
   );
