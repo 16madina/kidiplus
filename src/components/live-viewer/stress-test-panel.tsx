@@ -45,6 +45,7 @@ export function useStressTestEnabled(): boolean {
 }
 
 export function StressTestPanel({ room }: { room: LiveRoomState }) {
+  const { injectLocalChat, injectLocalHearts } = room;
   const [msgsPerSec, setMsgsPerSec] = useState(50);
   const [heartsPerSec, setHeartsPerSec] = useState(80);
   const [running, setRunning] = useState(false);
@@ -100,16 +101,16 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
             text: pick(MSGS),
           };
         });
-        room.injectLocalChat(msgs);
+        injectLocalChat(msgs);
         setSentMsgs((n) => n + chatBatch);
       }
       if (heartBatch > 0) {
-        room.injectLocalHearts(heartBatch);
+        injectLocalHearts(heartBatch);
         setSentHearts((n) => n + heartBatch);
       }
     }, tickMs);
     return () => clearInterval(timer);
-  }, [running, msgsPerSec, heartsPerSec, room]);
+  }, [running, msgsPerSec, heartsPerSec, injectLocalChat, injectLocalHearts]);
 
   const elapsed = running ? ((performance.now() - startTsRef.current) / 1000).toFixed(1) : "0.0";
 
@@ -121,8 +122,8 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
       color: pick(COLORS),
       text: pick(MSGS),
     }));
-    room.injectLocalChat(msgs);
-    room.injectLocalHearts(heartN);
+    injectLocalChat(msgs);
+    injectLocalHearts(heartN);
     setSentMsgs((n) => n + chatN);
     setSentHearts((n) => n + heartN);
   };
@@ -135,7 +136,7 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
   return (
     <div className="pointer-events-auto absolute bottom-24 left-3 z-50 w-[220px] rounded-2xl border border-white/20 bg-black/80 p-3 text-[11px] text-white shadow-lg backdrop-blur">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-semibold tracking-wide">STRESS TEST</span>
+        <span className="font-semibold tracking-wide">TEST LOCAL</span>
         <button
           className="rounded-md bg-white/10 px-2 py-0.5 text-[10px]"
           onClick={() => {
@@ -149,12 +150,12 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
       </div>
 
       <label className="mb-1 block">
-        Chat/s: <span className="font-mono">{msgsPerSec}</span>
+        Messages/s: <span className="font-mono">{msgsPerSec}</span>
         <input type="range" min={0} max={500} value={msgsPerSec}
           onChange={(e) => setMsgsPerSec(Number(e.target.value))} className="w-full" />
       </label>
       <label className="mb-2 block">
-        Hearts/s: <span className="font-mono">{heartsPerSec}</span>
+        Cœurs/s: <span className="font-mono">{heartsPerSec}</span>
         <input type="range" min={0} max={500} value={heartsPerSec}
           onChange={(e) => setHeartsPerSec(Number(e.target.value))} className="w-full" />
       </label>
@@ -163,7 +164,7 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
         <button
           className={`flex-1 rounded-md px-2 py-1 font-semibold ${running ? "bg-red-500" : "bg-emerald-500"}`}
           onClick={() => setRunning((r) => !r)}
-        >{running ? "Stop" : "Start"}</button>
+        >{running ? "Stop" : "Démarrer"}</button>
         <button className="rounded-md bg-white/10 px-2 py-1"
           onClick={() => { setSentMsgs(0); setSentHearts(0); setFps(null); }}>
           Reset
@@ -179,7 +180,7 @@ export function StressTestPanel({ room }: { room: LiveRoomState }) {
 
       <div className="font-mono leading-relaxed">
         <div>msgs: {stats.sentMsgs}</div>
-        <div>hearts: {stats.sentHearts}</div>
+        <div>cœurs: {stats.sentHearts}</div>
         <div>fps: {stats.fps ?? "—"}</div>
         <div>heap: {stats.heapMB != null ? `${stats.heapMB} MB` : "n/a"}</div>
         <div>t: {stats.elapsed}s</div>
