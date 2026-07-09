@@ -805,7 +805,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 onClick={() => { haptic.selection(); setProductsOpen(false); setAddOpen(true); }}
                 className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
               >
-                <Plus size={14} /> {t("live.addProduct", "Ajouter")}
+                <span className="text-[16px] leading-none">+</span> {t("live.addProduct", "Ajouter")}
               </Press>
             </div>
           </div>
