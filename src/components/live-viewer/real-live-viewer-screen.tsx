@@ -97,9 +97,25 @@ export function RealLiveViewerScreen() {
       setHostDisconnectEnded(false);
       return;
     }
-    const t = setTimeout(() => setHostDisconnectEnded(true), 20_000);
+    // Video track has been absent for the debounce window. Before we commit
+    // to the "Live terminé" overlay, wait a bit longer AND re-fetch the
+    // authoritative lives.status from the DB. Ending an auction (or any
+    // realtime hiccup while the sheet is open, Stripe iframe grabbing focus,
+    // etc.) must NEVER trigger the ended overlay unless the DB row is
+    // actually ended.
+    const t = setTimeout(async () => {
+      if (!active?.liveId) return;
+      const { data } = await supabase
+        .from("lives")
+        .select("status")
+        .eq("id", active.liveId)
+        .maybeSingle();
+      if (data?.status === "ended") {
+        setHostDisconnectEnded(true);
+      }
+    }, 20_000);
     return () => clearTimeout(t);
-  }, [viewerVideoStatus, room.liveStatus]);
+  }, [viewerVideoStatus, room.liveStatus, active?.liveId]);
 
   useEffect(() => {
     if (!liveEnded) return;

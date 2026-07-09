@@ -66,6 +66,7 @@ export function ViewerLiveVideo({
       }
     };
     const scheduleEnd = () => {
+      if (cancelled) return;
       clearEndTimer();
       if (!hadVideo) {
         setStatus("waiting");
@@ -93,6 +94,7 @@ export function ViewerLiveVideo({
         roomRef.current = r;
 
         const attachTrack = (track: RemoteTrack) => {
+          if (cancelled) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
             track.attach(videoRef.current);
             hadVideo = true;
@@ -104,6 +106,7 @@ export function ViewerLiveVideo({
         };
 
         r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+          if (cancelled) return;
           attachTrack(track);
         });
 
@@ -113,6 +116,11 @@ export function ViewerLiveVideo({
             try {
               track.detach();
             } catch {}
+            // Ignore unsubscribe events fired during our own teardown —
+            // otherwise a stale closure would schedule "ended" while the
+            // component is remounting (e.g. after appActive flip / Stripe
+            // iframe momentarily hiding the tab).
+            if (cancelled) return;
             if (track.kind === Track.Kind.Video) {
               scheduleEnd();
             }
@@ -120,11 +128,13 @@ export function ViewerLiveVideo({
         );
 
         r.on(RoomEvent.ParticipantDisconnected, (_p: RemoteParticipant) => {
+          if (cancelled) return;
           const anyoneLeft = r.remoteParticipants.size > 0;
           if (!anyoneLeft && hadVideo) scheduleEnd();
         });
 
         r.on(RoomEvent.Disconnected, () => {
+          if (cancelled) return;
           if (hadVideo) scheduleEnd();
           else setStatus("error");
         });
