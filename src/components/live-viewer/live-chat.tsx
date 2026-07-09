@@ -84,7 +84,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
         >
           <div className="flex flex-col justify-end gap-1.5 pt-8">
             <AnimatePresence initial={false}>
-              {messages.map((m) => (
+              {visible.map((m) => (
                 <motion.div
                   key={m.id}
                   layout
@@ -101,6 +101,7 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
                 </motion.div>
               ))}
             </AnimatePresence>
+
           </div>
         </div>
 
