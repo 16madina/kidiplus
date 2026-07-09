@@ -3,6 +3,7 @@ import { Plus, Package, Pencil, Archive, RotateCcw, Loader2 } from "lucide-react
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
+import { supabase } from "@/integrations/supabase/client";
 import { PushScreen } from "@/components/push-screen";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -35,7 +36,16 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     setImgs(Object.fromEntries(entries));
   };
 
-  useEffect(() => { if (open) void load(); }, [open, user?.id]);
+  useEffect(() => {
+    if (!open || !user) return;
+    void load();
+    const ch = supabase
+      .channel(`my-shop-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${user.id}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [open, user?.id]);
+
 
   const toggleActive = async (p: ShopProduct) => {
     haptic.medium();
