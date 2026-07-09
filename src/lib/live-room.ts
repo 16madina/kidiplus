@@ -175,10 +175,26 @@ export function useLiveRoom(params: {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "lives", filter: `id=eq.${liveId}` },
         (payload) => {
-          const row = payload.new as { status?: "live" | "ended" };
-          setLiveStatus(row.status ?? null);
+          // CRITICAL: only transition to "ended" when the row's status column
+          // ACTUALLY becomes "ended" (a real state change from "live" to
+          // "ended"). Realtime UPDATEs also fire for viewer_count writes and
+          // any other column write; payload.new is the full row so a bare
+          // read of row.status is safe, but we still explicitly guard against
+          // partial payloads (REPLICA IDENTITY DEFAULT), and we never
+          // downgrade a known status to null from a realtime frame — the
+          // initial load is the only source of truth for that.
+          const newRow = payload.new as { status?: "live" | "ended" };
+          const oldRow = payload.old as { status?: "live" | "ended" } | null;
+          if (newRow.status === "ended" && oldRow?.status !== "ended") {
+            setLiveStatus("ended");
+          } else if (newRow.status === "live") {
+            setLiveStatus("live");
+          }
+          // Any other update (viewer_count, ended_at without status, sparse
+          // payload) is ignored — we do NOT touch liveStatus.
         },
       )
+
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
