@@ -271,6 +271,67 @@ export type Database = {
           },
         ]
       }
+      live_gifts: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          gift_key: string
+          id: string
+          live_id: string
+          platform_fee: number
+          seller_id: string
+          seller_net: number
+          sender_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          gift_key: string
+          id?: string
+          live_id: string
+          platform_fee?: number
+          seller_id: string
+          seller_net?: number
+          sender_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          gift_key?: string
+          id?: string
+          live_id?: string
+          platform_fee?: number
+          seller_id?: string
+          seller_net?: number
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_gifts_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gifts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_gifts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_moderators: {
         Row: {
           added_by: string
@@ -946,34 +1007,50 @@ export type Database = {
           amount: number
           balance_after: number
           created_at: string
+          gift_key: string | null
           id: string
-          order_id: string
+          live_id: string | null
+          order_id: string | null
           seller_id: string
+          source: string
           status: string
         }
         Insert: {
           amount: number
           balance_after: number
           created_at?: string
+          gift_key?: string | null
           id?: string
-          order_id: string
+          live_id?: string | null
+          order_id?: string | null
           seller_id: string
+          source?: string
           status?: string
         }
         Update: {
           amount?: number
           balance_after?: number
           created_at?: string
+          gift_key?: string | null
           id?: string
-          order_id?: string
+          live_id?: string | null
+          order_id?: string | null
           seller_id?: string
+          source?: string
           status?: string
         }
         Relationships: [
           {
+            foreignKeyName: "seller_earnings_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "seller_earnings_order_id_fkey"
             columns: ["order_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1224,6 +1301,10 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _gift_price: {
+        Args: { _currency: string; _key: string }
+        Returns: number
+      }
       _log_order_event: {
         Args: {
           _actor: string
@@ -1395,6 +1476,10 @@ export type Database = {
       release_overdue_escrow: { Args: never; Returns: Json }
       request_payout: {
         Args: { _amount: number; _destination: Json; _method: string }
+        Returns: Json
+      }
+      send_gift: {
+        Args: { _gift_key: string; _live_id: string }
         Returns: Json
       }
       start_auction: { Args: { _product_id: string }; Returns: Json }

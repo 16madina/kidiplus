@@ -3,6 +3,37 @@
     "follow": "Follow",
     "following": "Following"
   },
+  "gifts": {
+    "title": "Send a gift",
+    "subtitle": "The seller keeps 70% of the amount",
+    "open": "Gifts",
+    "short": "Gifts 🎁",
+    "walletBalance": "Balance",
+    "currencyHint": "Wallet in {{cur}}",
+    "matchLive": "Top up in {{cur}} to send a gift",
+    "confirmTap": "Tap again to send",
+    "chatLine": "{{user}} sent a {{gift}}",
+    "summaryTitle": "Gifts received",
+    "summaryCount_one": "{{count}} gift",
+    "summaryCount_other": "{{count}} gifts",
+    "name": {
+      "rose": "Rose",
+      "heart": "Golden heart",
+      "diamond": "Diamond",
+      "crown": "Crown",
+      "rocket": "Rocket",
+      "lion": "Lion"
+    },
+    "err": {
+      "insufficient": "Not enough balance — top up your wallet",
+      "currency": "Wallet in a different currency",
+      "self": "You can't gift yourself",
+      "notLive": "The live is no longer active",
+      "sanctioned": "Account suspended",
+      "auth": "Sign in to send a gift",
+      "unknown": "Could not send"
+    }
+  },
   "shop": {
     "title": "My shop",
     "short": "Shop",

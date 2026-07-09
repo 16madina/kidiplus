@@ -73,6 +73,14 @@ export type AuctionExtendEvt = {
   ts: number;
 };
 
+export type GiftEvt = {
+  id: string;
+  giftKey: string;
+  senderId: string;
+  senderName: string;
+  ts: number;
+};
+
 export type LiveRoomState = {
   ready: boolean;
   viewerCount: number;
@@ -84,8 +92,10 @@ export type LiveRoomState = {
   lastAuctionEnd: AuctionEndEvt | null;
   lastExtension: AuctionExtendEvt | null;
   lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
+  lastGift: GiftEvt | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
+  broadcastGift: (evt: Omit<GiftEvt, "ts" | "id">) => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
   broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
@@ -127,6 +137,7 @@ export function useLiveRoom(params: {
   const [lastAuctionEnd, setLastAuctionEnd] = useState<AuctionEndEvt | null>(null);
   const [lastExtension, setLastExtension] = useState<AuctionExtendEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
+  const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -310,6 +321,10 @@ export function useLiveRoom(params: {
       );
       setLastExtension(evt);
     });
+    ch.on("broadcast", { event: "gift" }, ({ payload }) => {
+      const p = payload as GiftEvt;
+      setLastGift(p);
+    });
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
@@ -373,6 +388,12 @@ export function useLiveRoom(params: {
       lastAuctionEnd,
       lastExtension,
       lastBid,
+      lastGift,
+      broadcastGift: (evt) => {
+        const full: GiftEvt = { ...evt, id: uid(), ts: Date.now() };
+        setLastGift(full);
+        void channelRef.current?.send({ type: "broadcast", event: "gift", payload: full });
+      },
       sendChat: (text: string) => {
         const trimmed = text.trim();
         if (!trimmed) return;
@@ -413,7 +434,7 @@ export function useLiveRoom(params: {
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid,
+      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid, lastGift,
       identity, displayName,
     ],
   );

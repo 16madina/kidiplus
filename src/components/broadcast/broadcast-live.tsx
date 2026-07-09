@@ -17,6 +17,7 @@ import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
@@ -374,6 +375,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const soldCount = room.products.filter((p) => p.status === "sold" || p.status === "out").length;
 
+  // Aggregate gifts received in-session (from realtime broadcast frames).
+  const [giftStats, setGiftStats] = useState<{ count: number; sellerNet: number }>({ count: 0, sellerNet: 0 });
+  const seenGiftIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const g = room.lastGift;
+    if (!g) return;
+    if (seenGiftIdsRef.current.has(g.id)) return;
+    seenGiftIdsRef.current.add(g.id);
+    // Resolve price from the local catalog (same as server) to derive seller_net.
+    void import("@/lib/gifts").then(({ giftByKey }) => {
+      const def = giftByKey(g.giftKey);
+      const price = def?.prices[cur] ?? 0;
+      const net = price * 0.7;
+      setGiftStats((s) => ({ count: s.count + 1, sellerNet: s.sellerNet + net }));
+      const emoji = def?.emoji ?? "🎁";
+      const name = def ? t(def.nameKey) : t("gifts.name.rose");
+      room.systemMessage(`${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: g.senderName, gift: name })}`);
+    });
+  }, [room.lastGift, room, t, cur]);
+
   const featured = room.products.find((p) => p.id === featuredId) ?? room.products[0];
 
   const startAuction = async (p: LiveProductRow) => {
@@ -647,11 +668,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             <span className="text-[9px] uppercase tracking-wide text-white/60">Articles</span>
             <span className="text-[14px] font-bold tabular-nums">{soldCount}</span>
           </div>
+          <div className="h-6 w-px bg-white/20" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[9px] uppercase tracking-wide text-white/60">
+              {t("gifts.short", "Cadeaux 🎁")}
+            </span>
+            <span
+              className="text-[14px] font-bold tabular-nums"
+              style={{ color: giftStats.count > 0 ? "oklch(0.85 0.18 85)" : undefined }}
+            >
+              {formatMoney(giftStats.sellerNet, cur, i18n.language)}
+            </span>
+          </div>
         </div>
       </div>
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
+      <GiftAnimationsLayer trigger={room.lastGift} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}

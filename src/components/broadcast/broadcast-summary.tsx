@@ -10,6 +10,7 @@ import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
+import { fetchLiveGiftsTotal } from "@/lib/live-gifts-db";
 import { Logo } from "@/components/brand/logo";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
@@ -20,11 +21,15 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   // Real paid orders for this live (if any). Falls back to the mock sales
   // recorded locally when the seller's live wasn't backed by a DB row.
   const [realOrders, setRealOrders] = useState<OrderRow[] | null>(null);
+  const [giftsTotal, setGiftsTotal] = useState<{ count: number; sellerNet: number } | null>(null);
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
     void fetchOrdersForLive(liveId).then((rows) => {
       if (alive) setRealOrders(rows.filter((r) => r.status === "paid"));
+    });
+    void fetchLiveGiftsTotal(liveId).then((g) => {
+      if (alive) setGiftsTotal({ count: g.count, sellerNet: g.sellerNet });
     });
     return () => { alive = false; };
   }, [liveId]);
@@ -78,6 +83,26 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           </div>
           <RevenueCounter value={revenue} currency={currency} locale={i18n.language} />
         </div>
+
+        {giftsTotal && giftsTotal.count > 0 && (
+          <div className="flex items-center justify-between rounded-2xl bg-muted px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[24px] leading-none">🎁</span>
+              <div>
+                <p className="text-[13px] font-bold">{t("gifts.summaryTitle", "Cadeaux reçus")}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("gifts.summaryCount", { defaultValue: "{{count}} cadeaux", count: giftsTotal.count })}
+                </p>
+              </div>
+            </div>
+            <span
+              className="text-[16px] font-bold tabular-nums"
+              style={{ color: "oklch(0.65 0.16 60)" }}
+            >
+              +{fmt(giftsTotal.sellerNet)}
+            </span>
+          </div>
+        )}
 
         <div>
           <h2 className="mb-2 text-[15px] font-bold">{t("broadcast.summary.sales")}</h2>

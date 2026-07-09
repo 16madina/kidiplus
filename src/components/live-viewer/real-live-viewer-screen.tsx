@@ -2,7 +2,7 @@
 // Chat / hearts / auction / buy are wired through Supabase Realtime + DB.
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
+import { Send, Heart, Gift, Share2, X, Eye, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -39,6 +39,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
+import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
+import { GiftAnimationsLayer } from "./gift-animations";
+import { sendGiftRpc } from "@/lib/live-gifts-db";
+import { giftByKey, type GiftKey } from "@/lib/gifts";
 
 
 
@@ -168,6 +172,39 @@ export function RealLiveViewerScreen() {
   // A single sheet handles both fixed-price purchases and auction wins.
   const [pendingOrder, setPendingOrder] = useState<OrderRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [sendingGift, setSendingGift] = useState(false);
+  const showGiftError = useGiftError();
+
+  const doSendGift = async (key: GiftKey) => {
+    if (!active?.liveId || !user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (liveEnded) return;
+    setSendingGift(true);
+    haptic.medium();
+    const res = await sendGiftRpc(active.liveId, key);
+    setSendingGift(false);
+    if (!res.ok) {
+      if (res.error === "insufficient_funds") setTopupOpen(true);
+      showGiftError(res.error);
+      return;
+    }
+    haptic.success();
+    // Local echo + broadcast to everyone in the room. Also inserts a chat line.
+    room.broadcastGift({ giftKey: key, senderId: user.id, senderName: displayName });
+    const gDef = giftByKey(key);
+    const emoji = gDef?.emoji ?? "🎁";
+    const giftName = t(gDef?.nameKey ?? "gifts.name.rose");
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: `gift-${res.giftId}`,
+        user: "",
+        color: "",
+        text: `${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: displayName, gift: giftName })}`,
+        system: true,
+      },
+    ]);
+  };
 
 
   // Sold celebration from server auction:end.
@@ -709,10 +746,18 @@ export function RealLiveViewerScreen() {
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Heart size={17} fill="currentColor" />
         </Press>
-        <Press aria-label="Plus"
+        <Press
+          onClick={liveEnded ? undefined : () => { haptic.light(); setGiftTrayOpen(true); }}
+          disabled={liveEnded}
+          aria-label={t("gifts.open", "Cadeaux")}
           className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Plus size={18} />
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            border: "1px solid oklch(0.75 0.14 85 / 0.5)",
+          }}>
+          <Gift size={17} />
         </Press>
       </div>
 
@@ -761,6 +806,16 @@ export function RealLiveViewerScreen() {
         onClose={() => setPendingOrder(null)}
       />
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <GiftTraySheet
+        open={giftTrayOpen}
+        onClose={() => setGiftTrayOpen(false)}
+        liveCurrency={liveCurrency}
+        locale={i18n.language}
+        sending={sendingGift}
+        onSend={(k) => doSendGift(k)}
+        onTopUp={() => { setGiftTrayOpen(false); setTopupOpen(true); }}
+      />
+      <GiftAnimationsLayer trigger={room.lastGift} />
 
       {moreOpen && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
