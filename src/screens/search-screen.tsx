@@ -53,8 +53,21 @@ export function SearchScreen() {
   const [sort, setSort] = useState<CategorySort>("recommended");
   const [sellerScope, setSellerScope] = useState<SellerScope>("all");
   const [dbSellers, setDbSellers] = useState<SellerProfile[]>([]);
-  const [activeSellerNames, setActiveSellerNames] = useState<Set<string>>(new Set());
+  const [sellerAvatars, setSellerAvatars] = useState<Record<string, string | null>>({});
+  const [activeSellerIds, setActiveSellerIds] = useState<Set<string>>(new Set());
+  const [activeLives, setActiveLives] = useState<LiveStream[]>([]);
   const [sellerLoading, setSellerLoading] = useState(false);
+
+  const [liveResults, setLiveResults] = useState<LiveStream[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  const [productResults, setProductResults] = useState<ShopProductWithSeller[]>([]);
+  const [productImgs, setProductImgs] = useState<Record<string, string | null>>({});
+  const [productLoading, setProductLoading] = useState(false);
+
+  // Trends: derived from currently-live streams grouped by category.
+  const [trends, setTrends] = useState<TrendItem[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const { open: openLive } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
@@ -65,109 +78,111 @@ export function SearchScreen() {
     return () => clearTimeout(handle);
   }, [rawQuery]);
 
-
-
   // First-paint skeleton for the browse (Tendances + Catégories) section
   useEffect(() => {
-    const t = setTimeout(() => setBrowseLoading(false), 450);
+    const t = setTimeout(() => setBrowseLoading(false), 300);
     return () => clearTimeout(t);
   }, []);
 
   const searching = query.length > 0;
-  const q = query.toLowerCase();
 
-  // Load seller profiles + live seller names from the backend whenever the query changes.
+  // Load trends (grouped active lives) on browse view.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { lives } = await fetchActiveSellers();
+      if (cancelled) return;
+      const byCat = new Map<string, { viewers: number; image: string | null }>();
+      for (const l of lives) {
+        const key = l.category ?? "Autres";
+        const prev = byCat.get(key) ?? { viewers: 0, image: null };
+        byCat.set(key, {
+          viewers: prev.viewers + (l.viewers || 0),
+          image: prev.image ?? l.thumbnail ?? null,
+        });
+      }
+      const list: TrendItem[] = Array.from(byCat.entries())
+        .map(([label, v]) => ({ id: label, label, viewers: v.viewers, image: v.image }))
+        .sort((a, b) => b.viewers - a.viewers)
+        .slice(0, 8);
+      setTrends(list);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load real seller profiles + active seller ids whenever the query changes.
   useEffect(() => {
     if (!searching) {
       setDbSellers([]);
-      setActiveSellerNames(new Set());
+      setSellerAvatars({});
+      setActiveSellerIds(new Set());
+      setActiveLives([]);
+      setLiveResults([]);
+      setProductResults([]);
+      setProductImgs({});
       setSellerLoading(false);
+      setLiveLoading(false);
+      setProductLoading(false);
       return;
     }
     let cancelled = false;
     setSellerLoading(true);
-    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
-      .then(([profiles, liveNames]) => {
+    setLiveLoading(true);
+    setProductLoading(true);
+
+    void Promise.all([
+      searchSellerProfiles(query, 30),
+      fetchActiveSellers(),
+      searchActiveLives(query, 40),
+      searchActiveShopProducts(query, 40),
+    ])
+      .then(async ([profiles, active, lives, products]) => {
         if (cancelled) return;
         setDbSellers(profiles);
-        setActiveSellerNames(liveNames);
+        setActiveSellerIds(active.ids);
+        setActiveLives(active.lives);
+        setLiveResults(lives);
+        setProductResults(products);
+
+        // Resolve avatars for sellers in parallel.
+        const entries = await Promise.all(
+          profiles.map(async (p) => [p.id, await resolveAvatarUrl(p.avatar_url)] as const),
+        );
+        if (!cancelled) {
+          setSellerAvatars(Object.fromEntries(entries));
+        }
+
+        // Resolve product cover images in parallel.
+        const pEntries = await Promise.all(
+          products.map(async (p) => [p.id, await resolveShopImage(p.image_url)] as const),
+        );
+        if (!cancelled) {
+          setProductImgs(Object.fromEntries(pEntries));
+        }
       })
-      .catch((err) => {
-        console.error("[SearchScreen] seller search failed", err);
-      })
+      .catch((err) => console.error("[SearchScreen] search failed", err))
       .finally(() => {
-        if (!cancelled) setSellerLoading(false);
+        if (cancelled) return;
+        setSellerLoading(false);
+        setLiveLoading(false);
+        setProductLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+
+    return () => { cancelled = true; };
   }, [query, searching]);
 
-  const liveResults = useMemo<LiveStream[]>(() => {
-    if (!searching) return [];
-    return ALL_STREAMS.filter(
-      (s) =>
-        s.seller.toLowerCase().includes(q) ||
-        s.title.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q),
-    );
-  }, [q, searching]);
-
   const sellerResults = useMemo(() => {
-    if (!searching) return [];
-    const byName = new Map<string, ReturnType<typeof getSellerInfo>>();
+    if (sellerScope === "live") {
+      return dbSellers.filter((p) => activeSellerIds.has(p.id));
+    }
+    return dbSellers;
+  }, [dbSellers, activeSellerIds, sellerScope]);
 
-    // Sellers are "live" if they appear in either the real active lives feed or the mock live results.
-    const liveNames = new Set<string>();
-    liveResults.forEach((s) => liveNames.add(s.seller));
-    activeSellerNames.forEach((name) => liveNames.add(name));
+  // For LiveCard rendering in the Lives tab, use real active lives filtered by query
+  // (already returned by searchActiveLives). No mock streams.
+  const liveResultsToRender = liveResults;
+  void activeLives; // reserved for future use
 
-    // 1. Real seller profiles from the database.
-    dbSellers.forEach((profile) => {
-      const isLive = liveNames.has(profile.display_name);
-      if (sellerScope === "live" && !isLive) return;
-      byName.set(profile.display_name, makeSellerInfoFromProfile(profile));
-    });
-
-    // 2. Mock sellers tied to currently-live streams (keeps fallback content working).
-    ALL_STREAMS.forEach((s) => {
-      if (sellerScope === "live" && !liveNames.has(s.seller)) return;
-      if (!s.seller.toLowerCase().includes(q)) return;
-      if (!byName.has(s.seller)) {
-        byName.set(s.seller, getSellerInfo(s.seller));
-      }
-    });
-
-    return Array.from(byName.values());
-  }, [q, searching, dbSellers, activeSellerNames, sellerScope, liveResults]);
-
-
-
-  const productResults = useMemo<Array<SellerProduct & { seller: string }>>(() => {
-    if (!searching) return [];
-    const out: Array<SellerProduct & { seller: string }> = [];
-    ALL_STREAMS.forEach((s) => {
-      const info = getSellerInfo(s.seller);
-      info.products.forEach((p) => {
-        if (
-          p.name.toLowerCase().includes(q) ||
-          s.category.toLowerCase().includes(q) ||
-          s.seller.toLowerCase().includes(q)
-        ) {
-          out.push({ ...p, seller: s.seller });
-        }
-      });
-    });
-    return out.slice(0, 40);
-  }, [q, searching]);
-
-  // Combined set of seller names currently broadcasting (real DB lives + mock live results).
-  const liveSellerNames = useMemo(() => {
-    const set = new Set<string>();
-    liveResults.forEach((s) => set.add(s.seller));
-    activeSellerNames.forEach((name) => set.add(name));
-    return set;
-  }, [liveResults, activeSellerNames]);
 
   const commitRecent = (term: string) => {
 
