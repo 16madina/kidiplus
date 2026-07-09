@@ -172,6 +172,39 @@ export function RealLiveViewerScreen() {
   // A single sheet handles both fixed-price purchases and auction wins.
   const [pendingOrder, setPendingOrder] = useState<OrderRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [sendingGift, setSendingGift] = useState(false);
+  const showGiftError = useGiftError();
+
+  const doSendGift = async (key: GiftKey) => {
+    if (!active?.liveId || !user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (liveEnded) return;
+    setSendingGift(true);
+    haptic.medium();
+    const res = await sendGiftRpc(active.liveId, key);
+    setSendingGift(false);
+    if (!res.ok) {
+      if (res.error === "insufficient_funds") setTopupOpen(true);
+      showGiftError(res.error);
+      return;
+    }
+    haptic.success();
+    // Local echo + broadcast to everyone in the room. Also inserts a chat line.
+    room.broadcastGift({ giftKey: key, senderId: user.id, senderName: displayName });
+    const gDef = giftByKey(key);
+    const emoji = gDef?.emoji ?? "🎁";
+    const giftName = t(gDef?.nameKey ?? "gifts.name.rose");
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: `gift-${res.giftId}`,
+        user: "",
+        color: "",
+        text: `${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: displayName, gift: giftName })}`,
+        system: true,
+      },
+    ]);
+  };
 
 
   // Sold celebration from server auction:end.
