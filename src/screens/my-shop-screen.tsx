@@ -217,22 +217,60 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     <PushScreen open={open} onClose={onClose} title={t("shop.title", { defaultValue: "Ma boutique" })} right={headerRight} zIndex={70}>
       {/* Hero */}
       <div
-        className="relative"
+        className="relative overflow-hidden"
         style={{
-          background: `linear-gradient(140deg, ${CREAM_TOP} 0%, ${CREAM_MID} 45%, ${CREAM_LOW} 100%)`,
+          background: bannerUrl
+            ? undefined
+            : `linear-gradient(140deg, ${CREAM_TOP} 0%, ${CREAM_MID} 45%, ${CREAM_LOW} 100%)`,
           paddingBottom: 28,
         }}
       >
+        {/* banner photo layer */}
+        {bannerUrl && (
+          <img
+            src={bannerUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+            draggable={false}
+          />
+        )}
         {/* subtle silk shimmer overlay */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
-            background:
-              "radial-gradient(120% 60% at 20% 10%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(80% 50% at 90% 30%, rgba(200,162,75,0.25), transparent 70%)",
-            mixBlendMode: "screen",
+            background: bannerUrl
+              ? "linear-gradient(180deg, rgba(16,22,43,0.05) 0%, rgba(246,236,217,0.55) 78%, rgba(228,204,166,0.85) 100%)"
+              : "radial-gradient(120% 60% at 20% 10%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(80% 50% at 90% 30%, rgba(200,162,75,0.25), transparent 70%)",
+            mixBlendMode: bannerUrl ? "normal" : "screen",
           }}
         />
+
+        {/* banner edit chip (top-right) */}
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onBannerChange}
+          className="hidden"
+        />
+        <Press
+          aria-label="Modifier la bannière"
+          onClick={() => { haptic.light(); onPickBanner(); }}
+          disabled={uploadingBanner}
+          className="absolute right-3 top-3 z-20 grid h-9 items-center gap-1.5 rounded-full px-3 text-[11.5px] font-bold"
+          style={{
+            background: "rgba(16,22,43,0.72)",
+            color: "#fff",
+            backdropFilter: "blur(6px)",
+            gridAutoFlow: "column",
+          }}
+        >
+          {uploadingBanner ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+          {uploadingBanner ? "Envoi…" : (bannerUrl ? "Bannière" : "Ajouter une bannière")}
+        </Press>
+
 
         {/* Avatar disc */}
         <div className="relative flex flex-col items-center pt-8">
