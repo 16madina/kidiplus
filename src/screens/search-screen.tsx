@@ -549,31 +549,28 @@ export function SearchScreen() {
                 overscrollBehavior: "contain",
               }}
             >
-              {/* Tendances du jour */}
-              <div className="pt-4">
-                <div className="flex items-end justify-between px-4">
-                  <h2
-                    className="text-[22px] font-bold"
-                    style={{ letterSpacing: "-0.01em" }}
-                  >
-                    {t("search.trending")}
-                  </h2>
-                  <Press
-                    className="!min-h-8 text-[13px] font-semibold text-muted-foreground"
-                    onClick={() => {}}
-                  >
-                    {t("common.seeAll")}
-                  </Press>
-                </div>
+              {/* Tendances du jour — real active-live categories, hidden if none */}
+              {(browseLoading || trends.length > 0) && (
+                <div className="pt-4">
+                  <div className="flex items-end justify-between px-4">
+                    <h2
+                      className="text-[22px] font-bold"
+                      style={{ letterSpacing: "-0.01em" }}
+                    >
+                      {t("search.trending")}
+                    </h2>
+                  </div>
 
-                <div className="pt-3">
-                  {browseLoading ? (
-                    <TrendsSkeleton />
-                  ) : (
-                    <TrendsRow trends={TRENDS} onTap={openTrend} />
-                  )}
+                  <div className="pt-3">
+                    {browseLoading ? (
+                      <TrendsSkeleton />
+                    ) : (
+                      <TrendsRow trends={trends} onTap={openTrend} />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
 
               {/* Catégories */}
               <div className="pt-7">
