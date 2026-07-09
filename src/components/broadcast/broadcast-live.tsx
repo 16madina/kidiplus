@@ -270,27 +270,32 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    const key = `${evt.productId}-${evt.finalPrice}`;
+    const key = `${evt.productId}-${evt.finalPrice}-${evt.winnerId ?? "none"}`;
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
-    const label = evt.winnerName
-      ? t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice)
-      : `${t("live.sold")} · ${fmt(evt.finalPrice)}`;
+    // No winner → UNSOLD: no confetti, no winner reveal, no sale flash.
+    if (!evt.winnerName || !evt.winnerId) {
+      const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
+      setLastSaleFlash(label);
+      room.systemMessage(label);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
+      return;
+    }
+    const label = t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice);
     setLastSaleFlash(label);
     setConfettiTrigger((n) => n + 1);
     haptic.success();
     room.systemMessage(label + (prod ? ` — ${prod.name}` : ""));
-    if (evt.winnerName) {
-      setWinnerReveal({
-        key: Date.now(),
-        name: evt.winnerName,
-        avatar: evt.winnerAvatarUrl ?? null,
-      });
-    }
+    setWinnerReveal({
+      key: Date.now(),
+      name: evt.winnerName,
+      avatar: evt.winnerAvatarUrl ?? null,
+    });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room]);
+  }, [room.lastAuctionEnd, room.products, t, room, fmt]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
