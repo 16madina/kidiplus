@@ -14,6 +14,7 @@
     "alreadyMod": "Already a moderator",
     "manage": "Manage",
     "addProduct": "Add",
+    "addSection": "Add a moderator",
     "startAuction": "Start",
     "stop": "Stop",
     "badge": "MOD"
@@ -209,7 +210,7 @@
     "unsoldFlash": "Unsold — {{name}} 😕",
     "relaunch": "Relaunch",
     "relaunched": "Product relaunched",
-    "filterSlow": "Filters unavailable on this device",
+    "flipFailed": "Couldn't switch camera",
     "endLive": "End",
     "confirmEnd": "End this live?",
     "confirmEndBody": "You won't be able to resume this live once ended.",
@@ -1008,6 +1009,9 @@
       "other": "{{name}} won!",
       "said": "{{name}} said + 🎉",
       "saidMe": "You said + 🎉"
+    },
+    "unsold": {
+      "title": "Item not sold"
     }
   },
   "address": {

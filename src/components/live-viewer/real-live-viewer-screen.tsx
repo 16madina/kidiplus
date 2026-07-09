@@ -175,48 +175,64 @@ export function RealLiveViewerScreen() {
     name: string | null;
     avatar: string | null;
     isMe: boolean;
+    variant: "winner" | "unsold";
+    productName: string | null;
   } | null>(null);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    const key = `${evt.productId}-${evt.finalPrice}`;
+    const key = `${evt.productId}-${evt.finalPrice}-${evt.winnerId ?? "none"}`;
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
-    setConfettiKey((k) => k + 1);
-    haptic.success();
-    const winner = evt.winnerName ?? "—";
-    setLocalMessages((prev) => [
-      ...prev,
-      systemMessage(`${t("live.soldTo", { name: winner })} · ${formatLive(evt.finalPrice)}`),
-    ]);
+    const prod = room.products.find((p) => p.id === evt.productId);
 
-    // Winner reveal — animate for everyone if there is a real winner.
-    if (evt.winnerName) {
-      const isMe = !!user && evt.winnerId === user.id;
-      // Trust host-provided avatar first; fall back to a profile lookup so the
-      // reveal still shows a face when the payload lacks the URL.
+    if (!evt.winnerName || !evt.winnerId) {
+      // Unsold — central reveal, no confetti, no sale line.
+      setLocalMessages((prev) => [
+        ...prev,
+        systemMessage(t("live.unsoldFlash", { name: prod?.name ?? "produit" })),
+      ]);
       setWinnerReveal({
         key: Date.now(),
-        name: evt.winnerName,
-        avatar: evt.winnerAvatarUrl ?? null,
-        isMe,
+        name: null,
+        avatar: null,
+        isMe: false,
+        variant: "unsold",
+        productName: prod?.name ?? null,
       });
-      if (!evt.winnerAvatarUrl && evt.winnerId) {
-        void (async () => {
-          const { data } = await supabase
-            .from("profiles")
-            .select("avatar_url")
-            .eq("id", evt.winnerId!)
-            .maybeSingle();
-          const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
-          if (url) {
-            setWinnerReveal((prev) =>
-              prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
-            );
-          }
-        })();
-      }
+      return;
+    }
+
+    setConfettiKey((k) => k + 1);
+    haptic.success();
+    setLocalMessages((prev) => [
+      ...prev,
+      systemMessage(`${t("live.soldTo", { name: evt.winnerName })} · ${formatLive(evt.finalPrice)}`),
+    ]);
+    const isMe = !!user && evt.winnerId === user.id;
+    setWinnerReveal({
+      key: Date.now(),
+      name: evt.winnerName,
+      avatar: evt.winnerAvatarUrl ?? null,
+      isMe,
+      variant: "winner",
+      productName: prod?.name ?? null,
+    });
+    if (!evt.winnerAvatarUrl && evt.winnerId) {
+      void (async () => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", evt.winnerId!)
+          .maybeSingle();
+        const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
+        if (url) {
+          setWinnerReveal((prev) =>
+            prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
+          );
+        }
+      })();
     }
 
     // If I won and this is a real live with a known seller, either celebrate
@@ -735,6 +751,8 @@ export function RealLiveViewerScreen() {
         winnerName={winnerReveal?.name ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
         isMe={!!winnerReveal?.isMe}
+        variant={winnerReveal?.variant ?? "winner"}
+        productName={winnerReveal?.productName ?? null}
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />

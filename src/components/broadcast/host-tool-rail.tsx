@@ -1,7 +1,7 @@
 // Right-side vertical tool rail for the host (and moderator) during a live.
 // TikTok-style column: 44pt glass buttons + optional tiny label underneath.
 import { motion } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, RefreshCw, Sparkles, Plus } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 
@@ -9,12 +9,11 @@ export type HostToolRailProps = {
   micOn?: boolean;
   camOn?: boolean;
   canFlip?: boolean;
-  canFilter?: boolean;
-  filtersOpen?: boolean;
+  moderatorsOpen?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
   onFlip?: () => void;
-  onToggleFilters?: () => void;
+  onOpenModerators?: () => void;
   onAddProduct?: () => void;
   /** Hide the mic/cam buttons (viewer moderator mode). */
   hideAV?: boolean;
@@ -33,12 +32,11 @@ export function HostToolRail({
   micOn = true,
   camOn = true,
   canFlip = true,
-  canFilter = true,
-  filtersOpen = false,
+  moderatorsOpen = false,
   onToggleMic,
   onToggleCam,
   onFlip,
-  onToggleFilters,
+  onOpenModerators,
   onAddProduct,
   hideAV = false,
 }: HostToolRailProps) {
@@ -79,18 +77,18 @@ export function HostToolRail({
       {!hideAV && canFlip && onFlip && (
         <FlipButton onFlip={onFlip} />
       )}
-      {!hideAV && canFilter && onToggleFilters && (
+      {onOpenModerators && (
         <Press
-          onClick={() => { haptic.selection(); onToggleFilters(); }}
-          aria-label="Filtres caméra"
+          onClick={() => { haptic.selection(); onOpenModerators(); }}
+          aria-label="Modérateurs"
           className={`${btn} pointer-events-auto`}
           style={{
             ...btnStyle,
-            outline: filtersOpen ? "2px solid oklch(0.85 0.18 90)" : undefined,
+            outline: moderatorsOpen ? "2px solid oklch(0.85 0.18 90)" : undefined,
             outlineOffset: -2,
           }}
         >
-          <Sparkles size={16} />
+          <Shield size={16} />
         </Press>
       )}
       {onAddProduct && (
