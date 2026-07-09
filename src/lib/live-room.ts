@@ -130,7 +130,9 @@ export function useLiveRoom(params: {
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Load initial products.
+  // Load initial products + rehydrate an already-running auction so late
+  // joiners see the same countdown as everyone else. `auction_deadline_at`
+  // is stored on the live_products row by the start_auction RPC.
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
@@ -151,6 +153,21 @@ export function useLiveRoom(params: {
       if (!alive) return;
       setProducts(hydrated);
       setLiveStatus((liveRes.data?.status as "live" | "ended" | undefined) ?? null);
+      // Rehydrate any active auction whose deadline is still in the future.
+      const running = hydrated.find(
+        (row) =>
+          row.mode === "auction" &&
+          row.status === "active" &&
+          row.auction_deadline_at &&
+          new Date(row.auction_deadline_at).getTime() > Date.now(),
+      );
+      if (running && running.auction_deadline_at) {
+        setAuctionStart({
+          productId: running.id,
+          deadlineMs: new Date(running.auction_deadline_at).getTime(),
+          timerSec: running.timer_seconds,
+        });
+      }
       if (bidRes.data) {
         setLastBid({
           productId: bidRes.data.product_id,
@@ -165,6 +182,7 @@ export function useLiveRoom(params: {
       alive = false;
     };
   }, [liveId]);
+
 
   // Postgres realtime for products + bids.
   useEffect(() => {
