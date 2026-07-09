@@ -31,7 +31,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
-  createLiveProductInDb,
+  createLiveProductInDb, relaunchUnsoldProductInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { supabase } from "@/integrations/supabase/client";
