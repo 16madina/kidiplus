@@ -64,32 +64,6 @@ export function SearchScreen() {
     return () => clearTimeout(handle);
   }, [rawQuery]);
 
-  // Load seller profiles + live seller names from the backend whenever the query changes.
-  useEffect(() => {
-    if (!searching) {
-      setDbSellers([]);
-      setActiveSellerNames(new Set());
-      setSellerLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setSellerLoading(true);
-    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
-      .then(([profiles, liveNames]) => {
-        if (cancelled) return;
-        setDbSellers(profiles);
-        setActiveSellerNames(liveNames);
-      })
-      .catch((err) => {
-        console.error("[SearchScreen] seller search failed", err);
-      })
-      .finally(() => {
-        if (!cancelled) setSellerLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [query, searching]);
 
 
   // First-paint skeleton for the browse (Tendances + Catégories) section
