@@ -807,38 +807,91 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Bottom area is chat + featured card only. Mic / cam / flip / filters /
-          add live on the right tool rail. */}
+      {/* Bottom area is chat + featured card only. Mic / cam / flip /
+          moderators / add live on the right tool rail. Filters removed. */}
       <HostToolRail
         micOn={micOn}
         camOn={cameraOn}
         canFlip={canFlip}
-        canFilter={true}
-        filtersOpen={filtersOpen}
+        moderatorsOpen={moderatorsSheetOpen}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
-        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
       />
-      <FilterPicker
-        open={filtersOpen}
-        active={filter}
-        onPick={async (k) => {
-          setFilter(k);
-          try { sessionStorage.setItem("kp:host:filter", k); } catch {}
-          const h = videoHandleRef.current;
-          if (!h) return;
-          const res = await h.setFilter(k);
-          if (!res.ok) {
-            if (res.reason === "slow") {
-              toast.error(t("live.filterSlow", "Filtres indisponibles sur cet appareil"));
-            }
-            setFilter("none");
-            try { sessionStorage.setItem("kp:host:filter", "none"); } catch {}
-          }
-        }}
-      />
+
+      {/* Moderators quick-access bottom sheet (opened from the rail). Same
+          management surface as the one embedded in the Products dock — this
+          is just a shortcut so the host doesn't have to open Products first. */}
+      <BottomSheet open={moderatorsSheetOpen} onClose={() => setModeratorsSheetOpen(false)} heightPercent={70}>
+        <div className="flex h-full min-h-0 flex-col px-4">
+          <div className="flex items-center gap-2 pb-3 pt-1">
+            <Shield size={18} />
+            <h2 className="text-[18px] font-bold">{t("moderator.title", "Modérateurs")}</h2>
+          </div>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {moderators.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">
+                {t("moderator.empty", "Aucun modérateur. Promeus un spectateur pour t'aider à gérer les produits.")}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {moderators.map((m) => (
+                  <li
+                    key={m.userId}
+                    className="flex items-center gap-2.5 rounded-xl border p-2"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    {m.avatarUrl ? (
+                      <img src={m.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                    ) : (
+                      <div className="grid h-9 w-9 place-items-center rounded-full bg-muted text-[12px] font-bold">
+                        {(m.displayName ?? m.handle ?? "?").slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-semibold">{m.displayName ?? m.handle ?? m.userId.slice(0, 8)}</p>
+                      {m.handle && <p className="truncate text-[11px] text-muted-foreground">@{m.handle}</p>}
+                    </div>
+                    <Press
+                      onClick={async () => {
+                        if (!b.liveId) return;
+                        const res = await removeModerator(b.liveId, m.userId);
+                        if (!res.ok) toast.error(res.error ?? t("moderator.removeFailed", "Impossible de retirer"));
+                        else toast.success(t("moderator.removed", "Modérateur retiré"));
+                      }}
+                      aria-label={t("moderator.demote", "Retirer")}
+                      className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-destructive"
+                    >
+                      <Trash2 size={14} />
+                    </Press>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4">
+              <p className="pb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                {t("moderator.addSection", "Ajouter un modérateur")}
+              </p>
+              {b.liveId && user && (
+                <ModeratorPromoteForm
+                  liveId={b.liveId}
+                  addedBy={user.id}
+                  existingIds={new Set(moderators.map((m) => m.userId))}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
       <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={85}>
