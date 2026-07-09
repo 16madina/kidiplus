@@ -374,6 +374,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const soldCount = room.products.filter((p) => p.status === "sold" || p.status === "out").length;
 
+  // Aggregate gifts received in-session (from realtime broadcast frames).
+  const [giftStats, setGiftStats] = useState<{ count: number; sellerNet: number }>({ count: 0, sellerNet: 0 });
+  const seenGiftIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const g = room.lastGift;
+    if (!g) return;
+    if (seenGiftIdsRef.current.has(g.id)) return;
+    seenGiftIdsRef.current.add(g.id);
+    // Resolve price from the local catalog (same as server) to derive seller_net.
+    void import("@/lib/gifts").then(({ giftByKey }) => {
+      const def = giftByKey(g.giftKey);
+      const price = def?.prices[cur] ?? 0;
+      const net = price * 0.7;
+      setGiftStats((s) => ({ count: s.count + 1, sellerNet: s.sellerNet + net }));
+      const emoji = def?.emoji ?? "🎁";
+      const name = def ? t(def.nameKey) : t("gifts.name.rose");
+      room.systemMessage(`${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: g.senderName, gift: name })}`);
+    });
+  }, [room.lastGift, room, t, cur]);
+
   const featured = room.products.find((p) => p.id === featuredId) ?? room.products[0];
 
   const startAuction = async (p: LiveProductRow) => {
