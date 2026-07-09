@@ -921,6 +921,62 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 );
               })}
             </ul>
+
+            {/* Moderators — host manages who can help with product actions. */}
+            <div className="mt-5">
+              <div className="flex items-center gap-2 pb-2">
+                <Shield size={14} className="text-muted-foreground" />
+                <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {t("moderator.title", "Modérateurs")}
+                </h3>
+              </div>
+              {moderators.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground">
+                  {t("moderator.empty", "Aucun modérateur. Promeus un spectateur pour t'aider à gérer les produits.")}
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {moderators.map((m) => (
+                    <li
+                      key={m.userId}
+                      className="flex items-center gap-2.5 rounded-xl border p-2"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="grid h-8 w-8 place-items-center rounded-full bg-muted text-[11px] font-bold">
+                          {(m.displayName ?? m.handle ?? "?").slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold">{m.displayName ?? m.handle ?? m.userId.slice(0, 8)}</p>
+                        {m.handle && <p className="truncate text-[11px] text-muted-foreground">@{m.handle}</p>}
+                      </div>
+                      <Press
+                        onClick={async () => {
+                          if (!b.liveId) return;
+                          const res = await removeModerator(b.liveId, m.userId);
+                          if (!res.ok) toast.error(res.error ?? t("moderator.removeFailed", "Impossible de retirer"));
+                          else toast.success(t("moderator.removed", "Modérateur retiré"));
+                        }}
+                        aria-label={t("moderator.demote", "Retirer")}
+                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-destructive"
+                      >
+                        <Trash2 size={14} />
+                      </Press>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {b.liveId && user && (
+                <ModeratorPromoteForm
+                  liveId={b.liveId}
+                  addedBy={user.id}
+                  existingIds={new Set(moderators.map((m) => m.userId))}
+                />
+              )}
+            </div>
           </div>
         </div>
       </BottomSheet>
