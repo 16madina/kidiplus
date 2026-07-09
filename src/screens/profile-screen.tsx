@@ -115,7 +115,6 @@ export function ProfileScreen() {
   }, [profile?.avatar_url]);
 
   // Live-updating sales count (paid orders where the current user is seller).
-  // Followers/subscriptions tables don't exist yet — show 0 for those.
   const [salesCount, setSalesCount] = useState<number | null>(null);
   useEffect(() => {
     const userId = profile?.id;
@@ -140,6 +139,43 @@ export function ProfileScreen() {
       .subscribe();
     return () => { alive = false; supabase.removeChannel(channel); };
   }, [profile?.id]);
+
+  // Live-updating followers / following counts (denormalized on profiles, kept
+  // fresh via realtime on follows).
+  const [followers, setFollowers] = useState<number>(0);
+  const [following, setFollowing] = useState<number>(0);
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) { setFollowers(0); setFollowing(0); return; }
+    setFollowers(profile?.followers_count ?? 0);
+    setFollowing(profile?.following_count ?? 0);
+    let alive = true;
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("followers_count, following_count")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!alive) return;
+      const p = data as { followers_count?: number; following_count?: number } | null;
+      setFollowers(p?.followers_count ?? 0);
+      setFollowing(p?.following_count ?? 0);
+    };
+    const channel = supabase
+      .channel(`profile-follows-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "follows", filter: `followed_id=eq.${userId}` },
+        () => { void refresh(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "follows", filter: `follower_id=eq.${userId}` },
+        () => { void refresh(); },
+      )
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(channel); };
+  }, [profile?.id, profile?.followers_count, profile?.following_count]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
