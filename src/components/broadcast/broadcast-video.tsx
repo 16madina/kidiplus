@@ -381,6 +381,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       let cancelled = false;
       (async () => {
         try {
+          // Tear down any active filter pipeline; we'll reinstall against
+          // the new camera below.
+          const activeFilter = currentFilterRef.current;
+          if (filterPipelineRef.current) {
+            try { filterPipelineRef.current.stop(); } catch {}
+            filterPipelineRef.current = null;
+          }
           const newTrack = await createLocalVideoTrack({ facingMode: facing });
           if (cancelled) {
             newTrack.stop();
@@ -391,6 +398,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           await room.localParticipant.publishTrack(newTrack);
           localVideoTrackRef.current = newTrack;
           if (videoRef.current) newTrack.attach(videoRef.current);
+          if (activeFilter !== "none") {
+            await applyFilterToPublishedTrack(activeFilter);
+          }
         } catch {}
       })();
       return () => {
