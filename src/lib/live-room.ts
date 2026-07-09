@@ -292,7 +292,7 @@ export function useLiveRoom(params: {
       const p = payload as ChatEvt;
       setChat((prev) => {
         const next = [...prev, p];
-        return next.length > 150 ? next.slice(next.length - 150) : next;
+        return next.length > 60 ? next.slice(next.length - 60) : next;
       });
     });
     ch.on("broadcast", { event: "heart" }, () => {
@@ -418,7 +418,7 @@ export function useLiveRoom(params: {
         if (msgs.length === 0) return;
         setChat((prev) => {
           const next = prev.concat(msgs);
-          return next.length > 150 ? next.slice(next.length - 150) : next;
+          return next.length > 60 ? next.slice(next.length - 60) : next;
         });
       },
       injectLocalHearts: (n: number) => {
