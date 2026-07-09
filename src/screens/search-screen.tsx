@@ -75,6 +75,33 @@ export function SearchScreen() {
   const searching = query.length > 0;
   const q = query.toLowerCase();
 
+  // Load seller profiles + live seller names from the backend whenever the query changes.
+  useEffect(() => {
+    if (!searching) {
+      setDbSellers([]);
+      setActiveSellerNames(new Set());
+      setSellerLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSellerLoading(true);
+    Promise.all([searchSellerProfiles(query, 30), fetchActiveSellerNames()])
+      .then(([profiles, liveNames]) => {
+        if (cancelled) return;
+        setDbSellers(profiles);
+        setActiveSellerNames(liveNames);
+      })
+      .catch((err) => {
+        console.error("[SearchScreen] seller search failed", err);
+      })
+      .finally(() => {
+        if (!cancelled) setSellerLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query, searching]);
+
   const liveResults = useMemo<LiveStream[]>(() => {
     if (!searching) return [];
     return ALL_STREAMS.filter(
@@ -87,12 +114,27 @@ export function SearchScreen() {
 
   const sellerResults = useMemo(() => {
     if (!searching) return [];
-    const set = new Set<string>();
-    ALL_STREAMS.forEach((s) => {
-      if (s.seller.toLowerCase().includes(q)) set.add(s.seller);
+    const byName = new Map<string, ReturnType<typeof getSellerInfo>>();
+
+    // 1. Real seller profiles from the database.
+    dbSellers.forEach((profile) => {
+      const isLive = activeSellerNames.has(profile.display_name);
+      if (sellerScope === "live" && !isLive) return;
+      byName.set(profile.display_name, makeSellerInfoFromProfile(profile));
     });
-    return Array.from(set).map((n) => getSellerInfo(n));
-  }, [q, searching]);
+
+    // 2. Mock sellers tied to currently-live streams (keeps fallback content working).
+    ALL_STREAMS.forEach((s) => {
+      if (sellerScope === "live" && !activeSellerNames.has(s.seller)) return;
+      if (!s.seller.toLowerCase().includes(q)) return;
+      if (!byName.has(s.seller)) {
+        byName.set(s.seller, getSellerInfo(s.seller));
+      }
+    });
+
+    return Array.from(byName.values());
+  }, [q, searching, dbSellers, activeSellerNames, sellerScope]);
+
 
   const productResults = useMemo<Array<SellerProduct & { seller: string }>>(() => {
     if (!searching) return [];
