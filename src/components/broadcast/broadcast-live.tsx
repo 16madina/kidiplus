@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle, Plus,
+  Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
+import { HostToolRail } from "./host-tool-rail";
+import { FilterPicker } from "./filter-picker";
+import { useModerators, addModerator, removeModerator } from "@/lib/moderators-db";
+import { useAuth } from "@/lib/auth-context";
+import type { BroadcastVideoHandle } from "./broadcast-video";
+import type { FilterKey } from "@/lib/camera-filter-pipeline";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
