@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, Loader2, X, Star, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -11,9 +11,15 @@ import {
   updateShopProduct,
   uploadShopProductImage,
   resolveShopImage,
+  MAX_SHOP_IMAGES,
+  MIN_SHOP_IMAGES,
   type ShopProduct,
 } from "@/lib/shop-db";
 import { currencySymbol } from "@/lib/money";
+
+// Local slot representation while the sheet is open.
+// `path` is the storage path once known; `preview` is what we show.
+type ImgSlot = { path: string | null; preview: string };
 
 export function ShopProductFormSheet({
   open,
@@ -33,11 +39,11 @@ export function ShopProductFormSheet({
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState<number>(0);
-  const [stock, setStock] = useState<number>(1);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [priceStr, setPriceStr] = useState<string>("");
+  const [stockStr, setStockStr] = useState<string>("1");
+  const [slots, setSlots] = useState<ImgSlot[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,58 +51,114 @@ export function ShopProductFormSheet({
     if (editing) {
       setName(editing.name);
       setDescription(editing.description ?? "");
-      setPrice(Number(editing.price));
-      setStock(editing.stock);
-      void resolveShopImage(editing.image_url).then(setPreview);
-      setFile(null);
+      setPriceStr(String(Number(editing.price)));
+      setStockStr(String(editing.stock));
+      // Resolve stored paths to signed URLs for preview.
+      const paths = editing.images.length > 0 ? editing.images : (editing.image_url ? [editing.image_url] : []);
+      setSlots(paths.map((p) => ({ path: p, preview: "" })));
+      void Promise.all(paths.map((p) => resolveShopImage(p))).then((urls) => {
+        setSlots((prev) => prev.map((s, i) => ({ ...s, preview: urls[i] ?? s.preview })));
+      });
     } else {
       setName("");
       setDescription("");
-      setPrice(currency === "XOF" ? 1000 : 20);
-      setStock(1);
-      setPreview(null);
-      setFile(null);
+      setPriceStr(currency === "XOF" ? "1000" : "20");
+      setStockStr("1");
+      setSlots([]);
     }
   }, [open, editing, currency]);
 
-  const pickFile = () => fileRef.current?.click();
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error(t("shop.imageOnly", { defaultValue: "Image uniquement" })); return; }
-    if (f.size > 5 * 1024 * 1024) { toast.error(t("shop.imageTooBig", { defaultValue: "Image trop lourde" })); return; }
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    haptic.selection();
+  const pickFile = () => {
+    if (slots.length >= MAX_SHOP_IMAGES || uploadingIdx !== null) return;
+    fileRef.current?.click();
   };
 
-  const canSave = name.trim().length > 0 && price >= 0 && stock >= 0;
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !user) return;
+    if (!f.type.startsWith("image/")) { toast.error(t("shop.imageOnly", { defaultValue: "Image uniquement" })); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error(t("shop.imageTooBig", { defaultValue: "Image trop lourde" })); return; }
+    // Optimistic slot with blob preview
+    const localUrl = URL.createObjectURL(f);
+    const idx = slots.length;
+    setSlots((prev) => [...prev, { path: null, preview: localUrl }]);
+    setUploadingIdx(idx);
+    haptic.selection();
+    try {
+      const path = await uploadShopProductImage(f, user.id);
+      setSlots((prev) => prev.map((s, i) => (i === idx ? { path, preview: localUrl } : s)));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+      setSlots((prev) => prev.filter((_, i) => i !== idx));
+      try { URL.revokeObjectURL(localUrl); } catch { /* ignore */ }
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const removeSlot = (idx: number) => {
+    haptic.light();
+    setSlots((prev) => {
+      const s = prev[idx];
+      if (s && s.preview.startsWith("blob:")) {
+        try { URL.revokeObjectURL(s.preview); } catch { /* ignore */ }
+      }
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const makeCover = (idx: number) => {
+    if (idx === 0) return;
+    haptic.selection();
+    setSlots((prev) => {
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      next.unshift(picked);
+      return next;
+    });
+  };
+
+  const priceNum = Math.max(0, Number(priceStr.replace(",", ".")) || 0);
+  const stockNum = Math.max(0, Number(stockStr) || 0);
+  const uploadedPaths = useMemo(() => slots.map((s) => s.path).filter((p): p is string => !!p), [slots]);
+  const enoughImages = uploadedPaths.length >= MIN_SHOP_IMAGES;
+  const canSave =
+    name.trim().length > 0 &&
+    priceNum > 0 &&
+    enoughImages &&
+    uploadingIdx === null;
 
   const save = async () => {
     if (!user || !canSave || saving) return;
     setSaving(true);
     try {
-      let imagePath: string | null | undefined = undefined;
-      if (file) imagePath = await uploadShopProductImage(file, user.id);
       if (editing) {
         await updateShopProduct(editing.id, {
           name: name.trim(),
           description: description.trim() || null,
-          price,
-          stock,
-          ...(imagePath !== undefined ? { image_url: imagePath } : {}),
+          price: priceNum,
+          stock: stockNum,
+          imagePaths: uploadedPaths,
         });
         toast.success(t("shop.updated", { defaultValue: "Article modifié" }));
-        onSaved?.({ ...editing, name, description, price, stock, image_url: imagePath ?? editing.image_url });
+        onSaved?.({
+          ...editing,
+          name,
+          description,
+          price: priceNum,
+          stock: stockNum,
+          image_url: uploadedPaths[0] ?? null,
+          images: uploadedPaths,
+        });
       } else {
         const p = await createShopProduct(user.id, {
           name: name.trim(),
           description: description.trim() || null,
-          imagePath: imagePath ?? null,
-          price,
+          imagePaths: uploadedPaths,
+          price: priceNum,
           currency,
-          stock,
+          stock: stockNum,
         });
         toast.success(t("shop.added", { defaultValue: "Article ajouté" }));
         onSaved?.(p);
@@ -110,8 +172,10 @@ export function ShopProductFormSheet({
     }
   };
 
+  const showAddSlot = slots.length < MAX_SHOP_IMAGES;
+
   return (
-    <BottomSheet open={open} onClose={onClose} heightPercent={90}>
+    <BottomSheet open={open} onClose={onClose} heightPercent={92}>
       <div className="flex h-full flex-col overflow-y-auto px-5 pb-6">
         <div className="flex items-center justify-between pt-1 pb-4">
           <h2 className="text-[20px] font-bold">
@@ -122,23 +186,72 @@ export function ShopProductFormSheet({
           </Press>
         </div>
 
-        {/* Photo */}
-        <Press
-          onClick={pickFile}
-          className="!min-h-40 relative mb-4 h-40 w-full overflow-hidden rounded-2xl p-0"
-          style={{ border: "1.5px dashed var(--border)", background: "var(--muted)" }}
-          aria-label={t("shop.pickPhoto", { defaultValue: "Ajouter une photo" })}
-        >
-          {preview ? (
-            <img src={preview} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Camera size={28} />
-              <span className="text-[12px] font-medium">{t("shop.pickPhoto", { defaultValue: "Ajouter une photo" })}</span>
-            </div>
-          )}
-        </Press>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        {/* Photo strip */}
+        <div className="mb-2">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("shop.photos", { defaultValue: "Photos" })}
+            </span>
+            <span className={`text-[11px] font-semibold ${enoughImages ? "text-muted-foreground" : "text-red-500"}`}>
+              {slots.length}/{MAX_SHOP_IMAGES} · {t("shop.photosMin", { defaultValue: "min {{n}}", n: MIN_SHOP_IMAGES })}
+            </span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {slots.map((s, idx) => (
+              <div key={`${s.path ?? "u"}-${idx}`} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-muted" style={{ border: "1.5px solid var(--border)" }}>
+                {s.preview ? (
+                  <img
+                    src={s.preview}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-muted-foreground"><Camera size={20} /></div>
+                )}
+                {idx === 0 ? (
+                  <span className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase text-white" style={{ background: "oklch(0.62 0.24 20 / 0.95)" }}>
+                    {t("shop.cover", { defaultValue: "Couverture" })}
+                  </span>
+                ) : (
+                  <Press
+                    onClick={() => makeCover(idx)}
+                    className="!min-h-6 absolute left-1 top-1 h-6 rounded-full bg-black/60 px-1.5 text-[10px] font-semibold text-white"
+                    aria-label={t("shop.setCover", { defaultValue: "Définir comme couverture" })}
+                  >
+                    <Star size={10} className="mr-0.5" />
+                    {t("shop.setCoverShort", { defaultValue: "Cover" })}
+                  </Press>
+                )}
+                <Press
+                  onClick={() => removeSlot(idx)}
+                  className="!min-h-6 absolute right-1 top-1 h-6 w-6 rounded-full bg-black/70 p-0 text-white"
+                  aria-label={t("common.remove", { defaultValue: "Retirer" })}
+                >
+                  <X size={12} />
+                </Press>
+                {uploadingIdx === idx && (
+                  <div className="absolute inset-0 grid place-items-center bg-black/40 text-white"><Loader2 size={18} className="animate-spin" /></div>
+                )}
+              </div>
+            ))}
+            {showAddSlot && (
+              <Press
+                onClick={pickFile}
+                disabled={uploadingIdx !== null}
+                className="!min-h-24 grid h-24 w-24 shrink-0 place-items-center rounded-2xl text-muted-foreground"
+                style={{ border: "1.5px dashed var(--border)", background: "var(--muted)" }}
+                aria-label={t("shop.pickPhoto", { defaultValue: "Ajouter une photo" })}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <Plus size={20} />
+                  <span className="text-[10px] font-semibold">{t("shop.addPhoto", { defaultValue: "Ajouter" })}</span>
+                </div>
+              </Press>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        </div>
 
         <Field label={t("shop.name", { defaultValue: "Nom" })}>
           <input
@@ -163,22 +276,27 @@ export function ShopProductFormSheet({
         <div className="grid grid-cols-2 gap-3">
           <Field label={`${t("shop.price", { defaultValue: "Prix" })} (${symbol})`}>
             <input
-              type="number"
+              type="text"
               inputMode="decimal"
-              value={price}
-              min={0}
-              onChange={(e) => setPrice(Math.max(0, Number(e.target.value) || 0))}
+              value={priceStr}
+              onChange={(e) => setPriceStr(e.target.value.replace(/[^0-9.,]/g, ""))}
+              onBlur={(e) => {
+                const n = Math.max(0, Number(e.target.value.replace(",", ".")) || 0);
+                setPriceStr(n > 0 ? String(n) : "");
+              }}
+              placeholder="0"
               className="h-12 w-full rounded-xl border bg-muted px-4 text-[15px] outline-none"
               style={{ borderColor: "var(--border)" }}
             />
           </Field>
           <Field label={t("shop.stock", { defaultValue: "Stock" })}>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              value={stock}
-              min={0}
-              onChange={(e) => setStock(Math.max(0, Number(e.target.value) || 0))}
+              value={stockStr}
+              onChange={(e) => setStockStr(e.target.value.replace(/[^0-9]/g, ""))}
+              onBlur={(e) => setStockStr(String(Math.max(0, Number(e.target.value) || 0)))}
+              placeholder="0"
               className="h-12 w-full rounded-xl border bg-muted px-4 text-[15px] outline-none"
               style={{ borderColor: "var(--border)" }}
             />

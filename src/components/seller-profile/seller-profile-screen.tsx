@@ -25,6 +25,7 @@ import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
+import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sheet";
 import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/lives-db";
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
 
@@ -449,6 +450,7 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
   const { lang } = useLanguage();
   const [items, setItems] = useState<ShopProduct[] | null>(null);
   const [imgs, setImgs] = useState<Record<string, string | null>>({});
+  const [detail, setDetail] = useState<ShopProduct | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -457,7 +459,11 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
       if (!alive) return;
       setItems(rows);
       const entries = await Promise.all(rows.map(async (r) => [r.id, await resolveShopImage(r.image_url)] as const));
-      if (alive) setImgs(Object.fromEntries(entries));
+      if (alive) setImgs((prev) => {
+        const next = { ...prev };
+        for (const [id, url] of entries) if (url) next[id] = url;
+        return next;
+      });
     };
     void reload();
     const ch = supabase
@@ -481,24 +487,38 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
   }
   const cur = normalizeCurrency(currency);
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {items.map((p) => (
-        <div key={p.id} className="overflow-hidden rounded-2xl bg-muted">
-          <div className="relative aspect-square">
-            {imgs[p.id] ? (
-              <img src={imgs[p.id]!} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={26} /></div>
-            )}
-          </div>
-          <div className="p-2">
-            <p className="truncate text-[13px] font-medium">{p.name}</p>
-            <p className="text-[13px] font-bold">{formatMoney(Number(p.price), cur, lang)}</p>
-            <p className="text-[11px] text-muted-foreground">{t("sellerProfile.availableInLives", { defaultValue: "Disponible pendant les lives" })}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((p) => (
+          <Press
+            key={p.id}
+            onClick={() => { haptic.selection(); setDetail(p); }}
+            hapticOnTap={false}
+            className="!block overflow-hidden rounded-2xl bg-muted p-0 text-left"
+          >
+            <div className="relative aspect-square">
+              {imgs[p.id] ? (
+                <img
+                  src={imgs[p.id]!}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  onError={() => setImgs((prev) => { const n = { ...prev }; delete n[p.id]; return n; })}
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={26} /></div>
+              )}
+            </div>
+            <div className="p-2">
+              <p className="truncate text-[13px] font-medium">{p.name}</p>
+              <p className="text-[13px] font-bold">{formatMoney(Number(p.price), cur, lang)}</p>
+              <p className="text-[11px] text-muted-foreground">{t("sellerProfile.availableInLives", { defaultValue: "Disponible pendant les lives" })}</p>
+            </div>
+          </Press>
+        ))}
+      </div>
+      <ShopProductDetailSheet open={!!detail} onClose={() => setDetail(null)} product={detail} />
+    </>
   );
 }
 
