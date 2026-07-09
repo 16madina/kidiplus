@@ -1008,6 +1008,9 @@
       "other": "{{name}} won!",
       "said": "{{name}} said + 🎉",
       "saidMe": "You said + 🎉"
+    },
+    "unsold": {
+      "title": "Item not sold"
     }
   },
   "address": {
