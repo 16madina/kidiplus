@@ -1,7 +1,7 @@
 // Right-side vertical tool rail for the host (and moderator) during a live.
 // TikTok-style column: 44pt glass buttons + optional tiny label underneath.
 import { motion } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, RefreshCw, Sparkles, Plus } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 
@@ -9,12 +9,11 @@ export type HostToolRailProps = {
   micOn?: boolean;
   camOn?: boolean;
   canFlip?: boolean;
-  canFilter?: boolean;
-  filtersOpen?: boolean;
+  moderatorsOpen?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
   onFlip?: () => void;
-  onToggleFilters?: () => void;
+  onOpenModerators?: () => void;
   onAddProduct?: () => void;
   /** Hide the mic/cam buttons (viewer moderator mode). */
   hideAV?: boolean;
