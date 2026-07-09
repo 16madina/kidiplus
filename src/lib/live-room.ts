@@ -386,7 +386,7 @@ export function useLiveRoom(params: {
           text: trimmed,
         };
         // Optimistic local echo + broadcast to others.
-        setChat((prev) => [...prev, evt].slice(-150));
+        setChat((prev) => [...prev, evt].slice(-60));
         void channelRef.current?.send({ type: "broadcast", event: "chat", payload: evt });
       },
       sendHeart: () => {
@@ -412,7 +412,7 @@ export function useLiveRoom(params: {
       },
       systemMessage: (text: string) => {
         const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
-        setChat((prev) => [...prev, evt].slice(-150));
+        setChat((prev) => [...prev, evt].slice(-60));
       },
       injectLocalChat: (msgs: ChatEvt[]) => {
         if (msgs.length === 0) return;
