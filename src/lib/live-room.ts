@@ -137,6 +137,7 @@ export function useLiveRoom(params: {
   const [lastAuctionEnd, setLastAuctionEnd] = useState<AuctionEndEvt | null>(null);
   const [lastExtension, setLastExtension] = useState<AuctionExtendEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
+  const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
