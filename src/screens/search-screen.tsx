@@ -853,19 +853,21 @@ function SellerScopeFilter({
 /* -------------------------------- Sellers -------------------------------- */
 
 function SellerRow({
-  info,
+  profile,
+  avatar,
   index,
   isLive,
   onOpen,
 }: {
-  info: ReturnType<typeof getSellerInfo>;
+  profile: SellerProfile;
+  avatar: string | null;
   index: number;
   isLive?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
-  const [following, setFollowing] = useState(false);
+  const initial = (profile.display_name || profile.handle || "?").slice(0, 1).toUpperCase();
   return (
     <motion.li
       initial={{ opacity: 0, y: 6 }}
@@ -877,17 +879,26 @@ function SellerRow({
           onClick={onOpen}
           className="!block flex flex-1 items-center gap-3 p-0 text-left"
         >
-          <img
-            src={info.avatar}
-            alt=""
-            className="h-11 w-11 shrink-0 rounded-full object-cover"
-            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-            draggable={false}
-          />
+          {avatar ? (
+            <img
+              src={avatar}
+              alt=""
+              className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-border"
+              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              draggable={false}
+            />
+          ) : (
+            <div
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted text-[15px] font-bold text-muted-foreground ring-2 ring-border"
+              aria-hidden
+            >
+              {initial}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold">{info.name}</p>
+            <p className="truncate text-[14px] font-semibold">{profile.display_name}</p>
             <p className="truncate text-[12px] text-muted-foreground">
-              {formatFollowersLabel(info.followers, lang)}
+              @{profile.handle} · {formatFollowersLabel(profile.followers_count, lang)}
               {isLive && (
                 <span
                   className="ml-2 inline-flex items-center gap-1 text-[11px] font-bold"
@@ -897,32 +908,15 @@ function SellerRow({
                   {t("live.liveBadge")}
                 </span>
               )}
-
             </p>
           </div>
         </Press>
-        <Press
-          onClick={() => setFollowing((v) => !v)}
-          className="!min-h-9 rounded-full px-3 text-[12px] font-semibold"
-          style={
-            following
-              ? {
-                  backgroundColor: "transparent",
-                  color: "var(--foreground)",
-                  border: "1.5px solid var(--border)",
-                }
-              : {
-                  backgroundColor: "var(--accent)",
-                  color: "var(--accent-foreground)",
-                }
-          }
-        >
-          {following ? t("live.following") : t("live.follow")}
-        </Press>
+        <FollowButton sellerId={profile.id} size="sm" />
       </div>
     </motion.li>
   );
 }
+
 
 
 function EmptyResults({ query }: { query: string }) {
