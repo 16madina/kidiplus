@@ -32,12 +32,11 @@ export function HostToolRail({
   micOn = true,
   camOn = true,
   canFlip = true,
-  canFilter = true,
-  filtersOpen = false,
+  moderatorsOpen = false,
   onToggleMic,
   onToggleCam,
   onFlip,
-  onToggleFilters,
+  onOpenModerators,
   onAddProduct,
   hideAV = false,
 }: HostToolRailProps) {
@@ -78,18 +77,18 @@ export function HostToolRail({
       {!hideAV && canFlip && onFlip && (
         <FlipButton onFlip={onFlip} />
       )}
-      {!hideAV && canFilter && onToggleFilters && (
+      {onOpenModerators && (
         <Press
-          onClick={() => { haptic.selection(); onToggleFilters(); }}
-          aria-label="Filtres caméra"
+          onClick={() => { haptic.selection(); onOpenModerators(); }}
+          aria-label="Modérateurs"
           className={`${btn} pointer-events-auto`}
           style={{
             ...btnStyle,
-            outline: filtersOpen ? "2px solid oklch(0.85 0.18 90)" : undefined,
+            outline: moderatorsOpen ? "2px solid oklch(0.85 0.18 90)" : undefined,
             outlineOffset: -2,
           }}
         >
-          <Sparkles size={16} />
+          <Shield size={16} />
         </Press>
       )}
       {onAddProduct && (
