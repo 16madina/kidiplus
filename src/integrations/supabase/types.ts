@@ -240,6 +240,7 @@ export type Database = {
       }
       live_products: {
         Row: {
+          auction_deadline_at: string | null
           created_at: string
           final_price: number | null
           id: string
@@ -257,6 +258,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auction_deadline_at?: string | null
           created_at?: string
           final_price?: number | null
           id?: string
@@ -274,6 +276,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auction_deadline_at?: string | null
           created_at?: string
           final_price?: number | null
           id?: string
@@ -1149,6 +1152,7 @@ export type Database = {
       purchase_fixed_price: {
         Args: { _buyer_identity: string; _product_id: string }
         Returns: {
+          auction_deadline_at: string | null
           created_at: string
           final_price: number | null
           id: string
@@ -1177,6 +1181,7 @@ export type Database = {
         Args: { _amount: number; _destination: Json; _method: string }
         Returns: Json
       }
+      start_auction: { Args: { _product_id: string }; Returns: Json }
       submit_report: {
         Args: {
           _note?: string
