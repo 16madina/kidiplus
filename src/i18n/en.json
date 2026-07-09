@@ -1,4 +1,23 @@
 {
+  "moderator": {
+    "title": "Moderators",
+    "empty": "No moderators yet. Promote a viewer to help you manage products.",
+    "emptyProducts": "No products yet",
+    "promote": "Promote 🛡️",
+    "promotePlaceholder": "viewer's @handle",
+    "demote": "Remove",
+    "removed": "Moderator removed",
+    "removeFailed": "Could not remove",
+    "added": "Moderator added 🛡️",
+    "addFailed": "Could not add",
+    "notFound": "Profile not found",
+    "alreadyMod": "Already a moderator",
+    "manage": "Manage",
+    "addProduct": "Add",
+    "startAuction": "Start",
+    "stop": "Stop",
+    "badge": "MOD"
+  },
   "common": {
     "cancel": "Cancel",
     "confirm": "Confirm",
