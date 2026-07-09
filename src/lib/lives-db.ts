@@ -297,7 +297,6 @@ export async function fetchLiveById(id: string): Promise<LiveStream | null> {
 
 export type LiveProductRow = {
 
-export type LiveProductRow = {
   id: string;
   live_id: string;
   name: string;
