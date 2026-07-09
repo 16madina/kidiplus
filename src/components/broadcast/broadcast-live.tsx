@@ -790,42 +790,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Seller dock */}
-      <div
-        className="absolute inset-x-0 bottom-0 z-30 pb-safe"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
-      >
-        <div className="mb-2 flex items-center justify-center gap-3 px-4">
-          <Press
-            onClick={() => { haptic.selection(); setMicOn((m) => !m); }}
-            aria-label={micOn ? t("live.muteMic") : t("live.unmuteMic")}
-            className="!min-h-10 !min-w-10 h-10 w-10 rounded-full text-white"
-            style={{
-              backgroundColor: micOn ? "rgba(255,255,255,0.18)" : "rgba(220,30,40,0.9)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {micOn ? <Mic size={16} /> : <MicOff size={16} />}
-          </Press>
-          <Press
-            onClick={() => { haptic.selection(); setCameraOn((c) => !c); }}
-            aria-label="Caméra"
-            className="!min-h-10 !min-w-10 h-10 w-10 rounded-full text-white"
-            style={{
-              backgroundColor: cameraOn ? "rgba(255,255,255,0.18)" : "rgba(220,30,40,0.9)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {cameraOn ? <Video size={16} /> : <VideoOff size={16} />}
-          </Press>
-        </div>
-
-        {/* Product queue lives in the top-right "Produits" bottom sheet only.
-            The featured/active auction is surfaced by the compact card in the
-            top-right — no duplicate carousel here. */}
-      </div>
+      {/* Bottom area is intentionally left to chat + featured card only.
+          Mic / camera / flip / filters / add-product all live on the right
+          tool rail (see <HostToolRail /> below). */}
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
       <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={85}>
