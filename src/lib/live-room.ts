@@ -221,8 +221,25 @@ export function useLiveRoom(params: {
           void hydrateImage(row).then((r) =>
             setProducts((prev) => prev.map((p) => (p.id === r.id ? r : p))),
           );
+          // Fallback deadline sync — if the broadcast frame was missed, this
+          // ensures viewers still adopt the persisted absolute deadline.
+          if (
+            row.mode === "auction" &&
+            row.status === "active" &&
+            row.auction_deadline_at
+          ) {
+            const deadlineMs = new Date(row.auction_deadline_at).getTime();
+            if (Number.isFinite(deadlineMs) && deadlineMs > Date.now()) {
+              setAuctionStart((cur) =>
+                cur && cur.productId === row.id && cur.deadlineMs === deadlineMs
+                  ? cur
+                  : { productId: row.id, deadlineMs, timerSec: row.timer_seconds },
+              );
+            }
+          }
         },
       )
+
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
