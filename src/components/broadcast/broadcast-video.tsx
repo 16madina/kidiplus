@@ -379,41 +379,111 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
     }, [micEnabled, livekit]);
 
-    // Apply facing change in LK mode by swapping the published track.
+    // Apply facing change robustly: enumerate cameras, resolve the target
+    // deviceId (iOS Safari does not consistently honour a plain
+    // `facingMode` swap on an already-running track), create a fresh
+    // LocalVideoTrack pinned to that exact deviceId, and REPLACE the
+    // published track without a publish gap. If a WebGL filter pipeline is
+    // running, swap the SOURCE it reads from — we keep publishing the
+    // canvas output so viewers see no interruption.
     useEffect(() => {
       if (!livekit) return;
       const room = roomRef.current;
       if (!room || !localVideoTrackRef.current) return;
       let cancelled = false;
       (async () => {
+        const previousSource = sourceCameraTrackRef.current;
         try {
-          // Tear down any active filter pipeline; we'll reinstall against
-          // the new camera below.
+          // 1) Find a camera device that matches the requested facing.
+          let targetDeviceId: string | undefined;
+          try {
+            if (navigator.mediaDevices?.enumerateDevices) {
+              const devices = await navigator.mediaDevices.enumerateDevices();
+              const cams = devices.filter((d) => d.kind === "videoinput");
+              if (cams.length > 1) {
+                const rx = facing === "environment"
+                  ? /back|rear|environment/i
+                  : /front|user|face|selfie/i;
+                const matched = cams.find((c) => rx.test(c.label));
+                if (matched) targetDeviceId = matched.deviceId;
+                else {
+                  // Heuristic: on iOS labels can be empty pre-permission.
+                  // Pick the next camera different from the current one.
+                  const curId = previousSource?.getSettings().deviceId;
+                  const other = cams.find((c) => c.deviceId && c.deviceId !== curId);
+                  if (other) targetDeviceId = other.deviceId;
+                }
+              }
+            }
+          } catch { /* ignore, fall back to facingMode */ }
+
+          // 2) Create the new source track.
+          const newLK = await createLocalVideoTrack(
+            targetDeviceId
+              ? { deviceId: { exact: targetDeviceId } }
+              : { facingMode: facing },
+          );
+          if (cancelled) { newLK.stop(); return; }
+
           const activeFilter = currentFilterRef.current;
-          if (filterPipelineRef.current) {
-            try { filterPipelineRef.current.stop(); } catch {}
-            filterPipelineRef.current = null;
+          if (activeFilter !== "none" && filterPipelineRef.current) {
+            // Swap only the SOURCE feeding the pipeline. Published canvas
+            // track stays the same → no gap for viewers.
+            await filterPipelineRef.current.setSource(newLK.mediaStreamTrack);
+            // Update local preview to the raw NEW camera (mirror behaves).
+            if (videoRef.current) {
+              newLK.attach(videoRef.current);
+              videoRef.current.play().catch(() => {});
+            }
+            // Stop the previous source last so there's no black gap.
+            try { previousSource?.stop(); } catch {}
+            sourceCameraTrackRef.current = newLK.mediaStreamTrack;
+          } else {
+            // No filter: swap the published track directly.
+            const oldPub = localVideoTrackRef.current;
+            const pub = oldPub
+              ? oldPub.sender
+              : null;
+            let replaced = false;
+            if (pub && "replaceTrack" in pub && typeof pub.replaceTrack === "function") {
+              try {
+                await (pub as unknown as { replaceTrack: (t: MediaStreamTrack) => Promise<void> })
+                  .replaceTrack(newLK.mediaStreamTrack);
+                replaced = true;
+              } catch { /* fall through to publish-swap */ }
+            }
+            if (!replaced) {
+              if (oldPub) await room.localParticipant.unpublishTrack(oldPub, true);
+              await room.localParticipant.publishTrack(newLK);
+            }
+            localVideoTrackRef.current = newLK;
+            sourceCameraTrackRef.current = newLK.mediaStreamTrack;
+            if (videoRef.current) {
+              newLK.attach(videoRef.current);
+              // The <video> element sometimes pauses when srcObject swaps
+              // under it on iOS Safari — nudge it back.
+              videoRef.current.play().catch(() => {});
+            }
+            if (replaced && oldPub) {
+              try { oldPub.stop(); } catch {}
+            }
           }
-          const newTrack = await createLocalVideoTrack({ facingMode: facing });
-          if (cancelled) {
-            newTrack.stop();
-            return;
+        } catch (err) {
+          console.warn("[flip] failed, reverting", err);
+          // Revert preview to the still-running previous source. Live
+          // publication is unchanged in the failure path (we only
+          // unpublished after success), so viewers never freeze.
+          if (previousSource && videoRef.current) {
+            try {
+              videoRef.current.srcObject = new MediaStream([previousSource]);
+              videoRef.current.play().catch(() => {});
+            } catch {}
           }
-          const old = localVideoTrackRef.current;
-          if (old) await room.localParticipant.unpublishTrack(old, true);
-          await room.localParticipant.publishTrack(newTrack);
-          localVideoTrackRef.current = newTrack;
-          if (videoRef.current) newTrack.attach(videoRef.current);
-          if (activeFilter !== "none") {
-            await applyFilterToPublishedTrack(activeFilter);
-          }
-        } catch {}
+        }
       })();
-      return () => {
-        cancelled = true;
-      };
+      return () => { cancelled = true; };
        
-    }, [facing]);
+    }, [facing, livekit]);
 
     const showVideo = shouldRun && state === "granted";
     const mirrored = facing === "user";
