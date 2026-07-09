@@ -25,6 +25,7 @@ import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
+import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sheet";
 import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/lives-db";
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
 
