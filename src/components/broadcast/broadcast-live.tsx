@@ -478,12 +478,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       className="relative h-full w-full overflow-hidden bg-black"
     >
       <BroadcastVideo
+        ref={videoHandleRef}
         facing={facing}
         enabled={cameraOn}
         micEnabled={micOn}
         fallbackImage={b.cover}
         retryKey={retryKey}
         onStatus={setVideoStatus}
+        onCanFlipChange={setCanFlip}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
