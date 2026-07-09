@@ -50,12 +50,9 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.05 }}
-          className="mx-auto grid h-16 w-16 place-items-center rounded-full"
-          style={{
-            background: "linear-gradient(135deg, oklch(0.72 0.2 145), oklch(0.62 0.2 155))",
-          }}
+          className="mx-auto flex items-center justify-center"
         >
-          <PartyPopper size={30} color="white" />
+          <Logo size={72} variant="image" />
         </motion.div>
         <div className="text-center">
           <h1 className="text-[28px] font-bold tracking-tight">{t("broadcast.summary.title")} 🎉</h1>
