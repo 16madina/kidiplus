@@ -44,7 +44,7 @@ const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?
 
 function toProduct(row: LiveProductRow, activeId: string | null): Product {
   const status: Product["status"] =
-    row.status === "sold" || row.status === "out"
+    row.status === "sold" || row.status === "out" || row.status === "unsold"
       ? "sold"
       : row.id === activeId
         ? "current"
