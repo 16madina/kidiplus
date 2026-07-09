@@ -1,140 +1,141 @@
-# Broadcast host overhaul + Live Moderators
+# Real seller shop + real seller profile (follows, boutique, reviews)
 
-Big scope — grouping into 4 parallel workstreams. Approving this plan runs a DB migration for moderators; the rest is code only.
+Big migration + broad UI rewrite. Grouping into 4 workstreams. Approving this runs one DB migration + creates a `shop-products` storage bucket, then the code changes.
 
-## 1. Compact top bar (broadcast-live.tsx)
+## 1. DB migration (single file)
 
-Rebuild the top row so nothing overflows at 320pt:
-
-```text
-[● 00:28] [👁 1]                        [📦³] [❌ Fin]
-```
-
-- Merge red dot + timer into one glass pill: pulsing red dot + `mm:ss` (no "EN DIRECT" text).
-- Viewer count: eye icon + number, glass pill.
-- Products: icon-only glass button (📦) with count badge; no text.
-- REMOVE the top-bar refresh/flip button (moves to the rail).
-- "Terminer" becomes a compact red icon+word pill (`min-w-0`, tight padding).
-- Stats strip (Ventes / Articles) stays below, one size smaller.
-- Layout uses `grid-cols-[auto_auto_1fr_auto_auto]` + `min-w-0` to guarantee no overflow.
-
-## 2. Right-side tool rail (new component `HostToolRail`)
-
-Vertical column pinned to the right edge, vertically centered above the featured card, safe-area aware. TikTok-style 44pt circular glass buttons, tiny label under each:
-
-- 🎤 mic on/off
-- 📷 camera on/off
-- 🔄 flip camera (hidden when only 1 videoinput device)
-- ✨ filters (hidden when `captureStream` unavailable)
-- ➕ add product
-
-Bottom-center dock becomes chat-only (mic/cam buttons removed from there).
-
-## 3. Fix camera flip (broadcast-video.tsx)
-
-- Track the current `facingMode` in a ref; on flip button, call `localParticipant.getTrackPublication(Video).videoTrack.restartTrack({ facingMode })` when live; on the setup preview, re-`getUserMedia` with the new constraint.
-- Detect single-camera devices with `navigator.mediaDevices.enumerateDevices()` and expose an `canFlip` flag through `onStatus`/a new callback so the rail hides the button.
-- Haptic + 180° spin animation on tap.
-
-## 4. Camera filters (new `camera-filter-pipeline.ts` + rail integration)
-
-Real filter — not CSS on the local preview:
-
-1. Get the raw camera `MediaStreamTrack` (max 720p already enforced by LiveKit config; add `resolution: { width: 1280, height: 720 }` if not).
-2. Draw it into an offscreen `<canvas>` via a hidden `<video>` element inside a `requestAnimationFrame` loop, applying `ctx.filter = "brightness(1.1) contrast(1.05) …"` per preset.
-3. `canvas.captureStream(30)` → replace the published video track using LiveKit's `LocalTrack.replaceTrack(newTrack)` (or unpublish/publish if replace is unavailable).
-4. "Aucun" stops the rAF loop and republishes the raw track (zero overhead).
-5. Basic fps guard: sample `performance.now()` deltas over 2s; if avg fps < 18, toast "Filtres indisponibles sur cet appareil" and revert to raw.
-6. Hide the Filters button when `HTMLCanvasElement.prototype.captureStream` is missing.
-
-Presets (CSS filter strings):
-- Aucun: none
-- Lumineux: `brightness(1.12) contrast(1.06)`
-- Chaleur: `saturate(1.15) sepia(0.12) hue-rotate(-8deg)`
-- Doux: `brightness(1.05) blur(0.6px) contrast(0.95)`
-- N&B: `grayscale(1) contrast(1.05)`
-- Vif: `saturate(1.35) contrast(1.12)`
-
-Picker UI: tapping the Filters rail button toggles a horizontal chip strip anchored just left of the rail. Selected chip gets a gold ring. Persisted in `sessionStorage`.
-
-## 5. Add product mid-live (already exists — verify + wire)
-
-`AddProductSheet` + `onAddProductMidLive` already exist in `broadcast-live.tsx`. Wire the new rail's "+" button to open the same sheet. Also verify the "Ajouter un article" row appears at the top of the Products bottom sheet (add if missing).
-
-## 6. Live moderators (DB + UX)
-
-### DB migration
-
+### `follows`
 ```sql
-create table public.live_moderators (
-  live_id  uuid not null references public.lives(id) on delete cascade,
-  user_id  uuid not null references public.profiles(id) on delete cascade,
-  added_by uuid not null references public.profiles(id),
+create table public.follows (
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  followed_id uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz not null default now(),
-  primary key (live_id, user_id)
+  primary key (follower_id, followed_id),
+  check (follower_id <> followed_id)
 );
-grant select, insert, delete on public.live_moderators to authenticated;
-grant all on public.live_moderators to service_role;
-alter table public.live_moderators enable row level security;
-
--- Any authenticated user can read moderators for a live
-create policy "read moderators" on public.live_moderators
-  for select to authenticated using (true);
-
--- Only the live's host can add / remove moderators
-create policy "host manages moderators" on public.live_moderators
-  for insert to authenticated
-  with check (exists (select 1 from public.lives l where l.id = live_id and l.user_id = auth.uid()));
-create policy "host removes moderators" on public.live_moderators
-  for delete to authenticated
-  using (exists (select 1 from public.lives l where l.id = live_id and l.user_id = auth.uid()));
-
--- Extend live_products policies: seller OR moderator can manage products
-create or replace function public.is_live_moderator(_live_id uuid, _user_id uuid)
-returns boolean language sql stable security definer set search_path=public as $$
-  select exists(select 1 from public.live_moderators where live_id=_live_id and user_id=_user_id)
-$$;
-
--- Replace existing seller-only INSERT/UPDATE policies on live_products
--- to also allow moderators (see migration file for full policy names).
-
-alter publication supabase_realtime add table public.live_moderators;
+grant select on public.follows to authenticated;
+grant insert, delete on public.follows to authenticated;
+grant all on public.follows to service_role;
+alter table public.follows enable row level security;
+create policy "read follows" on public.follows for select to authenticated using (true);
+create policy "follow self only" on public.follows for insert to authenticated
+  with check (follower_id = auth.uid());
+create policy "unfollow self only" on public.follows for delete to authenticated
+  using (follower_id = auth.uid());
+alter publication supabase_realtime add table public.follows;
 ```
 
-### Client
+Add `followers_count int not null default 0`, `following_count int not null default 0`, `rating_avg numeric(3,2) not null default 0`, `rating_count int not null default 0` to `profiles`.
 
-- New `src/lib/moderators-db.ts`: `fetchModerators`, `addModerator`, `removeModerator`, `useIsModerator(liveId)` hook (realtime `postgres_changes` on `live_moderators` filtered by `live_id=eq.<liveId>` and `user_id=eq.<me>`).
-- HOST UX: tapping a chat message author opens a mini profile sheet with "Nommer modérateur 🛡️" / "Retirer modérateur". Products sheet gets a "Modérateurs" section listing current mods with a remove action + an "Ajouter" flow that opens the same author-picker (or an input).
-- MODERATOR UX (viewer side): when `useIsModerator` returns true for the current live, show a 🛡️ badge next to their own chat messages (LiveChat already renders per-user color; add an optional `isModerator` flag), and surface a compact "Gérer" dock button that opens a moderator products sheet with feature / start auction / put on sale actions + add-product. Start-auction is allowed for moderators. End-live and end-auction stay host-only (finalize uses server-authoritative logic; keep the RPC seller-only for now).
+Trigger `_follows_counts_sync()` on insert/delete: bump/decrement `followers_count` on `followed_id` and `following_count` on `follower_id`.
 
-### i18n (fr + en)
+### `shop_products`
+```sql
+create table public.shop_products (
+  id uuid primary key default gen_random_uuid(),
+  seller_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null,
+  description text,
+  image_url text,
+  price numeric not null check (price >= 0),
+  currency text not null,
+  stock int not null default 1 check (stock >= 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+grant select, insert, update, delete on public.shop_products to authenticated;
+grant all on public.shop_products to service_role;
+alter table public.shop_products enable row level security;
+create policy "read active shop products" on public.shop_products for select to authenticated
+  using (active or seller_id = auth.uid());
+create policy "seller manages own products" on public.shop_products for all to authenticated
+  using (seller_id = auth.uid()) with check (seller_id = auth.uid());
+create trigger shop_products_touch before update on public.shop_products
+  for each row execute function public.touch_updated_at();
+```
 
-`moderator.title`, `moderator.promote`, `moderator.demote`, `moderator.badge`, `moderator.list`, `moderator.empty`, `moderator.manage`, `moderator.startAuction`, `moderator.addProduct`, `moderator.confirmDemote`.
+Add `shop_product_id uuid references public.shop_products(id) on delete set null` to `live_products`.
+
+Storage bucket `shop-products` (public read; auth insert/update/delete on `<uid>/*`).
+
+### `seller_reviews`
+```sql
+create table public.seller_reviews (
+  id uuid primary key default gen_random_uuid(),
+  seller_id uuid not null references public.profiles(id) on delete cascade,
+  reviewer_id uuid not null references public.profiles(id) on delete cascade,
+  order_id uuid not null unique references public.orders(id) on delete cascade,
+  rating int not null check (rating between 1 and 5),
+  comment text,
+  created_at timestamptz not null default now()
+);
+grant select on public.seller_reviews to authenticated;
+grant all on public.seller_reviews to service_role;
+alter table public.seller_reviews enable row level security;
+create policy "read reviews" on public.seller_reviews for select to authenticated using (true);
+```
+Insert is via `leave_review(_order_id, _rating, _comment)` SECURITY DEFINER RPC that verifies `orders.buyer_id = auth.uid()` and `fulfillment_status = 'delivered'`.
+
+Trigger `_reviews_avg_sync()` on insert: recompute `profiles.rating_avg / rating_count` for `seller_id`.
+
+### Stock decrement for shop-linked live purchases
+
+Patch `purchase_fixed_price` and `finalize_auction_winner`: after committing the sale, if `live_products.shop_product_id is not null`, `update shop_products set stock = greatest(stock - 1, 0), active = case when stock - 1 <= 0 then false else active end` for that shop product.
+
+## 2. Follows (frontend)
+
+- New `src/lib/follows-db.ts`: `followUser`, `unfollowUser`, `isFollowing(sellerId)`, `useFollow(sellerId)` (returns `{ following, toggle, count }` with optimistic UI + realtime sub on `follows` filtered by `followed_id=eq.<id>`).
+- Wire `<FollowButton />` (new small component) into:
+  - `real-live-viewer-screen.tsx` (host header)
+  - `seller-profile-screen.tsx`
+- Profile stats (`profile-screen.tsx`): read `followers_count`, `following_count` from `profiles`; Ventes = `orders count where seller_id = me and status = 'paid'`.
+
+## 3. Shop catalog (frontend)
+
+- New `src/lib/shop-db.ts`: `listMyShopProducts`, `listSellerShopProducts(sellerId)`, `createShopProduct`, `updateShopProduct`, `archiveShopProduct`, `uploadShopProductImage(file)`.
+- New `src/screens/my-shop-screen.tsx`: 2-col grid of own products, active/archived badge, edit + activate/deactivate. `+ Ajouter` opens sheet (photo → shop-products/<uid>/<ts>.jpg, name, description, price in seller currency, stock).
+- Own-profile page (`profile-screen.tsx`) gets a "Ma boutique" row (sellers only) that pushes `MyShopScreen`.
+
+## 4. Live integration
+
+- `AddProductSheet` (`src/components/broadcast/add-product-sheet.tsx`) and the broadcast SETUP product step: add a prominent "📦 Choisir depuis ma boutique" button opening `<ShopPickerSheet />` (new).
+- `ShopPickerSheet`: multi-select grid of active `shop_products`. Confirm → for each selected item, insert into `live_products` with `shop_product_id`, `name`, `image_url`, `price` (fixed) or `start_price` + `timer_seconds` (auction). Quick config step lets user set mode/start/duration per selected item (default: fixed at current price).
+- `live_products` insert already goes through existing seller policy — augment with `shop_product_id`.
+
+## 5. Seller profile screen (real data)
+
+Rewrite `src/components/seller-profile/seller-profile-screen.tsx`:
+- Header: avatar via `resolveAvatarUrl`, real `followers_count`, real paid-orders count (query), `rating_avg`/`rating_count` (show `—` when 0), real `<FollowButton />`.
+- Tabs "Boutique" / "Lives" / "Avis":
+  - Boutique: `listSellerShopProducts(sellerId)` grid; tap → `<ShopProductSheet />` (read-only + "Voir les lives" CTA).
+  - Lives: `fetchSellerLives(sellerId)` (new in `lives-db.ts`) → live / scheduled / ended sections.
+  - Avis: `listSellerReviews(sellerId)` → cards with stars, comment, reviewer handle+avatar.
+- Delete `src/lib/seller-mock.ts` (or leave the file, delete only shop/review/follower mock fields no longer referenced by that screen).
+
+## 6. Reviews UX
+
+- `src/lib/reviews-db.ts`: `leaveReview(orderId, rating, comment)`, `getMyReviewForOrder(orderId)`, `listSellerReviews(sellerId)`.
+- Add "Laisser un avis ⭐" button on delivered orders in `order-timeline.tsx` (or the order detail surface) → sheet with 5 tappable stars + optional comment.
+- Show existing review if already left (star row + comment).
+
+## 7. i18n keys (fr + en)
+
+`follow.follow`, `follow.following`, `shop.title`, `shop.empty`, `shop.add`, `shop.editItem`, `shop.name`, `shop.price`, `shop.stock`, `shop.active`, `shop.archived`, `shop.pickFromShop`, `shop.pickTitle`, `shop.availableInLives`, `reviews.title`, `reviews.leave`, `reviews.rate`, `reviews.commentPlaceholder`, `reviews.thanks`, `reviews.empty`, `profile.myShop`, `sellerProfile.tabs.shop`, `sellerProfile.tabs.lives`, `sellerProfile.tabs.reviews`, `sellerProfile.noRating`.
 
 ## Files touched
 
-- `src/components/broadcast/broadcast-live.tsx` — top bar rebuild, remove bottom center mic/cam, mount rail.
-- `src/components/broadcast/broadcast-video.tsx` — flip + filter pipeline hooks.
-- `src/components/broadcast/host-tool-rail.tsx` — new.
-- `src/components/broadcast/filter-picker.tsx` — new.
-- `src/lib/camera-filter-pipeline.ts` — new.
-- `src/lib/moderators-db.ts` — new.
-- `src/components/live-viewer/moderator-dock.tsx` — new (viewer moderator surface).
-- `src/components/live-viewer/live-chat.tsx` — add shield badge.
-- `src/components/live-viewer/real-live-viewer-screen.tsx` — wire moderator surface.
-- `src/i18n/fr.json`, `src/i18n/en.json` — moderator keys + rail labels.
-- `supabase/migrations/<ts>_live_moderators.sql` — table + policies + policy update on live_products.
+New: `src/lib/follows-db.ts`, `src/lib/shop-db.ts`, `src/lib/reviews-db.ts`, `src/components/follow-button.tsx`, `src/screens/my-shop-screen.tsx`, `src/components/shop/shop-product-form-sheet.tsx`, `src/components/shop/shop-picker-sheet.tsx`, `src/components/shop/shop-product-sheet.tsx`, `src/components/orders/leave-review-sheet.tsx`, migration file.
 
-## Testing checklist
+Edited: `src/components/live-viewer/real-live-viewer-screen.tsx`, `src/components/broadcast/add-product-sheet.tsx`, `src/components/broadcast/broadcast-setup.tsx`, `src/components/broadcast/broadcast-live.tsx`, `src/components/seller-profile/seller-profile-screen.tsx`, `src/screens/profile-screen.tsx`, `src/components/orders/order-timeline.tsx`, `src/lib/lives-db.ts`, `src/i18n/fr.json`, `src/i18n/en.json`.
 
-- 320pt viewport: top bar has no clipped element; "Terminer" fully visible.
-- Rail vertically stacked, doesn't collide with featured card or safe-area.
-- Camera flip actually toggles the published track (viewers see the new camera).
-- Single-camera device: flip button hidden.
-- Each filter visible to a second-tab viewer within ~1s of selection.
-- Slow device fps guard: force a heavy filter on low-end → reverts + toast.
-- "Aucun" republishes raw (verify by checking CPU drops / no rAF running).
-- Add-product from rail: new row appears in queue for host + viewers.
-- Host promotes a viewer → viewer sees shield badge + moderator dock within 2s.
-- Moderator can add product + start auction; cannot end live or end auction.
-- Removing a moderator revokes badge + dock within 2s.
+## Post-implementation checklist
+
+- Suivre/Abonné toggles work + persists + count updates in real time on two clients.
+- Boutique CRUD works with photo upload; archived items hidden from viewers.
+- Live setup: picking 3 shop items → 3 live_products appear with correct name/image/price and `shop_product_id`.
+- Fixed-price purchase during live decrements `shop_products.stock`.
+- Seller profile shows real avatar/counts/lives/reviews; no mock data remains.
+- Buyer can leave 1 review per delivered order; `rating_avg` updates on seller profile.
+
+Nothing on the seller profile stays mock after this ships.
