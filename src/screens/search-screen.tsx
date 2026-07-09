@@ -467,28 +467,30 @@ export function SearchScreen() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.18, ease: EASE_IOS, delay: i * 0.02 }}
                       >
-                        <Press
-                          onClick={() => {
-                            setRawQuery(r);
-                            setQuery(r);
-                          }}
-                          className="!min-h-11 flex w-full items-center justify-between rounded-lg px-2 text-left"
-                        >
-                          <span className="flex items-center gap-3 text-[14px]">
+                        <div className="flex w-full items-center justify-between">
+                          <Press
+                            onClick={() => {
+                              setRawQuery(r);
+                              setQuery(r);
+                            }}
+                            className="!min-h-11 flex flex-1 items-center justify-start gap-3 rounded-lg px-2 text-left text-[14px]"
+                          >
                             <Clock size={16} className="text-muted-foreground" strokeWidth={2} />
                             {r}
-                          </span>
+                          </Press>
                           <button
+                            type="button"
                             aria-label={`${t("common.remove")} ${r}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRecent((rs) => rs.filter((x) => x !== r));
                             }}
-                            className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground"
+                            className="ml-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground"
                           >
                             <X size={13} strokeWidth={2.4} />
                           </button>
-                        </Press>
+                        </div>
+
                       </motion.li>
                     ))}
                   </ul>

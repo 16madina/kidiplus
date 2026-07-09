@@ -45,13 +45,28 @@ export function SwipeableTabs({
     setTabOffsets(offsets);
   }, [tabs.length]);
 
-  // Programmatic index change -> scroll snap to that panel
+  // Programmatic index change -> snap to that panel. Use instant scroll
+  // (not "smooth") so touch/scroll-snap engines don't interrupt or cancel it,
+  // and retry on the next frame if the container hasn't been laid out yet.
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const w = el.clientWidth;
-    el.scrollTo({ left: index * w, behavior: "smooth" });
+    let raf = 0;
+    const apply = () => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      if (!w) {
+        raf = requestAnimationFrame(apply);
+        return;
+      }
+      const target = index * w;
+      if (Math.abs(el.scrollLeft - target) > 1) {
+        el.scrollTo({ left: target, behavior: "auto" });
+      }
+    };
+    apply();
+    return () => cancelAnimationFrame(raf);
   }, [index]);
+
 
   // Scroll listener -> update underline in real time
   useEffect(() => {
