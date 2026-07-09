@@ -259,6 +259,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     key: number;
     name: string | null;
     avatar: string | null;
+    variant: "winner" | "unsold";
+    productName: string | null;
   } | null>(null);
   const seenEndRef = useRef<string | null>(null);
   useEffect(() => {
@@ -268,13 +270,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
-    // No winner → UNSOLD: no confetti, no winner reveal, no sale flash.
+    // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
-      setLastSaleFlash(label);
       room.systemMessage(label);
-      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-      flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
+      setWinnerReveal({
+        key: Date.now(),
+        name: null,
+        avatar: null,
+        variant: "unsold",
+        productName: prod?.name ?? null,
+      });
       return;
     }
     const label = t("live.soldTo", { name: evt.winnerName }) + " · " + fmt(evt.finalPrice);
@@ -286,6 +292,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       key: Date.now(),
       name: evt.winnerName,
       avatar: evt.winnerAvatarUrl ?? null,
+      variant: "winner",
+      productName: prod?.name ?? null,
     });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
