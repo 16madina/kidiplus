@@ -91,7 +91,8 @@ export function ShopPickerSheet({
       if (!c) continue;
       picked.push({
         name: p.name,
-        image: "",
+        // Store the signed URL so viewers see it as-is (24h TTL from resolveShopImage).
+        image: imgs[p.id] ?? "",
         mode: c.mode,
         startPrice: c.startPrice,
         timerSec: c.timerSec,
