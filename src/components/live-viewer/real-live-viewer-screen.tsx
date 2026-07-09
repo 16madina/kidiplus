@@ -38,6 +38,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
+import { StressTestPanel, useStressTestEnabled } from "./stress-test-panel";
 
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
