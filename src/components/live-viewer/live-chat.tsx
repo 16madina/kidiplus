@@ -15,6 +15,14 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
 
+  // Only render the last VISIBLE_MSGS messages — the parent may accumulate
+  // more, but we window the DOM to bound reconciliation cost.
+  const visible = useMemo(
+    () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
+    [messages],
+  );
+
+
   // Track if user scrolled away from bottom
   useEffect(() => {
     const el = scrollerRef.current;
