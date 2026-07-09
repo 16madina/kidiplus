@@ -161,8 +161,11 @@ function BroadcastFlow() {
           />
         )}
         {stage === "live" && (
-          <BroadcastLive key="live" onEnd={() => goSummary()} />
+          <ErrorBoundary key="live" boundary="broadcast_live" onReset={() => goSummary()}>
+            <BroadcastLive onEnd={() => goSummary()} />
+          </ErrorBoundary>
         )}
+
         {stage === "summary" && (
           <BroadcastSummary key="summary" onDone={() => goEntry()} />
         )}
