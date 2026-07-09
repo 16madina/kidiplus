@@ -806,6 +806,16 @@ export function RealLiveViewerScreen() {
         onClose={() => setPendingOrder(null)}
       />
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <GiftTraySheet
+        open={giftTrayOpen}
+        onClose={() => setGiftTrayOpen(false)}
+        liveCurrency={liveCurrency}
+        locale={i18n.language}
+        sending={sendingGift}
+        onSend={(k) => doSendGift(k)}
+        onTopUp={() => { setGiftTrayOpen(false); setTopupOpen(true); }}
+      />
+      <GiftAnimationsLayer trigger={room.lastGift} />
 
       {moreOpen && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
