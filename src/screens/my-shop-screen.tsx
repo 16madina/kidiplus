@@ -571,6 +571,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
         editing={editing}
         onSaved={() => void load()}
       />
+      <EditProfileScreen open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
     </PushScreen>
   );
 }
