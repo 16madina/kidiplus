@@ -667,11 +667,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             <span className="text-[9px] uppercase tracking-wide text-white/60">Articles</span>
             <span className="text-[14px] font-bold tabular-nums">{soldCount}</span>
           </div>
+          <div className="h-6 w-px bg-white/20" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[9px] uppercase tracking-wide text-white/60">
+              {t("gifts.short", "Cadeaux 🎁")}
+            </span>
+            <span
+              className="text-[14px] font-bold tabular-nums"
+              style={{ color: giftStats.count > 0 ? "oklch(0.85 0.18 85)" : undefined }}
+            >
+              {formatMoney(giftStats.sellerNet, cur, i18n.language)}
+            </span>
+          </div>
         </div>
       </div>
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
+      <GiftAnimationsLayer trigger={room.lastGift} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}
