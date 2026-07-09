@@ -318,9 +318,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           // 1) Create new track pinned to the requested facing.
           console.log("[flip] create newTrack facingMode.exact =", target);
           try {
-            newTrack = await createLocalVideoTrack({
-              facingMode: { exact: target } as ConstrainDOMString,
-            });
+            // Cast: livekit-client's `facingMode` typing narrows to a plain
+            // string, but the browser accepts a `ConstrainDOMString`
+            // ({ exact }) via getUserMedia — which iOS Safari honours far
+            // more reliably than a loose string.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            newTrack = await createLocalVideoTrack({ facingMode: { exact: target } as any });
           } catch (e) {
             // Some browsers (older Safari) reject { exact } — fall back.
             console.warn("[flip] exact facingMode failed, retry loose", e);
