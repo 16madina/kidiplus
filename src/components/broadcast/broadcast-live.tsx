@@ -654,6 +654,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         winnerName={winnerReveal?.name ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
         isMe={false}
+        variant={winnerReveal?.variant ?? "winner"}
+        productName={winnerReveal?.productName ?? null}
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
