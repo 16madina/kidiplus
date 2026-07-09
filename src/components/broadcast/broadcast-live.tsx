@@ -1032,3 +1032,73 @@ function AnimatedEuro({ value, currency = "EUR", locale = "fr" }: { value: numbe
   return <span className="text-[14px] font-bold tabular-nums">{formatMoney(display, currency, locale)}</span>;
 }
 
+/** Compact "promote by handle" form. The host types a @handle (or user id),
+ *  we look up the profile and insert into live_moderators. RLS restricts
+ *  insertion to the live's seller. */
+function ModeratorPromoteForm({
+  liveId,
+  addedBy,
+  existingIds,
+}: {
+  liveId: string;
+  addedBy: string;
+  existingIds: Set<string>;
+}) {
+  const { t } = useTranslation();
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const raw = value.trim().replace(/^@/, "");
+    if (!raw) return;
+    setBusy(true);
+    try {
+      // Try handle first, then user id.
+      let userId: string | null = null;
+      const byHandle = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("handle", raw)
+        .maybeSingle();
+      if (byHandle.data?.id) userId = byHandle.data.id;
+      else {
+        const byId = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", raw)
+          .maybeSingle();
+        if (byId.data?.id) userId = byId.data.id;
+      }
+      if (!userId) { toast.error(t("moderator.notFound", "Profil introuvable")); return; }
+      if (existingIds.has(userId)) { toast(t("moderator.alreadyMod", "Déjà modérateur")); return; }
+      const res = await addModerator(liveId, userId, addedBy);
+      if (!res.ok) toast.error(res.error ?? t("moderator.addFailed", "Ajout impossible"));
+      else { toast.success(t("moderator.added", "Modérateur ajouté 🛡️")); setValue(""); }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); void submit(); }}
+      className="mt-3 flex items-center gap-2"
+    >
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={t("moderator.promotePlaceholder", "@handle du spectateur")}
+        className="min-w-0 flex-1 rounded-full border px-3 py-2 text-[13px] outline-none"
+        style={{ borderColor: "var(--border)" }}
+      />
+      <Press
+        onClick={busy ? undefined : submit}
+        disabled={busy || !value.trim()}
+        className="!min-h-9 h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
+      >
+        {t("moderator.promote", "Promouvoir 🛡️")}
+      </Press>
+    </form>
+  );
+}
+
