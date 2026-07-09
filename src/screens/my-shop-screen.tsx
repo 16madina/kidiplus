@@ -116,6 +116,50 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     return () => { alive = false; };
   }, [user?.avatar_url]);
 
+  // Resolve banner for hero background
+  useEffect(() => {
+    let alive = true;
+    const path = user?.banner_url ?? null;
+    if (!path) { setBannerUrl(null); return; }
+    void resolveAvatarUrl(path).then((url) => {
+      if (alive) setBannerUrl(bustAvatarCache(url, path));
+    });
+    return () => { alive = false; };
+  }, [user?.banner_url]);
+
+  const onPickBanner = () => bannerInputRef.current?.click();
+  const onBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Merci de choisir une image."); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("Image trop lourde (max 8 Mo)."); return; }
+    setUploadingBanner(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/banner-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ banner_url: path } as never)
+        .eq("id", user.id);
+      if (updErr) throw updErr;
+      const signed = await resolveAvatarUrl(path);
+      setBannerUrl(bustAvatarCache(signed, path));
+      toast.success("Bannière mise à jour");
+      haptic.success();
+    } catch (err) {
+      console.error("[banner] upload", err);
+      haptic.error();
+      toast.error("Échec de l'envoi de la bannière");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   // Live lives-count (any status) for the seller — “Lives réalisés”
   useEffect(() => {
     if (!open || !user) return;
