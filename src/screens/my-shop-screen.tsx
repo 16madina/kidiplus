@@ -363,7 +363,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
           <span className="truncate">Ajouter</span>
         </Press>
         <Press
-          onClick={() => { haptic.medium(); toast.info("Ouvre l'onglet Live pour démarrer"); onClose(); }}
+          onClick={() => {
+            haptic.medium();
+            onClose();
+            // Defer to next tick so the shop push-screen closes first.
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "live" }));
+            }, 40);
+          }}
           className="!min-h-12 flex h-12 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-bold text-white"
           style={{ background: GOLD }}
         >
@@ -371,7 +378,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
           <span className="truncate">Lancer un live</span>
         </Press>
         <Press
-          onClick={() => { haptic.light(); toast.info("Personnalisation à venir"); }}
+          onClick={() => { haptic.light(); setEditProfileOpen(true); }}
           className="!min-h-12 flex h-12 items-center justify-center gap-1.5 rounded-2xl bg-card text-[13px] font-bold"
           style={{ border: "1px solid var(--border)", color: NAVY }}
         >
