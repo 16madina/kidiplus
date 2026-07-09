@@ -3,6 +3,37 @@
     "follow": "Suivre",
     "following": "Abonné"
   },
+  "gifts": {
+    "title": "Envoyer un cadeau",
+    "subtitle": "Le vendeur reçoit 70% du montant",
+    "open": "Cadeaux",
+    "short": "Cadeaux 🎁",
+    "walletBalance": "Solde",
+    "currencyHint": "Portefeuille en {{cur}}",
+    "matchLive": "Recharge en {{cur}} pour envoyer un cadeau",
+    "confirmTap": "Retoucher pour envoyer",
+    "chatLine": "{{user}} a envoyé un(e) {{gift}}",
+    "summaryTitle": "Cadeaux reçus",
+    "summaryCount_one": "{{count}} cadeau",
+    "summaryCount_other": "{{count}} cadeaux",
+    "name": {
+      "rose": "Rose",
+      "heart": "Cœur d'or",
+      "diamond": "Diamant",
+      "crown": "Couronne",
+      "rocket": "Fusée",
+      "lion": "Lion"
+    },
+    "err": {
+      "insufficient": "Solde insuffisant — recharge ton portefeuille",
+      "currency": "Portefeuille dans une autre devise",
+      "self": "Tu ne peux pas t'envoyer un cadeau",
+      "notLive": "Le live n'est plus actif",
+      "sanctioned": "Compte suspendu",
+      "auth": "Connecte-toi pour envoyer un cadeau",
+      "unknown": "Envoi impossible"
+    }
+  },
   "shop": {
     "title": "Ma boutique",
     "short": "Boutique",
