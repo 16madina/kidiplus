@@ -17,6 +17,7 @@ export type Profile = {
   display_name: string;
   handle: string;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
   is_seller: boolean;
   is_admin: boolean;

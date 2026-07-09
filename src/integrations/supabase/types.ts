@@ -756,6 +756,7 @@ export type Database = {
         Row: {
           age_confirmed_at: string | null
           avatar_url: string | null
+          banner_url: string | null
           bio: string | null
           country: string | null
           created_at: string
@@ -778,6 +779,7 @@ export type Database = {
         Insert: {
           age_confirmed_at?: string | null
           avatar_url?: string | null
+          banner_url?: string | null
           bio?: string | null
           country?: string | null
           created_at?: string
@@ -800,6 +802,7 @@ export type Database = {
         Update: {
           age_confirmed_at?: string | null
           avatar_url?: string | null
+          banner_url?: string | null
           bio?: string | null
           country?: string | null
           created_at?: string
