@@ -380,19 +380,23 @@ export async function createLiveProductInDb(args: {
   return { ok: true, id: data.id, imagePath };
 }
 
-/** Host starts an auction: mark row active + set fresh price=start_price. */
-export async function startAuctionInDb(productId: string): Promise<void> {
-  const { data: row } = await supabase
-    .from("live_products")
-    .select("start_price")
-    .eq("id", productId)
-    .maybeSingle();
-  if (!row) return;
-  await supabase
-    .from("live_products")
-    .update({ status: "active", price: row.start_price, final_price: null, sold_to_identity: null })
-    .eq("id", productId);
+/** Host starts an auction. Delegates to the `start_auction` RPC which:
+ *  - flips status to "active", resets price/final_price,
+ *  - persists the absolute deadline (`auction_deadline_at`) on the row,
+ *  - returns the deadline as epoch ms so the host broadcast, the host's own
+ *    countdown, and any late-joining viewer read the SAME absolute value. */
+export async function startAuctionInDb(
+  productId: string,
+): Promise<{ ok: boolean; deadlineMs?: number; timerSec?: number; error?: string }> {
+  const { data, error } = await supabase.rpc("start_auction", {
+    _product_id: productId,
+  } as never);
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; deadline_ms?: number; timer_sec?: number; error?: string };
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, deadlineMs: Number(r.deadline_ms), timerSec: Number(r.timer_sec) };
 }
+
 
 /**
  * Host-triggered auction finalize. Marks the product sold, creates the pending
