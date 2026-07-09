@@ -69,9 +69,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   const [editing, setEditing] = useState<ShopProduct | null>(null);
   const [category, setCategory] = useState<string>("all");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [livesCount, setLivesCount] = useState<number>(0);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
-  const user = profile;
+  const user = profile as (typeof profile & { banner_url?: string | null }) | null;
 
   const load = async () => {
     if (!user) return;
