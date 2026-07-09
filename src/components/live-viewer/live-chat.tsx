@@ -169,4 +169,5 @@ const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
       </div>
     </div>
   );
-}
+});
+
