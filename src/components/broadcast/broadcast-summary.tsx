@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
-import { Share2, Home, PartyPopper } from "lucide-react";
+import { Share2, Home } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useBroadcast } from "@/lib/broadcast-context";
@@ -10,6 +10,7 @@ import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
+import { Logo } from "@/components/brand/logo";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   const { t, i18n } = useTranslation();
