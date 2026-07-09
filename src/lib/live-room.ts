@@ -388,7 +388,12 @@ export function useLiveRoom(params: {
       lastAuctionEnd,
       lastExtension,
       lastBid,
-      sendChat: (text: string) => {
+      lastGift,
+      broadcastGift: (evt) => {
+        const full: GiftEvt = { ...evt, id: uid(), ts: Date.now() };
+        setLastGift(full);
+        void channelRef.current?.send({ type: "broadcast", event: "gift", payload: full });
+      },
         const trimmed = text.trim();
         if (!trimmed) return;
         const evt: ChatEvt = {
