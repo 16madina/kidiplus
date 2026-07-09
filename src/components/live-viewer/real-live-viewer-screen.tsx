@@ -751,6 +751,8 @@ export function RealLiveViewerScreen() {
         winnerName={winnerReveal?.name ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
         isMe={!!winnerReveal?.isMe}
+        variant={winnerReveal?.variant ?? "winner"}
+        productName={winnerReveal?.productName ?? null}
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
