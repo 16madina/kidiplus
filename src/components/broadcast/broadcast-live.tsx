@@ -59,6 +59,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [shopPickerOpen, setShopPickerOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
   const [canFlip, setCanFlip] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
@@ -467,6 +468,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       price: p.price,
       stock: p.stock,
       timerSeconds: p.timerSec,
+      shopProductId: p.shopProductId ?? null,
     });
     setAddingProduct(false);
     if (!res.ok) {
@@ -1101,6 +1103,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdd={(p) => { void onAddProductMidLive(p); }}
+        onPickFromShop={() => { setAddOpen(false); setShopPickerOpen(true); }}
+      />
+      <ShopPickerSheet
+        open={shopPickerOpen}
+        onClose={() => setShopPickerOpen(false)}
+        onConfirm={(items) => {
+          for (const it of items) void onAddProductMidLive(it);
+        }}
       />
     </motion.div>
   );
