@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  RefreshCw, Eye, Mic, MicOff, Video, VideoOff, Package, AlertTriangle, Plus,
+  Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
+import { HostToolRail } from "./host-tool-rail";
+import { FilterPicker } from "./filter-picker";
+import { useModerators, addModerator, removeModerator } from "@/lib/moderators-db";
+import { useAuth } from "@/lib/auth-context";
+import type { BroadcastVideoHandle } from "./broadcast-video";
+import type { FilterKey } from "@/lib/camera-filter-pipeline";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -56,6 +62,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [productsOpen, setProductsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
+  const [canFlip, setCanFlip] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filter, setFilter] = useState<FilterKey>(() => {
+    if (typeof window === "undefined") return "none";
+    return (sessionStorage.getItem("kp:host:filter") as FilterKey | null) ?? "none";
+  });
+  const videoHandleRef = useRef<BroadcastVideoHandle>(null);
+  const { user } = useAuth();
+  const { moderators } = useModerators(b.liveId);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
@@ -463,12 +478,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       className="relative h-full w-full overflow-hidden bg-black"
     >
       <BroadcastVideo
+        ref={videoHandleRef}
         facing={facing}
         enabled={cameraOn}
         micEnabled={micOn}
         fallbackImage={b.cover}
         retryKey={retryKey}
         onStatus={setVideoStatus}
+        onCanFlipChange={setCanFlip}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
@@ -476,83 +493,74 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }
       />
 
-      {/* Top bar */}
+      {/* Compact top bar — fits at 320pt width. Grid layout: leading pills |
+          spacer | trailing controls. Every pill has min-w-0 so text can
+          truncate without pushing the end button off-screen. */}
       <div
-        className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3"
+        className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-1.5 px-2"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-white"
-            style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
-          >
-            <motion.span
-              animate={{ opacity: [1, 0.35, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-              className="h-1.5 w-1.5 rounded-full bg-white"
-            />
-            <span className="text-[11px] font-bold tracking-wide">{t("live.onAir", "EN DIRECT")}</span>
-          </div>
-          <div
-            className="rounded-full px-2 py-1 text-[11px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {fmtDuration(duration)}
-          </div>
+        {/* Live pill: pulsing red dot + timer merged (no "EN DIRECT" text). */}
+        <div
+          className="flex items-center gap-1.5 rounded-full px-2 py-1 text-white"
+          style={{
+            backgroundColor: "rgba(220, 30, 40, 0.95)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <motion.span
+            animate={{ opacity: [1, 0.35, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+            className="h-1.5 w-1.5 rounded-full bg-white"
+          />
+          <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <Eye size={13} />
-            {room.viewerCount}
-          </div>
-          <Press
-            onClick={() => { haptic.selection(); setProductsOpen(true); }}
-            aria-label={t("live.openProducts")}
-            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B] inline-flex items-center gap-1"
-            style={{ backgroundColor: "white" }}
-          >
-            <Package size={14} />
-            {t("live.openProducts")}
-            {room.products.length > 0 && (
-              <span className="ml-0.5 rounded-full bg-[#10162B] px-1.5 text-[10px] font-bold text-white">
-                {room.products.length}
-              </span>
-            )}
-          </Press>
-          <Press
-            onClick={() => {
-              haptic.selection();
-              setFacing((f) => (f === "user" ? "environment" : "user"));
-            }}
-            aria-label={t("broadcast.live.flipCam")}
-            className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <RefreshCw size={16} />
-          </Press>
-          <Press
-            onClick={() => setConfirmEnd(true)}
-            className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-white"
-            style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
-          >
-            {t("live.endLive", "Terminer")}
-          </Press>
+        {/* Viewer count */}
+        <div
+          className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Eye size={12} />
+          {room.viewerCount}
         </div>
+        {/* Spacer */}
+        <div className="min-w-0" />
+        {/* Products icon-only pill with count badge */}
+        <Press
+          onClick={() => { haptic.selection(); setProductsOpen(true); }}
+          aria-label={t("live.openProducts")}
+          className="!min-h-9 !min-w-9 relative h-9 w-9 rounded-full text-white"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Package size={16} />
+          {room.products.length > 0 && (
+            <span
+              className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold text-[#10162B]"
+              style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
+            >
+              {room.products.length}
+            </span>
+          )}
+        </Press>
+        {/* End-live pill: compact icon+word, red. */}
+        <Press
+          onClick={() => setConfirmEnd(true)}
+          aria-label={t("live.endLive")}
+          className="!min-h-9 h-9 min-w-0 shrink-0 rounded-full pl-2 pr-3 text-[12px] font-bold text-white inline-flex items-center gap-1"
+          style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
+        >
+          <X size={14} />
+          <span className="truncate">{t("live.endLive")}</span>
+        </Press>
       </div>
 
       {/* Video connection error overlay with retry */}
@@ -793,42 +801,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Seller dock */}
-      <div
-        className="absolute inset-x-0 bottom-0 z-30 pb-safe"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
-      >
-        <div className="mb-2 flex items-center justify-center gap-3 px-4">
-          <Press
-            onClick={() => { haptic.selection(); setMicOn((m) => !m); }}
-            aria-label={micOn ? t("live.muteMic") : t("live.unmuteMic")}
-            className="!min-h-10 !min-w-10 h-10 w-10 rounded-full text-white"
-            style={{
-              backgroundColor: micOn ? "rgba(255,255,255,0.18)" : "rgba(220,30,40,0.9)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {micOn ? <Mic size={16} /> : <MicOff size={16} />}
-          </Press>
-          <Press
-            onClick={() => { haptic.selection(); setCameraOn((c) => !c); }}
-            aria-label="Caméra"
-            className="!min-h-10 !min-w-10 h-10 w-10 rounded-full text-white"
-            style={{
-              backgroundColor: cameraOn ? "rgba(255,255,255,0.18)" : "rgba(220,30,40,0.9)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            {cameraOn ? <Video size={16} /> : <VideoOff size={16} />}
-          </Press>
-        </div>
-
-        {/* Product queue lives in the top-right "Produits" bottom sheet only.
-            The featured/active auction is surfaced by the compact card in the
-            top-right — no duplicate carousel here. */}
-      </div>
+      {/* Bottom area is chat + featured card only. Mic / cam / flip / filters /
+          add live on the right tool rail. */}
+      <HostToolRail
+        micOn={micOn}
+        camOn={cameraOn}
+        canFlip={canFlip}
+        canFilter={true}
+        filtersOpen={filtersOpen}
+        onToggleMic={() => setMicOn((m) => !m)}
+        onToggleCam={() => setCameraOn((c) => !c)}
+        onFlip={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        onAddProduct={() => setAddOpen(true)}
+      />
+      <FilterPicker
+        open={filtersOpen}
+        active={filter}
+        onPick={async (k) => {
+          setFilter(k);
+          try { sessionStorage.setItem("kp:host:filter", k); } catch {}
+          const h = videoHandleRef.current;
+          if (!h) return;
+          const res = await h.setFilter(k);
+          if (!res.ok) {
+            if (res.reason === "slow") {
+              toast.error(t("live.filterSlow", "Filtres indisponibles sur cet appareil"));
+            }
+            setFilter("none");
+            try { sessionStorage.setItem("kp:host:filter", "none"); } catch {}
+          }
+        }}
+      />
 
       {/* Full-height Products dock for the host (opened via top-bar button or featured card). */}
       <BottomSheet open={productsOpen} onClose={() => setProductsOpen(false)} heightPercent={85}>
@@ -841,7 +845,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 onClick={() => { haptic.selection(); setProductsOpen(false); setAddOpen(true); }}
                 className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
               >
-                <Plus size={14} /> {t("live.addProduct", "Ajouter")}
+                <span className="text-[16px] leading-none">+</span> {t("live.addProduct", "Ajouter")}
               </Press>
             </div>
           </div>
@@ -917,6 +921,62 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 );
               })}
             </ul>
+
+            {/* Moderators — host manages who can help with product actions. */}
+            <div className="mt-5">
+              <div className="flex items-center gap-2 pb-2">
+                <Shield size={14} className="text-muted-foreground" />
+                <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {t("moderator.title", "Modérateurs")}
+                </h3>
+              </div>
+              {moderators.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground">
+                  {t("moderator.empty", "Aucun modérateur. Promeus un spectateur pour t'aider à gérer les produits.")}
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {moderators.map((m) => (
+                    <li
+                      key={m.userId}
+                      className="flex items-center gap-2.5 rounded-xl border p-2"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="grid h-8 w-8 place-items-center rounded-full bg-muted text-[11px] font-bold">
+                          {(m.displayName ?? m.handle ?? "?").slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold">{m.displayName ?? m.handle ?? m.userId.slice(0, 8)}</p>
+                        {m.handle && <p className="truncate text-[11px] text-muted-foreground">@{m.handle}</p>}
+                      </div>
+                      <Press
+                        onClick={async () => {
+                          if (!b.liveId) return;
+                          const res = await removeModerator(b.liveId, m.userId);
+                          if (!res.ok) toast.error(res.error ?? t("moderator.removeFailed", "Impossible de retirer"));
+                          else toast.success(t("moderator.removed", "Modérateur retiré"));
+                        }}
+                        aria-label={t("moderator.demote", "Retirer")}
+                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-destructive"
+                      >
+                        <Trash2 size={14} />
+                      </Press>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {b.liveId && user && (
+                <ModeratorPromoteForm
+                  liveId={b.liveId}
+                  addedBy={user.id}
+                  existingIds={new Set(moderators.map((m) => m.userId))}
+                />
+              )}
+            </div>
           </div>
         </div>
       </BottomSheet>
@@ -970,5 +1030,75 @@ function AnimatedEuro({ value, currency = "EUR", locale = "fr" }: { value: numbe
     return () => ctrl.stop();
   }, [value, mv]);
   return <span className="text-[14px] font-bold tabular-nums">{formatMoney(display, currency, locale)}</span>;
+}
+
+/** Compact "promote by handle" form. The host types a @handle (or user id),
+ *  we look up the profile and insert into live_moderators. RLS restricts
+ *  insertion to the live's seller. */
+function ModeratorPromoteForm({
+  liveId,
+  addedBy,
+  existingIds,
+}: {
+  liveId: string;
+  addedBy: string;
+  existingIds: Set<string>;
+}) {
+  const { t } = useTranslation();
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const raw = value.trim().replace(/^@/, "");
+    if (!raw) return;
+    setBusy(true);
+    try {
+      // Try handle first, then user id.
+      let userId: string | null = null;
+      const byHandle = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("handle", raw)
+        .maybeSingle();
+      if (byHandle.data?.id) userId = byHandle.data.id;
+      else {
+        const byId = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", raw)
+          .maybeSingle();
+        if (byId.data?.id) userId = byId.data.id;
+      }
+      if (!userId) { toast.error(t("moderator.notFound", "Profil introuvable")); return; }
+      if (existingIds.has(userId)) { toast(t("moderator.alreadyMod", "Déjà modérateur")); return; }
+      const res = await addModerator(liveId, userId, addedBy);
+      if (!res.ok) toast.error(res.error ?? t("moderator.addFailed", "Ajout impossible"));
+      else { toast.success(t("moderator.added", "Modérateur ajouté 🛡️")); setValue(""); }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); void submit(); }}
+      className="mt-3 flex items-center gap-2"
+    >
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={t("moderator.promotePlaceholder", "@handle du spectateur")}
+        className="min-w-0 flex-1 rounded-full border px-3 py-2 text-[13px] outline-none"
+        style={{ borderColor: "var(--border)" }}
+      />
+      <Press
+        onClick={busy ? undefined : submit}
+        disabled={busy || !value.trim()}
+        className="!min-h-9 h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
+      >
+        {t("moderator.promote", "Promouvoir 🛡️")}
+      </Press>
+    </form>
+  );
 }
 

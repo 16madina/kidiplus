@@ -1,4 +1,23 @@
 {
+  "moderator": {
+    "title": "Modérateurs",
+    "empty": "Aucun modérateur. Promeus un spectateur pour t'aider à gérer les produits.",
+    "emptyProducts": "Aucun produit pour le moment",
+    "promote": "Promouvoir 🛡️",
+    "promotePlaceholder": "@handle du spectateur",
+    "demote": "Retirer",
+    "removed": "Modérateur retiré",
+    "removeFailed": "Impossible de retirer",
+    "added": "Modérateur ajouté 🛡️",
+    "addFailed": "Ajout impossible",
+    "notFound": "Profil introuvable",
+    "alreadyMod": "Déjà modérateur",
+    "manage": "Gérer",
+    "addProduct": "Ajouter",
+    "startAuction": "Démarrer",
+    "stop": "Arrêter",
+    "badge": "MOD"
+  },
   "common": {
     "cancel": "Annuler",
     "confirm": "Confirmer",

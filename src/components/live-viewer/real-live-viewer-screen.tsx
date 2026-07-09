@@ -36,6 +36,8 @@ import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsModerator } from "@/lib/moderators-db";
+import { ModeratorDock } from "./moderator-dock";
 
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
@@ -87,6 +89,7 @@ export function RealLiveViewerScreen() {
   const [viewerVideoStatus, setViewerVideoStatus] = useState<ViewerStatus>("connecting");
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
+  const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
 
   useEffect(() => {
     if (room.liveStatus === "ended") {
@@ -709,6 +712,18 @@ export function RealLiveViewerScreen() {
           <Plus size={18} />
         </Press>
       </div>
+
+      {isModerator && user && active?.liveId && !liveEnded && (
+        <ModeratorDock
+          liveId={active.liveId}
+          userId={user.id}
+          products={room.products}
+          activeAuction={room.auctionStart}
+          currency={liveCurrency}
+          locale={i18n.language}
+          broadcastAuctionStart={room.broadcastAuctionStart}
+        />
+      )}
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiKey} />

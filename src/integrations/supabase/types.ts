@@ -238,6 +238,49 @@ export type Database = {
           },
         ]
       }
+      live_moderators: {
+        Row: {
+          added_by: string
+          created_at: string
+          live_id: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          live_id: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          live_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_moderators_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_moderators_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_moderators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_products: {
         Row: {
           auction_deadline_at: string | null
@@ -1130,6 +1173,10 @@ export type Database = {
         Returns: Json
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_live_moderator: {
+        Args: { _live_id: string; _user_id: string }
+        Returns: boolean
+      }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
       list_my_notifications: { Args: { _limit?: number }; Returns: Json }

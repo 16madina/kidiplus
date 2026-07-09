@@ -14,6 +14,12 @@ import {
   disconnectRoom,
   type LocalVideoTrack,
 } from "@/lib/livekit";
+import {
+  createFilterPipeline,
+  isFilterPipelineSupported,
+  type FilterKey,
+  type FilterPipeline,
+} from "@/lib/camera-filter-pipeline";
 
 /**
  * Video layer for the broadcaster (host) side.
@@ -24,8 +30,8 @@ import {
  *   - LiveKit host mode (`livekit` prop given): connects to the LiveKit
  *     room, publishes camera + mic, and shows the local video track.
  *
- * The imperative handle exposes switchCamera / setMic / setCam so the
- * live UI can wire toggles without touching the room directly.
+ * The imperative handle exposes switchCamera / setFilter so the live UI can
+ * wire toggles without touching the room directly.
  */
 
 export type BroadcastVideoLK = {
@@ -44,6 +50,8 @@ export type BroadcastVideoProps = {
   /** Bump this to force a fresh token + reconnect (host retry). */
   retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
+  /** Reports whether the current device has more than one camera. */
+  onCanFlipChange?: (canFlip: boolean) => void;
   /** Called when the user taps "Retry" on the error overlay (preview mode). */
   onRequestRetry?: () => void;
 };
@@ -62,11 +70,14 @@ export type BroadcastStatus =
 
 export type BroadcastVideoHandle = {
   switchCamera: (facing: "user" | "environment") => Promise<void>;
+  /** Apply a camera filter (LiveKit host mode only). Returns whether the
+   *  filter was successfully installed. */
+  setFilter: (k: FilterKey) => Promise<{ ok: boolean; reason?: string }>;
 };
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onRequestRetry },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry },
     ref,
   ) {
     const { t } = useTranslation();
@@ -74,6 +85,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const streamRef = useRef<MediaStream | null>(null);
     const roomRef = useRef<Room | null>(null);
     const localVideoTrackRef = useRef<LocalVideoTrack | null>(null);
+    const filterPipelineRef = useRef<FilterPipeline | null>(null);
+    const currentFilterRef = useRef<FilterKey>("none");
     const [state, setState] = useState<BroadcastStatus>("idle");
     const appActive = useAppActive();
 
@@ -84,29 +97,112 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       onStatus?.(state);
     }, [state, onStatus]);
 
-    // Imperative API for the live UI.
+    // Probe device count once to decide whether the flip button should show.
+    useEffect(() => {
+      if (!onCanFlipChange) return;
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+        onCanFlipChange(false);
+        return;
+      }
+      let cancelled = false;
+      void navigator.mediaDevices.enumerateDevices().then((devices) => {
+        if (cancelled) return;
+        const cams = devices.filter((d) => d.kind === "videoinput").length;
+        onCanFlipChange(cams > 1);
+      }).catch(() => {
+        if (!cancelled) onCanFlipChange(false);
+      });
+      return () => { cancelled = true; };
+    }, [onCanFlipChange, state]);
+
+    // Imperative API for the live UI (filter installation).
     useImperativeHandle(ref, () => ({
-      switchCamera: async (nextFacing) => {
+      switchCamera: async () => {
+        // Kept for API compatibility; the LK effect below already reacts to
+        // `facing` prop changes, so callers just update the facing state.
+      },
+      setFilter: async (k) => {
         const room = roomRef.current;
-        if (!room) return;
-        const oldTrack = localVideoTrackRef.current;
-        try {
-          const newTrack = await createLocalVideoTrack({
-            facingMode: nextFacing,
-          });
-          if (oldTrack) {
-            await room.localParticipant.unpublishTrack(oldTrack, true);
+        if (!room) return { ok: false, reason: "no_room" };
+        currentFilterRef.current = k;
+        // "none" → republish raw source track (drop filter pipeline).
+        if (k === "none") {
+          if (filterPipelineRef.current) {
+            try { filterPipelineRef.current.stop(); } catch {}
+            filterPipelineRef.current = null;
           }
-          await room.localParticipant.publishTrack(newTrack);
-          localVideoTrackRef.current = newTrack;
-          if (videoRef.current) {
-            newTrack.attach(videoRef.current);
+          const oldTrack = localVideoTrackRef.current;
+          try {
+            const raw = await createLocalVideoTrack({ facingMode: facing });
+            if (oldTrack) await room.localParticipant.unpublishTrack(oldTrack, true);
+            await room.localParticipant.publishTrack(raw);
+            localVideoTrackRef.current = raw;
+            if (videoRef.current) raw.attach(videoRef.current);
+            return { ok: true };
+          } catch (e) {
+            return { ok: false, reason: e instanceof Error ? e.message : "reset_failed" };
           }
-        } catch {
-          /* keep old track */
         }
+        return applyFilterToPublishedTrack(k);
       },
     }));
+
+    // Helper closes over refs. Installs a canvas filter pipeline on the
+    // currently-published camera track and republishes the canvas stream.
+    async function applyFilterToPublishedTrack(k: FilterKey): Promise<{ ok: boolean; reason?: string }> {
+      const room = roomRef.current;
+      if (!room) return { ok: false, reason: "no_room" };
+      if (!isFilterPipelineSupported()) return { ok: false, reason: "unsupported" };
+      const cur = localVideoTrackRef.current;
+      if (!cur?.mediaStreamTrack) return { ok: false, reason: "no_track" };
+      // Tear down any previous pipeline.
+      if (filterPipelineRef.current) {
+        try { filterPipelineRef.current.stop(); } catch {}
+        filterPipelineRef.current = null;
+      }
+      // Acquire a fresh raw track so the pipeline reads from an untouched
+      // source (the currently-published track may itself be a canvas output
+      // from a prior filter).
+      let sourceTrack: MediaStreamTrack;
+      try {
+        const raw = await createLocalVideoTrack({ facingMode: facing });
+        sourceTrack = raw.mediaStreamTrack;
+        // Publish the raw track first so we can then swap in the filtered
+        // canvas track; we keep `raw` referenced via the pipeline so it isn't
+        // GC'd. Actually simpler: build pipeline off `sourceTrack`, publish
+        // the filtered output as a fresh custom track.
+      } catch (e) {
+        return { ok: false, reason: e instanceof Error ? e.message : "acquire_failed" };
+      }
+      const pipe = createFilterPipeline(sourceTrack, k);
+      const readiness = await pipe.ready;
+      if (!readiness.ok) {
+        try { pipe.stop(); } catch {}
+        try { sourceTrack.stop(); } catch {}
+        currentFilterRef.current = "none";
+        return { ok: false, reason: readiness.reason };
+      }
+      // Unpublish current, publish the pipeline's output as a native
+      // MediaStreamTrack. LiveKit's publishTrack accepts MediaStreamTracks.
+      try {
+        if (cur) await room.localParticipant.unpublishTrack(cur, true);
+        const pub = await room.localParticipant.publishTrack(pipe.outputTrack);
+        // The LocalTrack instance is on `pub.track`.
+        const newLocal = pub?.track as LocalVideoTrack | undefined;
+        if (newLocal) {
+          localVideoTrackRef.current = newLocal;
+          if (videoRef.current) newLocal.attach(videoRef.current);
+        }
+        filterPipelineRef.current = pipe;
+        return { ok: true };
+      } catch (e) {
+        try { pipe.stop(); } catch {}
+        try { sourceTrack.stop(); } catch {}
+        return { ok: false, reason: e instanceof Error ? e.message : "publish_failed" };
+      }
+    }
+
+
 
     // --- Preview mode (getUserMedia) --------------------------------------
     useEffect(() => {
@@ -285,6 +381,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       let cancelled = false;
       (async () => {
         try {
+          // Tear down any active filter pipeline; we'll reinstall against
+          // the new camera below.
+          const activeFilter = currentFilterRef.current;
+          if (filterPipelineRef.current) {
+            try { filterPipelineRef.current.stop(); } catch {}
+            filterPipelineRef.current = null;
+          }
           const newTrack = await createLocalVideoTrack({ facingMode: facing });
           if (cancelled) {
             newTrack.stop();
@@ -295,6 +398,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           await room.localParticipant.publishTrack(newTrack);
           localVideoTrackRef.current = newTrack;
           if (videoRef.current) newTrack.attach(videoRef.current);
+          if (activeFilter !== "none") {
+            await applyFilterToPublishedTrack(activeFilter);
+          }
         } catch {}
       })();
       return () => {
