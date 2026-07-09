@@ -297,6 +297,8 @@ export async function fetchLiveById(id: string): Promise<LiveStream | null> {
 
 export type LiveProductRow = {
   id: string;
+export type LiveProductRow = {
+  id: string;
   live_id: string;
   name: string;
   image_url: string | null;
@@ -309,7 +311,11 @@ export type LiveProductRow = {
   sold_to_identity: string | null;
   final_price: number | null;
   position: number;
+  /** Absolute epoch timestamp (ISO) of the auction deadline. Set by the
+   *  start_auction RPC so late joiners can rehydrate a synchronized timer. */
+  auction_deadline_at: string | null;
 };
+
 
 export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[]> {
   const { data } = await supabase
