@@ -395,7 +395,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
               <Sparkles size={16} style={{ color: GOLD }} />
               Produits en vedette
             </h2>
-            <Press onClick={() => haptic.light()} className="!min-h-8 flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground">
+            <Press
+              onClick={() => {
+                haptic.light();
+                setCategory("all");
+                setTimeout(() => gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+              }}
+              className="!min-h-8 flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground"
+            >
               Voir tout
               <ChevronRight size={14} />
             </Press>
