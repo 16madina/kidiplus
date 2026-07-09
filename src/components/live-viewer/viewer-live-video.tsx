@@ -25,10 +25,12 @@ export type ViewerLiveVideoProps = {
 
 export type ViewerStatus =
   | "connecting"
-  | "waiting"   // connected but no host publishing yet
-  | "live"      // remote video attached
-  | "ended"    // host disconnected after having been live
+  | "waiting"      // connected but no host publishing yet
+  | "live"         // remote video attached
+  | "reconnecting" // livekit transient reconnect in progress
+  | "ended"        // host disconnected after having been live
   | "error";
+
 
 export function ViewerLiveVideo({
   room,
