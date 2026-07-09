@@ -141,6 +141,20 @@ export function ViewerLiveVideo({
           else setStatus("error");
         });
 
+        // LiveKit auto-reconnects on network drops — surface the transient
+        // state so viewers see "Reconnexion…" instead of an ended overlay.
+        r.on(RoomEvent.Reconnecting, () => {
+          if (cancelled) return;
+          clearEndTimer();
+          setStatus("reconnecting");
+        });
+        r.on(RoomEvent.Reconnected, () => {
+          if (cancelled) return;
+          clearEndTimer();
+          setStatus(hadVideo ? "live" : "waiting");
+        });
+
+
         // Attach any tracks already subscribed at connect time.
         r.remoteParticipants.forEach((p) => {
           p.trackPublications.forEach((pub) => {
