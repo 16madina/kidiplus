@@ -159,7 +159,16 @@ export function SearchScreen() {
     return out.slice(0, 40);
   }, [q, searching]);
 
+  // Combined set of seller names currently broadcasting (real DB lives + mock live results).
+  const liveSellerNames = useMemo(() => {
+    const set = new Set<string>();
+    liveResults.forEach((s) => set.add(s.seller));
+    activeSellerNames.forEach((name) => set.add(name));
+    return set;
+  }, [liveResults, activeSellerNames]);
+
   const commitRecent = (term: string) => {
+
     const t = term.trim();
     if (!t) return;
     setRecent((r) => [t, ...r.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 8));
