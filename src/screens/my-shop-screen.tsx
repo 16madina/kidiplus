@@ -301,10 +301,10 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
                 <div className="absolute mt-9 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground">BOUTIQUE</div>
               </div>
             )}
-            {/* edit avatar chip */}
+            {/* edit avatar chip → opens profile editor */}
             <Press
-              aria-label="Modifier"
-              onClick={() => haptic.light()}
+              aria-label="Modifier la photo de profil"
+              onClick={() => { haptic.light(); setEditProfileOpen(true); }}
               className="absolute -bottom-1 right-2 grid h-8 w-8 place-items-center rounded-full"
               style={{ background: "#fff", border: `1px solid ${GOLD_SOFT}`, boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
             >
