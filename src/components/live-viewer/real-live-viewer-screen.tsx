@@ -91,6 +91,7 @@ export function RealLiveViewerScreen() {
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
   const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const stressOn = useStressTestEnabled();
 
   useEffect(() => {
     if (room.liveStatus === "ended") {
