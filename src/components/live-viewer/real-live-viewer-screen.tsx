@@ -38,6 +38,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
+import { FollowButton } from "@/components/follow-button";
 
 
 
