@@ -3,6 +3,7 @@ import { Plus, Package, Pencil, Archive, RotateCcw, Loader2 } from "lucide-react
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
+import { supabase } from "@/integrations/supabase/client";
 import { PushScreen } from "@/components/push-screen";
 import { useAuth } from "@/lib/auth-context";
 import {
