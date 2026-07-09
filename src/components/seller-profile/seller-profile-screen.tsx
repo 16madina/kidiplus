@@ -70,6 +70,20 @@ export function SellerProfileScreen() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const dragX = useMotionValue(0);
 
+  const refreshProfile = async () => {
+    if (!activeSeller) return;
+    const p = await resolveSellerRef(activeSeller);
+    setProfile((prev) => (p ? { ...(prev ?? {} as SellerProfile), ...p } : prev));
+    if (p) {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("seller_id", p.id)
+        .eq("status", "paid");
+      setSalesCount(count ?? 0);
+    }
+  };
+
   useEffect(() => {
     if (!activeSeller) return;
     let alive = true;
@@ -89,6 +103,32 @@ export function SellerProfileScreen() {
     })();
     return () => { alive = false; };
   }, [activeSeller]);
+
+  // Realtime: profile row (followers_count, rating_avg via triggers) + paid orders count.
+  useEffect(() => {
+    const sellerId = profile?.id;
+    if (!sellerId) return;
+    const ch = supabase
+      .channel(`seller-profile-${sellerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${sellerId}` }, (payload) => {
+        const row = payload.new as Partial<SellerProfile>;
+        setProfile((prev) => (prev ? { ...prev, ...row } : prev));
+        if (row.avatar_url !== undefined) {
+          void resolveAvatarUrl(row.avatar_url ?? null).then(setAvatar);
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${sellerId}` }, () => {
+        void (async () => {
+          const { count } = await supabase
+            .from("orders").select("id", { count: "exact", head: true })
+            .eq("seller_id", sellerId).eq("status", "paid");
+          setSalesCount(count ?? 0);
+        })();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [profile?.id]);
+
 
   if (!activeSeller) return null;
 
