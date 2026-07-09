@@ -35,7 +35,16 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     setImgs(Object.fromEntries(entries));
   };
 
-  useEffect(() => { if (open) void load(); }, [open, user?.id]);
+  useEffect(() => {
+    if (!open || !user) return;
+    void load();
+    const ch = supabase
+      .channel(`my-shop-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${user.id}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [open, user?.id]);
+
 
   const toggleActive = async (p: ShopProduct) => {
     haptic.medium();
