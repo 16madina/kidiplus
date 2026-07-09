@@ -115,38 +115,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       return () => { cancelled = true; };
     }, [onCanFlipChange, state]);
 
-    // Imperative API for the live UI.
+    // Imperative API for the live UI (filter installation).
     useImperativeHandle(ref, () => ({
-      switchCamera: async (nextFacing) => {
-        const room = roomRef.current;
-        if (!room) return;
-        const oldTrack = localVideoTrackRef.current;
-        // If a filter pipeline is active, tear it down; we'll reinstall it
-        // against the new camera after the flip.
-        const activeFilter = currentFilterRef.current;
-        if (filterPipelineRef.current) {
-          try { filterPipelineRef.current.stop(); } catch {}
-          filterPipelineRef.current = null;
-        }
-        try {
-          const newTrack = await createLocalVideoTrack({
-            facingMode: nextFacing,
-          });
-          if (oldTrack) {
-            await room.localParticipant.unpublishTrack(oldTrack, true);
-          }
-          await room.localParticipant.publishTrack(newTrack);
-          localVideoTrackRef.current = newTrack;
-          if (videoRef.current) {
-            newTrack.attach(videoRef.current);
-          }
-          // Reapply the previously active filter, if any.
-          if (activeFilter !== "none") {
-            await applyFilterToPublishedTrack(activeFilter);
-          }
-        } catch {
-          /* keep old track */
-        }
+      switchCamera: async () => {
+        // Kept for API compatibility; the LK effect below already reacts to
+        // `facing` prop changes, so callers just update the facing state.
       },
       setFilter: async (k) => {
         const room = roomRef.current;
