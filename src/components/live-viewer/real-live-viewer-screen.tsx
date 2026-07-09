@@ -39,6 +39,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
+import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
+import { GiftAnimationsLayer } from "./gift-animations";
+import { sendGiftRpc } from "@/lib/live-gifts-db";
+import { giftByKey, type GiftKey } from "@/lib/gifts";
 
 
 
