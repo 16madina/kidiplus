@@ -439,34 +439,20 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             try { previousSource?.stop(); } catch {}
             sourceCameraTrackRef.current = newLK.mediaStreamTrack;
           } else {
-            // No filter: swap the published track directly.
+            // No filter: unpublish old, publish new. Attach + play() before
+            // stopping the old track so the <video> element never sees a
+            // moment without a source (which is what causes the paused-icon
+            // freeze on iOS Safari).
             const oldPub = localVideoTrackRef.current;
-            const pub = oldPub
-              ? oldPub.sender
-              : null;
-            let replaced = false;
-            if (pub && "replaceTrack" in pub && typeof pub.replaceTrack === "function") {
-              try {
-                await (pub as unknown as { replaceTrack: (t: MediaStreamTrack) => Promise<void> })
-                  .replaceTrack(newLK.mediaStreamTrack);
-                replaced = true;
-              } catch { /* fall through to publish-swap */ }
-            }
-            if (!replaced) {
-              if (oldPub) await room.localParticipant.unpublishTrack(oldPub, true);
-              await room.localParticipant.publishTrack(newLK);
-            }
+            if (oldPub) await room.localParticipant.unpublishTrack(oldPub, false);
+            await room.localParticipant.publishTrack(newLK);
             localVideoTrackRef.current = newLK;
             sourceCameraTrackRef.current = newLK.mediaStreamTrack;
             if (videoRef.current) {
               newLK.attach(videoRef.current);
-              // The <video> element sometimes pauses when srcObject swaps
-              // under it on iOS Safari — nudge it back.
               videoRef.current.play().catch(() => {});
             }
-            if (replaced && oldPub) {
-              try { oldPub.stop(); } catch {}
-            }
+            try { oldPub?.stop(); } catch {}
           }
         } catch (err) {
           console.warn("[flip] failed, reverting", err);
