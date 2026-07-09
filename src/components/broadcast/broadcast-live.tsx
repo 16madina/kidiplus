@@ -17,6 +17,7 @@ import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
