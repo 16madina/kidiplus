@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Package,
@@ -16,6 +16,7 @@ import {
   Video,
   ChevronRight,
   MoreHorizontal,
+  ImagePlus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { PushScreen } from "@/components/push-screen";
 import { useAuth } from "@/lib/auth-context";
+import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import {
   listMyShopProducts,
   archiveShopProduct,
@@ -67,9 +69,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   const [editing, setEditing] = useState<ShopProduct | null>(null);
   const [category, setCategory] = useState<string>("all");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [livesCount, setLivesCount] = useState<number>(0);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
-  const user = profile;
+  const user = profile as (typeof profile & { banner_url?: string | null }) | null;
 
   const load = async () => {
     if (!user) return;
@@ -108,6 +115,50 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     });
     return () => { alive = false; };
   }, [user?.avatar_url]);
+
+  // Resolve banner for hero background
+  useEffect(() => {
+    let alive = true;
+    const path = user?.banner_url ?? null;
+    if (!path) { setBannerUrl(null); return; }
+    void resolveAvatarUrl(path).then((url) => {
+      if (alive) setBannerUrl(bustAvatarCache(url, path));
+    });
+    return () => { alive = false; };
+  }, [user?.banner_url]);
+
+  const onPickBanner = () => bannerInputRef.current?.click();
+  const onBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Merci de choisir une image."); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("Image trop lourde (max 8 Mo)."); return; }
+    setUploadingBanner(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/banner-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ banner_url: path } as never)
+        .eq("id", user.id);
+      if (updErr) throw updErr;
+      const signed = await resolveAvatarUrl(path);
+      setBannerUrl(bustAvatarCache(signed, path));
+      toast.success("Bannière mise à jour");
+      haptic.success();
+    } catch (err) {
+      console.error("[banner] upload", err);
+      haptic.error();
+      toast.error("Échec de l'envoi de la bannière");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
 
   // Live lives-count (any status) for the seller — “Lives réalisés”
   useEffect(() => {
@@ -166,22 +217,60 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     <PushScreen open={open} onClose={onClose} title={t("shop.title", { defaultValue: "Ma boutique" })} right={headerRight} zIndex={70}>
       {/* Hero */}
       <div
-        className="relative"
+        className="relative overflow-hidden"
         style={{
-          background: `linear-gradient(140deg, ${CREAM_TOP} 0%, ${CREAM_MID} 45%, ${CREAM_LOW} 100%)`,
+          background: bannerUrl
+            ? undefined
+            : `linear-gradient(140deg, ${CREAM_TOP} 0%, ${CREAM_MID} 45%, ${CREAM_LOW} 100%)`,
           paddingBottom: 28,
         }}
       >
+        {/* banner photo layer */}
+        {bannerUrl && (
+          <img
+            src={bannerUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+            draggable={false}
+          />
+        )}
         {/* subtle silk shimmer overlay */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
-            background:
-              "radial-gradient(120% 60% at 20% 10%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(80% 50% at 90% 30%, rgba(200,162,75,0.25), transparent 70%)",
-            mixBlendMode: "screen",
+            background: bannerUrl
+              ? "linear-gradient(180deg, rgba(16,22,43,0.05) 0%, rgba(246,236,217,0.55) 78%, rgba(228,204,166,0.85) 100%)"
+              : "radial-gradient(120% 60% at 20% 10%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(80% 50% at 90% 30%, rgba(200,162,75,0.25), transparent 70%)",
+            mixBlendMode: bannerUrl ? "normal" : "screen",
           }}
         />
+
+        {/* banner edit chip (top-right) */}
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onBannerChange}
+          className="hidden"
+        />
+        <Press
+          aria-label="Modifier la bannière"
+          onClick={() => { haptic.light(); onPickBanner(); }}
+          disabled={uploadingBanner}
+          className="absolute right-3 top-3 z-20 grid h-9 items-center gap-1.5 rounded-full px-3 text-[11.5px] font-bold"
+          style={{
+            background: "rgba(16,22,43,0.72)",
+            color: "#fff",
+            backdropFilter: "blur(6px)",
+            gridAutoFlow: "column",
+          }}
+        >
+          {uploadingBanner ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+          {uploadingBanner ? "Envoi…" : (bannerUrl ? "Bannière" : "Ajouter une bannière")}
+        </Press>
+
 
         {/* Avatar disc */}
         <div className="relative flex flex-col items-center pt-8">
@@ -212,10 +301,10 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
                 <div className="absolute mt-9 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground">BOUTIQUE</div>
               </div>
             )}
-            {/* edit avatar chip */}
+            {/* edit avatar chip → opens profile editor */}
             <Press
-              aria-label="Modifier"
-              onClick={() => haptic.light()}
+              aria-label="Modifier la photo de profil"
+              onClick={() => { haptic.light(); setEditProfileOpen(true); }}
               className="absolute -bottom-1 right-2 grid h-8 w-8 place-items-center rounded-full"
               style={{ background: "#fff", border: `1px solid ${GOLD_SOFT}`, boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
             >
@@ -274,7 +363,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
           <span className="truncate">Ajouter</span>
         </Press>
         <Press
-          onClick={() => { haptic.medium(); toast.info("Ouvre l'onglet Live pour démarrer"); onClose(); }}
+          onClick={() => {
+            haptic.medium();
+            onClose();
+            // Defer to next tick so the shop push-screen closes first.
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "live" }));
+            }, 40);
+          }}
           className="!min-h-12 flex h-12 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-bold text-white"
           style={{ background: GOLD }}
         >
@@ -282,7 +378,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
           <span className="truncate">Lancer un live</span>
         </Press>
         <Press
-          onClick={() => { haptic.light(); toast.info("Personnalisation à venir"); }}
+          onClick={() => { haptic.light(); setEditProfileOpen(true); }}
           className="!min-h-12 flex h-12 items-center justify-center gap-1.5 rounded-2xl bg-card text-[13px] font-bold"
           style={{ border: "1px solid var(--border)", color: NAVY }}
         >
@@ -299,7 +395,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
               <Sparkles size={16} style={{ color: GOLD }} />
               Produits en vedette
             </h2>
-            <Press onClick={() => haptic.light()} className="!min-h-8 flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground">
+            <Press
+              onClick={() => {
+                haptic.light();
+                setCategory("all");
+                setTimeout(() => gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+              }}
+              className="!min-h-8 flex items-center gap-0.5 text-[12px] font-semibold text-muted-foreground"
+            >
               Voir tout
               <ChevronRight size={14} />
             </Press>
@@ -360,7 +463,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
       )}
 
       {/* Categories + grid */}
-      <section className="mt-6 pb-8">
+      <section ref={gridRef} className="mt-6 pb-8 scroll-mt-4">
         <h2 className="px-4 font-serif text-[19px] font-bold" style={{ color: NAVY }}>
           Toutes les catégories
         </h2>
@@ -468,6 +571,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
         editing={editing}
         onSaved={() => void load()}
       />
+      <EditProfileScreen open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
     </PushScreen>
   );
 }
