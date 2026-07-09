@@ -104,6 +104,7 @@ export type CreateLiveInput = {
     stock: number;
     timerSeconds: number;
     position: number;
+    shopProductId?: string | null;
   }>;
 };
 
@@ -144,6 +145,7 @@ export async function createLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { data: prods, error: pErr } = await supabase
       .from("live_products")
