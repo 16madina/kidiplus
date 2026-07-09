@@ -178,7 +178,18 @@ export function ModeratorDock({
                           </p>
                         </div>
                         {p.mode === "auction" ? (
-                          soldOut ? (
+                          p.status === "unsold" ? (
+                            <Press
+                              onClick={async () => {
+                                const res = await relaunchUnsoldProductInDb(p.id);
+                                if (!res.ok) toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+                                else { haptic.success(); toast.success(t("live.relaunched")); }
+                              }}
+                              className="!min-h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+                            >
+                              {t("live.relaunch")}
+                            </Press>
+                          ) : soldOut ? (
                             <span className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-bold">
                               {t("live.sold")}
                             </span>
