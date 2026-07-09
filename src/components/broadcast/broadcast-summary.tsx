@@ -84,6 +84,26 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           <RevenueCounter value={revenue} currency={currency} locale={i18n.language} />
         </div>
 
+        {giftsTotal && giftsTotal.count > 0 && (
+          <div className="flex items-center justify-between rounded-2xl bg-muted px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[24px] leading-none">🎁</span>
+              <div>
+                <p className="text-[13px] font-bold">{t("gifts.summaryTitle", "Cadeaux reçus")}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("gifts.summaryCount", { defaultValue: "{{count}} cadeaux", count: giftsTotal.count })}
+                </p>
+              </div>
+            </div>
+            <span
+              className="text-[16px] font-bold tabular-nums"
+              style={{ color: "oklch(0.65 0.16 60)" }}
+            >
+              +{fmt(giftsTotal.sellerNet)}
+            </span>
+          </div>
+        )}
+
         <div>
           <h2 className="mb-2 text-[15px] font-bold">{t("broadcast.summary.sales")}</h2>
           {salesCount === 0 ? (
