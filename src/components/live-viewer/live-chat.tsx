@@ -1,8 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
+
+// Windowing cap for the rendered chat — even if the parent buffers more,
+// we only ever render the last N to keep the DOM/React reconciler cheap
+// under 1k+ concurrent viewers with heavy chat throughput.
+const VISIBLE_MSGS = 120;
+
 
 export function LiveChat({ messages }: { messages: ChatMsg[] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
