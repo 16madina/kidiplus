@@ -233,14 +233,20 @@ export function SearchScreen() {
   const tabs: TabDef[] = [
     {
       key: "lives",
-      label: `${t("search.tabs.lives")}${liveResults.length ? ` (${liveResults.length})` : ""}`,
+      label: `${t("search.tabs.lives")}${liveResultsToRender.length ? ` (${liveResultsToRender.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
-          {liveResults.length === 0 ? (
+          {liveLoading ? (
+            <div className="grid grid-cols-2 gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ aspectRatio: "3 / 4", borderRadius: 18 }} />
+              ))}
+            </div>
+          ) : liveResultsToRender.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {liveResults.map((s, i) => (
+              {liveResultsToRender.map((s, i) => (
                 <LiveCard
                   key={s.id}
                   stream={s}
@@ -278,31 +284,36 @@ export function SearchScreen() {
             <EmptyResults query={query} />
           ) : (
             <ul className="divide-y divide-border/60">
-              {sellerResults.map((info, i) => (
+              {sellerResults.map((p, i) => (
                 <SellerRow
-                  key={info.name}
-                  info={info}
+                  key={p.id}
+                  profile={p}
+                  avatar={sellerAvatars[p.id] ?? null}
                   index={i}
-                  isLive={liveSellerNames.has(info.name)}
+                  isLive={activeSellerIds.has(p.id)}
                   onOpen={() => {
                     commitRecent(query);
-                    openSeller(info.name);
+                    openSeller(p.handle || p.display_name);
                   }}
                 />
               ))}
-
             </ul>
           )}
         </div>
       ),
     },
-
     {
       key: "produits",
       label: `${t("search.tabs.products")}${productResults.length ? ` (${productResults.length})` : ""}`,
       content: (
         <div className="px-4 py-3">
-          {productResults.length === 0 ? (
+          {productLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ aspectRatio: "1 / 1", borderRadius: 18 }} />
+              ))}
+            </div>
+          ) : productResults.length === 0 ? (
             <EmptyResults query={query} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -316,27 +327,35 @@ export function SearchScreen() {
                   <Press
                     onClick={() => {
                       commitRecent(query);
-                      openSeller(p.seller);
+                      openSeller(p.seller_handle || p.seller_display_name);
                     }}
                     className="!block h-full w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
                   >
                     <div className="relative w-full" style={{ aspectRatio: "1 / 1" }}>
-                      <img
-                        src={p.image}
-                        alt=""
-                        loading="lazy"
-                        className="absolute inset-0 h-full w-full object-cover"
-                        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                        draggable={false}
-                      />
+                      {productImgs[p.id] ? (
+                        <img
+                          src={productImgs[p.id]!}
+                          alt=""
+                          loading="lazy"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center text-muted-foreground">
+                          <Search size={22} />
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <p className="truncate text-[13px] font-medium">{p.name}</p>
                       <div className="flex items-center justify-between">
                         <span className="truncate text-[11px] text-muted-foreground">
-                          @{p.seller}
+                          {p.seller_display_name}
                         </span>
-                        <span className="text-[13px] font-bold">{formatMoney(p.price, "EUR")}</span>
+                        <span className="text-[13px] font-bold">
+                          {formatMoney(Number(p.price), normalizeCurrency(p.currency))}
+                        </span>
                       </div>
                     </div>
                   </Press>
@@ -348,6 +367,7 @@ export function SearchScreen() {
       ),
     },
   ];
+
 
   // The "results" pane covers both a typed query AND the focused-but-empty
   // state (recent searches). Anything else is the default browse view.
