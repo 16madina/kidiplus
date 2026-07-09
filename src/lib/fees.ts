@@ -14,6 +14,13 @@ import { normalizeCurrency, roundForCurrency, isZeroDecimal, type Currency } fro
 export const PLATFORM_FEE_PERCENT = 5;
 
 /**
+ * Virtual-gift platform cut (percent of the gift price kept by KiDi+).
+ * The remainder credits the seller's available balance instantly (no escrow —
+ * nothing to deliver). Mirrored server-side in the `send_gift` RPC.
+ */
+export const GIFT_FEE_PERCENT = 30;
+
+/**
  * Escrow window: seller funds move from `pending` to `available` once the
  * buyer confirms delivery, OR automatically after this many days from the
  * shipped_at timestamp (mirrored in the SQL fn `release_overdue_escrow`).
