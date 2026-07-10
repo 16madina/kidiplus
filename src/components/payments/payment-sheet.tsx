@@ -379,17 +379,17 @@ function WalletMethodRow({
   onTopUp: () => void;
 }) {
   const { t } = useTranslation();
-  const currencyMatch = walletCurrency === orderCurrency;
-  const enough = currencyMatch && balance >= total;
-  const disabled = !currencyMatch;
+  const crossCurrency = walletCurrency !== orderCurrency;
+  const debit = crossCurrency ? convertMoney(total, orderCurrency, walletCurrency) : total;
+  const enough = balance >= debit;
   return (
     <button
       type="button"
-      onClick={disabled ? undefined : (enough && !busy ? onPay : onTopUp)}
-      disabled={busy || disabled}
+      onClick={busy ? undefined : (enough ? onPay : onTopUp)}
+      disabled={busy}
       className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
         enough ? "border-primary bg-primary/5" : "border-border"
-      } ${disabled ? "opacity-60" : ""}`}
+      }`}
     >
       <div
         className="grid h-9 w-9 place-items-center rounded-xl"
@@ -402,18 +402,17 @@ function WalletMethodRow({
         <div className="text-[11px] text-muted-foreground tabular-nums">
           {formatMoney(balance, walletCurrency, locale)}
         </div>
-        {!currencyMatch && (
-          <div className="mt-0.5 text-[10.5px] text-muted-foreground">
-            {t("wallet.currencyMismatch", { currency: walletCurrency })}
+        {crossCurrency && (
+          <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
+            {t("wallet.debitHint", {
+              defaultValue: "Débit : {{amount}}",
+              amount: formatMoney(debit, walletCurrency, locale),
+            })}
           </div>
         )}
       </div>
       {busy ? (
         <Loader2 className="animate-spin" size={16} />
-      ) : !currencyMatch ? (
-        <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-bold text-muted-foreground">
-          {walletCurrency}
-        </span>
       ) : enough ? (
         <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
           {t("pay.payNow", { total: formatMoney(total, orderCurrency, locale) })}
