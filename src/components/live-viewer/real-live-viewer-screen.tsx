@@ -620,7 +620,7 @@ export function RealLiveViewerScreen() {
       {active.roomName ? (
         <ViewerLiveVideo
           room={active.roomName}
-          identity={`viewer_${identity.slice(0, 8)}`}
+          identity={isGuest ? identity : `viewer_${identity.slice(0, 8)}`}
           name={displayName}
           posterImage={active.thumbnail.replace("w=600", "w=1200")}
             onStatus={handleVideoStatus}
