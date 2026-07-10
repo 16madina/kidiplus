@@ -33,7 +33,10 @@ import { GiftAnimationsLayer } from "./gift-animations";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
+import { useWallet } from "@/lib/wallet-context";
+import { normalizeCurrency } from "@/lib/money";
 import type { GiftEvt } from "@/lib/live-room";
+
 
 
 const AUCTION_SECONDS = 45;
