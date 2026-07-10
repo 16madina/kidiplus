@@ -37,10 +37,11 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-import waveLogo from "@/assets/wave-logo.webp";
-import djamoLogo from "@/assets/djamo-logo.png";
-import orangeMoneyLogo from "@/assets/orange-money-logo.png";
-
+// Brand logos live in `public/brands/` so they resolve via absolute URLs
+// in every context (Vite dev, published site, and Capacitor iOS/Android).
+const waveLogo = "/brands/wave.webp";
+const djamoLogo = "/brands/djamo.png";
+const orangeMoneyLogo = "/brands/orange-money.png";
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
@@ -299,22 +300,24 @@ export function TopUpSheet({
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
                         logoUrl={waveLogo}
+                        brandColor={WAVE_BLUE}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
                         logoUrl={orangeMoneyLogo}
+                        brandColor={ORANGE}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         logoUrl={djamoLogo}
+                        brandColor={DJAMO_INDIGO}
                         active
                       />
                     </>
-
                   )}
 
 
@@ -403,6 +406,8 @@ function MethodRow({
   icon?: "card";
   logoUrl?: string;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = logoUrl && !imgFailed;
   return (
     <div
       className={`mt-2 flex items-center gap-3 rounded-2xl border px-3 py-3 ${
@@ -410,24 +415,28 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white"
+        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
         style={
-          logoUrl
-            ? undefined
-            : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
+          showImg
+            ? { backgroundColor: "white" }
+            : { backgroundColor: brandColor ?? "white", color: brandColor ? "white" : "inherit" }
         }
       >
-
-        {logoUrl ? (
-          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        {showImg ? (
+          <img
+            src={logoUrl}
+            alt=""
+            className="h-full w-full object-contain"
+            onError={() => setImgFailed(true)}
+          />
         ) : icon === "card" ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="5" width="20" height="14" rx="2" />
             <path d="M2 10h20" />
           </svg>
-        ) : brandColor ? (
+        ) : (
           <span className="text-[13px] font-bold">{label[0]}</span>
-        ) : null}
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>

@@ -19,6 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
+import { DemoCard, DemoPlayer, useDemoAvailable } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
@@ -35,6 +36,8 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const demoAvailable = useDemoAvailable();
   const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -303,17 +306,23 @@ export function HomeScreen() {
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <LiveCardSkeleton key={`sk-${i}`} />
                   ))
-                : filtered.map((s, i) => (
-                    <LiveCard
-                      key={s.id}
-                      stream={s}
-                      index={i}
-                      onPress={() => openList(filtered, i)}
-                    />
-                  ))}
+                : [
+                    demoAvailable ? (
+                      <DemoCard key="__demo__" onOpen={() => setDemoOpen(true)} />
+                    ) : null,
+                    ...filtered.map((s, i) => (
+                      <LiveCard
+                        key={s.id}
+                        stream={s}
+                        index={i}
+                        onPress={() => openList(filtered, i)}
+                      />
+                    )),
+                  ]}
 
             </motion.div>
           </AnimatePresence>
+
 
           {!loading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm text-muted-foreground">
@@ -332,6 +341,7 @@ export function HomeScreen() {
           <div ref={sentinelRef} className="h-4 w-full" />
         </div>
       </div>
+      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
 }

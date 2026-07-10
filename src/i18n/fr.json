@@ -191,7 +191,13 @@
       "new": "Nouveautés"
     },
     "livesNearYou": "Lives près de chez toi",
-    "empty": "Aucun live dans cette catégorie pour le moment."
+    "empty": "Aucun live dans cette catégorie pour le moment.",
+    "demo": {
+      "badge": "🎬 DÉMO",
+      "title": "Comment utiliser KiDi+",
+      "subtitle": "Regarde la démo · 1 min",
+      "close": "Fermer"
+    }
   },
   "search": {
     "placeholder": "Rechercher",
