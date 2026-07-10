@@ -62,11 +62,31 @@ type AuthCtx = {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
+const GUEST_STORAGE_KEY = "kidi:guestMode";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guestMode, setGuestMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem(GUEST_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const profileFetchToken = useRef(0);
+
+  const enterGuestMode = useCallback(() => {
+    try { window.sessionStorage.setItem(GUEST_STORAGE_KEY, "1"); } catch { /* ignore */ }
+    setGuestMode(true);
+  }, []);
+  const exitGuestMode = useCallback(() => {
+    try { window.sessionStorage.removeItem(GUEST_STORAGE_KEY); } catch { /* ignore */ }
+    setGuestMode(false);
+  }, []);
+
 
   const fetchProfile = useCallback(async (userId: string) => {
     const token = ++profileFetchToken.current;
