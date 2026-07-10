@@ -84,7 +84,7 @@ function Welcome({
 
 
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: EASE_IOS }}
@@ -97,6 +97,8 @@ function Welcome({
           alt=""
           aria-hidden
           draggable={false}
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+          data-loaded="true"
           className="absolute inset-0 h-full w-full select-none object-cover"
         />
         <div
