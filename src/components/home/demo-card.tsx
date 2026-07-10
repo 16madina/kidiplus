@@ -179,8 +179,8 @@ export function DemoPlayer({
             type="button"
             onClick={stop}
             aria-label={t("home.demo.close")}
-            className="absolute right-3 top-safe z-10 grid h-11 w-11 place-items-center rounded-full"
-            style={{ marginTop: "env(safe-area-inset-top)", backgroundColor: "rgba(0,0,0,0.55)" }}
+            className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full"
+            style={{ top: "calc(env(safe-area-inset-top) + 12px)", backgroundColor: "rgba(0,0,0,0.55)" }}
           >
             <X size={22} color="white" strokeWidth={2.2} />
           </button>
