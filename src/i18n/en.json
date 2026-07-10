@@ -806,7 +806,8 @@
       "users": "Users",
       "payments": "Payments",
       "lives": "Lives",
-      "reports": "Reports"
+      "reports": "Reports",
+      "verify": "Verify"
     },
     "toDo": {
       "title": "To handle",
