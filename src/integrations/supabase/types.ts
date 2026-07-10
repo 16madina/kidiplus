@@ -1553,6 +1553,23 @@ export type Database = {
         Returns: Json
       }
       fx_rate: { Args: { _from: string; _to: string }; Returns: number }
+      get_my_email: { Args: never; Returns: string }
+      get_seller_delivery_settings: {
+        Args: { _seller_id: string }
+        Returns: {
+          flat_fee: number
+          mode: string
+          seller_id: string
+          updated_at: string
+          zones: Json
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seller_delivery_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_live_moderator: {
         Args: { _live_id: string; _user_id: string }
