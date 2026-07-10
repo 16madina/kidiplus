@@ -164,7 +164,7 @@ export function SellerDeliverySettingsScreen({
 
             {grouped.map(([countryCode, items]) => (
               <div key={countryCode} className="space-y-2">
-                <p className="flex min-w-0 items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                <p className="flex min-w-0 items-center gap-1.5 px-1 text-[12px] font-semibold text-muted-foreground">
                   <CountryFlag code={countryCode} className="h-4 w-6 shrink-0 rounded-sm" />
                   <span className="min-w-0 truncate" title={countryName(countryCode, i18n.language)}>{countryName(countryCode, i18n.language)}</span>
                 </p>
@@ -253,7 +253,7 @@ export function SellerDeliverySettingsScreen({
                                 className="fixed inset-0 z-10"
                                 onClick={() => setCountryPickerIdx(null)}
                               />
-                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-80 w-56 max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-80 w-64 max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-border bg-background shadow-lg">
                                 <li className="sticky top-0 z-30 border-b border-border bg-background p-2">
                                   <div className="relative">
                                     <Search
