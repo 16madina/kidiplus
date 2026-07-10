@@ -248,24 +248,7 @@ export function EditProfileScreen({
           </span>
         </label>
 
-        <label className="block">
-          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Pays
-          </span>
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="w-full rounded-2xl border border-border bg-card px-4 text-[15px] outline-none focus:border-foreground/40"
-            style={{ height: 48 }}
-          >
-            <option value="">Choisir…</option>
-            {COUNTRIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+        <CountryPicker value={country} onChange={setCountry} />
 
         {error && (
           <div className="rounded-xl bg-[oklch(0.95_0.05_20)] px-3 py-2 text-[13px] font-medium text-[oklch(0.45_0.2_25)]">
