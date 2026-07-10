@@ -390,6 +390,15 @@ export function ProfileScreen() {
           index={1}
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
+            ...(profile?.is_seller
+              ? [{
+                  icon: <BadgeCheck size={16} />,
+                  label: t("verify.menuLabel", "Certification"),
+                  tint: "oklch(0.68 0.16 80)",
+                  trailing: profile?.is_verified ? "✓" : undefined,
+                  onClick: () => setCertOpen(true),
+                }]
+              : []),
             { icon: <UserX size={16} />, label: t("block.listTitle"), tint: "oklch(0.55 0.12 30)", onClick: () => setBlockedOpen(true) },
             { icon: <FileText size={16} />, label: t("profile.menu.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
             { icon: <FileText size={16} />, label: t("profile.menu.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
