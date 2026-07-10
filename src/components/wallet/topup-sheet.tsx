@@ -288,19 +288,29 @@ export function TopUpSheet({
                   <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("pay.method.title")}
                   </p>
-                  <MethodRow icon="card" label={t("pay.method.card")} active />
-                  <MethodRow
-                    label="Wave"
-                    brandColor={WAVE_BLUE}
-                    badge={t("pay.method.comingSoon")}
-                    disabled
-                  />
-                  <MethodRow
-                    label="Orange Money"
-                    brandColor={ORANGE}
-                    badge={t("pay.method.comingSoon")}
-                    disabled
-                  />
+                  <MethodRow icon="card" label={t("pay.method.card")} subtitle={t("pay.method.cardSub")} active />
+                  {cur === "XOF" && (
+                    <>
+                      <MethodRow
+                        label={t("pay.method.waveVisa")}
+                        subtitle={t("pay.method.waveVisaSub")}
+                        brandColor={WAVE_BLUE}
+                        active
+                      />
+                      <MethodRow
+                        label={t("pay.method.orangeVisa")}
+                        subtitle={t("pay.method.orangeVisaSub")}
+                        brandColor={ORANGE}
+                        active
+                      />
+                      <MethodRow
+                        label={t("pay.method.djamo")}
+                        subtitle={t("pay.method.djamoSub")}
+                        brandColor={DJAMO_INDIGO}
+                        active
+                      />
+                    </>
+                  )}
 
                   {step.kind === "not_configured" && (
                     <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed p-4 text-center">
