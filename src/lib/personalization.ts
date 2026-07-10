@@ -1,7 +1,7 @@
 // Personalization signals for the "Pour toi" home tile.
-// Ranks a stream list using the connected user's follows and past interactions
-// (recent bids). Falls back to popularity when the user is signed-out or has
-// no history yet. Purely client-side ranking over the streams already fetched.
+// Aggregates the connected user's subscriptions, past auction bids, purchase
+// history and scheduled-live reminders to rank streams. Falls back to
+// popularity when the user is signed-out or has no history yet.
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,22 +12,30 @@ type Affinity = Map<string, number>;
 
 export type PersonalizedRanker = (streams: LiveStream[]) => LiveStream[];
 
+interface Signals {
+  followed: Set<string>;      // seller ids the user follows
+  purchased: Set<string>;     // seller ids the user bought from
+  categoryAffinity: Affinity; // category -> weighted score
+}
+
+const EMPTY: Signals = {
+  followed: new Set(),
+  purchased: new Set(),
+  categoryAffinity: new Map(),
+};
+
 export function usePersonalizedRanking(): PersonalizedRanker {
   const { user } = useAuth();
-  const [followed, setFollowed] = useState<Set<string>>(() => new Set());
-  const [categoryAffinity, setCategoryAffinity] = useState<Affinity>(
-    () => new Map(),
-  );
+  const [signals, setSignals] = useState<Signals>(EMPTY);
 
   useEffect(() => {
     if (!user) {
-      setFollowed(new Set());
-      setCategoryAffinity(new Map());
+      setSignals(EMPTY);
       return;
     }
     let alive = true;
     (async () => {
-      const [followsRes, bidsRes] = await Promise.all([
+      const [followsRes, bidsRes, ordersRes, remindersRes] = await Promise.all([
         supabase
           .from("follows")
           .select("followed_id")
@@ -38,24 +46,51 @@ export function usePersonalizedRanking(): PersonalizedRanker {
           .eq("bidder_id", user.id)
           .order("created_at", { ascending: false })
           .limit(100),
+        supabase
+          .from("orders")
+          .select("seller_id, live:lives(category)")
+          .eq("buyer_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("live_reminders")
+          .select("live:lives!inner(category, seller_id)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
       ]);
       if (!alive) return;
-      const followsSet = new Set<string>(
+
+      const followed = new Set<string>(
         ((followsRes.data ?? []) as Array<{ followed_id: string }>)
           .map((r) => r.followed_id)
           .filter(Boolean),
       );
+      const purchased = new Set<string>();
       const aff: Affinity = new Map();
-      for (const row of (bidsRes.data ?? []) as Array<{
+      const bump = (cat: string | undefined | null, weight: number) => {
+        if (!cat) return;
+        aff.set(cat, (aff.get(cat) ?? 0) + weight);
+      };
+
+      for (const row of (bidsRes.data ?? []) as Array<{ live?: { category?: string } | null }>) {
+        bump(row?.live?.category, 1);
+      }
+      for (const row of (ordersRes.data ?? []) as Array<{
+        seller_id?: string | null;
         live?: { category?: string } | null;
       }>) {
-        const cat = row?.live?.category;
-        if (typeof cat === "string") {
-          aff.set(cat, (aff.get(cat) ?? 0) + 1);
-        }
+        if (row?.seller_id) purchased.add(row.seller_id);
+        // Purchases are the strongest signal.
+        bump(row?.live?.category, 3);
       }
-      setFollowed(followsSet);
-      setCategoryAffinity(aff);
+      for (const row of (remindersRes.data ?? []) as Array<{
+        live?: { category?: string; seller_id?: string } | null;
+      }>) {
+        bump(row?.live?.category, 2);
+      }
+
+      setSignals({ followed, purchased, categoryAffinity: aff });
     })();
     return () => {
       alive = false;
@@ -64,14 +99,20 @@ export function usePersonalizedRanking(): PersonalizedRanker {
 
   return useCallback<PersonalizedRanker>(
     (streams) => {
+      const { followed, purchased, categoryAffinity } = signals;
+      const hasSignal =
+        followed.size > 0 || purchased.size > 0 || categoryAffinity.size > 0;
+
       // Signed-out or no signal → sort by popularity as a sensible default.
-      if (followed.size === 0 && categoryAffinity.size === 0) {
+      if (!hasSignal) {
         return [...streams].sort((a, b) => b.viewers - a.viewers);
       }
       const scored = streams.map((s, i) => {
         let score = 0;
         // Subscriptions get the biggest boost.
         if (s.sellerId && followed.has(s.sellerId)) score += 100;
+        // Prior purchases from this seller.
+        if (s.sellerId && purchased.has(s.sellerId)) score += 60;
         // Past interactions in the same category.
         const affinity = categoryAffinity.get(s.category) ?? 0;
         score += affinity * 5;
@@ -84,6 +125,6 @@ export function usePersonalizedRanking(): PersonalizedRanker {
       scored.sort((a, b) => b.score - a.score);
       return scored.map((x) => x.s);
     },
-    [followed, categoryAffinity],
+    [signals],
   );
 }
