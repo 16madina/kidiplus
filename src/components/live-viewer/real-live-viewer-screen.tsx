@@ -587,11 +587,13 @@ export function RealLiveViewerScreen() {
   const [draft, setDraft] = useState("");
   const send = () => {
     if (liveEnded) return;
+    if (isGuest) { openAuth(); return; }
     const txt = draft.trim();
     if (!txt) return;
     room.sendChat(txt);
     setDraft("");
   };
+
 
   const dragY = useMotionValue(0);
   const handleVideoStatus = useCallback((s: ViewerStatus) => setViewerVideoStatus(s), []);
