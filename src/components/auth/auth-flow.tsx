@@ -62,10 +62,13 @@ export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
 function Welcome({
   onSignIn,
   onSignUp,
+  onGuest,
 }: {
   onSignIn: () => void;
   onSignUp: () => void;
+  onGuest?: () => void;
 }) {
+
   const { t } = useTranslation();
   return (
     <motion.div
