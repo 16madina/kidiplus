@@ -300,22 +300,24 @@ export function TopUpSheet({
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
                         logoUrl={waveLogo}
+                        brandColor={WAVE_BLUE}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
                         logoUrl={orangeMoneyLogo}
+                        brandColor={ORANGE}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         logoUrl={djamoLogo}
+                        brandColor={DJAMO_INDIGO}
                         active
                       />
                     </>
-
                   )}
 
 
