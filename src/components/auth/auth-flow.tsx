@@ -134,6 +134,15 @@ function Welcome({
         >
           {t("auth.welcome.signIn")}
         </Press>
+        {onGuest && (
+          <Press
+            onClick={onGuest}
+            className="!min-h-11 h-11 w-full rounded-2xl text-[14px] font-semibold text-white/85"
+            style={{ backgroundColor: "transparent" }}
+          >
+            {t("auth.welcome.continueAsGuest", { defaultValue: "Continuer en tant qu'invité →" })}
+          </Press>
+        )}
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           {t("auth.signUp.terms")}
         </p>
@@ -141,3 +150,4 @@ function Welcome({
     </motion.div>
   );
 }
+
