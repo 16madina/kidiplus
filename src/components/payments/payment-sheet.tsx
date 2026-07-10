@@ -305,18 +305,28 @@ export function PaymentSheet({
                       }
                     />
 
-                    <MethodRow
-                      disabled
-                      brandColor={WAVE_BLUE}
-                      label="Wave"
-                      badge={t("pay.method.comingSoon")}
-                    />
-                    <MethodRow
-                      disabled
-                      brandColor={ORANGE}
-                      label="Orange Money"
-                      badge={t("pay.method.comingSoon")}
-                    />
+                    {orderCurrency === "XOF" && (
+                      <>
+                        <MethodRow
+                          active
+                          brandColor={WAVE_BLUE}
+                          label={t("pay.method.waveVisa")}
+                          subtitle={t("pay.method.waveVisaSub")}
+                        />
+                        <MethodRow
+                          active
+                          brandColor={ORANGE}
+                          label={t("pay.method.orangeVisa")}
+                          subtitle={t("pay.method.orangeVisaSub")}
+                        />
+                        <MethodRow
+                          active
+                          brandColor={DJAMO_INDIGO}
+                          label={t("pay.method.djamo")}
+                          subtitle={t("pay.method.djamoSub")}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
 
