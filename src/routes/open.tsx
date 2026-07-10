@@ -24,8 +24,10 @@ export const Route = createFileRoute('/open')({
 function OpenBridge() {
   const { path } = Route.useSearch()
   const safePath = path.startsWith('/') ? path : `/${path}`
-  // Fallback URL is centralized in EMAIL_CONFIG (defaults to /download page).
-  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL}?path=${encodeURIComponent(safePath)}`
+  // Fallback: land on the web app itself at the requested path (KIDI+ works
+  // as a PWA). Centralized in EMAIL_CONFIG.FALLBACK_URL.
+  const fallbackBase = EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, '')
+  const downloadUrl = `${fallbackBase}${safePath}`
   const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://${safePath.replace(/^\//, '')}`
   const [fallback, setFallback] = useState(false)
 
