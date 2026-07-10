@@ -316,29 +316,35 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       let cancelled = false;
 
       (async () => {
+        const flipStart = performance.now();
         console.log("[flip] start", { from: previous, to: target });
         let newTrack: LocalVideoTrack | null = null;
         try {
-          // 1) Create new track pinned to the requested facing.
+          // 1) Create new track pinned to the requested facing, capped at 720p/30fps
+          //    so the back camera doesn't request 4K and starve the encoder.
           console.log("[flip] create newTrack facingMode.exact =", target);
+          const t0 = performance.now();
+          const captureOpts = {
+            resolution: { width: 1280, height: 720, frameRate: 30 },
+          };
           try {
-            // Cast: livekit-client's `facingMode` typing narrows to a plain
-            // string, but the browser accepts a `ConstrainDOMString`
-            // ({ exact }) via getUserMedia — which iOS Safari honours far
-            // more reliably than a loose string.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            newTrack = await createLocalVideoTrack({ facingMode: { exact: target } as any });
+            newTrack = await createLocalVideoTrack({ facingMode: { exact: target } as any, ...captureOpts });
           } catch (e) {
-            // Some browsers (older Safari) reject { exact } — fall back.
             console.warn("[flip] exact facingMode failed, retry loose", e);
-            newTrack = await createLocalVideoTrack({ facingMode: target });
+            newTrack = await createLocalVideoTrack({ facingMode: target, ...captureOpts });
           }
+          console.log(`[flip] createLocalVideoTrack took ${(performance.now() - t0).toFixed(0)}ms`);
           if (cancelled) { try { newTrack.stop(); } catch {} return; }
-          console.log("[flip] newTrack created");
 
-          // 2) Publish. Old track still alive so viewers see no gap yet.
-          await room.localParticipant.publishTrack(newTrack);
-          console.log("[flip] newTrack published");
+          // 2) Publish with the same simulcast + capped encoding as the initial track
+          //    so viewers keep the same bitrate profile after the swap.
+          const t1 = performance.now();
+          await room.localParticipant.publishTrack(newTrack, {
+            simulcast: true,
+            videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
+          });
+          console.log(`[flip] publishTrack took ${(performance.now() - t1).toFixed(0)}ms`);
 
           // 3) Attach to <video> preview + play().
           const videoEl = videoRef.current;
