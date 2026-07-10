@@ -22,10 +22,13 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
   const cursorRef = useRef<number>(-1);
 
   const setPlaylistFromList = useCallback((list: LiveStream[], target: LiveStream) => {
-    const real = list.filter((s) => !!s.liveId && !!s.roomName);
-    const withTarget = real.some((s) => s.id === target.id)
-      ? real
-      : (target.liveId && target.roomName ? [target, ...real] : real);
+    // Keep the exact visible list when the user taps a card. This includes
+    // mock/fictitious streams from the home feed, so the vertical pager can be
+    // tested even when no real live is running.
+    const visible = list.filter((s) => !!s.id);
+    const withTarget = visible.some((s) => s.id === target.id)
+      ? visible
+      : [target, ...visible];
     setPlaylist(withTarget);
     cursorRef.current = withTarget.findIndex((s) => s.id === target.id);
   }, []);
@@ -51,8 +54,8 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
       cursorRef.current = 0;
       void refreshPlaylistFromDb(s);
     } else {
-      setPlaylist([]);
-      cursorRef.current = -1;
+      setPlaylist([s]);
+      cursorRef.current = 0;
     }
   }, [refreshPlaylistFromDb]);
 
