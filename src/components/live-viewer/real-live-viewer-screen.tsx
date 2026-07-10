@@ -616,26 +616,36 @@ export function RealLiveViewerScreen() {
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
-      {/* Video interaction layer: tap for hearts + vertical swipe to cycle
-          between currently-live streams (TikTok / Whatnot style). Sits
-          ABOVE chat (z-20) so touches on the chat area still trigger
-          swipes; interactive controls (top bar, auction card, composer)
-          are on z-30 and receive their own events first. */}
+      {/* PAGER DRAG LAYER — TikTok-style vertical pan.
+          CRITICAL: touch-action MUST be "none" on iOS Safari/WebView, or the
+          browser handles the vertical pan itself and framer-motion never
+          receives pointermove for touch input. Sits above the video but
+          below every interactive control (which live at z-30+) so taps on
+          buttons / auction card / chat composer keep working. */}
       <motion.div
         className="absolute inset-0 z-[25]"
         aria-hidden
-        style={{ touchAction: "pan-y" }}
+        style={{
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
         drag="y"
-        dragElastic={{ top: hasNext ? 0.55 : 0.12, bottom: hasPrev ? 0.55 : 0.15 }}
+        dragElastic={{ top: hasNext ? 0.55 : 0.15, bottom: hasPrev ? 0.55 : 0.2 }}
         dragConstraints={{ top: 0, bottom: 0 }}
+        dragMomentum={false}
+        onDragStart={(_, info) => {
+          console.debug("[pager] dragStart", { hasNext, hasPrev, y: info.point.y });
+        }}
         onDrag={(_, info) => dragY.set(info.offset.y)}
         onTap={onVideoTap}
         onDragEnd={(_, info) => {
-          const strong = Math.abs(info.offset.y) > 60 || Math.abs(info.velocity.y) > 400;
+          const strong = Math.abs(info.offset.y) > 90 || Math.abs(info.velocity.y) > 500;
           const up = info.offset.y < 0;
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          console.debug("[pager] dragEnd", { offsetY: info.offset.y, velY: info.velocity.y, strong, up, hasNext, hasPrev });
           if (up && strong && hasNext) {
-            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
             void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               nextLive();
@@ -643,14 +653,13 @@ export function RealLiveViewerScreen() {
             return;
           }
           if (!up && strong && hasPrev) {
-            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
             void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               prevLive();
             });
             return;
           }
-          // Down-drag past close threshold with no previous live → dismiss.
           if (!up && info.offset.y > 160) {
             close();
             return;
@@ -659,7 +668,7 @@ export function RealLiveViewerScreen() {
         }}
       />
 
-      {/* Desktop-only chevron fallback (mobile users get the swipe). */}
+      {/* Desktop-only chevron fallback. */}
       <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
         {hasNext && (
           <Press
@@ -686,22 +695,13 @@ export function RealLiveViewerScreen() {
       <SwipeHint hasNext={hasNext} />
 
 
+
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
         style={{ backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))" }} />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.5 }}
-        onDrag={(_, info) => dragY.set(Math.max(0, info.offset.y))}
-        onDragEnd={(_, info) => {
-          if (info.offset.y > 120 || info.velocity.y > 600) close();
-          else animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
-        }}
-        className="absolute inset-x-0 top-0 z-30 pt-safe"
-      >
+      <div className="absolute inset-x-0 top-0 z-30 pt-safe">
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <Press
@@ -731,7 +731,25 @@ export function RealLiveViewerScreen() {
               <Eye size={13} />{displayViewers}
             </div>
 
-            <Press aria-label={t("live.share")}
+            <Press
+              aria-label={t("live.share")}
+              onClick={async () => {
+                haptic.light();
+                const shareUrl = active?.liveId
+                  ? `https://kidiplus.com/live/${active.liveId}`
+                  : "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
+                try {
+                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav && nav.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch { /* user cancelled */ }
+              }}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Share2 size={16} />
@@ -748,7 +766,8 @@ export function RealLiveViewerScreen() {
             </Press>
           </div>
         </div>
-      </motion.div>
+      </div>
+
 
       <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
         <LiveChat messages={messages} />
