@@ -14,9 +14,11 @@
 export const EMAIL_CONFIG = {
   APP_NAME: 'KIDI+',
   WEB_URL: 'https://kidiplus.com',
-  LOGO_URL: 'https://kidiplus.com/kidi-plus-logo.png',
+  LOGO_URL: 'https://kidiplus.com/icon-192.png',
   APP_SCHEME: 'kidiplus',
-  FALLBACK_URL: 'https://kidiplus.com/download',
+  // When the native app can't be opened, land users on the web app itself
+  // (KIDI+ works as a PWA) instead of a separate download page.
+  FALLBACK_URL: 'https://kidiplus.com',
 } as const
 
 /**
