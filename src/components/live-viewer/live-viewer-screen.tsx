@@ -547,8 +547,12 @@ function MockLiveViewerScreen() {
           <Heart size={17} fill="currentColor" />
         </Press>
         <Press
-          aria-label="Plus"
-          className="h-11 w-11 rounded-full text-white"
+          onClick={() => {
+            haptic.light();
+            setGiftOpen(true);
+          }}
+          aria-label={t("gifts.title", "Envoyer un cadeau")}
+          className="relative h-11 w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(14px)",
@@ -556,9 +560,18 @@ function MockLiveViewerScreen() {
             border: "1px solid rgba(255,255,255,0.15)",
           }}
         >
-          <Plus size={18} />
+          <Gift size={18} />
+          <span
+            className="absolute -top-1 -right-1 rounded-full px-1 text-[9px] font-black leading-none text-black"
+            style={{ backgroundColor: "oklch(0.82 0.16 85)", padding: "2px 4px" }}
+          >
+            🎁
+          </span>
         </Press>
       </div>
+
+      {/* Gift animations overlay */}
+      <GiftAnimationsLayer trigger={giftEvt} />
 
       {/* Floating hearts */}
       <FloatingHearts trigger={heartTrigger} />
@@ -577,6 +590,20 @@ function MockLiveViewerScreen() {
         }}
       />
       <BuySheet product={buyProduct} onClose={() => setBuyProduct(null)} />
+      <GiftTraySheet
+        open={giftOpen}
+        onClose={() => setGiftOpen(false)}
+        liveCurrency={active.currency ?? "EUR"}
+        locale={i18n.language}
+        sending={false}
+        onSend={sendDemoGift}
+        onTopUp={() => {
+          setGiftOpen(false);
+          setTopupOpen(true);
+        }}
+      />
+      <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+
     </motion.div>
   );
 }
