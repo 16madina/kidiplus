@@ -1,4 +1,4 @@
-import { motion, useMotionValue, animate } from "framer-motion";
+import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
 import { toast } from "sonner";
@@ -338,68 +338,53 @@ function MockLiveViewerScreen() {
 
   return (
     <motion.div
-      key={active.id}
-      initial={{ y: "100%", opacity: 0.6 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: "100%", opacity: 0.4 }}
-      transition={{ duration: 0.3, ease: EASE_IOS }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: EASE_IOS }}
       className="fixed inset-0 z-[60] overflow-hidden bg-black"
-      style={{ y: dragY }}
     >
-      {/* Background media — real LiveKit video when a room is attached,
-          otherwise the mock cover thumbnail. */}
-      {active.roomName ? (
-        <ViewerLiveVideo
-          room={active.roomName}
-          identity={`viewer_${Math.random().toString(36).slice(2, 10)}`}
-          name="Viewer"
-          posterImage={active.thumbnail.replace("w=600", "w=1200")}
-        />
-      ) : (
-        <motion.img
-          src={active.thumbnail.replace("w=600", "w=1200")}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          initial={{ scale: 1.05 }}
-          animate={{ scale: 1.12 }}
-          transition={{
-            duration: 14,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "linear",
-          }}
-          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-          draggable={false}
-        />
-      )}
-
-      {/* Peek layers: sit above/below current so a swipe reveals the neighbor
-          instead of the home page behind the viewer. */}
-      {peekNext && (
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-full h-full overflow-hidden bg-black"
-        >
-          <img
-            src={peekNext.thumbnail.replace("w=600", "w=1200")}
+      {/* Current slide media — translates with the finger so the incoming
+          slide feels glued to it. UI overlays stay put on the fixed shell. */}
+      <motion.div
+        key={active.id}
+        className="absolute inset-0"
+        style={{ y: dragY }}
+      >
+        {active.roomName ? (
+          <ViewerLiveVideo
+            room={active.roomName}
+            identity={`viewer_${Math.random().toString(36).slice(2, 10)}`}
+            name="Viewer"
+            posterImage={active.thumbnail.replace("w=600", "w=1200")}
+          />
+        ) : (
+          <motion.img
+            src={active.thumbnail.replace("w=600", "w=1200")}
             alt=""
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
+            initial={{ scale: 1.05 }}
+            animate={{ scale: 1.12 }}
+            transition={{
+              duration: 14,
+              repeat: Infinity,
+              repeatType: "reverse",
+              ease: "linear",
+            }}
+            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
             draggable={false}
           />
-        </div>
+        )}
+      </motion.div>
+
+      {/* Adjacent slide previews — glued to the current slide via the same
+          dragY motion value. Rendered as TikTok-style posters so the user
+          sees what's coming while dragging. */}
+      {peekNext && (
+        <PeekSlide stream={peekNext} position="next" dragY={dragY} />
       )}
       {peekPrev && (
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-full h-full overflow-hidden bg-black"
-        >
-          <img
-            src={peekPrev.thumbnail.replace("w=600", "w=1200")}
-            alt=""
-            className="h-full w-full object-cover"
-            draggable={false}
-          />
-        </div>
+        <PeekSlide stream={peekPrev} position="prev" dragY={dragY} />
       )}
 
       {/* Double-tap capture layer */}
@@ -418,22 +403,11 @@ function MockLiveViewerScreen() {
         dragConstraints={{ top: 0, bottom: 0 }}
         dragMomentum={false}
         onTap={onVideoTap}
-        onDragStart={(_, info) => {
-          console.debug("[pager:mock] dragStart", { hasNext, hasPrev, y: info.point.y });
-        }}
         onDrag={(_, info) => dragY.set(info.offset.y)}
         onDragEnd={(_, info) => {
           const strong = Math.abs(info.offset.y) > 90 || Math.abs(info.velocity.y) > 500;
           const up = info.offset.y < 0;
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
-          console.debug("[pager:mock] dragEnd", {
-            offsetY: info.offset.y,
-            velY: info.velocity.y,
-            strong,
-            up,
-            hasNext,
-            hasPrev,
-          });
           if (up && strong && hasNext) {
             void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
@@ -448,9 +422,15 @@ function MockLiveViewerScreen() {
             });
             return;
           }
+          // Strong swipe down with no previous live → close (keeps existing UX).
+          if (!up && strong && !hasPrev) {
+            close();
+            return;
+          }
           animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
         }}
       />
+
 
       <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
         {hasNext && (
@@ -737,3 +717,71 @@ function MockLiveViewerScreen() {
     </motion.div>
   );
 }
+
+/**
+ * PeekSlide — the adjacent live's poster, glued to the current slide's drag.
+ * Positioned off-screen (top:100% for next, top:-100% for prev) and translated
+ * by the shared dragY so both slides move as one strip, TikTok-style.
+ */
+function PeekSlide({
+  stream,
+  position,
+  dragY,
+}: {
+  stream: LiveStream;
+  position: "next" | "prev";
+  dragY: MotionValue<number>;
+}) {
+  const baseTop = position === "next" ? "100%" : "-100%";
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 h-full overflow-hidden bg-black"
+      style={{ top: baseTop, y: dragY }}
+    >
+      <img
+        src={stream.thumbnail.replace("w=600", "w=1200")}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-90"
+        draggable={false}
+      />
+      {/* Dim overlay */}
+      <div className="absolute inset-0 bg-black/25" />
+      {/* Shimmer loading strip */}
+      <div
+        className="absolute inset-x-0 top-1/2 h-16 -translate-y-1/2 opacity-40"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)",
+          animation: "shimmer 1.6s linear infinite",
+        }}
+      />
+      {/* Seller identity chip */}
+      <div className="absolute inset-x-0 top-0 pt-safe">
+        <div className="flex items-center gap-2 px-3 pt-3">
+          <img
+            src={stream.avatar}
+            alt=""
+            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
+            draggable={false}
+          />
+          <div className="min-w-0">
+            <p
+              className="truncate text-[14px] font-bold text-white"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+            >
+              {stream.seller}
+            </p>
+            <p
+              className="truncate text-[11px] text-white/80"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+            >
+              {stream.title}
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
