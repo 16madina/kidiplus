@@ -1,140 +1,51 @@
-## Goals
+## Three-part scope
 
-1. Each of the 6 gifts gets its own choreography that escalates with price. A 100 F Rose feels modest; a 5000 F Lion feels premium.
-2. Currency never blocks participation. Gifts, bids and purchases work across currencies via server-side conversion. Bid/buy is gated by **delivery**, not currency.
+### 1) Vertical swipe between lives (fix)
 
----
+**Root cause:** the swipe surface at `z-10` is under the top-bar drag layer (`z-30`) and the chat layer at `z-20`; on mobile, chat + gradient overlays sit on top over most of the screen, so touches on the video area (top-center) still hit gradient wrappers or top bar first. Even where nothing overlays, `LiveChat` and product areas eat gestures. Also `hasNext`/`hasPrev` in `useLiveViewer` may return false when there aren't multiple live streams cached.
 
-## 1. Distinct gift animations
+**Fixes** in `src/components/live-viewer/real-live-viewer-screen.tsx` + `src/lib/live-viewer-context.tsx`:
+- Verify/repair the "other lives" list: query `lives` where `status='live'` and `id != current`, ordered by viewers desc; expose ordered list to context (log length for debug).
+- Lower thresholds: `Math.abs(info.offset.y) > 60 || Math.abs(info.velocity.y) > 400`.
+- Move the swipe overlay above chat's non-interactive rows: keep `LiveChat` `pointer-events-none` on its container with only messages having `pointer-events-auto` — verify. Add `touch-action: pan-y` to the swipe layer (framer-motion sets this but confirm).
+- Ensure the swipe layer is a full-height surface excluding: composer area, product carousel, top-bar, moderator dock, gift tray button — those already sit at higher z with `pointer-events-auto`.
+- Add desktop up/down chevron buttons on the right edge (mobile hidden) as fallback.
+- One-time onboarding hint stored in `localStorage` key `hint.liveSwipe.v1`: floating "Glisse vers le haut pour le live suivant ↑", auto-hides after 3s or first swipe.
 
-Rewrite `src/components/live-viewer/gift-animations.tsx` with one component per gift key. All animations use `transform`/`opacity`/`filter`; particles are precomputed with `useMemo`. Only 1 tier-3 (rocket, lion) plays at a time; tier-1/2 keep the existing max-2 queue.
+### 2) Camera flip lag (fix)
 
-- **Rose (100)** — ~2s. 3–5 rose petals (🌹/🌸) float up from the bottom center with slight lateral sway (`sin`). Small sender chip. No screen effect.
-- **Cœur d'or (250)** — ~2s. One large 💛 pops in centre-low with a two-beat pulse (`scale [0, 1.3, 1, 1.2, 1]`), 4–6 tiny ✨ orbit outward. Soft gold glow.
-- **Diamant (500)** — ~2.5s. 💎 drops from top-centre, lands, then a horizontal light-ray glint sweeps left→right across the diamond and a 6-point sparkle burst radiates on landing.
-- **Couronne (1000)** — ~3s. 👑 descends and settles centre. A vertical royal-shine sweep passes across it (linear-gradient band translating). Gold particle rain (✨) falls full-width, delayed & staggered.
-- **Fusée (2500)** — ~3s. 🚀 flies bottom-left → top-right with a particle trail (💨/🔥 spawned along the path). Edge glow pulses. Very subtle screen shake (±4 px, 3 oscillations, 0.6 s). Streak line behind the rocket.
-- **Lion (5000)** — ~4s. Sequence: (a) 200 ms gold radial flash filling the screen, (b) 🦁 scale-in with 6-frame shake to centre, (c) full-width gold banner `🦁 {sender} a envoyé un LION !` slides in from left and rests, (d) heavy gold confetti rains over ~2 s, (e) fade. Sender gets `haptic.heavy()`; other viewers get `haptic.medium()`.
+**Root causes to address** in the broadcaster flip logic (find via `rg`):
+- Stop every old track (`.stop()`) before/after `replaceTrack` and unpublish stale LocalVideoTrack. Also stop any preview `MediaStream`.
+- Request lightweight constraints: `{ width:{ max:1280 }, height:{ max:720 }, frameRate:{ ideal:30, max:30 }, facingMode:{ exact:'user'|'environment' } }`.
+- Reuse existing publish options (simulcast + encodings) when calling `publishTrack` or better `LocalParticipant.setCameraEnabled(false)` → `switchActiveDevice('videoinput', deviceId)` from LiveKit which preserves simulcast.
+- Confirm no `canvas.captureStream()` remains in the pipeline.
+- Add `console.time('camera.flip.total')` around the swap with intermediate marks.
 
-Queue rule: tier-3 items acquire an exclusive slot; if one is already playing, new tier-3 events queue FIFO.
+### 3) Verified badge system (new)
 
-## 2. Cross-currency money layer
+**DB migration:**
+- Add `profiles.is_verified boolean default false`.
+- Create `verification_requests(id, user_id, message text, status text default 'pending' check in ('pending','approved','rejected'), reviewed_by uuid, reviewed_at timestamptz, note text, created_at timestamptz default now())`.
+- GRANTs, RLS: user can insert own (partial unique on `(user_id) where status='pending'` — one pending max), select own; admins select all via `has_role`.
+- RPCs:
+  - `request_verification(_message text)`: checks eligibility (`is_seller`, ≥10 delivered orders as seller, avg rating from `seller_reviews` ≥4.0 with ≥5 reviews, `now()-created_at ≥ interval '30 days'`, no active row in `user_sanctions`); inserts pending; blocks duplicates.
+  - `admin_review_verification(_id uuid, _approve boolean, _note text)`: admin-only via `has_role`; on approve sets `profiles.is_verified=true`, sends an `admin_messages` row "Félicitations, ton compte est certifié ✓".
+  - `admin_set_verified(_user uuid, _verified boolean)`: revoke/re-grant.
+  - `verification_eligibility(_user uuid)`: returns booleans `{is_seller, sales_ok, rating_ok, age_ok, no_sanction, sales_count, rating_avg, review_count, age_days}` for the checklist UI.
 
-### 2.1 `src/lib/money.ts`
+**Client:**
+- `src/components/verified-badge.tsx`: shared small gold/blue check with tooltip. Props: `verified: boolean`, `size?: number`.
+- Wire into: seller profile header, search results, live viewer seller chip, chat messages (author line), feed cards, winner reveal — grep and edit.
+- `src/lib/verification-db.ts`: fetch eligibility, submit request, admin list/approve/reject.
+- Profile screen: "Certification ✓" row for sellers with checklist + button + pending/verified states.
+- Admin panel: new "Certifications" tab (or section) listing pending requests with stats snapshot + Approve/Reject; user detail drawer gets revoke toggle.
+- i18n `verify.*` keys in fr+en.
+- Typecheck.
 
-Add:
-- `FX_MARGIN = 0.015` (1.5 % safety margin, applied to non-peg pairs).
-- `convertMoney(amount, from, to, { margin?: boolean }): number` — the settlement-grade converter. Uses fixed peg XOF↔EUR (655.957, margin **off** because it's a peg), and EUR↔CAD with `FX_MARGIN` applied when `margin: true` (default true). Rounds via `roundForCurrency`.
-- `formatConvertedHint(amount, from, to, locale)` — returns `"≈ 7,62 €"` (empty when currencies equal).
-- Keep the existing `approxConvert` as a thin alias so no other call site breaks.
+## Assumptions
+- Live count with two concurrent lives is testable; I'll add a debug log.
+- Admin panel already exists (I'll locate it via ripgrep).
+- Broadcaster uses LiveKit `Room` — will confirm before editing.
+- `admin_messages` schema supports system messages to a specific user.
 
-### 2.2 New SQL migration
-
-- `public.fx_rate(_from text, _to text)` — returns `numeric`, single source of truth for rates + margin (mirrors `money.ts`).
-- `public.convert_money(_amount numeric, _from text, _to text)` — applies rate + margin + currency-aware rounding (XOF integer, others 2 dp).
-- Replace `public.send_gift`:
-  - Look up `v_price_live` in the live currency via `_gift_price`.
-  - Read sender wallet; if `wallet.currency <> live.currency` → `v_price_debit := convert_money(v_price_live, live.currency, wallet.currency)`; else `v_price_debit := v_price_live`.
-  - Remove the `currency_mismatch` early return.
-  - Balance check uses `v_price_debit`.
-  - Debit wallet by `v_price_debit`; record `wallet_transactions` with the debit and store `meta jsonb` (add column if missing) `{ live_currency, live_amount, wallet_currency, wallet_amount, rate }`.
-  - Credit the seller in the **live** currency: `v_seller_net := v_price_live - platform_fee` (fee 30 % of live amount).
-  - `live_gifts` row already stores `amount`/`currency` in live currency; add `debit_amount`/`debit_currency` columns for audit.
-- Replace `public.pay_order_with_wallet(_order_id)`:
-  - Read order `total` in order currency, wallet in wallet currency.
-  - Compute `v_debit := convert_money(order.total, order.currency, wallet.currency)`.
-  - Debit wallet by `v_debit` (record both amounts + rate in tx meta). Seller credit unchanged (already in order currency via `credit_seller_earning`).
-  - Return `{ ok, balance, debit_amount, debit_currency, order_amount, order_currency, rate }` so the UI can show the exact debit.
-- `wallet_transactions`: add nullable `meta jsonb` if not present. Grants unchanged.
-- `live_gifts`: add nullable `debit_amount numeric`, `debit_currency text` for audit only.
-
-### 2.3 Client wiring
-
-- `src/lib/live-gifts-db.ts`: drop `"currency_mismatch"` from the error union. Surface converted amounts on success.
-- `src/components/live-viewer/gift-tray-sheet.tsx`:
-  - Remove `walletMatches` logic and the "Portefeuille en X" hint.
-  - For each gift show: primary price in **live** currency, secondary muted `≈ … {walletCurrency}` under it (using `convertMoney`).
-  - Balance check compares wallet balance ≥ converted debit, not live price.
-  - Header shows wallet balance in wallet currency (unchanged), plus a tiny "1 EUR ≈ 655,957 FCFA" style hint when currencies differ.
-- `src/lib/wallet-db.ts` `PayWithWalletResult`: expand with `debit_amount`, `debit_currency`, `rate` (optional). Callers use them to render the converted line in `payment-sheet.tsx` (`Total : 5 000 FCFA ≈ 7,62 €`).
-- `payment-sheet.tsx`: when order currency ≠ wallet currency, show the "≈ converted" line and, on success, use the returned `debit_amount` in the toast.
-
-### 2.4 Auction auto-pay
-
-Any server path that debits the wallet after an auction win (search for `pay_order_with_wallet` callers + any auction-close RPC) already goes through `pay_order_with_wallet`. Because we update that RPC in place, nothing else changes there.
-
-## 3. Delivery-based eligibility for bid/buy
-
-New helper `src/lib/delivery-eligibility.ts`:
-
-```
-canDeliver({ sellerSettings, sellerCountry, buyerCountry }): {
-  eligible: boolean
-  reason?: "no_country_coverage" | "courier_country_mismatch"
-}
-```
-
-Rules (matrix):
-
-| Seller mode | Buyer has address? | Rule                                                                 |
-|-------------|--------------------|----------------------------------------------------------------------|
-| `flat`      | any                | eligible (delivers everywhere).                                       |
-| `courier`   | no address         | eligible (checked at checkout).                                       |
-| `courier`   | has address        | eligible iff `buyer.country == seller.country` (ISO-2 compare).       |
-| `zones`     | no address         | eligible (address prompt at checkout).                                |
-| `zones`     | has address        | eligible iff `zonesForCountry(zones, buyer.country).length > 0`.      |
-| no settings | any                | eligible (treated as flat/0).                                         |
-
-Missing buyer address never blocks — checkout already prompts for it.
-
-Fetch inputs in `real-live-viewer-screen.tsx` on mount:
-- `fetchDeliverySettings(active.sellerId)` (already available)
-- Seller country: pass it through with the room / active state (add `sellerCountry` to `LiveViewerActive`; source it from the profile the home feed already loads, else fetch once).
-- Buyer default address country via `fetchDefaultAddress(user.id)`.
-
-Compute a single `deliveryEligible` boolean, memoized. When `false`:
-- Bid button / stepper: rendered but disabled with label `t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍")`.
-- Buy-fixed CTA: same treatment inside `AuctionCard` / `ProductsSheet`.
-- Chat, hearts, gifts remain enabled.
-
-Add matching i18n keys (fr + en).
-
-Remove any residual currency-based disable on bid/buy paths (`purchaseFixedPriceRpc`, `placeBidRpc`) — currency was never a hard block server-side there, only in the UI. Grep for any remaining "wallet currency" gate outside the gift tray and delete.
-
-## 4. Verification
-
-- `bunx tsgo --noEmit`.
-- Preview `send_gift` with an XOF wallet against a demo mock still uses the client-side demo debit (already implemented), so the animation and balance update remain visible for demo lives.
-- Manual matrix (mental smoke test): EUR wallet in an XOF live → tray shows "100 FCFA ≈ 0,16 €", debit 0,16 € matches, balance drops accordingly.
-
-## Files to change
-
-- `src/components/live-viewer/gift-animations.tsx` (full rewrite)
-- `src/lib/money.ts` (add margin + `convertMoney` + hint)
-- `src/lib/delivery-eligibility.ts` (new)
-- `src/lib/live-viewer-context.tsx` (add `sellerCountry` to active state)
-- `src/lib/live-gifts-db.ts` (types)
-- `src/lib/wallet-db.ts` (types)
-- `src/components/live-viewer/gift-tray-sheet.tsx` (remove blockers, show converted)
-- `src/components/live-viewer/real-live-viewer-screen.tsx` (delivery gate on bid/buy)
-- `src/components/live-viewer/auction-card.tsx` + `products-sheet.tsx` (disabled state)
-- `src/components/payments/payment-sheet.tsx` (converted line)
-- `src/i18n/fr.json` + `src/i18n/en.json` (new keys)
-- New migration: `fx_rate`, `convert_money`, revised `send_gift`, revised `pay_order_with_wallet`, `wallet_transactions.meta`, `live_gifts.debit_*`.
-
-## Summary of rules
-
-**Conversion**
-- Rates centralized in `money.ts` and `public.fx_rate()`; XOF↔EUR fixed peg 655.957 (no margin); EUR↔CAD 1.47 with 1.5 % safety margin on non-peg pairs.
-- Rounding: XOF integer, EUR/CAD 2 decimals.
-- Gift/purchase amount is denominated in the **live/order** currency; wallet is debited in the **sender's** currency; seller is credited in the **live/order** currency. Both amounts + rate stored in tx meta.
-
-**Eligibility matrix** (viewer × seller mode)
-
-```
-                      flat        courier                    zones
-viewer no address     ok          ok                         ok
-viewer w/ address     ok          same country as seller     ≥1 zone for buyer country
-```
-
-Currency is never a factor.
+Proceeding as three commits: (A) swipe, (B) camera flip, (C) verified badge. Typecheck after all three.
