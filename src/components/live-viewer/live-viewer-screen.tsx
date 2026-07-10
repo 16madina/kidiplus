@@ -4,6 +4,7 @@ import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import type { LiveStream } from "@/lib/live-mock";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
