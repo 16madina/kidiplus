@@ -741,10 +741,11 @@ export function RealLiveViewerScreen() {
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
                 try {
-                  if (typeof navigator !== "undefined" && "share" in navigator) {
-                    await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share({ title, text, url: shareUrl });
-                  } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-                    await navigator.clipboard.writeText(shareUrl);
+                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav && nav.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
                     toast.success(t("live.shareCopied", "Lien copié"));
                   }
                 } catch { /* user cancelled */ }
