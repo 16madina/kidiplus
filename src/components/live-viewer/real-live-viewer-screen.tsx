@@ -448,6 +448,7 @@ export function RealLiveViewerScreen() {
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
     if (secondsLeft <= 0) return;
+    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     if (room.lastBid?.productId === currentProduct.id && room.lastBid.bidderId === user.id) {
       toast(t("live.highestBidder"));
       return;
