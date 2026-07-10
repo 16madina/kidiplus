@@ -33,7 +33,10 @@ import { GiftAnimationsLayer } from "./gift-animations";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
+import { useWallet } from "@/lib/wallet-context";
+import { normalizeCurrency } from "@/lib/money";
 import type { GiftEvt } from "@/lib/live-room";
+
 
 
 const AUCTION_SECONDS = 45;
@@ -245,6 +248,8 @@ function MockLiveViewerScreen() {
   const [topupOpen, setTopupOpen] = useState(false);
   const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
   const { t, i18n } = useTranslation();
+  const { currency: walletCurrency } = useWallet();
+
 
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
@@ -593,7 +598,7 @@ function MockLiveViewerScreen() {
       <GiftTraySheet
         open={giftOpen}
         onClose={() => setGiftOpen(false)}
-        liveCurrency={active.currency ?? "EUR"}
+        liveCurrency={normalizeCurrency(walletCurrency ?? active.currency ?? "EUR")}
         locale={i18n.language}
         sending={false}
         onSend={sendDemoGift}
