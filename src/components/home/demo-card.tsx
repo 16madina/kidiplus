@@ -144,11 +144,13 @@ export function DemoPlayer({
 
   useEffect(() => {
     if (!open) return;
-    // Autoplay with sound after an explicit user gesture (they tapped the card).
+    // Restart from the beginning each time the player opens, with sound.
     const v = videoRef.current;
     if (v) {
+      v.loop = true;
       v.muted = false;
       v.volume = 1;
+      try { v.currentTime = 0; } catch { /* noop */ }
       const p = v.play();
       if (p) p.catch(() => { /* browser may still block sound — user can tap play */ });
     }
@@ -180,6 +182,7 @@ export function DemoPlayer({
             ref={videoRef}
             src={src}
             controls
+            loop
             playsInline
             className="absolute inset-0 h-full w-full object-contain"
           />
