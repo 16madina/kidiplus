@@ -364,32 +364,50 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         {/* Cover + title */}
         <div className="flex flex-col gap-1">
           <div className="flex items-start gap-3">
-            <Press
-              onClick={pickCover}
-              className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
-              style={{
-                backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
-                border: `1.5px solid ${GOLD}`,
-                boxShadow: `0 0 16px ${GOLD_SOFT}`,
-              }}
-              aria-label={t("broadcast.setup.addCover")}
-            >
-              {b.cover ? (
-                <motion.img
-                  key={b.cover}
-                  src={b.cover}
-                  alt=""
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2, ease: EASE_IOS }}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
-                  <ImageIcon size={24} strokeWidth={1.6} />
-                </div>
-              )}
-            </Press>
+            <div className="flex shrink-0 flex-col items-center gap-1">
+              <Press
+                onClick={pickCover}
+                className="!min-h-16 relative h-16 w-16 overflow-hidden rounded-2xl p-0"
+                style={{
+                  backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
+                  border: `1.5px solid ${GOLD}`,
+                  boxShadow: `0 0 16px ${GOLD_SOFT}`,
+                }}
+                aria-label={t("broadcast.setup.addCover", "Ajouter une photo")}
+              >
+                {b.cover ? (
+                  <motion.img
+                    key={b.cover}
+                    src={b.cover}
+                    alt=""
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2, ease: EASE_IOS }}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
+                    <ImageIcon size={24} strokeWidth={1.6} />
+                  </div>
+                )}
+              </Press>
+              <Press
+                onClick={() => {
+                  haptic.selection();
+                  coverInputRef.current?.click();
+                }}
+                className="!min-h-6 h-6 gap-1 rounded-full px-2 text-[10px] font-semibold"
+                style={{
+                  color: GOLD,
+                  background: "oklch(0.16 0.04 260 / 0.7)",
+                  border: `1px solid ${GOLD_SOFT}`,
+                }}
+                aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
+              >
+                <Camera size={10} strokeWidth={2.2} />
+                <span>{t("common.edit", "Modifier")}</span>
+              </Press>
+            </div>
             <input
               value={b.title}
               onChange={(e) => b.setTitle(e.target.value)}
