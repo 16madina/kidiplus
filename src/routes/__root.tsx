@@ -96,18 +96,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
       },
+      { property: "og:site_name", content: "KiDi+" },
       { property: "og:title", content: "KiDi+ — Live Shopping & Enchères" },
       {
         property: "og:description",
-        content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
+        content:
+          "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "KiDi+ — Live Shopping & Enchères" },
-      { name: "description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
-      { property: "og:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
-      { name: "twitter:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783684301088-ChatGPT_Image_8_juill._2026,_11_h_48_min_49_s.webp" },
+      {
+        name: "twitter:description",
+        content:
+          "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
+      },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783684301088-ChatGPT_Image_8_juill._2026,_11_h_48_min_49_s.webp" },
     ],
     links: [
@@ -117,6 +120,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.json" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "KiDi+",
+          url: "https://kidiplus.com",
+          logo: "https://kidiplus.com/icon-512.png",
+          sameAs: [],
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "KiDi+",
+          url: "https://kidiplus.com",
+          inLanguage: "fr",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: "https://kidiplus.com/?live={search_term_string}",
+            "query-input": "required name=search_term_string",
+          },
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,

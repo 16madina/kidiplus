@@ -9,6 +9,25 @@ import { haptic } from "@/lib/haptics";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
+  head: () => ({
+    meta: [
+      { title: "Réinitialiser ton mot de passe — KiDi+" },
+      {
+        name: "description",
+        content:
+          "Choisis un nouveau mot de passe pour ton compte KiDi+ après avoir reçu le lien de récupération par email.",
+      },
+      { property: "og:title", content: "Réinitialiser ton mot de passe — KiDi+" },
+      {
+        property: "og:description",
+        content: "Définis un nouveau mot de passe sécurisé pour ton compte KiDi+.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://kidiplus.com/reset-password" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+    links: [{ rel: "canonical", href: "https://kidiplus.com/reset-password" }],
+  }),
 });
 
 function ResetPasswordPage() {

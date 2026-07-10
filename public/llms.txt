@@ -1,0 +1,18 @@
+# KiDi+
+
+> KiDi+ is a live-shopping marketplace where sellers stream real-time auctions and shoppers bid, chat, and buy from their community.
+
+KiDi+ combines short-form live video, real-time bidding, and a mobile-first checkout so hosts can sell directly to their audience without leaving the stream. Buyers watch curated live shows, place bids on featured items, and pay in-app.
+
+## Pages
+
+- [Home](/): Live shopping feed with active streams and upcoming shows.
+- [What is live shopping?](/guide/what-is-live-shopping): Guide explaining live shopping and how to buy or sell on KiDi+.
+- [Community guidelines](/community): Rules for hosts, viewers, and moderators.
+- [Safety](/safety): Age policy, moderation, reporting, and blocking.
+- [Privacy](/privacy): Data collected, usage, third parties, and user rights.
+- [Terms](/terms): Terms of service, seller rules, payments, and moderation.
+
+## Optional
+
+- [Account deletion](/account-deletion): How to delete a KiDi+ account and associated data.
