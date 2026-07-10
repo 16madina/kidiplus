@@ -247,7 +247,7 @@
   },
   "live": {
     "liveBadge": "Live",
-    "allDone": "All items are done ✨",
+    "allDone": "All items are done",
     "addProduct": "Add",
     "productAdded": "Product added",
     "en_direct": "LIVE",
@@ -424,7 +424,7 @@
     "reminderSet": "Reminder set 🔔",
     "reminderHint": "We'll notify you as soon as the live starts.",
     "form": {
-      "title": "Schedule a live ✨",
+      "title": "Schedule a live",
       "editTitle": "Edit live",
       "subtitle": "Prepare your live, add your items and announce it to your community.",
       "coverTitle": "Cover image",

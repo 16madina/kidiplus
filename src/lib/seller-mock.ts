@@ -68,7 +68,7 @@ const BIOS: Record<string, string> = {
   Fashion: "Pièces uniques chinées avec amour. Livraison 48h partout en France.",
   Cards: "Collectionneur depuis 15 ans — cartes gradées & sealed only.",
   Electronics: "Tech reconditionnée testée à 100%. Garantie 6 mois.",
-  Jewelry: "Bijoux argent 925 & or 18k — direct atelier ✨",
+  Jewelry: "Bijoux argent 925 & or 18k — direct atelier",
 };
 
 const PRODUCT_IMG_BY_CAT: Record<string, string[]> = {

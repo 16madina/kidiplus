@@ -357,7 +357,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           <h1 className="text-[28px] font-extrabold leading-tight text-white">
             {b.mode === "edit"
               ? t("schedule.form.editTitle", "Modifier le live")
-              : t("schedule.form.title", "Programmer un live ✨")}
+              : t("schedule.form.title", "Programmer un live")}
           </h1>
           <p className="mx-auto mt-1 max-w-[360px] text-[13px] text-white/60">
             {t(
