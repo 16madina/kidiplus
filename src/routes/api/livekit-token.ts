@@ -86,32 +86,37 @@ export const Route = createFileRoute("/api/livekit-token")({
           );
         }
 
-        // Require a Supabase bearer token. Publish (host) tokens can grant
-        // control of another user's live broadcast, so no anonymous access.
+        // Two-tier auth model:
+        //  - Signed-in caller (any Supabase user) → normal viewer token.
+        //    A host token additionally requires the caller to be the room
+        //    owner OR a live_moderator.
+        //  - Anonymous caller (no Bearer) → strict view-only guest token:
+        //    canPublish=false, canPublishData=false, viewer role ONLY,
+        //    guest_* identity, short TTL. Host requests without a Bearer
+        //    are rejected outright — no anonymous publishing is possible.
         const authHeader = request.headers.get("authorization") ?? "";
-        if (!authHeader.startsWith("Bearer ")) {
-          return json({ error: "Unauthorized" }, 401, origin);
-        }
-        const bearer = authHeader.slice("Bearer ".length).trim();
-        if (!bearer || bearer.split(".").length !== 3) {
-          return json({ error: "Unauthorized" }, 401, origin);
+        let callerId: string | null = null;
+        if (authHeader.startsWith("Bearer ")) {
+          const bearer = authHeader.slice("Bearer ".length).trim();
+          if (!bearer || bearer.split(".").length !== 3) {
+            return json({ error: "Unauthorized" }, 401, origin);
+          }
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {
+              storage: undefined,
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          });
+          const { data: claimsData, error: claimsError } =
+            await supabaseAuth.auth.getClaims(bearer);
+          callerId = claimsData?.claims?.sub ?? null;
+          if (claimsError || !callerId) {
+            return json({ error: "Unauthorized" }, 401, origin);
+          }
         }
 
-        // Resolve the caller from the token, using the publishable key.
-        const { createClient } = await import("@supabase/supabase-js");
-        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-          auth: {
-            storage: undefined,
-            persistSession: false,
-            autoRefreshToken: false,
-          },
-        });
-        const { data: claimsData, error: claimsError } =
-          await supabaseAuth.auth.getClaims(bearer);
-        const callerId = claimsData?.claims?.sub;
-        if (claimsError || !callerId) {
-          return json({ error: "Unauthorized" }, 401, origin);
-        }
 
         let body: {
           room?: unknown;
