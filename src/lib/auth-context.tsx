@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { sendWelcomeEmailOnce } from "@/lib/email/send-welcome";
 
 export type Profile = {
   id: string;
@@ -30,6 +31,7 @@ export type Profile = {
   rating_avg?: number;
   rating_count?: number;
   is_verified?: boolean;
+  welcome_email_sent?: boolean;
   created_at: string;
 };
 
@@ -73,7 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       return;
     }
-    setProfile((data as Profile | null) ?? null);
+    const next = (data as Profile | null) ?? null;
+    setProfile(next);
+    if (next?.email && !next.welcome_email_sent) {
+      void sendWelcomeEmailOnce({
+        userId: next.id,
+        email: next.email,
+        displayName: next.display_name,
+        alreadySent: false,
+      });
+    }
   }, []);
 
   useEffect(() => {

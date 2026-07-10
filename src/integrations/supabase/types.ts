@@ -971,6 +971,7 @@ export type Database = {
           rating_count: number
           terms_accepted_at: string | null
           terms_version: string | null
+          welcome_email_sent: boolean
         }
         Insert: {
           age_confirmed_at?: string | null
@@ -995,6 +996,7 @@ export type Database = {
           rating_count?: number
           terms_accepted_at?: string | null
           terms_version?: string | null
+          welcome_email_sent?: boolean
         }
         Update: {
           age_confirmed_at?: string | null
@@ -1019,6 +1021,7 @@ export type Database = {
           rating_count?: number
           terms_accepted_at?: string | null
           terms_version?: string | null
+          welcome_email_sent?: boolean
         }
         Relationships: []
       }
