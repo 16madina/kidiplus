@@ -306,17 +306,23 @@ export function HomeScreen() {
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <LiveCardSkeleton key={`sk-${i}`} />
                   ))
-                : filtered.map((s, i) => (
-                    <LiveCard
-                      key={s.id}
-                      stream={s}
-                      index={i}
-                      onPress={() => openList(filtered, i)}
-                    />
-                  ))}
+                : [
+                    demoAvailable ? (
+                      <DemoCard key="__demo__" onOpen={() => setDemoOpen(true)} />
+                    ) : null,
+                    ...filtered.map((s, i) => (
+                      <LiveCard
+                        key={s.id}
+                        stream={s}
+                        index={i}
+                        onPress={() => openList(filtered, i)}
+                      />
+                    )),
+                  ]}
 
             </motion.div>
           </AnimatePresence>
+
 
           {!loading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm text-muted-foreground">
