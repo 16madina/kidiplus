@@ -31,6 +31,8 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
+import { GuestEmptyState } from "@/components/guest-empty-state";
+
 import { PushScreen } from "@/components/push-screen";
 import { usePush } from "@/lib/push";
 import { IOSSwitch } from "@/components/ios-switch";
