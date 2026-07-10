@@ -648,6 +648,13 @@
     "method": {
       "title": "Méthode de paiement",
       "card": "Carte bancaire",
+      "cardSub": "Visa, Mastercard, Amex",
+      "waveVisa": "Wave Visa",
+      "waveVisaSub": "Paie avec ta carte Visa Wave",
+      "orangeVisa": "Orange Visa",
+      "orangeVisaSub": "Paie avec ta carte Visa Orange Money",
+      "djamo": "Djamo",
+      "djamoSub": "Paie avec ta carte Visa Djamo",
       "comingSoon": "Bientôt"
     },
     "notConfigured": {
