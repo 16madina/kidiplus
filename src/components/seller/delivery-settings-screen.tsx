@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Truck, Plus, Trash2, ChevronDown, Search } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
+import { CountryFlag } from "@/components/country-flag";
 import { useAuth } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
