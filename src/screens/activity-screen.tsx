@@ -32,12 +32,28 @@ import { OrderTimeline } from "@/components/orders/order-timeline";
 import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchOrderById } from "@/lib/orders-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
+import { GuestEmptyState } from "@/components/guest-empty-state";
 
 type Tab = "notifs" | "orders";
 
 export function ActivityScreen() {
+  const { guestMode } = useAuth();
+  if (guestMode) {
+    return (
+      <GuestEmptyState
+        icon={<Bell size={40} className="text-accent" />}
+        title="Crée un compte pour voir ton activité"
+        subtitle="Notifications, commandes, escrow, litiges — tout est ici une fois connecté."
+      />
+    );
+  }
+  return <ActivityScreenAuthed />;
+}
+
+function ActivityScreenAuthed() {
   const { t } = useTranslation();
   const { user } = useAuth();
+
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<NotificationRow[]>([]);
