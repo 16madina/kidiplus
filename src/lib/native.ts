@@ -70,3 +70,35 @@ export async function dismissKeyboard(): Promise<void> {
     await Keyboard.hide();
   } catch {}
 }
+
+/** Open the native OS share sheet (iOS/Android). Falls back to Web Share API or clipboard. */
+export async function nativeShare(data: {
+  title?: string;
+  text?: string;
+  url?: string;
+  dialogTitle?: string;
+}): Promise<void> {
+  if (isNative()) {
+    try {
+      await Share.share(data);
+      return;
+    } catch {}
+  }
+
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function"
+  ) {
+    try {
+      await navigator.share(data);
+      return;
+    } catch {}
+  }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(data.url || data.text || "");
+    } catch {}
+  }
+}
+
