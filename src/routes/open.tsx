@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { EMAIL_CONFIG } from '@/lib/email/config'
 
 /**
  * Bridge page used in emails/links to open the mobile app when installed,
@@ -23,8 +24,9 @@ export const Route = createFileRoute('/open')({
 function OpenBridge() {
   const { path } = Route.useSearch()
   const safePath = path.startsWith('/') ? path : `/${path}`
-  const downloadUrl = `/download?path=${encodeURIComponent(safePath)}`
-  const appUrl = `kidiplus://${safePath.replace(/^\//, '')}`
+  // Fallback URL is centralized in EMAIL_CONFIG (defaults to /download page).
+  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL}?path=${encodeURIComponent(safePath)}`
+  const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://${safePath.replace(/^\//, '')}`
   const [fallback, setFallback] = useState(false)
 
   useEffect(() => {
