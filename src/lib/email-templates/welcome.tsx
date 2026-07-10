@@ -149,6 +149,13 @@ const header: React.CSSProperties = {
   padding: '16px 0 24px',
 }
 
+const logo: React.CSSProperties = {
+  display: 'block',
+  margin: '0 auto 8px',
+  maxWidth: '140px',
+  height: 'auto',
+}
+
 const brand: React.CSSProperties = {
   fontSize: '32px',
   fontWeight: 800,
