@@ -16,8 +16,9 @@ import {
 } from "@/lib/home-categories";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
-import { dismissKeyboard } from "@/lib/native";
+import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
+
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 
@@ -217,26 +218,18 @@ export function HomeScreen() {
               className="h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
               onClick={async () => {
-                const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
-                const shareData = {
+                const shareUrl =
+                  typeof window !== "undefined" ? window.location.origin : "";
+                await nativeShare({
                   title: "KIDI+",
                   text: "Découvre KIDI+, le live shopping où chaque offre peut tout changer.",
                   url: shareUrl,
-                };
-                try {
-                  const nav = typeof navigator !== "undefined" ? navigator : null;
-                  if (nav && typeof nav.share === "function") {
-                    await nav.share(shareData);
-                    return;
-                  }
-                  if (nav?.clipboard?.writeText) {
-                    await nav.clipboard.writeText(shareUrl);
-                  }
-                } catch {}
+                });
               }}
             >
               <Share2 size={20} strokeWidth={1.9} />
             </Press>
+
           </div>
 
         </div>

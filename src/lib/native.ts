@@ -1,9 +1,11 @@
-// Native shell bootstrap: status bar, keyboard, splash, orientation.
+// Native shell bootstrap: status bar, keyboard, splash, orientation, share.
 // Every call is guarded — no-op in the browser.
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { Keyboard } from "@capacitor/keyboard";
+import { Share } from "@capacitor/share";
+
 
 export function isNative(): boolean {
   try {
@@ -68,3 +70,35 @@ export async function dismissKeyboard(): Promise<void> {
     await Keyboard.hide();
   } catch {}
 }
+
+/** Open the native OS share sheet (iOS/Android). Falls back to Web Share API or clipboard. */
+export async function nativeShare(data: {
+  title?: string;
+  text?: string;
+  url?: string;
+  dialogTitle?: string;
+}): Promise<void> {
+  if (isNative()) {
+    try {
+      await Share.share(data);
+      return;
+    } catch {}
+  }
+
+  if (
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function"
+  ) {
+    try {
+      await navigator.share(data);
+      return;
+    } catch {}
+  }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(data.url || data.text || "");
+    } catch {}
+  }
+}
+
