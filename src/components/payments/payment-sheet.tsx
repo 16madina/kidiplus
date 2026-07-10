@@ -466,6 +466,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 function MethodRow({
   icon,
   label,
+  subtitle,
   right,
   badge,
   brandColor,
@@ -474,6 +475,7 @@ function MethodRow({
 }: {
   icon?: React.ReactNode;
   label: string;
+  subtitle?: string;
   right?: React.ReactNode;
   badge?: string;
   brandColor?: string;
@@ -495,7 +497,12 @@ function MethodRow({
       >
         {brandColor ? <span className="text-[13px] font-bold">{label[0]}</span> : icon}
       </div>
-      <div className="flex-1 text-[14px] font-semibold">{label}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] font-semibold">{label}</div>
+        {subtitle && (
+          <div className="truncate text-[11px] text-muted-foreground">{subtitle}</div>
+        )}
+      </div>
       {badge ? (
         <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           {badge}
