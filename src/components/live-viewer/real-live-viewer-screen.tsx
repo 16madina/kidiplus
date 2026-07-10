@@ -520,6 +520,7 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
     if (!active?.liveId || !active?.sellerId) return;
+    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     // Resolve delivery BEFORE reserving stock so we don't hold stock the
     // buyer can't actually pay for.
     const dr = await resolveDeliveryForCheckout({
