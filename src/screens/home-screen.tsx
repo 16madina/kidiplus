@@ -31,6 +31,7 @@ const PULL_MAX = 120;
 
 export function HomeScreen() {
   const { t } = useTranslation();
+  const { dark, setDark } = useSettings();
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [items, setItems] = useState<LiveStream[]>([]);
