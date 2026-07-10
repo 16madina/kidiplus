@@ -22,6 +22,7 @@ export function AuctionCard({
   auctionActive = false,
   isHighestBidder = false,
   disabled = false,
+  deliveryBlockedLabel,
   onBid,
   onOpenProducts,
   onBuy,
@@ -37,6 +38,9 @@ export function AuctionCard({
   auctionActive?: boolean;
   isHighestBidder?: boolean;
   disabled?: boolean;
+  /** When present, bid/buy is blocked because the seller doesn't deliver to
+   *  the viewer's country. The label is shown on the CTA. */
+  deliveryBlockedLabel?: string;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
@@ -58,7 +62,9 @@ export function AuctionCard({
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const nextBid = nextBidAmount(product.price, cur);
   const convHint = viewerCurrency ? approxLabel(product.price, cur, viewerCurrency, locale) : "";
-  const canBid = auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled;
+  const deliveryBlocked = Boolean(deliveryBlockedLabel);
+  const canBid =
+    auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled && !deliveryBlocked;
 
   return (
     <motion.div
