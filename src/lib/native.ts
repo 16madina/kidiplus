@@ -1,9 +1,11 @@
-// Native shell bootstrap: status bar, keyboard, splash, orientation.
+// Native shell bootstrap: status bar, keyboard, splash, orientation, share.
 // Every call is guarded — no-op in the browser.
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { Keyboard } from "@capacitor/keyboard";
+import { Share } from "@capacitor/share";
+
 
 export function isNative(): boolean {
   try {
