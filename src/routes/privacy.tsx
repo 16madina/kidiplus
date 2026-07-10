@@ -13,9 +13,23 @@ export const Route = createFileRoute("/privacy")({
       { property: "og:title", content: "Politique de confidentialité — KiDi+" },
       { property: "og:description", content: "Données collectées, utilisation, tiers, droits, contact." },
       { property: "og:type", content: "article" },
+      { property: "og:url", content: "https://kidiplus.com/privacy" },
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/privacy" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "Politique de confidentialité — KiDi+",
+          inLanguage: "fr",
+          mainEntityOfPage: "https://kidiplus.com/privacy",
+          publisher: { "@type": "Organization", name: "KiDi+" },
+        }),
+      },
+    ],
   }),
 });
 

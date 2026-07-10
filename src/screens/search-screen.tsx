@@ -376,6 +376,7 @@ export function SearchScreen() {
 
   return (
     <div className="flex h-full flex-col">
+      <h1 className="sr-only">Rechercher sur KiDi+</h1>
       {/* Search bar header */}
       <div
         className="shrink-0 pt-safe"

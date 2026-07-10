@@ -303,6 +303,7 @@ export function HomeScreen() {
           aria-hidden
           style={{ height: "calc(env(safe-area-inset-top) + 56px)" }}
         />
+        <h1 className="sr-only">KiDi+ — Live Shopping & Enchères en direct</h1>
 
         {/* ROW 2 — Large category tiles */}
         <div className="pt-2">

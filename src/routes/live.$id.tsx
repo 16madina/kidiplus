@@ -17,6 +17,7 @@ export const Route = createFileRoute("/live/$id")({
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: `https://kidiplus.com/live/${params.id}` },
     ],
+    links: [{ rel: "canonical", href: `https://kidiplus.com/live/${params.id}` }],
   }),
   component: LiveDeepLink,
 });
