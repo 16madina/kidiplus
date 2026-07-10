@@ -47,6 +47,7 @@ import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
 import { sendGiftRpc } from "@/lib/live-gifts-db";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { VerifiedBadge } from "@/components/verified-badge";
 
 
 
