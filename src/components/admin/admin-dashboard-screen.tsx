@@ -34,7 +34,7 @@ import {
 import { SanctionSheet } from "./sanction-sheet";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
