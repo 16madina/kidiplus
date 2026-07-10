@@ -1,31 +1,36 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Camera } from "lucide-react";
+import { Loader2, Camera, ChevronDown, Search, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
 import { AuthInput } from "@/components/auth/auth-shell";
+import { CountryFlag } from "@/components/country-flag";
 import { useAuth, frenchAuthError, type Profile } from "@/lib/auth-context";
 import { useWallet } from "@/lib/wallet-context";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl, invalidateAvatar, bustAvatarCache } from "@/lib/avatar-url";
 import { haptic } from "@/lib/haptics";
 
-const COUNTRIES = [
-  "🇫🇷 France",
-  "🇧🇪 Belgique",
-  "🇨🇭 Suisse",
-  "🇨🇦 Canada",
-  "🇨🇮 Côte d'Ivoire",
-  "🇸🇳 Sénégal",
-  "🇲🇦 Maroc",
-  "🇩🇿 Algérie",
-  "🇹🇳 Tunisie",
-  "🇨🇲 Cameroun",
-  "🇨🇩 RD Congo",
-  "🇬🇦 Gabon",
-  "🇲🇱 Mali",
-  "🇧🇫 Burkina Faso",
-  "🌍 Autre",
+// Curated shortlist for the profile country picker. Value stored on the
+// profile keeps the historical "🇫🇷 France" string shape for compatibility
+// with existing rows.
+type CountryChoice = { code: string; name: string; value: string };
+const COUNTRIES: CountryChoice[] = [
+  { code: "FR", name: "France",         value: "🇫🇷 France" },
+  { code: "BE", name: "Belgique",       value: "🇧🇪 Belgique" },
+  { code: "CH", name: "Suisse",         value: "🇨🇭 Suisse" },
+  { code: "CA", name: "Canada",         value: "🇨🇦 Canada" },
+  { code: "CI", name: "Côte d'Ivoire",  value: "🇨🇮 Côte d'Ivoire" },
+  { code: "SN", name: "Sénégal",        value: "🇸🇳 Sénégal" },
+  { code: "MA", name: "Maroc",          value: "🇲🇦 Maroc" },
+  { code: "DZ", name: "Algérie",        value: "🇩🇿 Algérie" },
+  { code: "TN", name: "Tunisie",        value: "🇹🇳 Tunisie" },
+  { code: "CM", name: "Cameroun",       value: "🇨🇲 Cameroun" },
+  { code: "CD", name: "RD Congo",       value: "🇨🇩 RD Congo" },
+  { code: "GA", name: "Gabon",          value: "🇬🇦 Gabon" },
+  { code: "ML", name: "Mali",           value: "🇲🇱 Mali" },
+  { code: "BF", name: "Burkina Faso",   value: "🇧🇫 Burkina Faso" },
+  { code: "",   name: "Autre",          value: "🌍 Autre" },
 ];
 
 export function EditProfileScreen({
