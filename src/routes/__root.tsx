@@ -130,6 +130,18 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" style={{ backgroundColor: "#10162B" }}>
       <head>
         <HeadContent />
+        <script
+          // Apply saved theme before React hydrates to avoid a light flash.
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem('kidi-theme-dark') === '1') {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
       </head>
       <body style={{ backgroundColor: "#10162B" }}>
         {children}
