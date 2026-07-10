@@ -36,6 +36,7 @@ type SellerProfile = {
   avatar_url: string | null;
   bio: string | null;
   is_seller: boolean;
+  is_verified: boolean;
   followers_count: number;
   rating_avg: number;
   rating_count: number;
@@ -45,7 +46,7 @@ type SellerProfile = {
 /** Resolve the `activeSeller` ref (uuid | handle | display_name) to a profile row. */
 async function resolveSellerRef(ref: string): Promise<SellerProfile | null> {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
-  const cols = "id, display_name, handle, avatar_url, bio, is_seller, followers_count, rating_avg, rating_count, currency";
+  const cols = "id, display_name, handle, avatar_url, bio, is_seller, is_verified, followers_count, rating_avg, rating_count, currency";
   if (isUuid) {
     const { data } = await supabase.from("profiles").select(cols).eq("id", ref).maybeSingle();
     if (data) return data as SellerProfile;
