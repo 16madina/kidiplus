@@ -35,7 +35,7 @@ export function usePersonalizedRanking(): PersonalizedRanker {
     }
     let alive = true;
     (async () => {
-      const [followsRes, bidsRes, ordersRes, remindersRes] = await Promise.all([
+      const [followsRes, bidsRes, ordersRes, remindersRes, interactionsRes] = await Promise.all([
         supabase
           .from("follows")
           .select("followed_id")
@@ -58,6 +58,12 @@ export function usePersonalizedRanking(): PersonalizedRanker {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(50),
+        supabase
+          .from("live_interactions")
+          .select("kind, weight, category, seller_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(200),
       ]);
       if (!alive) return;
 
