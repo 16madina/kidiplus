@@ -513,9 +513,12 @@
   },
   "auth": {
     "welcome": {
-      "tagline": "Le shopping en direct, sans compromis.",
+      "tagline": "L'application où tu achètes, tu vends mais",
+      "taglineAccent": "celui qui dit plus gagne.",
+      "or": "OU",
       "signIn": "Se connecter",
-      "signUp": "Créer un compte"
+      "signUp": "Créer un compte",
+      "continueAsGuest": "Continuer en tant qu'invité"
     },
     "signIn": {
       "title": "Bienvenue sur KiDi+",
