@@ -79,7 +79,19 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.display_name, profile?.avatar_url]);
 
+  // Raw (uncropped) source we last loaded into the cropper. Lets the user
+  // re-open the cropper to fine-tune without re-picking the file.
+  const [rawCoverSrc, setRawCoverSrc] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+
   const pickCover = () => {
+    // If we already have a raw source (a previously picked file, or the
+    // prefilled shop avatar URL), tapping the cover re-opens the cropper.
+    if (rawCoverSrc) {
+      setCropperOpen(true);
+      haptic.selection();
+      return;
+    }
     // Direct programmatic click inside a user-gesture handler — required for
     // the file dialog to open reliably across browsers, and NOT swallowed by
     // Press/motion whileTap animations.
@@ -90,14 +102,33 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = urlTrackerRef.current.track(URL.createObjectURL(file));
-    if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
-    b.setCover(url);
-    b.setCoverFile(file);
+    setRawCoverSrc(url);
+    setCropperOpen(true);
     e.target.value = "";
     haptic.selection();
   };
 
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
+  // When we prefill the cover from the user's profile avatar, keep the URL as
+  // the raw source too — so the first tap opens the cropper on it.
+  useEffect(() => {
+    if (!rawCoverSrc && b.cover && !isBlobUrl(b.cover) && b.cover.startsWith("http")) {
+      setRawCoverSrc(b.cover);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b.cover]);
+
+  const onCropConfirm = (file: File, previewUrl: string) => {
+    urlTrackerRef.current.track(previewUrl);
+    if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
+    b.setCover(previewUrl);
+    b.setCoverFile(file);
+    setCropperOpen(false);
+    haptic.success();
+  };
+
+  const titleLen = b.title.trim().length;
+  const titleTooShort = titleLen > 0 && titleLen < MIN_TITLE_LENGTH;
+  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0;
   const [launching, setLaunching] = useState(false);
 
 
