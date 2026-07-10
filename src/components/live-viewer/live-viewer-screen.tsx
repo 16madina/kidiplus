@@ -1,6 +1,7 @@
 import { motion, useMotionValue, animate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye } from "lucide-react";
+import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
@@ -27,6 +28,13 @@ import { BuySheet } from "./buy-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
 import { RealLiveViewerScreen } from "./real-live-viewer-screen";
+import { GiftTraySheet } from "./gift-tray-sheet";
+import { GiftAnimationsLayer } from "./gift-animations";
+import { TopUpSheet } from "@/components/wallet/topup-sheet";
+import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { useTranslation } from "react-i18next";
+import type { GiftEvt } from "@/lib/live-room";
+
 
 const AUCTION_SECONDS = 45;
 
@@ -233,18 +241,44 @@ function MockLiveViewerScreen() {
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
   const [buyProduct, setBuyProduct] = useState<Product | null>(null);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
+  const { t, i18n } = useTranslation();
 
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
   const send = () => {
-    const t = draft.trim();
-    if (!t) return;
+    const txt = draft.trim();
+    if (!txt) return;
     setMessages((prev) => [
       ...prev,
-      { id: `me-${Date.now()}`, user: "toi", color: "oklch(0.82 0.16 200)", text: t },
+      { id: `me-${Date.now()}`, user: "toi", color: "oklch(0.82 0.16 200)", text: txt },
     ]);
     setDraft("");
   };
+
+
+  const sendDemoGift = (key: GiftKey) => {
+    const g = giftByKey(key);
+    if (!g) return;
+    haptic.medium();
+    const evt: GiftEvt = {
+      id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      giftKey: key,
+      senderId: "demo",
+      senderName: "toi",
+      ts: Date.now(),
+    };
+    setGiftEvt(evt);
+    setMessages((prev) => [
+      ...prev,
+      systemMessage(`${g.emoji} Tu as envoyé un(e) ${t(g.nameKey)} (démo)`),
+    ]);
+    setGiftOpen(false);
+    toast.success(t("gifts.demoSent", { defaultValue: "Cadeau démo envoyé 🎁" }));
+  };
+
 
   // Swipe-down to dismiss on the top area
   const dragY = useMotionValue(0);
@@ -513,8 +547,12 @@ function MockLiveViewerScreen() {
           <Heart size={17} fill="currentColor" />
         </Press>
         <Press
-          aria-label="Plus"
-          className="h-11 w-11 rounded-full text-white"
+          onClick={() => {
+            haptic.light();
+            setGiftOpen(true);
+          }}
+          aria-label={t("gifts.title", "Envoyer un cadeau")}
+          className="relative h-11 w-11 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(14px)",
@@ -522,9 +560,18 @@ function MockLiveViewerScreen() {
             border: "1px solid rgba(255,255,255,0.15)",
           }}
         >
-          <Plus size={18} />
+          <Gift size={18} />
+          <span
+            className="absolute -top-1 -right-1 rounded-full px-1 text-[9px] font-black leading-none text-black"
+            style={{ backgroundColor: "oklch(0.82 0.16 85)", padding: "2px 4px" }}
+          >
+            🎁
+          </span>
         </Press>
       </div>
+
+      {/* Gift animations overlay */}
+      <GiftAnimationsLayer trigger={giftEvt} />
 
       {/* Floating hearts */}
       <FloatingHearts trigger={heartTrigger} />
@@ -543,6 +590,20 @@ function MockLiveViewerScreen() {
         }}
       />
       <BuySheet product={buyProduct} onClose={() => setBuyProduct(null)} />
+      <GiftTraySheet
+        open={giftOpen}
+        onClose={() => setGiftOpen(false)}
+        liveCurrency={active.currency ?? "EUR"}
+        locale={i18n.language}
+        sending={false}
+        onSend={sendDemoGift}
+        onTopUp={() => {
+          setGiftOpen(false);
+          setTopupOpen(true);
+        }}
+      />
+      <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+
     </motion.div>
   );
 }
