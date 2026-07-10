@@ -380,6 +380,7 @@ export function TopUpSheet({
 
 function MethodRow({
   label,
+  subtitle,
   brandColor,
   badge,
   active,
@@ -387,6 +388,7 @@ function MethodRow({
   icon,
 }: {
   label: string;
+  subtitle?: string;
   brandColor?: string;
   badge?: string;
   active?: boolean;
@@ -415,7 +417,12 @@ function MethodRow({
           </svg>
         ) : null}
       </div>
-      <div className="flex-1 text-[14px] font-semibold">{label}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] font-semibold">{label}</div>
+        {subtitle && (
+          <div className="truncate text-[11px] text-muted-foreground">{subtitle}</div>
+        )}
+      </div>
       {badge && (
         <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           {badge}
