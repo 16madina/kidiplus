@@ -22,6 +22,7 @@ import type { DeliveryMode, DeliveryZone } from "@/lib/delivery";
 import {
   CONTINENT_LABEL,
   countryLabel,
+  countryName,
   countryFlag,
   defaultCountryFromCurrency,
   searchCountries,
