@@ -3,8 +3,8 @@
 // Reproduces the reference set: an arched doorway (Accueil), a compass rose
 // (Explorer), a wrapped gift box (Activité) and a portrait badge (Profil).
 // Each icon has an outline (inactive) and a filled (active) variant that swap
-// with a subtle spring. A small gold "+" spark in the top-right corner is the
-// shared KiDi+ signature — kept discreet so the silhouette reads first.
+// with a subtle spring.
+
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -43,20 +43,6 @@ function Svg({
   );
 }
 
-// Signature gold "+" spark — subtle, top-right.
-function GoldPlus({ cx = 19.5, cy = 4.5, r = 1.4 }: { cx?: number; cy?: number; r?: number }) {
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={r + 1.2} fill="var(--accent)" opacity={0.14} stroke="none" />
-      <path
-        d={`M${cx - r} ${cy} L${cx + r} ${cy} M${cx} ${cy - r} L${cx} ${cy + r}`}
-        stroke="var(--accent)"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-    </g>
-  );
-}
 
 function IconWrap({
   active,
