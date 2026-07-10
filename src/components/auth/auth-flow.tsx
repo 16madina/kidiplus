@@ -7,11 +7,14 @@ import { EASE_IOS } from "@/lib/motion";
 import { SignInScreen } from "./sign-in-screen";
 import { SignUpScreen } from "./sign-up-screen";
 import { ForgotPasswordScreen } from "./forgot-password-screen";
+import { useAuth } from "@/lib/auth-context";
 
 type View = "welcome" | "signin" | "signup" | "forgot";
 
-export function AuthFlow() {
+export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
   const [view, setView] = useState<View>("welcome");
+  const { enterGuestMode } = useAuth();
+
 
   return (
     <div
