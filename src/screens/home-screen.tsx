@@ -18,6 +18,7 @@ import { useLiveViewer } from "@/lib/live-viewer-context";
 import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
+import { usePersonalizedRanking } from "@/lib/personalization";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -88,11 +89,17 @@ export function HomeScreen() {
     });
   }, [openStream]);
 
+  const rankForYou = usePersonalizedRanking();
+
   const filtered = useMemo(() => {
     // Real lives always come first; mock streams fill the grid below.
     const merged = [...realLives, ...items];
-    return applyHomeFilter(applyHomeCategory(merged, category), filter);
-  }, [items, realLives, category, filter]);
+    const scoped = applyHomeCategory(merged, category);
+    // "Pour toi" reorders by personalization signals (follows, past bids,
+    // popularity) before the filter pill is applied on top.
+    const base = category === "Pour toi" ? rankForYou(scoped) : scoped;
+    return applyHomeFilter(base, filter);
+  }, [items, realLives, category, filter, rankForYou]);
 
 
   const doRefresh = useCallback(() => {
