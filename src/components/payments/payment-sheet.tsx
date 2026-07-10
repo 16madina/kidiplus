@@ -492,6 +492,8 @@ function MethodRow({
   disabled?: boolean;
   logoUrl?: string;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = logoUrl && !imgFailed;
   return (
     <div
       className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${
@@ -499,15 +501,20 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white"
+        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
         style={
-          logoUrl
-            ? undefined
+          showImg
+            ? { backgroundColor: "white" }
             : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
         }
       >
-        {logoUrl ? (
-          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        {showImg ? (
+          <img
+            src={logoUrl}
+            alt=""
+            className="h-full w-full object-contain"
+            onError={() => setImgFailed(true)}
+          />
         ) : brandColor ? (
           <span className="text-[13px] font-bold">{label[0]}</span>
         ) : (
