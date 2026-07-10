@@ -241,6 +241,10 @@ function MockLiveViewerScreen() {
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
   const [buyProduct, setBuyProduct] = useState<Product | null>(null);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
+  const { t, i18n } = useTranslation();
 
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
@@ -253,6 +257,27 @@ function MockLiveViewerScreen() {
     ]);
     setDraft("");
   };
+
+  const sendDemoGift = (key: GiftKey) => {
+    const g = giftByKey(key);
+    if (!g) return;
+    haptic.medium();
+    const evt: GiftEvt = {
+      id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      giftKey: key,
+      senderId: "demo",
+      senderName: "toi",
+      ts: Date.now(),
+    };
+    setGiftEvt(evt);
+    setMessages((prev) => [
+      ...prev,
+      systemMessage(`${g.emoji} Tu as envoyé un(e) ${t(g.nameKey)} (démo)`),
+    ]);
+    setGiftOpen(false);
+    toast.success(t("gifts.demoSent", { defaultValue: "Cadeau démo envoyé 🎁" }));
+  };
+
 
   // Swipe-down to dismiss on the top area
   const dragY = useMotionValue(0);
