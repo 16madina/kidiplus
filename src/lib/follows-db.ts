@@ -58,7 +58,8 @@ export function useFollow(sellerId: string | null): {
     };
     void load();
     const channel = supabase
-      .channel(`follows-${sellerId}`)
+      .channel(`follows-${sellerId}-${Math.random().toString(36).slice(2, 10)}`)
+
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "follows", filter: `followed_id=eq.${sellerId}` },
