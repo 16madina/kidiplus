@@ -67,7 +67,7 @@ const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomePro
             <Text style={bullet}>💼 Créer ta boutique et vendre en quelques minutes.</Text>
 
             <Section style={ctaWrap}>
-              <Button href={openLink(appUrl, '/sell/onboarding')} style={ctaButton}>
+              <Button href={openLink('/sell/onboarding')} style={ctaButton}>
                 🚀 Créer ma boutique
               </Button>
             </Section>
@@ -83,7 +83,7 @@ const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomePro
             </Text>
 
             <Section style={ctaWrap}>
-              <Button href={openLink(appUrl, '/')} style={ctaButtonSecondary}>
+              <Button href={openLink('/')} style={ctaButtonSecondary}>
                 👉 Commencer maintenant
               </Button>
             </Section>
@@ -122,7 +122,7 @@ export const template = {
   component: WelcomeEmail,
   subject: '🎉 Bienvenue sur KIDI+ ! Votre aventure commence maintenant.',
   displayName: 'Welcome Email',
-  previewData: { displayName: 'Lazone', appUrl: APP_URL },
+  previewData: { displayName: 'Lazone', appUrl: EMAIL_CONFIG.WEB_URL },
 } satisfies TemplateEntry
 
 const main: React.CSSProperties = {
