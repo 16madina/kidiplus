@@ -30,6 +30,10 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
+import { CoverCropperSheet } from "./cover-cropper-sheet";
+
+const MIN_TITLE_LENGTH = 3;
+const MAX_TITLE_LENGTH = 80;
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
