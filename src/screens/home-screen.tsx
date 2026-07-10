@@ -19,7 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
-import { DemoCard, DemoPlayer, useDemoAvailable } from "@/components/home/demo-card";
+import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
@@ -37,7 +37,7 @@ export function HomeScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const demoAvailable = useDemoAvailable();
+  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -341,7 +341,7 @@ export function HomeScreen() {
           <div ref={sentinelRef} className="h-4 w-full" />
         </div>
       </div>
-      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} />
+      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
     </div>
   );
 }

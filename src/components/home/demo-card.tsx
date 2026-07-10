@@ -15,34 +15,41 @@
 // black overlay, with a top-right close button. No chat/bid/gift overlays.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import demoVideoAsset from "@/assets/demo-video.mp4.asset.json";
 import { AnimatePresence, motion } from "framer-motion";
 import { Play, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
+import { fetchDemoVideoUrl, DEMO_VIDEO_FALLBACK_URL } from "@/lib/demo-video-db";
 
-export const DEMO_VIDEO_URL = demoVideoAsset.url;
+export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
-/** Probe once whether the demo video is reachable. Returns null while
- *  pending, true if HEAD returns 2xx, false otherwise. */
-export function useDemoAvailable(url: string = DEMO_VIDEO_URL): boolean | null {
+/** Resolves the current demo video URL (admin-overridable via app_config)
+ *  and probes it with a HEAD request. */
+export function useDemoVideo(): { ok: boolean | null; url: string } {
   const [ok, setOk] = useState<boolean | null>(null);
+  const [url, setUrl] = useState<string>(DEMO_VIDEO_FALLBACK_URL);
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const resolved = await fetchDemoVideoUrl().catch(() => DEMO_VIDEO_FALLBACK_URL);
+      if (cancelled) return;
+      setUrl(resolved);
       try {
-        const r = await fetch(url, { method: "HEAD", cache: "no-store" });
+        const r = await fetch(resolved, { method: "HEAD", cache: "no-store" });
         if (!cancelled) setOk(r.ok);
       } catch {
         if (!cancelled) setOk(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-  return ok;
+    return () => { cancelled = true; };
+  }, []);
+  return { ok, url };
+}
+
+/** Back-compat: boolean-only availability probe. */
+export function useDemoAvailable(): boolean | null {
+  return useDemoVideo().ok;
 }
 
 export function DemoCard({ onOpen }: { onOpen: () => void }) {

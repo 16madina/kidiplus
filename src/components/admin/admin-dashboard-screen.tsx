@@ -32,6 +32,7 @@ import {
   ReportsTab, ComposeMessageSheet, UserSanctionsHistory, EndLiveButton,
 } from "./moderation-pieces";
 import { SanctionSheet } from "./sanction-sheet";
+import { AdminDemoVideoCard } from "./admin-demo-video";
 
 
 type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
@@ -192,6 +193,10 @@ function OverviewTab({ onGoTab }: { onGoTab: (t: Tab) => void }) {
 
       <Section title={t("admin.kpi.orders14d")}>
         <DailyChart data={stats.orders_daily} />
+      </Section>
+
+      <Section title="Contenu">
+        <AdminDemoVideoCard />
       </Section>
     </div>
   );
