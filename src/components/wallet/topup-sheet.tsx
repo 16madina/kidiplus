@@ -299,22 +299,26 @@ export function TopUpSheet({
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
                         brandColor={WAVE_BLUE}
+                        logoUrl={waveLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        brandColor={ORANGE}
+                        brandColor="#ffffff"
+                        logoUrl={orangeMoneyLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         brandColor={DJAMO_INDIGO}
+                        logoUrl={djamoLogo.url}
                         active
                       />
                     </>
                   )}
+
 
                   {step.kind === "not_configured" && (
                     <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed p-4 text-center">
