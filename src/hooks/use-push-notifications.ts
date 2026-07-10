@@ -1,73 +1,97 @@
 // Registers iOS/Android push notifications and syncs the FCM token to Lovable Cloud.
-// Safe to call on web (no-op). Requires the user to be signed in.
+// Safe to call on web (no-op). Re-runs whenever the auth state changes so users who
+// sign in after app launch also get registered.
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDeviceToken } from "@/lib/device-tokens.functions";
+import { logPushEvent } from "@/lib/push-debug.functions";
 
-let initialized = false;
+const registeredUserIds = new Set<string>();
+
+async function log(platform: string, step: string, ok: boolean, message?: string) {
+  try {
+    await logPushEvent({ data: { platform, step, ok, message: message?.slice(0, 1000) } });
+  } catch {
+    // best-effort; ignore
+  }
+  if (ok) console.log(`[push] ${step}`);
+  else console.warn(`[push] ${step}`, message);
+}
+
+async function runRegistration(userId: string) {
+  if (registeredUserIds.has(userId)) return;
+  registeredUserIds.add(userId);
+  const platform = Capacitor.getPlatform() as "ios" | "android";
+
+  try {
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
+      perm = await PushNotifications.requestPermissions();
+    }
+    if (perm.receive !== "granted") {
+      await log(platform, "permission_denied", false, `receive=${perm.receive}`);
+      registeredUserIds.delete(userId);
+      return;
+    }
+    await log(platform, "permission_granted", true);
+
+    await PushNotifications.register();
+    await log(platform, "native_register", true);
+
+    const { token } = await FirebaseMessaging.getToken();
+    if (!token) {
+      await log(platform, "fcm_token_empty", false);
+      registeredUserIds.delete(userId);
+      return;
+    }
+    await log(platform, "fcm_token_ok", true, `len=${token.length}`);
+
+    await registerDeviceToken({ data: { token, platform } });
+    await log(platform, "saved_to_backend", true);
+
+    await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
+      if (!newToken) return;
+      try {
+        await registerDeviceToken({ data: { token: newToken, platform } });
+        await log(platform, "token_refreshed", true);
+      } catch (e) {
+        await log(platform, "token_refresh_failed", false, String(e));
+      }
+    });
+
+    await PushNotifications.addListener("pushNotificationReceived", (notif) => {
+      console.log("[push] received", notif);
+    });
+  } catch (err) {
+    await log(platform, "init_failed", false, err instanceof Error ? err.message : String(err));
+    registeredUserIds.delete(userId);
+  }
+}
+
+let listenerAttached = false;
 
 export function usePushNotifications() {
   useEffect(() => {
-    if (initialized) return;
     if (!Capacitor.isNativePlatform()) return;
-    initialized = true;
 
-    const platform = Capacitor.getPlatform() as "ios" | "android";
+    // Try immediately if a session already exists.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) void runRegistration(session.user.id);
+    });
 
-    (async () => {
-      try {
-        // Only register once the user is signed in (server fn requires auth).
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          initialized = false;
-          return;
-        }
+    if (listenerAttached) return;
+    listenerAttached = true;
 
-        // 1. Ask permission
-        let perm = await PushNotifications.checkPermissions();
-        if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
-          perm = await PushNotifications.requestPermissions();
-        }
-        if (perm.receive !== "granted") {
-          console.warn("[push] permission not granted");
-          return;
-        }
-
-        // 2. Register with APNs (iOS) / FCM (Android)
-        await PushNotifications.register();
-
-        // 3. Get the FCM token via Firebase Messaging (works on both iOS + Android)
-        const { token } = await FirebaseMessaging.getToken();
-        if (!token) {
-          console.warn("[push] no FCM token returned");
-          return;
-        }
-
-        // 4. Save to Lovable Cloud
-        await registerDeviceToken({ data: { token, platform } });
-        console.log("[push] token registered");
-
-        // 5. Refresh on token change
-        await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
-          if (!newToken) return;
-          try {
-            await registerDeviceToken({ data: { token: newToken, platform } });
-          } catch (e) {
-            console.error("[push] token refresh failed", e);
-          }
-        });
-
-        // Foreground notif handler (optional log)
-        await PushNotifications.addListener("pushNotificationReceived", (notif) => {
-          console.log("[push] received", notif);
-        });
-      } catch (err) {
-        console.error("[push] init failed", err);
-        initialized = false;
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user?.id) {
+        void runRegistration(session.user.id);
       }
-    })();
+      if (event === "SIGNED_OUT") {
+        registeredUserIds.clear();
+      }
+    });
   }, []);
 }
