@@ -186,6 +186,8 @@ export function AuctionCard({
                     <Gavel size={14} className="mr-1.5" />
                     {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
                   </>
+                ) : deliveryBlocked ? (
+                  deliveryBlockedLabel
                 ) : (
                   disabled ? t("live.ended") : t("live.waitingForSeller")
                 )}
