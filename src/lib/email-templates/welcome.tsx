@@ -7,6 +7,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -20,23 +21,39 @@ interface WelcomeProps {
 }
 
 const APP_URL = 'https://kidiplus.com'
+const LOGO_URL = 'https://kidiplus.com/kidi-plus-logo.png'
+
+/** Bridge URL that tries to open the native app on mobile, then falls back to web. */
+const openLink = (appUrl: string, path: string) =>
+  `${appUrl}/open?path=${encodeURIComponent(path)}`
 
 const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
-  const greetingName = displayName?.trim() || 'à toi'
+  const cleanName = displayName?.trim()
+  const greetingName = cleanName || 'à toi'
 
   return (
     <Html lang="fr" dir="ltr">
       <Head />
-      <Preview>Bienvenue sur KIDI+ — ton aventure live shopping commence maintenant.</Preview>
+      <Preview>
+        {cleanName ? `Bienvenue ${cleanName} sur KIDI+ 👋` : 'Bienvenue sur KIDI+ 👋'}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
-            <Heading style={brand}>KIDI+</Heading>
+            <Img
+              src={LOGO_URL}
+              alt="KIDI+"
+              width="140"
+              height="140"
+              style={logo}
+            />
             <Text style={tagline}>L'app où tout le monde dit plus.</Text>
           </Section>
 
           <Section style={card}>
-            <Heading style={h1}>Bienvenue sur KIDI+ 👋</Heading>
+            <Heading style={h1}>
+              {cleanName ? `Bienvenue ${cleanName} 👋` : 'Bienvenue sur KIDI+ 👋'}
+            </Heading>
             <Text style={paragraph}>Bonjour {greetingName},</Text>
             <Text style={paragraph}>
               Merci d'avoir rejoint <strong>KIDI+</strong>, la plateforme où le live shopping
@@ -55,7 +72,7 @@ const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
             <Text style={bullet}>💼 Créer ta boutique et vendre en quelques minutes.</Text>
 
             <Section style={ctaWrap}>
-              <Button href={`${appUrl}/sell/onboarding`} style={ctaButton}>
+              <Button href={openLink(appUrl, '/sell/onboarding')} style={ctaButton}>
                 🚀 Créer ma boutique
               </Button>
             </Section>
@@ -71,7 +88,7 @@ const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
             </Text>
 
             <Section style={ctaWrap}>
-              <Button href={appUrl} style={ctaButtonSecondary}>
+              <Button href={openLink(appUrl, '/')} style={ctaButtonSecondary}>
                 👉 Commencer maintenant
               </Button>
             </Section>
@@ -110,7 +127,7 @@ export const template = {
   component: WelcomeEmail,
   subject: '🎉 Bienvenue sur KIDI+ ! Votre aventure commence maintenant.',
   displayName: 'Welcome Email',
-  previewData: { displayName: 'Marie', appUrl: APP_URL },
+  previewData: { displayName: 'Lazone', appUrl: APP_URL },
 } satisfies TemplateEntry
 
 const main: React.CSSProperties = {
