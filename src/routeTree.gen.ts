@@ -18,15 +18,19 @@ import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const TermsRoute = TermsRouteImport.update({
@@ -74,6 +78,11 @@ const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
   path: '/guide/what-is-live-shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalletTopupRoute = ApiWalletTopupRouteImport.update({
   id: '/api/wallet-topup',
   path: '/api/wallet-topup',
@@ -92,6 +101,11 @@ const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
 const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
   id: '/api/checkout',
   path: '/api/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
@@ -120,6 +134,18 @@ const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
   path: '/api/account/delete',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -139,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
@@ -146,7 +173,10 @@ export interface FileRoutesByFullPath {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -160,6 +190,7 @@ export interface FileRoutesByTo {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
@@ -167,7 +198,10 @@ export interface FileRoutesByTo {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -182,6 +216,7 @@ export interface FileRoutesById {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
@@ -189,7 +224,10 @@ export interface FileRoutesById {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -205,6 +243,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
@@ -212,7 +251,10 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -226,6 +268,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
@@ -233,7 +276,10 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
@@ -247,6 +293,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
@@ -254,7 +301,10 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -269,12 +319,16 @@ export interface RootRouteChildren {
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
   LiveIdRoute: typeof LiveIdRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -342,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuideWhatIsLiveShoppingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/wallet-topup': {
       id: '/api/wallet-topup'
       path: '/api/wallet-topup'
@@ -368,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/api/checkout'
       fullPath: '/api/checkout'
       preLoaderRoute: typeof ApiCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/wallet-topup/confirm': {
@@ -403,6 +471,20 @@ declare module '@tanstack/react-router' {
       path: '/api/account/delete'
       fullPath: '/api/account/delete'
       preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
@@ -451,12 +533,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
   LiveIdRoute: LiveIdRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
