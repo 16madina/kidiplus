@@ -207,7 +207,7 @@ function Welcome({
 
           <Press
             onClick={onSignIn}
-            className="!min-h-[48px] h-[48px] w-full rounded-full text-[14px] font-semibold text-white"
+            className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-semibold text-white"
             style={{
               backgroundColor: "transparent",
               border: "1.5px solid rgba(255,255,255,0.35)",
@@ -217,16 +217,21 @@ function Welcome({
           </Press>
 
           {onGuest && (
-            <button
-              type="button"
-              onClick={onGuest}
-              className="mt-1 w-full text-center text-[13px] font-medium text-white/85 underline underline-offset-4 decoration-white/40 hover:text-white"
-              style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
-            >
-              {t("auth.welcome.orContinueAsGuest", {
-                defaultValue: `ou ${t("auth.welcome.continueAsGuest")}`,
-              })}
-            </button>
+            <>
+              <div className="w-full text-center text-[13px] font-medium text-white/70">
+                {t("common.or")}
+              </div>
+              <Press
+                onClick={onGuest}
+                className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-semibold text-white/90"
+                style={{
+                  backgroundColor: "transparent",
+                  border: "1.5px solid rgba(255,255,255,0.35)",
+                }}
+              >
+                {t("auth.welcome.continueAsGuest")}
+              </Press>
+            </>
           )}
         </motion.div>
 
