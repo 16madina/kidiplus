@@ -226,15 +226,18 @@ export function AuctionCard({
           </>
         ) : (
           <Press
-            onClick={disabled ? undefined : onBuy}
-            disabled={disabled}
-            className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
+            onClick={disabled || deliveryBlocked ? undefined : onBuy}
+            disabled={disabled || deliveryBlocked}
+            className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-60"
             style={{
-              background:
-                "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
+              background: deliveryBlocked
+                ? "rgba(255,255,255,0.14)"
+                : "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
             }}
           >
-            Acheter {formatMoney(product.price, cur, locale)}
+            {deliveryBlocked
+              ? deliveryBlockedLabel
+              : `Acheter ${formatMoney(product.price, cur, locale)}`}
           </Press>
         )}
       </div>
