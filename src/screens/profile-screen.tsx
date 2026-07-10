@@ -48,6 +48,7 @@ import { LegalScreen } from "@/components/legal/legal-screen";
 import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen";
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
+import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -85,6 +86,7 @@ export function ProfileScreen() {
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
@@ -389,7 +391,7 @@ export function ProfileScreen() {
         <MenuGroup
           index={1}
           items={[
-            { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
+            { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => setSettingsOpen(true) },
             ...(profile?.is_seller
               ? [{
                   icon: <BadgeCheck size={16} />,
@@ -404,7 +406,7 @@ export function ProfileScreen() {
             { icon: <FileText size={16} />, label: t("profile.menu.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
             { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
             { icon: <SettingsIcon size={16} />, label: t("profile.menu.settings"), tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
-            { icon: <HelpCircle size={16} />, label: t("profile.menu.help"), tint: "oklch(0.55 0.16 300)", onClick: () => toast(soon) },
+            { icon: <HelpCircle size={16} />, label: t("profile.menu.help"), tint: "oklch(0.55 0.16 300)", onClick: () => setHelpOpen(true) },
           ]}
         />
 
@@ -462,6 +464,7 @@ export function ProfileScreen() {
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
+      <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
