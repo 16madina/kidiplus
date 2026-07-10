@@ -29,6 +29,7 @@ import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
+import { useAuth } from "@/lib/auth-context";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
@@ -58,6 +59,21 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     const tracker = urlTrackerRef.current;
     return () => tracker.disposeAll();
   }, []);
+
+  // Prefill title with the shop/display name and cover with the shop avatar,
+  // so the user can launch a live without extra taps. They can still tap the
+  // cover or edit the title to override.
+  const { profile } = useAuth();
+  useEffect(() => {
+    if (!profile) return;
+    if (!b.title.trim() && profile.display_name) {
+      b.setTitle(profile.display_name);
+    }
+    if (!b.cover && !b.coverFile && profile.avatar_url) {
+      b.setCover(profile.avatar_url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.display_name, profile?.avatar_url]);
 
   const pickCover = () => {
     // Direct programmatic click inside a user-gesture handler — required for
