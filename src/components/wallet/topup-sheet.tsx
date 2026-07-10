@@ -406,6 +406,8 @@ function MethodRow({
   icon?: "card";
   logoUrl?: string;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = logoUrl && !imgFailed;
   return (
     <div
       className={`mt-2 flex items-center gap-3 rounded-2xl border px-3 py-3 ${
@@ -413,24 +415,28 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white"
+        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
         style={
-          logoUrl
-            ? undefined
-            : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
+          showImg
+            ? { backgroundColor: "white" }
+            : { backgroundColor: brandColor ?? "white", color: brandColor ? "white" : "inherit" }
         }
       >
-
-        {logoUrl ? (
-          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        {showImg ? (
+          <img
+            src={logoUrl}
+            alt=""
+            className="h-full w-full object-contain"
+            onError={() => setImgFailed(true)}
+          />
         ) : icon === "card" ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="5" width="20" height="14" rx="2" />
             <path d="M2 10h20" />
           </svg>
-        ) : brandColor ? (
+        ) : (
           <span className="text-[13px] font-bold">{label[0]}</span>
-        ) : null}
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
