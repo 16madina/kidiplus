@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
-import { Bell, Share2, Loader2 } from "lucide-react";
+import { Bell, Moon, Share2, Sun, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
@@ -19,6 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { usePersonalizedRanking } from "@/lib/personalization";
+import { useSettings } from "@/lib/settings-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -30,6 +31,7 @@ const PULL_MAX = 120;
 
 export function HomeScreen() {
   const { t } = useTranslation();
+  const { dark, setDark } = useSettings();
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [items, setItems] = useState<LiveStream[]>([]);
@@ -219,6 +221,18 @@ export function HomeScreen() {
               }}
             >
               <Bell size={22} strokeWidth={1.9} />
+            </Press>
+            <Press
+              aria-label={dark ? "Passer en mode clair" : "Passer en mode sombre"}
+              className="h-11 w-11 rounded-full"
+              style={{ color: "var(--foreground)" }}
+              onClick={() => setDark(!dark)}
+            >
+              {dark ? (
+                <Moon size={22} strokeWidth={1.9} />
+              ) : (
+                <Sun size={22} strokeWidth={1.9} />
+              )}
             </Press>
             <Press
               aria-label="Share"
