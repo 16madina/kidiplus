@@ -276,6 +276,8 @@ export type Database = {
           amount: number
           created_at: string
           currency: string
+          debit_amount: number | null
+          debit_currency: string | null
           gift_key: string
           id: string
           live_id: string
@@ -288,6 +290,8 @@ export type Database = {
           amount: number
           created_at?: string
           currency: string
+          debit_amount?: number | null
+          debit_currency?: string | null
           gift_key: string
           id?: string
           live_id: string
@@ -300,6 +304,8 @@ export type Database = {
           amount?: number
           created_at?: string
           currency?: string
+          debit_amount?: number | null
+          debit_currency?: string | null
           gift_key?: string
           id?: string
           live_id?: string
@@ -1221,6 +1227,7 @@ export type Database = {
           balance_after: number
           created_at: string
           id: string
+          meta: Json | null
           order_id: string | null
           status: string
           stripe_payment_intent_id: string | null
@@ -1232,6 +1239,7 @@ export type Database = {
           balance_after: number
           created_at?: string
           id?: string
+          meta?: Json | null
           order_id?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -1243,6 +1251,7 @@ export type Database = {
           balance_after?: number
           created_at?: string
           id?: string
+          meta?: Json | null
           order_id?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -1395,6 +1404,10 @@ export type Database = {
       assert_user_active: { Args: never; Returns: undefined }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
       confirm_order_delivered: { Args: { _order_id: string }; Returns: Json }
+      convert_money: {
+        Args: { _amount: number; _from: string; _to: string }
+        Returns: number
+      }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
@@ -1416,6 +1429,7 @@ export type Database = {
         }
         Returns: Json
       }
+      fx_rate: { Args: { _from: string; _to: string }; Returns: number }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_live_moderator: {
         Args: { _live_id: string; _user_id: string }

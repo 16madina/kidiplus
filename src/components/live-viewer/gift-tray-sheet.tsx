@@ -1,7 +1,7 @@
-// Compact bottom sheet showing the gift catalog with prices in the live's
-// currency. Tap a gift → sends immediately (tier 3 asks a quick confirm).
-// Wallet balance + top-up shortcut at the top. If wallet currency doesn't
-// match the live, the tray disables sending and shows the top-up hint.
+// Compact bottom sheet showing the gift catalog with prices in the LIVE's
+// currency + a "≈ …" hint in the sender's wallet currency when they differ.
+// Currency never blocks — the sender's wallet is debited in THEIR currency
+// via server-side conversion (send_gift RPC).
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -10,7 +10,12 @@ import { X, Plus } from "lucide-react";
 import { BottomSheet } from "./bottom-sheet";
 import { Press } from "@/components/press";
 import { GIFT_CATALOG, giftByKey, type GiftKey } from "@/lib/gifts";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import {
+  convertMoney,
+  formatMoney,
+  formatConvertedHint,
+  normalizeCurrency,
+} from "@/lib/money";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
 import { EASE_IOS } from "@/lib/motion";
@@ -35,10 +40,11 @@ export function GiftTraySheet({
   const { t } = useTranslation();
   const { balance, currency: walletCurrency } = useWallet();
   const cur = normalizeCurrency(liveCurrency);
-  const walletMatches = normalizeCurrency(walletCurrency) === cur;
+  const wcur = normalizeCurrency(walletCurrency);
+  const crossCurrency = cur !== wcur;
   const [confirmKey, setConfirmKey] = useState<GiftKey | null>(null);
 
-  const fmt = (n: number) => formatMoney(n, cur, locale);
+  const fmtLive = (n: number) => formatMoney(n, cur, locale);
 
   const trigger = (key: GiftKey) => {
     const g = giftByKey(key);
@@ -46,9 +52,8 @@ export function GiftTraySheet({
     if (g.tier === 3 && confirmKey !== key) {
       haptic.light();
       setConfirmKey(key);
-      // Auto-clear the confirm state after 2s.
       window.setTimeout(() => {
-        setConfirmKey((cur) => (cur === key ? null : cur));
+        setConfirmKey((c) => (c === key ? null : c));
       }, 2000);
       return;
     }
@@ -57,7 +62,7 @@ export function GiftTraySheet({
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} heightPercent={55}>
+    <BottomSheet open={open} onClose={onClose} heightPercent={58}>
       <div className="flex h-full flex-col px-4 pb-4">
         <div className="flex items-center justify-between pb-2">
           <div>
@@ -83,11 +88,14 @@ export function GiftTraySheet({
               {t("gifts.walletBalance", "Solde")}
             </p>
             <p className="text-[16px] font-bold tabular-nums">
-              {formatMoney(balance, walletCurrency, locale)}
+              {formatMoney(balance, wcur, locale)}
             </p>
-            {!walletMatches && (
-              <p className="mt-0.5 text-[11px] font-medium text-destructive">
-                {t("gifts.currencyHint", { defaultValue: "Portefeuille en {{cur}}", cur: walletCurrency })}
+            {crossCurrency && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("gifts.fxHint", {
+                  defaultValue: "Débité en {{wcur}} (conversion auto)",
+                  wcur,
+                })}
               </p>
             )}
           </div>
@@ -105,15 +113,23 @@ export function GiftTraySheet({
 
         <div className="grid flex-1 grid-cols-3 gap-2 overflow-y-auto pb-2">
           {GIFT_CATALOG.map((g) => {
-            const price = g.prices[cur] ?? 0;
-            const canAfford = walletMatches && balance >= price && !sending;
+            const priceLive = g.prices[cur] ?? 0;
+            const debit = crossCurrency ? convertMoney(priceLive, cur, wcur) : priceLive;
+            const canAfford = balance >= debit && !sending;
             const isConfirm = confirmKey === g.key;
             return (
               <Press
                 key={g.key}
-                onClick={() => (walletMatches && !sending ? trigger(g.key) : (!walletMatches ? onTopUp() : undefined))}
+                onClick={() => {
+                  if (sending) return;
+                  if (!canAfford) {
+                    onTopUp();
+                    return;
+                  }
+                  trigger(g.key);
+                }}
                 disabled={sending}
-                className="!min-h-24 relative flex flex-col items-center justify-center gap-1 rounded-2xl p-2 text-center"
+                className="!min-h-24 relative flex flex-col items-center justify-center gap-0.5 rounded-2xl p-2 text-center"
                 style={{
                   backgroundColor: isConfirm ? "oklch(0.75 0.14 85 / 0.25)" : "var(--muted)",
                   border: isConfirm
@@ -129,7 +145,7 @@ export function GiftTraySheet({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.85, opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="text-[34px] leading-none"
+                    className="text-[32px] leading-none"
                   >
                     {g.emoji}
                   </motion.span>
@@ -138,11 +154,16 @@ export function GiftTraySheet({
                   {t(g.nameKey)}
                 </span>
                 <span
-                  className="text-[11px] font-bold tabular-nums"
+                  className="text-[11px] font-bold tabular-nums leading-tight"
                   style={{ color: "oklch(0.65 0.16 60)" }}
                 >
-                  {fmt(price)}
+                  {fmtLive(priceLive)}
                 </span>
+                {crossCurrency && (
+                  <span className="text-[10px] tabular-nums leading-tight text-muted-foreground">
+                    {formatConvertedHint(priceLive, cur, wcur, locale)}
+                  </span>
+                )}
                 {isConfirm && (
                   <motion.span
                     initial={{ opacity: 0 }}
@@ -158,12 +179,6 @@ export function GiftTraySheet({
             );
           })}
         </div>
-
-        {!walletMatches && (
-          <p className="pt-1 text-center text-[11px] text-muted-foreground">
-            {t("gifts.matchLive", { defaultValue: "Recharge en {{cur}} pour envoyer un cadeau", cur })}
-          </p>
-        )}
       </div>
     </BottomSheet>
   );
@@ -175,12 +190,12 @@ export function useGiftError() {
   return (err: string) => {
     const map: Record<string, string> = {
       insufficient_funds: t("gifts.err.insufficient", "Solde insuffisant — recharge ton portefeuille"),
-      currency_mismatch: t("gifts.err.currency", "Portefeuille dans une autre devise"),
       cannot_gift_self: t("gifts.err.self", "Tu ne peux pas t'envoyer un cadeau"),
       live_not_active: t("gifts.err.notLive", "Le live n'est plus actif"),
       sanctioned: t("gifts.err.sanctioned", "Compte suspendu"),
       unauthorized: t("gifts.err.auth", "Connecte-toi pour envoyer un cadeau"),
       unknown_gift: t("gifts.err.unknown", "Cadeau inconnu"),
+      conversion_unavailable: t("gifts.err.conversion", "Conversion indisponible pour cette devise"),
       unknown: t("gifts.err.unknown", "Envoi impossible"),
     };
     toast.error(map[err] ?? map.unknown);
