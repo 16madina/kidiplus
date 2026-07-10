@@ -40,6 +40,11 @@ type AuthCtx = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  /** Guest mode: browsing without a session. UI-only flag; the DB never
+   *  trusts it — RLS still blocks every write for `auth.uid() IS NULL`. */
+  guestMode: boolean;
+  enterGuestMode: () => void;
+  exitGuestMode: () => void;
   signUp: (args: {
     email: string;
     password: string;
@@ -53,6 +58,7 @@ type AuthCtx = {
   updateProfile: (patch: Partial<Profile>) => Promise<Profile>;
   becomeSeller: () => Promise<void>;
 };
+
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
