@@ -217,20 +217,16 @@ function Welcome({
           </Press>
 
           {onGuest && (
-            <>
-              <Press
-                onClick={onGuest}
-                className="!min-h-[48px] flex h-[48px] w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-white"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.12)",
-                  border: "1.5px solid rgba(255,255,255,0.38)",
-                  boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
-                }}
-              >
-                <User size={16} strokeWidth={2} />
-                {t("auth.welcome.continueAsGuest")}
-              </Press>
-            </>
+            <button
+              type="button"
+              onClick={onGuest}
+              className="mt-1 w-full text-center text-[13px] font-medium text-white/85 underline underline-offset-4 decoration-white/40 hover:text-white"
+              style={{ textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}
+            >
+              {t("auth.welcome.orContinueAsGuest", {
+                defaultValue: `ou ${t("auth.welcome.continueAsGuest")}`,
+              })}
+            </button>
           )}
         </motion.div>
 
