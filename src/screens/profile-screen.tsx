@@ -319,7 +319,7 @@ export function ProfileScreen() {
 
               {/* Quick actions */}
               <div className="grid grid-cols-4 gap-1">
-              {profile?.is_seller ? (
+                {profile?.is_seller ? (
                   <QuickAction
                     icon={<Store size={18} />}
                     label={t("profile.quick.myShop")}
