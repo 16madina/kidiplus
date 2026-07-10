@@ -110,7 +110,11 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   touch-action: manipulation; /* disables double-tap zoom */
+  /* KiDi+ navy — prevents a white WebView flash between the native splash
+     and the React splash video on Android. */
+  background-color: #10162B;
 }
+
 
 body {
   background-color: var(--color-background);

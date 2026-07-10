@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import splashAsset from "@/assets/splash.mp4.asset.json";
 import { EASE_IOS } from "@/lib/motion";
 import { Logo } from "@/components/brand/logo";
+import { hideNativeSplash } from "@/lib/native";
+
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -24,9 +26,13 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.clearTimeout(timeout);
       window.clearTimeout(skipTimeout);
       window.clearTimeout(playingWatchdog);
+      // Safety net: if we never fired 'playing' (autoplay blocked, decode
+      // error…) still drop the native splash so the app becomes visible.
+      void hideNativeSplash();
       setExiting(true);
       window.setTimeout(onDone, 260);
     };
+
 
     const forceSilentInlineAutoplay = () => {
       v.muted = true;
@@ -69,7 +75,11 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     const onPlaying = () => {
       videoVisibleRef.current = true;
       setVideoVisible(true);
+      // The first video frame is on screen — safe to hide the native
+      // Capacitor splash now (no white flash between the two).
+      void hideNativeSplash();
     };
+
 
     v.addEventListener("loadedmetadata", tryPlay);
     v.addEventListener("canplay", tryPlay);

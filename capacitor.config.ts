@@ -52,8 +52,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1200,
-      launchAutoHide: true, // safety net — bootstrapNative() also fades it
+      // Keep the native splash visible until the JS-side video actually
+      // starts playing — otherwise the WebView briefly shows its default
+      // white background before React mounts and the <video> reaches its
+      // first frame. We hide it explicitly from splash-screen.tsx.
+      launchShowDuration: 5000,
+      launchAutoHide: false,
       launchFadeOutDuration: 250,
       backgroundColor: "#10162B", // KiDi+ deep navy
       androidSplashResourceName: "splash",

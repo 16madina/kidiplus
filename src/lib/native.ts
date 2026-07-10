@@ -15,6 +15,20 @@ export function isNative(): boolean {
   }
 }
 
+/**
+ * Hide the Capacitor native splash. Called from the React <SplashScreen>
+ * as soon as the video's first frame is painted (event: `playing`) so the
+ * user never sees the WebView's default white background between the two.
+ */
+export async function hideNativeSplash(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await SplashScreen.hide({ fadeOutDuration: 200 });
+  } catch {}
+}
+
+
+
 let started = false;
 
 export async function bootstrapNative(): Promise<void> {
@@ -27,10 +41,11 @@ export async function bootstrapNative(): Promise<void> {
     await syncStatusBarWithTheme();
   } catch {}
 
-  // Hide splash with a short fade.
-  try {
-    await SplashScreen.hide({ fadeOutDuration: 250 });
-  } catch {}
+  // NOTE: We do NOT hide the native splash here anymore. The React
+  // <SplashScreen> component calls `hideNativeSplash()` only once the
+  // splash video is actually painting its first frame — this eliminates
+  // the white flash between the native splash and the video.
+
 
   // Observe theme changes and mirror to the native status bar.
   if (typeof MutationObserver !== "undefined") {
