@@ -27,6 +27,7 @@ import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/p
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -119,6 +120,12 @@ const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
   path: '/api/account/delete',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -159,6 +167,7 @@ export interface FileRoutesByTo {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -180,6 +189,7 @@ export interface FileRoutesById {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -242,6 +254,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -261,6 +274,7 @@ export interface RootRouteChildren {
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -391,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAccountDeleteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -435,6 +456,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
