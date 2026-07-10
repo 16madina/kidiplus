@@ -16,10 +16,10 @@ export function AuthScreenShell({
 }) {
   const { t } = useTranslation();
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
+  const handleEdgeDragEnd = (_: unknown, info: PanInfo) => {
     if (!onBack) return;
-    // iOS-style swipe-right anywhere on the screen to go back.
-    if (info.offset.x > 80 && info.velocity.x > -50) {
+    // iOS/Android edge-swipe: must move right enough or flick right.
+    if (info.offset.x > 60 || info.velocity.x > 250) {
       onBack();
     }
   };
@@ -30,12 +30,7 @@ export function AuthScreenShell({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -24 }}
       transition={{ duration: 0.28, ease: EASE_IOS }}
-      drag={onBack ? "x" : false}
-      dragDirectionLock
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0, right: 0.35 }}
-      onDragEnd={handleDragEnd}
-      className="flex h-full flex-col bg-background pt-safe"
+      className="relative flex h-full flex-col bg-background pt-safe"
     >
       <div className="flex items-center gap-2 px-3 py-2">
         {onBack ? (
@@ -58,9 +53,22 @@ export function AuthScreenShell({
       >
         {children}
       </div>
+      {onBack ? (
+        <motion.div
+          aria-hidden
+          drag="x"
+          dragDirectionLock
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={{ left: 0, right: 0.4 }}
+          onDragEnd={handleEdgeDragEnd}
+          className="absolute inset-y-0 left-0 z-50 w-5"
+          style={{ touchAction: "pan-y" }}
+        />
+      ) : null}
     </motion.div>
   );
 }
+
 
 export function AuthInput({
   label,
