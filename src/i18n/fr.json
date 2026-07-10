@@ -1168,6 +1168,8 @@
     "zoneMismatch": "Choisis une adresse dans une zone livrée par le vendeur.",
     "noCountryCoverage": "Ce vendeur ne livre pas encore dans ton pays.",
     "zoneCountry": "Pays",
+    "searchCountry": "Rechercher un pays",
+    "noCountryFound": "Aucun pays trouvé",
     "sellerZones": "Zones livrées"
   },
   "escrow": {
