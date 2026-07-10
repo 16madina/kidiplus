@@ -154,9 +154,13 @@ export const Route = createFileRoute("/api/livekit-token")({
         }
 
         // Authorize host (publish-capable) tokens against the room owner
-        // and its live moderators. Everyone else is downgraded to viewer.
+        // and its live moderators. Anonymous callers can NEVER host.
+        // Everyone else is downgraded to viewer.
         let role: "host" | "viewer" = "viewer";
         if (requestedRole === "host") {
+          if (!callerId) {
+            return json({ error: "Unauthorized" }, 401, origin);
+          }
           const { supabaseAdmin } = await import(
             "@/integrations/supabase/client.server"
           );
@@ -188,11 +192,19 @@ export const Route = createFileRoute("/api/livekit-token")({
           role = "host";
         }
 
+        // Anonymous guests get a stricter identity shape so a stolen
+        // guest token can never impersonate a real signed-in viewer's
+        // participant identity server-side.
+        const isGuest = callerId === null;
+        if (isGuest && !/^guest_[a-zA-Z0-9_-]{1,64}$/.test(identity)) {
+          return json({ error: "Invalid guest identity" }, 400, origin);
+        }
+
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
           identity,
           name,
-          // Shorter TTL for viewers; hosts may need longer sessions.
-          ttl: role === "host" ? "3h" : "1h",
+          // Shortest TTL for guests, then viewers, then hosts.
+          ttl: role === "host" ? "3h" : isGuest ? "30m" : "1h",
         });
 
         at.addGrant({
@@ -200,8 +212,11 @@ export const Route = createFileRoute("/api/livekit-token")({
           room,
           canPublish: role === "host",
           canSubscribe: true,
-          canPublishData: true,
+          // Guests are strictly read-only on the data channel too — no
+          // chat, no hearts, no interaction of any kind through LiveKit.
+          canPublishData: !isGuest,
         });
+
 
         const token = await at.toJwt();
         // Only the signed JWT + the public wss URL leave the server.
