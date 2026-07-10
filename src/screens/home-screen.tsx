@@ -341,7 +341,7 @@ export function HomeScreen() {
           <div ref={sentinelRef} className="h-4 w-full" />
         </div>
       </div>
-      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} />
+      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
     </div>
   );
 }
