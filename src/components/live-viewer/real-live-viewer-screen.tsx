@@ -9,6 +9,8 @@ import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
+
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
@@ -78,7 +80,9 @@ export function RealLiveViewerScreen() {
   const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
+  const { requireAuth, openAuth } = useAuthPrompt();
   const { requestWithPrePrompt } = usePush();
+
   const { currency: walletCurrency } = useWallet();
   const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
@@ -89,8 +93,14 @@ export function RealLiveViewerScreen() {
     return () => { restore?.(); };
   }, []);
 
-  const identity = user?.id ?? `anon-${useMemo(() => Math.random().toString(36).slice(2, 10), [])}`;
-  const displayName = profile?.display_name || profile?.handle || "invité";
+  // For guests, use a `guest_xxxxxxxx` identity that the LiveKit token
+  // endpoint's anonymous branch accepts as-is (view-only token). Signed-in
+  // users keep their Supabase user id.
+  const anonSuffix = useMemo(() => Math.random().toString(36).slice(2, 10), []);
+  const identity = user?.id ?? `guest_${anonSuffix}`;
+  const isGuest = !user;
+  const displayName = profile?.display_name || profile?.handle || (isGuest ? "invité" : "invité");
+
 
   const room = useLiveRoom({
     liveId: active?.liveId ?? null,
@@ -223,7 +233,9 @@ export function RealLiveViewerScreen() {
   const showGiftError = useGiftError();
 
   const doSendGift = async (key: GiftKey) => {
-    if (!active?.liveId || !user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!user) { openAuth(); return; }
+    if (!active?.liveId) { toast.error(t("pay.errors.notSignedIn")); return; }
+
     if (liveEnded) return;
     setSendingGift(true);
     haptic.medium();
@@ -401,6 +413,9 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     const nowT = Date.now();
     if (nowT - lastTap.current < 300) {
+      // Guests can't send hearts (canPublishData=false server-side) — a
+      // double-tap prompts sign-up instead of dead-tapping.
+      if (isGuest) { openAuth(); lastTap.current = 0; return; }
       room.sendHeart();
       setTimeout(() => room.sendHeart(), 80);
       setTimeout(() => room.sendHeart(), 160);
@@ -411,10 +426,12 @@ export function RealLiveViewerScreen() {
   };
   const fireHeart = () => {
     if (liveEnded) return;
+    if (isGuest) { openAuth(); return; }
     haptic.medium();
     room.sendHeart();
     if (active) void logLiveInteraction(active, "like");
   };
+
 
   // Follow (local)
   const [following, setFollowing] = useState(false);
@@ -453,7 +470,7 @@ export function RealLiveViewerScreen() {
   const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
-    if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
+    if (!user) { openAuth(); return; }
     if (secondsLeft <= 0) return;
     if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     if (room.lastBid?.productId === currentProduct.id && room.lastBid.bidderId === user.id) {
@@ -525,7 +542,7 @@ export function RealLiveViewerScreen() {
   // returned. A future phase should refund stock on payment_intent.canceled.
   const startFixedPurchase = async (p: LiveProductRow) => {
     if (liveEnded) return;
-    if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!user) { openAuth(); return; }
     if (!active?.liveId || !active?.sellerId) return;
     if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     // Resolve delivery BEFORE reserving stock so we don't hold stock the
@@ -570,11 +587,13 @@ export function RealLiveViewerScreen() {
   const [draft, setDraft] = useState("");
   const send = () => {
     if (liveEnded) return;
+    if (isGuest) { openAuth(); return; }
     const txt = draft.trim();
     if (!txt) return;
     room.sendChat(txt);
     setDraft("");
   };
+
 
   const dragY = useMotionValue(0);
   const handleVideoStatus = useCallback((s: ViewerStatus) => setViewerVideoStatus(s), []);
@@ -610,7 +629,7 @@ export function RealLiveViewerScreen() {
       {active.roomName ? (
         <ViewerLiveVideo
           room={active.roomName}
-          identity={`viewer_${identity.slice(0, 8)}`}
+          identity={isGuest ? identity : `viewer_${identity.slice(0, 8)}`}
           name={displayName}
           posterImage={active.thumbnail.replace("w=600", "w=1200")}
             onStatus={handleVideoStatus}
@@ -728,7 +747,7 @@ export function RealLiveViewerScreen() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <WalletPill onTap={() => setTopupOpen(true)} />
+            <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
             <div className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Eye size={13} />{displayViewers}
@@ -822,33 +841,60 @@ export function RealLiveViewerScreen() {
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex items-center gap-2 px-3 pb-safe"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
-        <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={t("live.chatPlaceholder")}
-            disabled={liveEnded}
-            className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+        {isGuest ? (
+          // Guest composer: read-only chat + prompt-to-sign-in bar. Guests
+          // physically cannot send chat data (canPublishData=false on the
+          // LiveKit token, and RLS blocks all live-writes), so we replace
+          // the input with a tap-to-sign-in surface rather than a disabled
+          // control that would silently swallow taps.
+          <Press
+            onClick={() => openAuth()}
+            aria-label={t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+            className="!min-h-11 h-11 flex-1 rounded-full px-4 text-left text-[14px] font-semibold text-white"
             style={{
               backgroundColor: "rgba(0,0,0,0.5)",
               backdropFilter: "blur(14px)",
               WebkitBackdropFilter: "blur(14px)",
               border: "1px solid rgba(255,255,255,0.15)",
             }}
-          />
-        </form>
-        <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
-          className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Send size={17} />
-        </Press>
+          >
+            {t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+          </Press>
+        ) : (
+          <>
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={t("live.chatPlaceholder")}
+                disabled={liveEnded}
+                className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(14px)",
+                  WebkitBackdropFilter: "blur(14px)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
+              />
+            </form>
+            <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
+              className="h-11 w-11 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              <Send size={17} />
+            </Press>
+          </>
+        )}
         <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
           className="h-11 w-11 rounded-full text-white"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Heart size={17} fill="currentColor" />
         </Press>
         <Press
-          onClick={liveEnded ? undefined : () => { haptic.light(); setGiftTrayOpen(true); }}
+          onClick={liveEnded ? undefined : () => {
+            if (isGuest) { openAuth(); return; }
+            haptic.light();
+            setGiftTrayOpen(true);
+          }}
           disabled={liveEnded}
           aria-label={t("gifts.open", "Cadeaux")}
           className="h-11 w-11 rounded-full text-white"
@@ -861,6 +907,7 @@ export function RealLiveViewerScreen() {
           <Gift size={17} />
         </Press>
       </div>
+
 
       {isModerator && user && active?.liveId && !liveEnded && (
         <ModeratorDock
@@ -923,14 +970,15 @@ export function RealLiveViewerScreen() {
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
-            <Press onClick={() => { setMoreOpen(false); setReportOpen(true); }}
+            <Press onClick={() => { setMoreOpen(false); requireAuth(() => setReportOpen(true)); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
               <Flag size={18} /> {t("report.action")}
             </Press>
-            <Press onClick={() => { if (confirm(t("block.confirm"))) void doBlockSeller(); }}
+            <Press onClick={() => { requireAuth(() => { if (confirm(t("block.confirm"))) void doBlockSeller(); }); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive">
               <UserX size={18} /> {t("block.action")}
             </Press>
+
           </div>
         </div>
       )}

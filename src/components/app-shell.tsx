@@ -36,6 +36,9 @@ import { EASE_IOS } from "@/lib/motion";
 import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
 import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AuthPromptProvider } from "@/lib/auth-prompt-context";
+import { GuestShell } from "@/components/guest-shell";
+
 
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
@@ -97,36 +100,39 @@ function AuthGate() {
     );
   }
   return (
-    <AnimatePresence mode="wait">
-      {session ? (
-        <motion.div
-          key="app"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: EASE_IOS }}
-          className="h-full w-full"
-        >
-          <ImmersiveProvider>
-            <AppShellInner />
-            <ModerationBanGate>{null}</ModerationBanGate>
-          </ImmersiveProvider>
-        </motion.div>
-      ) : (
-        <motion.div
-          key="auth"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: EASE_IOS }}
-          className="h-full w-full"
-        >
-          <AuthFlow />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <ImmersiveProvider>
+      <AuthPromptProvider>
+        <AnimatePresence mode="wait">
+          {session ? (
+            <motion.div
+              key="app"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: EASE_IOS }}
+              className="h-full w-full"
+            >
+              <AppShellInner />
+              <ModerationBanGate>{null}</ModerationBanGate>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="guest"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: EASE_IOS }}
+              className="h-full w-full"
+            >
+              <GuestShell />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </AuthPromptProvider>
+    </ImmersiveProvider>
   );
 }
+
 
 
 

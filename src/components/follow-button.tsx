@@ -5,6 +5,7 @@ import { Press } from "@/components/press";
 import { useFollow } from "@/lib/follows-db";
 import { haptic } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
 
 export function FollowButton({
   sellerId,
@@ -17,18 +18,20 @@ export function FollowButton({
 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { openAuth } = useAuthPrompt();
   const { following, toggle, isSelf, ready } = useFollow(sellerId);
 
   if (isSelf || !sellerId) return null;
 
   const onClick = async () => {
     if (!user) {
-      toast.error(t("auth.mustSignIn", { defaultValue: "Connecte-toi pour continuer" }));
+      openAuth();
       return;
     }
     haptic.medium();
     try { await toggle(); } catch { toast.error(t("common.error", { defaultValue: "Erreur" })); }
   };
+
 
   const isSm = size === "sm";
   const h = isSm ? 32 : 40;
