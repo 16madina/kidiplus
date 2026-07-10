@@ -31,7 +31,7 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
-import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { giftByKey, giftPrice, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/wallet-context";
 import { normalizeCurrency } from "@/lib/money";
@@ -248,7 +248,7 @@ function MockLiveViewerScreen() {
   const [topupOpen, setTopupOpen] = useState(false);
   const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
   const { t, i18n } = useTranslation();
-  const { currency: walletCurrency } = useWallet();
+  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
 
 
   // Composer message send (local echo)
@@ -267,7 +267,16 @@ function MockLiveViewerScreen() {
   const sendDemoGift = (key: GiftKey) => {
     const g = giftByKey(key);
     if (!g) return;
+    const price = giftPrice(key, walletCurrency);
+    if (walletBalance < price) {
+      haptic.error();
+      toast.error(t("gifts.err.insufficient", "Solde insuffisant — recharge ton portefeuille"));
+      setGiftOpen(false);
+      setTopupOpen(true);
+      return;
+    }
     haptic.medium();
+    demoDebit(price);
     const evt: GiftEvt = {
       id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       giftKey: key,
