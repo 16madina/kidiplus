@@ -613,22 +613,25 @@ export function RealLiveViewerScreen() {
       )}
 
       {/* Video interaction layer: tap for hearts + vertical swipe to cycle
-          between currently-live streams (TikTok / Whatnot style). Chat,
-          composer, product sheets and moderation menus sit on higher z
-          layers and receive their own events before this one. */}
+          between currently-live streams (TikTok / Whatnot style). Sits
+          ABOVE chat (z-20) so touches on the chat area still trigger
+          swipes; interactive controls (top bar, auction card, composer)
+          are on z-30 and receive their own events first. */}
       <motion.div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-[25]"
         aria-hidden
+        style={{ touchAction: "pan-y" }}
         drag="y"
         dragElastic={{ top: hasNext ? 0.55 : 0.12, bottom: hasPrev ? 0.55 : 0.15 }}
         dragConstraints={{ top: 0, bottom: 0 }}
         onDrag={(_, info) => dragY.set(info.offset.y)}
         onTap={onVideoTap}
         onDragEnd={(_, info) => {
-          const strong = Math.abs(info.offset.y) > 80 || Math.abs(info.velocity.y) > 600;
+          const strong = Math.abs(info.offset.y) > 60 || Math.abs(info.velocity.y) > 400;
           const up = info.offset.y < 0;
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
           if (up && strong && hasNext) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
             void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               nextLive();
@@ -636,6 +639,7 @@ export function RealLiveViewerScreen() {
             return;
           }
           if (!up && strong && hasPrev) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
             void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               prevLive();
@@ -650,6 +654,32 @@ export function RealLiveViewerScreen() {
           animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
         }}
       />
+
+      {/* Desktop-only chevron fallback (mobile users get the swipe). */}
+      <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
+        {hasNext && (
+          <Press
+            aria-label="Next live"
+            onClick={() => nextLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↑
+          </Press>
+        )}
+        {hasPrev && (
+          <Press
+            aria-label="Previous live"
+            onClick={() => prevLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↓
+          </Press>
+        )}
+      </div>
+
+      <SwipeHint hasNext={hasNext} />
 
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
