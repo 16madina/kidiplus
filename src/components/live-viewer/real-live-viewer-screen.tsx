@@ -105,6 +105,7 @@ export function RealLiveViewerScreen() {
   // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
   const [sellerCountry, setSellerCountry] = useState<string | null>(null);
+  const [sellerVerified, setSellerVerified] = useState(false);
   const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
   useEffect(() => {
     if (!active?.sellerId) return;
@@ -112,11 +113,13 @@ export function RealLiveViewerScreen() {
     void (async () => {
       const [settings, sellerProfile] = await Promise.all([
         fetchDeliverySettings(active.sellerId!),
-        supabase.from("profiles").select("country").eq("id", active.sellerId!).maybeSingle(),
+        supabase.from("profiles").select("country, is_verified").eq("id", active.sellerId!).maybeSingle(),
       ]);
       if (cancelled) return;
       setSellerSettings(settings);
-      setSellerCountry(((sellerProfile.data as { country?: string | null } | null)?.country) ?? null);
+      const p = sellerProfile.data as { country?: string | null; is_verified?: boolean } | null;
+      setSellerCountry(p?.country ?? null);
+      setSellerVerified(!!p?.is_verified);
     })();
     return () => { cancelled = true; };
   }, [active?.sellerId]);
