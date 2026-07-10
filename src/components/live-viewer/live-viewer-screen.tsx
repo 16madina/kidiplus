@@ -340,6 +340,34 @@ function MockLiveViewerScreen() {
         />
       )}
 
+      {/* Peek layers: sit above/below current so a swipe reveals the neighbor
+          instead of the home page behind the viewer. */}
+      {peekNext && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-full h-full overflow-hidden bg-black"
+        >
+          <img
+            src={peekNext.thumbnail.replace("w=600", "w=1200")}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        </div>
+      )}
+      {peekPrev && (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-full h-full overflow-hidden bg-black"
+        >
+          <img
+            src={peekPrev.thumbnail.replace("w=600", "w=1200")}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        </div>
+      )}
 
       {/* Double-tap capture layer */}
       <div className="absolute inset-0 z-10" onClick={onVideoTap} aria-hidden />
