@@ -94,19 +94,12 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
       style={{ isolation: "isolate", backgroundColor: "#10162B", pointerEvents: exiting ? "none" : "auto" }}
     >
-      {/* Branded fallback — always painted behind the video. If the video
-          never becomes visible (autoplay denied, slow decode, Android
-          placeholder), this is all the user sees: navy + pulsing logo. */}
-      <motion.div
+      {/* Plain navy backdrop behind the video — no logo fallback, per design. */}
+      <div
         aria-hidden
-        className="absolute inset-0 flex items-center justify-center"
+        className="absolute inset-0"
         style={{ backgroundColor: "#10162B" }}
-        initial={{ opacity: 1 }}
-        animate={{ opacity: [0.85, 1, 0.85] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Logo size={160} />
-      </motion.div>
+      />
 
       <video
         ref={videoRef}
