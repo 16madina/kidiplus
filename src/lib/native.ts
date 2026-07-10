@@ -41,10 +41,23 @@ export async function bootstrapNative(): Promise<void> {
     await syncStatusBarWithTheme();
   } catch {}
 
-  // NOTE: We do NOT hide the native splash here anymore. The React
-  // <SplashScreen> component calls `hideNativeSplash()` only once the
-  // splash video is actually painting its first frame — this eliminates
-  // the white flash between the native splash and the video.
+  // If the React <SplashScreen> is going to mount (first time this session)
+  // it will call hideNativeSplash() itself when the intro video paints its
+  // first frame — that's the seamless path. Otherwise (splash already
+  // shown this session, or video failed), hide after a short delay so the
+  // app never gets stuck behind the native splash.
+  const splashAlreadyShown = (() => {
+    try { return window.sessionStorage.getItem("kp:splashShown") === "1"; }
+    catch { return false; }
+  })();
+  if (splashAlreadyShown) {
+    void hideNativeSplash();
+  } else {
+    // Watchdog: hide after 2.5s even if the video never fires 'playing'.
+    window.setTimeout(() => { void hideNativeSplash(); }, 2500);
+  }
+
+
 
 
   // Observe theme changes and mirror to the native status bar.
