@@ -717,3 +717,71 @@ function MockLiveViewerScreen() {
     </motion.div>
   );
 }
+
+/**
+ * PeekSlide — the adjacent live's poster, glued to the current slide's drag.
+ * Positioned off-screen (top:100% for next, top:-100% for prev) and translated
+ * by the shared dragY so both slides move as one strip, TikTok-style.
+ */
+function PeekSlide({
+  stream,
+  position,
+  dragY,
+}: {
+  stream: LiveStream;
+  position: "next" | "prev";
+  dragY: MotionValue<number>;
+}) {
+  const baseTop = position === "next" ? "100%" : "-100%";
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 h-full overflow-hidden bg-black"
+      style={{ top: baseTop, y: dragY }}
+    >
+      <img
+        src={stream.thumbnail.replace("w=600", "w=1200")}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-90"
+        draggable={false}
+      />
+      {/* Dim overlay */}
+      <div className="absolute inset-0 bg-black/25" />
+      {/* Shimmer loading strip */}
+      <div
+        className="absolute inset-x-0 top-1/2 h-16 -translate-y-1/2 opacity-40"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)",
+          animation: "shimmer 1.6s linear infinite",
+        }}
+      />
+      {/* Seller identity chip */}
+      <div className="absolute inset-x-0 top-0 pt-safe">
+        <div className="flex items-center gap-2 px-3 pt-3">
+          <img
+            src={stream.avatar}
+            alt=""
+            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
+            draggable={false}
+          />
+          <div className="min-w-0">
+            <p
+              className="truncate text-[14px] font-bold text-white"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+            >
+              {stream.seller}
+            </p>
+            <p
+              className="truncate text-[11px] text-white/80"
+              style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+            >
+              {stream.title}
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
