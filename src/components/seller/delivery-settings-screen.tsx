@@ -293,7 +293,7 @@ export function SellerDeliverySettingsScreen({
                                             className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-[12px] hover:bg-muted"
                                           >
                                             <CountryFlag code={c.code} className="h-4 w-6 shrink-0 rounded-sm" />
-                                            <span className="truncate" title={i18n.language.startsWith("en") ? c.nameEn : c.name}>
+                                            <span className="min-w-0 truncate" title={i18n.language.startsWith("en") ? c.nameEn : c.name}>
                                               {i18n.language.startsWith("en") ? c.nameEn : c.name}
                                             </span>
                                           </button>
