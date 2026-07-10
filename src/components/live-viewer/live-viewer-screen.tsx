@@ -1,6 +1,7 @@
 import { motion, useMotionValue, animate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye } from "lucide-react";
+import { Send, Heart, Plus, Share2, X, Eye, Gift } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
@@ -27,6 +28,13 @@ import { BuySheet } from "./buy-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
 import { RealLiveViewerScreen } from "./real-live-viewer-screen";
+import { GiftTraySheet } from "./gift-tray-sheet";
+import { GiftAnimationsLayer } from "./gift-animations";
+import { TopUpSheet } from "@/components/wallet/topup-sheet";
+import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { useTranslation } from "react-i18next";
+import type { GiftEvt } from "@/lib/live-room";
+
 
 const AUCTION_SECONDS = 45;
 
