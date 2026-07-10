@@ -17,6 +17,7 @@ import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
+import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
@@ -65,6 +66,11 @@ const IndexRoute = IndexRouteImport.update({
 const LiveIdRoute = LiveIdRouteImport.update({
   id: '/live/$id',
   path: '/live/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
+  id: '/guide/what-is-live-shopping',
+  path: '/guide/what-is-live-shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWalletTopupRoute = ApiWalletTopupRouteImport.update({
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
+  '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
+    | '/guide/what-is-live-shopping'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -244,6 +256,7 @@ export interface RootRouteChildren {
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
+  GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
   LiveIdRoute: typeof LiveIdRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/live/$id'
       fullPath: '/live/$id'
       preLoaderRoute: typeof LiveIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide/what-is-live-shopping': {
+      id: '/guide/what-is-live-shopping'
+      path: '/guide/what-is-live-shopping'
+      fullPath: '/guide/what-is-live-shopping'
+      preLoaderRoute: typeof GuideWhatIsLiveShoppingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/wallet-topup': {
@@ -410,6 +430,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
+  GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
   LiveIdRoute: LiveIdRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
