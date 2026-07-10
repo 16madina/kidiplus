@@ -15,6 +15,7 @@ import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OpenRouteImport } from './routes/open'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
@@ -63,6 +64,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const OpenRoute = OpenRouteImport.update({
   id: '/open',
   path: '/open',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommunityRoute = CommunityRouteImport.update({
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
   '/community': typeof CommunityRoute
+  '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
   '/community': typeof CommunityRoute
+  '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
   '/community': typeof CommunityRoute
+  '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-deletion'
     | '/community'
+    | '/download'
     | '/open'
     | '/privacy'
     | '/reset-password'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-deletion'
     | '/community'
+    | '/download'
     | '/open'
     | '/privacy'
     | '/reset-password'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-deletion'
     | '/community'
+    | '/download'
     | '/open'
     | '/privacy'
     | '/reset-password'
@@ -335,6 +347,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountDeletionRoute: typeof AccountDeletionRoute
   CommunityRoute: typeof CommunityRoute
+  DownloadRoute: typeof DownloadRoute
   OpenRoute: typeof OpenRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/open'
       fullPath: '/open'
       preLoaderRoute: typeof OpenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/community': {
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountDeletionRoute: AccountDeletionRoute,
   CommunityRoute: CommunityRoute,
+  DownloadRoute: DownloadRoute,
   OpenRoute: OpenRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
