@@ -4,8 +4,6 @@
 // (Explorer), a wrapped gift box (Activité) and a portrait badge (Profil).
 // Each icon has an outline (inactive) and a filled (active) variant that swap
 // with a subtle spring.
-
-
 import { motion, AnimatePresence } from "framer-motion";
 
 type IconProps = {
@@ -42,8 +40,6 @@ function Svg({
     </svg>
   );
 }
-
-
 function IconWrap({
   active,
   outline,
