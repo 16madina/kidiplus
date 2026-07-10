@@ -48,7 +48,8 @@ export function CertificationSheet({ open, onClose }: { open: boolean; onClose: 
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={t("verify.title", "Certification")}>
+    <BottomSheet open={open} onClose={onClose}>
+      <div className="px-4 pt-2 pb-2 text-[16px] font-bold">{t("verify.title", "Certification")}</div>
       <div className="space-y-4 px-4 pb-6">
         {verified ? (
           <div className="rounded-2xl border border-white/10 bg-[color-mix(in_oklch,var(--card)_92%,transparent)] p-4">
