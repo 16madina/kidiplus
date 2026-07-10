@@ -39,11 +39,11 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-import waveLogo from "@/assets/wave-logo.webp";
-import djamoLogo from "@/assets/djamo-logo.png";
-import orangeMoneyLogo from "@/assets/orange-money-logo.png";
-
-
+// Brand logos live in `public/brands/` so the URL resolves in every
+// context (Vite dev, published site, Capacitor iOS/Android).
+const waveLogo = "/brands/wave.webp";
+const djamoLogo = "/brands/djamo.png";
+const orangeMoneyLogo = "/brands/orange-money.png";
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
