@@ -76,10 +76,10 @@ function Welcome({
   onSignUp: () => void;
   onGuest?: () => void;
 }) {
-  const { t } = useTranslation();
-  const GOLD = "#F5C34A";
+  const bg = useMemo(() => WELCOME_BGS[Math.floor(Math.random() * WELCOME_BGS.length)], []);
 
   return (
+
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
