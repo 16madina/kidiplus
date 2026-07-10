@@ -583,16 +583,20 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           </motion.div>
         </div>
 
-        {/* Launch */}
+        {/* Launch — button stays clickable so the validation toast can fire
+            when the user taps with an incomplete form. Visual state still
+            reflects readiness. */}
         <Press
           onClick={launch}
-          disabled={!canLaunch || launching}
+          disabled={launching}
           hapticOnTap={false}
-          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold disabled:opacity-40"
+          aria-disabled={!canLaunch || undefined}
+          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold"
           style={{
             background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
             boxShadow: `0 10px 30px ${GOLD_SOFT}`,
             color: "#0a0a12",
+            opacity: launching ? 0.6 : canLaunch ? 1 : 0.5,
           }}
         >
           {launching ? t("common.loading") : t("broadcast.setup.start", "Lancer le live")}
@@ -610,6 +614,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         onConfirm={(items) => {
           for (const it of items) b.addProduct(it);
         }}
+      />
+      <CoverCropperSheet
+        open={cropperOpen}
+        imageSrc={rawCoverSrc}
+        onClose={() => setCropperOpen(false)}
+        onConfirm={onCropConfirm}
       />
     </motion.div>
   );
