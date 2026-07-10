@@ -17,7 +17,7 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { LogIn, UserPlus, X } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
 import { AuthFlow } from "@/components/auth/auth-flow";
