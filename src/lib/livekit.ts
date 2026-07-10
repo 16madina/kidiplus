@@ -10,6 +10,7 @@ import {
   type RemoteTrackPublication,
   type RemoteParticipant,
 } from "livekit-client";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Role = "host" | "viewer";
 
@@ -21,9 +22,19 @@ export async function getToken(
   name: string | undefined,
   role: Role,
 ): Promise<TokenResponse> {
+  // Attach the Supabase bearer token so the server can identify the caller
+  // and authorize host (publish) grants against the live's owner/moderators.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error("You must be signed in to join a live");
+  }
   const res = await fetch("/api/livekit-token", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify({ room, identity, name, role }),
   });
   if (!res.ok) {
@@ -32,6 +43,7 @@ export async function getToken(
   }
   return (await res.json()) as TokenResponse;
 }
+
 
 export async function connectRoom(
   url: string,
