@@ -89,8 +89,14 @@ export function RealLiveViewerScreen() {
     return () => { restore?.(); };
   }, []);
 
-  const identity = user?.id ?? `anon-${useMemo(() => Math.random().toString(36).slice(2, 10), [])}`;
-  const displayName = profile?.display_name || profile?.handle || "invité";
+  // For guests, use a `guest_xxxxxxxx` identity that the LiveKit token
+  // endpoint's anonymous branch accepts as-is (view-only token). Signed-in
+  // users keep their Supabase user id.
+  const anonSuffix = useMemo(() => Math.random().toString(36).slice(2, 10), []);
+  const identity = user?.id ?? `guest_${anonSuffix}`;
+  const isGuest = !user;
+  const displayName = profile?.display_name || profile?.handle || (isGuest ? "invité" : "invité");
+
 
   const room = useLiveRoom({
     liveId: active?.liveId ?? null,
