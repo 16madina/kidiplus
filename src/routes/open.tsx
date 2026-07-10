@@ -23,7 +23,7 @@ export const Route = createFileRoute('/open')({
 function OpenBridge() {
   const { path } = Route.useSearch()
   const safePath = path.startsWith('/') ? path : `/${path}`
-  const webUrl = `https://kidiplus.com${safePath}`
+  const downloadUrl = `/download?path=${encodeURIComponent(safePath)}`
   const appUrl = `kidiplus://${safePath.replace(/^\//, '')}`
   const [fallback, setFallback] = useState(false)
 
@@ -33,27 +33,26 @@ function OpenBridge() {
     const ua = window.navigator.userAgent || ''
     const isMobile = /Android|iPhone|iPad|iPod/i.test(ua)
 
+    // Desktop → straight to the download page (nothing to deep-link into).
     if (!isMobile) {
-      window.location.replace(webUrl)
+      window.location.replace(downloadUrl)
       return
     }
 
-    // Try to launch the native app via custom scheme; fall back to web after ~1.5s.
+    // Mobile: try to launch the native app, then fall back to the download page.
     const start = Date.now()
     const timer = window.setTimeout(() => {
-      // If the page is still visible, the app isn't installed → go to web.
       if (Date.now() - start < 2500 && !document.hidden) {
-        window.location.replace(webUrl)
+        window.location.replace(downloadUrl)
       } else {
         setFallback(true)
       }
     }, 1500)
 
-    // Attempt the deep link.
     window.location.href = appUrl
 
     return () => window.clearTimeout(timer)
-  }, [appUrl, webUrl])
+  }, [appUrl, downloadUrl])
 
   return (
     <main
@@ -75,11 +74,11 @@ function OpenBridge() {
       <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Ouverture de KIDI+…</h1>
       <p style={{ opacity: 0.8, margin: 0, fontSize: 14 }}>
         {fallback
-          ? "L'application n'a pas répondu, ouverture du site."
+          ? "L'application n'est pas installée. Télécharge-la ci-dessous."
           : "Nous tentons d'ouvrir l'application. Patiente un instant…"}
       </p>
       <a
-        href={webUrl}
+        href={downloadUrl}
         style={{
           marginTop: 12,
           background: '#E11D48',
@@ -91,7 +90,7 @@ function OpenBridge() {
           fontSize: 14,
         }}
       >
-        Continuer sur le site
+        Télécharger l'application
       </a>
     </main>
   )
