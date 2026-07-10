@@ -354,51 +354,62 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         <div className="mx-auto mb-1 h-1 w-10 rounded-full" style={{ background: GOLD_SOFT }} />
 
         {/* Cover + title */}
-        <div className="flex items-start gap-3">
-          <Press
-            onClick={pickCover}
-            className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
-            style={{
-              backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
-              border: `1.5px solid ${GOLD}`,
-              boxShadow: `0 0 16px ${GOLD_SOFT}`,
-            }}
-            aria-label={t("broadcast.setup.addCover")}
-          >
-            {b.cover ? (
-              <motion.img
-                key={b.cover}
-                src={b.cover}
-                alt=""
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2, ease: EASE_IOS }}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
-                <ImageIcon size={24} strokeWidth={1.6} />
-              </div>
-            )}
-          </Press>
-          <input
-            value={b.title}
-            onChange={(e) => b.setTitle(e.target.value)}
-            placeholder={t("broadcast.setup.titlePlaceholder", "Titre du live...")}
-            maxLength={80}
-            className="h-16 flex-1 rounded-2xl px-4 text-[15px] font-medium text-white placeholder:text-white/50 outline-none"
-            style={{
-              backgroundColor: "oklch(0.16 0.04 260 / 0.7)",
-              border: `1px solid ${GOLD_SOFT}`,
-            }}
-          />
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onCoverFile}
-          />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-start gap-3">
+            <Press
+              onClick={pickCover}
+              className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
+              style={{
+                backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
+                border: `1.5px solid ${GOLD}`,
+                boxShadow: `0 0 16px ${GOLD_SOFT}`,
+              }}
+              aria-label={t("broadcast.setup.addCover")}
+            >
+              {b.cover ? (
+                <motion.img
+                  key={b.cover}
+                  src={b.cover}
+                  alt=""
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, ease: EASE_IOS }}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
+                  <ImageIcon size={24} strokeWidth={1.6} />
+                </div>
+              )}
+            </Press>
+            <input
+              value={b.title}
+              onChange={(e) => b.setTitle(e.target.value)}
+              placeholder={t("broadcast.setup.titlePlaceholder", "Titre du live...")}
+              maxLength={MAX_TITLE_LENGTH}
+              aria-invalid={titleTooShort || undefined}
+              className="h-16 flex-1 rounded-2xl px-4 text-[15px] font-medium text-white placeholder:text-white/50 outline-none"
+              style={{
+                backgroundColor: "oklch(0.16 0.04 260 / 0.7)",
+                border: `1px solid ${titleTooShort ? "oklch(0.68 0.19 25)" : GOLD_SOFT}`,
+              }}
+            />
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onCoverFile}
+            />
+          </div>
+          {titleTooShort && (
+            <span className="px-1 text-[11px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.titleTooShort",
+                `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+              )}
+            </span>
+          )}
         </div>
 
         {/* Category pills — horizontally slidable + "Voir plus" dropdown */}
