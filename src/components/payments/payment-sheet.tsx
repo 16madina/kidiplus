@@ -267,7 +267,18 @@ export function PaymentSheet({
                         if (r.ok) {
                           haptic.success();
                           setState({ kind: "done" });
-                          toast.success(t("wallet.paidWithWallet"));
+                          const debitLabel =
+                            r.debitAmount !== undefined && r.debitCurrency
+                              ? formatMoney(r.debitAmount, r.debitCurrency, i18n.language)
+                              : null;
+                          toast.success(
+                            debitLabel
+                              ? t("wallet.paidWithWalletAmt", {
+                                  defaultValue: "Payé : {{amount}}",
+                                  amount: debitLabel,
+                                })
+                              : t("wallet.paidWithWallet"),
+                          );
                           onPaid?.(order);
                           setTimeout(onClose, 1400);
                         } else {
