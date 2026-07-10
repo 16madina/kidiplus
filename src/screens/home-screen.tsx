@@ -19,7 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
-import { DemoCard, DemoPlayer, useDemoAvailable } from "@/components/home/demo-card";
+import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
