@@ -100,6 +100,43 @@ export function RealLiveViewerScreen() {
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
   const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+
+  // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
+  const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
+  const [sellerCountry, setSellerCountry] = useState<string | null>(null);
+  const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
+  useEffect(() => {
+    if (!active?.sellerId) return;
+    let cancelled = false;
+    void (async () => {
+      const [settings, sellerProfile] = await Promise.all([
+        fetchDeliverySettings(active.sellerId!),
+        supabase.from("profiles").select("country").eq("id", active.sellerId!).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setSellerSettings(settings);
+      setSellerCountry(((sellerProfile.data as { country?: string | null } | null)?.country) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [active?.sellerId]);
+  useEffect(() => {
+    if (!user?.id) { setBuyerCountry(null); return; }
+    let cancelled = false;
+    void (async () => {
+      const addr = await fetchDefaultAddress(user.id);
+      if (!cancelled) setBuyerCountry(addr?.country ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const eligibility = useMemo(
+    () => canDeliver({ settings: sellerSettings, sellerCountry, buyerCountry }),
+    [sellerSettings, sellerCountry, buyerCountry],
+  );
+  const deliveryBlockedLabel = eligibility.eligible
+    ? undefined
+    : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
+
+
   
 
   useEffect(() => {
