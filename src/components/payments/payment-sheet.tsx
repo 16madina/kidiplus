@@ -481,6 +481,7 @@ function MethodRow({
   brandColor,
   active,
   disabled,
+  logoUrl,
 }: {
   icon?: React.ReactNode;
   label: string;
@@ -490,6 +491,7 @@ function MethodRow({
   brandColor?: string;
   active?: boolean;
   disabled?: boolean;
+  logoUrl?: string;
 }) {
   return (
     <div
@@ -498,14 +500,21 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-9 w-9 place-items-center rounded-xl"
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl"
         style={{
           backgroundColor: brandColor ?? "transparent",
           color: brandColor ? "white" : "inherit",
         }}
       >
-        {brandColor ? <span className="text-[13px] font-bold">{label[0]}</span> : icon}
+        {logoUrl ? (
+          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        ) : brandColor ? (
+          <span className="text-[13px] font-bold">{label[0]}</span>
+        ) : (
+          icon
+        )}
       </div>
+
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
         {subtitle && (
