@@ -20,9 +20,7 @@ import { GuestEmptyState } from "@/components/guest-empty-state";
 
 export function LiveScreen() {
   const { t } = useTranslation();
-  const { profile, loading, becomeSeller, guestMode } = useAuth();
-  const [flipping, setFlipping] = useState(false);
-
+  const { guestMode } = useAuth();
   if (guestMode) {
     return (
       <GuestEmptyState
@@ -32,7 +30,13 @@ export function LiveScreen() {
       />
     );
   }
+  return <LiveScreenAuthed />;
+}
 
+function LiveScreenAuthed() {
+  const { t } = useTranslation();
+  const { profile, loading, becomeSeller } = useAuth();
+  const [flipping, setFlipping] = useState(false);
 
   if (loading || !profile) {
     return (
@@ -41,6 +45,7 @@ export function LiveScreen() {
       </div>
     );
   }
+
 
 
   if (!profile.is_seller) {
