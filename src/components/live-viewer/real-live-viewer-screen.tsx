@@ -970,14 +970,15 @@ export function RealLiveViewerScreen() {
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
-            <Press onClick={() => { setMoreOpen(false); setReportOpen(true); }}
+            <Press onClick={() => { setMoreOpen(false); requireAuth(() => setReportOpen(true)); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
               <Flag size={18} /> {t("report.action")}
             </Press>
-            <Press onClick={() => { if (confirm(t("block.confirm"))) void doBlockSeller(); }}
+            <Press onClick={() => { requireAuth(() => { if (confirm(t("block.confirm"))) void doBlockSeller(); }); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive">
               <UserX size={18} /> {t("block.action")}
             </Press>
+
           </div>
         </div>
       )}
