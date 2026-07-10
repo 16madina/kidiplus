@@ -253,10 +253,31 @@ export function SellerDeliverySettingsScreen({
                                 className="fixed inset-0 z-10"
                                 onClick={() => setCountryPickerIdx(null)}
                               />
-                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-72 w-64 overflow-auto rounded-lg border border-border bg-background shadow-lg">
-                                {countriesByContinent(sellerCountry).map(({ continent, countries }) => (
+                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-80 w-64 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                                <li className="sticky top-0 z-30 border-b border-border bg-background p-2">
+                                  <div className="relative">
+                                    <Search
+                                      size={14}
+                                      className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={countrySearch}
+                                      onChange={(e) => setCountrySearch(e.target.value)}
+                                      placeholder={t("delivery.searchCountry", "Rechercher un pays")}
+                                      autoFocus
+                                      className="w-full rounded-lg border border-border bg-background py-1.5 pl-7 pr-2 text-[13px] outline-none focus:border-foreground/40"
+                                    />
+                                  </div>
+                                </li>
+                                {searchCountries(countrySearch, sellerCountry).length === 0 && (
+                                  <li className="px-3 py-2 text-[13px] text-muted-foreground">
+                                    {t("delivery.noCountryFound", "Aucun pays trouvé")}
+                                  </li>
+                                )}
+                                {searchCountries(countrySearch, sellerCountry).map(({ continent, countries }) => (
                                   <li key={continent}>
-                                    <div className="sticky top-0 bg-muted/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                                    <div className="sticky top-10 z-20 bg-muted/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur">
                                       {i18n.language.startsWith("en") ? CONTINENT_LABEL[continent].en : CONTINENT_LABEL[continent].fr}
                                     </div>
                                     <ul>
@@ -267,6 +288,7 @@ export function SellerDeliverySettingsScreen({
                                             onClick={() => {
                                               setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)));
                                               setCountryPickerIdx(null);
+                                              setCountrySearch("");
                                             }}
                                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
                                           >
