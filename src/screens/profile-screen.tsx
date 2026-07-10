@@ -74,12 +74,10 @@ const GOLD = "#E8B93B";
 export function ProfileScreen() {
   const { guestMode } = useAuth();
   if (guestMode) {
-    // Lazy import to avoid a hook-order change in this large module.
-    const GuestEmptyState = require("@/components/guest-empty-state").GuestEmptyState as typeof import("@/components/guest-empty-state").GuestEmptyState;
     return (
       <GuestEmptyState
-        title={"Crée un compte pour débloquer ton profil"}
-        subtitle={"Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap."}
+        title="Crée un compte pour débloquer ton profil"
+        subtitle="Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap."
       />
     );
   }
@@ -89,6 +87,7 @@ export function ProfileScreen() {
 function ProfileScreenAuthed() {
   const { t } = useTranslation();
   const { profile, signOut, becomeSeller } = useAuth();
+
 
   const { balance, currency } = useWallet();
   const { lang } = useLanguage();
