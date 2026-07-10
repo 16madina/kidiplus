@@ -4,7 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import type { GiftKey } from "@/lib/gifts";
 
 export type SendGiftResult =
-  | { ok: true; giftId: string; amount: number; currency: string; balance: number; senderName: string }
+  | {
+      ok: true;
+      giftId: string;
+      amount: number;
+      currency: string;
+      debitAmount: number;
+      debitCurrency: string;
+      rate: number;
+      balance: number;
+      senderName: string;
+    }
   | {
       ok: false;
       error:
@@ -14,7 +24,7 @@ export type SendGiftResult =
         | "cannot_gift_self"
         | "unknown_gift"
         | "insufficient_funds"
-        | "currency_mismatch"
+        | "conversion_unavailable"
         | "sanctioned"
         | "unknown";
       balance?: number;
@@ -45,6 +55,9 @@ export async function sendGiftRpc(liveId: string, giftKey: GiftKey): Promise<Sen
     gift_id?: string;
     amount?: number;
     currency?: string;
+    debit_amount?: number;
+    debit_currency?: string;
+    rate?: number;
     sender_name?: string;
   };
   if (!d?.ok) {
@@ -62,6 +75,9 @@ export async function sendGiftRpc(liveId: string, giftKey: GiftKey): Promise<Sen
     giftId: d.gift_id!,
     amount: Number(d.amount),
     currency: d.currency!,
+    debitAmount: Number(d.debit_amount ?? d.amount ?? 0),
+    debitCurrency: d.debit_currency ?? d.currency ?? "EUR",
+    rate: Number(d.rate ?? 1),
     balance: Number(d.balance ?? 0),
     senderName: d.sender_name ?? "invité",
   };

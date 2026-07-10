@@ -196,25 +196,54 @@ export function topUpLimits(currency: Currency): { min: number; max: number } {
 }
 
 // ---------------------------------------------------------------------------
-// Indicative conversion (display only — never for settlement)
+// Conversion (settlement-grade — mirrored server-side in public.fx_rate /
+// public.convert_money — keep these two in sync)
 // ---------------------------------------------------------------------------
 
-// 1 EUR references (fixed for display; XOF/EUR is an official CFA franc peg).
+/** Safety margin applied to non-peg pairs (buyer pays a bit more). */
+export const FX_MARGIN = 0.015;
+
+// 1 EUR references (XOF is an official BCEAO peg — no margin).
 const EUR_TO: Record<Currency, number> = {
   EUR: 1,
-  XOF: 655.957, // official peg (fixed by BCEAO)
+  XOF: 655.957,
   CAD: 1.47,
 };
 
-/** Approximate conversion between supported currencies. Display only. */
-export function approxConvert(amount: number, from: Currency, to: Currency): number {
-  if (from === to) return amount;
-  const inEur = amount / EUR_TO[from];
-  const out = inEur * EUR_TO[to];
-  return roundForCurrency(out, to);
+function isPegPair(from: Currency, to: Currency): boolean {
+  return (from === "EUR" && to === "XOF") || (from === "XOF" && to === "EUR");
 }
 
-/** "≈ 7,60 €" — small muted hint below a primary price. */
+/** Exchange rate `from → to` (1 unit of `from` = rate units of `to`). */
+export function fxRate(from: Currency, to: Currency): number {
+  if (from === to) return 1;
+  const raw = EUR_TO[to] / EUR_TO[from];
+  return isPegPair(from, to) ? raw : raw * (1 - FX_MARGIN);
+}
+
+/**
+ * Settlement-grade converter. Rounds correctly for the target currency and
+ * rounds UP on non-XOF to avoid off-by-cent underpays against the seller.
+ */
+export function convertMoney(
+  amount: number,
+  from: string | null | undefined,
+  to: string | null | undefined,
+): number {
+  const f = normalizeCurrency(from);
+  const t = normalizeCurrency(to);
+  if (f === t) return roundForCurrency(amount, t);
+  const raw = amount * fxRate(f, t);
+  if (t === "XOF") return Math.round(raw);
+  return Math.ceil(raw * 100) / 100;
+}
+
+/** Kept for legacy call sites — now equivalent to convertMoney. */
+export function approxConvert(amount: number, from: Currency, to: Currency): number {
+  return convertMoney(amount, from, to);
+}
+
+/** "≈ 7,62 €" — small muted hint below a primary price. */
 export function approxLabel(
   amount: number,
   from: string | null | undefined,
@@ -224,8 +253,11 @@ export function approxLabel(
   const f = normalizeCurrency(from);
   const t = normalizeCurrency(to);
   if (f === t) return "";
-  return `≈ ${formatMoney(approxConvert(amount, f, t), t, locale)}`;
+  return `≈ ${formatMoney(convertMoney(amount, f, t), t, locale)}`;
 }
+
+/** Alias with clearer name for new call sites. */
+export const formatConvertedHint = approxLabel;
 
 // ---------------------------------------------------------------------------
 // Currency symbol used for compact input labels ("€", "$ CA", "FCFA")

@@ -84,12 +84,59 @@ export function subscribeMyWallet(userId: string, onChange: () => void): () => v
 }
 
 export type PayWithWalletResult =
-  | { ok: true; balance: number }
-  | { ok: false; error: string; balance?: number; total?: number };
+  | {
+      ok: true;
+      balance: number;
+      /** Amount actually debited from the wallet (in wallet currency). */
+      debitAmount?: number;
+      debitCurrency?: string;
+      /** Original order amount + currency, echoed for UI display. */
+      orderAmount?: number;
+      orderCurrency?: string;
+      rate?: number;
+    }
+  | {
+      ok: false;
+      error: string;
+      balance?: number;
+      total?: number;
+      orderAmount?: number;
+      orderCurrency?: string;
+      rate?: number;
+    };
 
 export async function payOrderWithWallet(orderId: string): Promise<PayWithWalletResult> {
   const { data, error } = await sb.rpc("pay_order_with_wallet", { _order_id: orderId });
   if (error) return { ok: false, error: error.message };
-  const r = (data ?? {}) as PayWithWalletResult;
-  return r;
+  const raw = (data ?? {}) as {
+    ok: boolean;
+    error?: string;
+    balance?: number;
+    total?: number;
+    debit_amount?: number;
+    debit_currency?: string;
+    order_amount?: number;
+    order_currency?: string;
+    rate?: number;
+  };
+  if (!raw?.ok) {
+    return {
+      ok: false,
+      error: raw?.error ?? "unknown",
+      balance: raw?.balance,
+      total: raw?.total,
+      orderAmount: raw?.order_amount,
+      orderCurrency: raw?.order_currency,
+      rate: raw?.rate,
+    };
+  }
+  return {
+    ok: true,
+    balance: Number(raw.balance ?? 0),
+    debitAmount: raw.debit_amount !== undefined ? Number(raw.debit_amount) : undefined,
+    debitCurrency: raw.debit_currency,
+    orderAmount: raw.order_amount !== undefined ? Number(raw.order_amount) : undefined,
+    orderCurrency: raw.order_currency,
+    rate: raw.rate !== undefined ? Number(raw.rate) : undefined,
+  };
 }

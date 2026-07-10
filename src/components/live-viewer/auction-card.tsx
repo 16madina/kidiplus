@@ -22,6 +22,7 @@ export function AuctionCard({
   auctionActive = false,
   isHighestBidder = false,
   disabled = false,
+  deliveryBlockedLabel,
   onBid,
   onOpenProducts,
   onBuy,
@@ -37,6 +38,9 @@ export function AuctionCard({
   auctionActive?: boolean;
   isHighestBidder?: boolean;
   disabled?: boolean;
+  /** When present, bid/buy is blocked because the seller doesn't deliver to
+   *  the viewer's country. The label is shown on the CTA. */
+  deliveryBlockedLabel?: string;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
@@ -58,7 +62,9 @@ export function AuctionCard({
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const nextBid = nextBidAmount(product.price, cur);
   const convHint = viewerCurrency ? approxLabel(product.price, cur, viewerCurrency, locale) : "";
-  const canBid = auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled;
+  const deliveryBlocked = Boolean(deliveryBlockedLabel);
+  const canBid =
+    auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled && !deliveryBlocked;
 
   return (
     <motion.div
@@ -180,6 +186,8 @@ export function AuctionCard({
                     <Gavel size={14} className="mr-1.5" />
                     {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
                   </>
+                ) : deliveryBlocked ? (
+                  deliveryBlockedLabel
                 ) : (
                   disabled ? t("live.ended") : t("live.waitingForSeller")
                 )}
@@ -218,15 +226,18 @@ export function AuctionCard({
           </>
         ) : (
           <Press
-            onClick={disabled ? undefined : onBuy}
-            disabled={disabled}
-            className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
+            onClick={disabled || deliveryBlocked ? undefined : onBuy}
+            disabled={disabled || deliveryBlocked}
+            className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-60"
             style={{
-              background:
-                "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
+              background: deliveryBlocked
+                ? "rgba(255,255,255,0.14)"
+                : "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
             }}
           >
-            Acheter {formatMoney(product.price, cur, locale)}
+            {deliveryBlocked
+              ? deliveryBlockedLabel
+              : `Acheter ${formatMoney(product.price, cur, locale)}`}
           </Press>
         )}
       </div>

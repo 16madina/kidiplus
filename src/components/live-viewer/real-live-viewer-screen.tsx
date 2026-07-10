@@ -17,6 +17,10 @@ import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
 import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
 import { resolveDeliveryForCheckout } from "@/lib/delivery-checkout";
+import { fetchDeliverySettings } from "@/lib/delivery-db";
+import { fetchDefaultAddress } from "@/lib/addresses-db";
+import { canDeliver } from "@/lib/delivery-eligibility";
+import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
@@ -96,6 +100,43 @@ export function RealLiveViewerScreen() {
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
   const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+
+  // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
+  const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
+  const [sellerCountry, setSellerCountry] = useState<string | null>(null);
+  const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
+  useEffect(() => {
+    if (!active?.sellerId) return;
+    let cancelled = false;
+    void (async () => {
+      const [settings, sellerProfile] = await Promise.all([
+        fetchDeliverySettings(active.sellerId!),
+        supabase.from("profiles").select("country").eq("id", active.sellerId!).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setSellerSettings(settings);
+      setSellerCountry(((sellerProfile.data as { country?: string | null } | null)?.country) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [active?.sellerId]);
+  useEffect(() => {
+    if (!user?.id) { setBuyerCountry(null); return; }
+    let cancelled = false;
+    void (async () => {
+      const addr = await fetchDefaultAddress(user.id);
+      if (!cancelled) setBuyerCountry(addr?.country ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const eligibility = useMemo(
+    () => canDeliver({ settings: sellerSettings, sellerCountry, buyerCountry }),
+    [sellerSettings, sellerCountry, buyerCountry],
+  );
+  const deliveryBlockedLabel = eligibility.eligible
+    ? undefined
+    : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
+
+
   
 
   useEffect(() => {
@@ -407,6 +448,7 @@ export function RealLiveViewerScreen() {
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { toast.error("Connecte-toi pour enchérir"); return; }
     if (secondsLeft <= 0) return;
+    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     if (room.lastBid?.productId === currentProduct.id && room.lastBid.bidderId === user.id) {
       toast(t("live.highestBidder"));
       return;
@@ -478,6 +520,7 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
     if (!active?.liveId || !active?.sellerId) return;
+    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     // Resolve delivery BEFORE reserving stock so we don't hold stock the
     // buyer can't actually pay for.
     const dr = await resolveDeliveryForCheckout({
@@ -690,6 +733,7 @@ export function RealLiveViewerScreen() {
               !!user && room.lastBid?.productId === currentAsProduct.id && room.lastBid.bidderId === user.id
             }
             disabled={liveEnded}
+            deliveryBlockedLabel={deliveryBlockedLabel}
             lastBidder={
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
@@ -800,6 +844,7 @@ export function RealLiveViewerScreen() {
           if (row) void startFixedPurchase(row);
         }}
         disabled={liveEnded}
+        deliveryBlockedLabel={deliveryBlockedLabel}
       />
       <PaymentSheet
         order={pendingOrder}
