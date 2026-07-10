@@ -1,4 +1,4 @@
-import { motion, useMotionValue, useTransform, animate, type MotionValue } from "framer-motion";
+import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
 import { toast } from "sonner";
