@@ -13,6 +13,7 @@ export function ProductsSheet({
   currency = "EUR",
   onBuyFixed,
   disabled = false,
+  deliveryBlockedLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -20,6 +21,7 @@ export function ProductsSheet({
   currency?: string;
   onBuyFixed: (p: Product) => void;
   disabled?: boolean;
+  deliveryBlockedLabel?: string;
 }) {
   const { i18n } = useTranslation();
   const cur = normalizeCurrency(currency);
@@ -30,6 +32,11 @@ export function ProductsSheet({
         <p className="text-xs text-muted-foreground">
           {products.length} articles
         </p>
+        {deliveryBlockedLabel && (
+          <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-[12px] text-muted-foreground">
+            {deliveryBlockedLabel}
+          </p>
+        )}
         <ul className="mt-4 flex flex-col gap-2">
           {products.map((p) => (
             <li key={p.id}>
@@ -39,6 +46,7 @@ export function ProductsSheet({
                 locale={i18n.language}
                 onBuyFixed={onBuyFixed}
                 disabled={disabled}
+                deliveryBlockedLabel={deliveryBlockedLabel}
               />
             </li>
           ))}
@@ -54,15 +62,18 @@ function ProductRow({
   locale,
   onBuyFixed,
   disabled,
+  deliveryBlockedLabel,
 }: {
   product: Product;
   currency: string;
   locale: string;
   onBuyFixed: (p: Product) => void;
   disabled: boolean;
+  deliveryBlockedLabel?: string;
 }) {
   const sold = product.status === "sold";
   const current = product.status === "current";
+  const blocked = Boolean(deliveryBlockedLabel);
 
   return (
     <motion.div
@@ -106,11 +117,11 @@ function ProductRow({
         <span className="text-sm font-bold">{formatMoney(product.price, currency, locale)}</span>
         {product.mode === "fixed" && !sold && (
           <Press
-            onClick={disabled ? undefined : () => onBuyFixed(product)}
-            disabled={disabled}
-            className="!min-h-8 rounded-full bg-primary px-3 text-[12px] font-semibold text-primary-foreground"
+            onClick={disabled || blocked ? undefined : () => onBuyFixed(product)}
+            disabled={disabled || blocked}
+            className="!min-h-8 rounded-full bg-primary px-3 text-[12px] font-semibold text-primary-foreground disabled:opacity-60"
           >
-            Acheter
+            {blocked ? "🌍" : "Acheter"}
           </Press>
         )}
         {current && (
