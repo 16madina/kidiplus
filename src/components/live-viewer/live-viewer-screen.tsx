@@ -4,6 +4,7 @@ import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import type { LiveStream } from "@/lib/live-mock";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
@@ -298,6 +299,38 @@ function MockLiveViewerScreen() {
   // playlist of fictitious streams, so this is what makes iPhone swipe tests
   // work when there are no real lives running.
   const dragY = useMotionValue(0);
+
+  // Prefetch the neighbour lives so a swipe swap is instantaneous: decode the
+  // hi-res cover image and warm the avatar. For real lives, prime the LiveKit
+  // token endpoint so the WS handshake starts before the user commits the swipe.
+  useEffect(() => {
+    const targets = [peekNext, peekPrev].filter(Boolean) as LiveStream[];
+    if (!targets.length) return;
+    const imgs: HTMLImageElement[] = [];
+    for (const s of targets) {
+      const cover = new Image();
+      cover.decoding = "async";
+      cover.src = s.thumbnail.replace("w=600", "w=1200");
+      void cover.decode?.().catch(() => {});
+      imgs.push(cover);
+      if (s.avatar) {
+        const av = new Image();
+        av.decoding = "async";
+        av.src = s.avatar;
+        imgs.push(av);
+      }
+      if (s.roomName) {
+        void fetch(`/api/livekit-token?room=${encodeURIComponent(s.roomName)}&prewarm=1`, {
+          method: "HEAD",
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
+    return () => {
+      // Let GC reclaim; nothing else to tear down.
+      imgs.length = 0;
+    };
+  }, [peekNext, peekPrev]);
 
   if (!active) return null;
 
