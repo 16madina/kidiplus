@@ -100,24 +100,25 @@ function Welcome({
           draggable={false}
           onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
           data-loaded="true"
-          className="absolute inset-0 h-full w-full select-none object-contain"
-          style={{ objectPosition: "center center", transform: "scale(0.9)" }}
+          className="absolute inset-0 h-full w-full select-none object-cover"
+          style={{ objectPosition: "center center" }}
         />
         {/* Top fade to hide LIVE badge behind the wordmark */}
         <div
-          className="absolute inset-x-0 top-0 h-[48%]"
+          className="absolute inset-x-0 top-0 h-[32%]"
           style={{
             background:
-              "linear-gradient(180deg, #0B1436 0%, rgba(11,20,54,0.98) 40%, rgba(11,20,54,0.66) 72%, rgba(11,20,54,0) 100%)",
+              "linear-gradient(180deg, rgba(11,20,54,0.92) 0%, rgba(11,20,54,0.75) 45%, rgba(11,20,54,0.35) 78%, rgba(11,20,54,0) 100%)",
           }}
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-[26%]"
+          className="absolute inset-x-0 bottom-0 h-[22%]"
           style={{
             background:
-              "linear-gradient(180deg, rgba(11,20,54,0) 0%, rgba(11,20,54,0.7) 55%, #0B1436 100%)",
+              "linear-gradient(180deg, rgba(11,20,54,0) 0%, rgba(11,20,54,0.6) 55%, #0B1436 100%)",
           }}
         />
+
       </div>
 
 
