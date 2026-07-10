@@ -513,8 +513,8 @@
   },
   "auth": {
     "welcome": {
-      "tagline": "L'application où tu achètes, tu vends mais",
-      "taglineAccent": "celui qui dit plus gagne.",
+      "tagline": "Qui dit",
+      "taglineAccent": "plus ?",
       "or": "OU",
       "signIn": "Se connecter",
       "signUp": "Créer un compte",
