@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestFlagsRouteImport } from './routes/test-flags'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -28,11 +27,6 @@ import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.co
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 
-const TestFlagsRoute = TestFlagsRouteImport.update({
-  id: '/test-flags',
-  path: '/test-flags',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -128,7 +122,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
-  '/test-flags': typeof TestFlagsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -148,7 +141,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
-  '/test-flags': typeof TestFlagsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -169,7 +161,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
-  '/test-flags': typeof TestFlagsRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -191,7 +182,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
-    | '/test-flags'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -211,7 +201,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
-    | '/test-flags'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -231,7 +220,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
-    | '/test-flags'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -252,7 +240,6 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SafetyRoute: typeof SafetyRoute
   TermsRoute: typeof TermsRoute
-  TestFlagsRoute: typeof TestFlagsRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -265,13 +252,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test-flags': {
-      id: '/test-flags'
-      path: '/test-flags'
-      fullPath: '/test-flags'
-      preLoaderRoute: typeof TestFlagsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -426,7 +406,6 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SafetyRoute: SafetyRoute,
   TermsRoute: TermsRoute,
-  TestFlagsRoute: TestFlagsRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
