@@ -36,8 +36,8 @@ const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomePro
         <Container style={container}>
           <Section style={header}>
             <Img
-              src={LOGO_URL}
-              alt="KIDI+"
+              src={EMAIL_CONFIG.LOGO_URL}
+              alt={EMAIL_CONFIG.APP_NAME}
               width="140"
               height="140"
               style={logo}
