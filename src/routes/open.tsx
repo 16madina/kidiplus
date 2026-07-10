@@ -24,8 +24,10 @@ export const Route = createFileRoute('/open')({
 function OpenBridge() {
   const { path } = Route.useSearch()
   const safePath = path.startsWith('/') ? path : `/${path}`
-  // Fallback URL is centralized in EMAIL_CONFIG (defaults to /download page).
-  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL}?path=${encodeURIComponent(safePath)}`
+  // Fallback: land on the web app itself at the requested path (KIDI+ works
+  // as a PWA). Centralized in EMAIL_CONFIG.FALLBACK_URL.
+  const fallbackBase = EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, '')
+  const downloadUrl = `${fallbackBase}${safePath}`
   const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://${safePath.replace(/^\//, '')}`
   const [fallback, setFallback] = useState(false)
 
@@ -76,7 +78,7 @@ function OpenBridge() {
       <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Ouverture de KIDI+…</h1>
       <p style={{ opacity: 0.8, margin: 0, fontSize: 14 }}>
         {fallback
-          ? "L'application n'est pas installée. Télécharge-la ci-dessous."
+          ? "L'application n'est pas installée. On t'ouvre KIDI+ sur le web."
           : "Nous tentons d'ouvrir l'application. Patiente un instant…"}
       </p>
       <a
@@ -92,7 +94,7 @@ function OpenBridge() {
           fontSize: 14,
         }}
       >
-        Télécharger l'application
+        Continuer sur le web
       </a>
     </main>
   )
