@@ -701,17 +701,7 @@ export function RealLiveViewerScreen() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.5 }}
-        onDrag={(_, info) => dragY.set(Math.max(0, info.offset.y))}
-        onDragEnd={(_, info) => {
-          if (info.offset.y > 120 || info.velocity.y > 600) close();
-          else animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
-        }}
-        className="absolute inset-x-0 top-0 z-30 pt-safe"
-      >
+      <div className="absolute inset-x-0 top-0 z-30 pt-safe">
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <Press
@@ -741,7 +731,24 @@ export function RealLiveViewerScreen() {
               <Eye size={13} />{displayViewers}
             </div>
 
-            <Press aria-label={t("live.share")}
+            <Press
+              aria-label={t("live.share")}
+              onClick={async () => {
+                haptic.light();
+                const shareUrl = active?.liveId
+                  ? `https://kidiplus.com/live/${active.liveId}`
+                  : "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
+                try {
+                  if (typeof navigator !== "undefined" && "share" in navigator) {
+                    await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share({ title, text, url: shareUrl });
+                  } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch { /* user cancelled */ }
+              }}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Share2 size={16} />
@@ -758,7 +765,8 @@ export function RealLiveViewerScreen() {
             </Press>
           </div>
         </div>
-      </motion.div>
+      </div>
+
 
       <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
         <LiveChat messages={messages} />
