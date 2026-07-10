@@ -74,6 +74,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
+    { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
   ];
