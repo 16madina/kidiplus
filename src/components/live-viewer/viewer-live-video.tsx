@@ -186,12 +186,17 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      {posterImage && showPoster && (
+      {posterImage && (
         <img
           src={posterImage}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ filter: "blur(2px) brightness(0.6)" }}
+          style={{
+            // Poster matches the PeekSlide look so the swap on swipe-commit
+            // is visually continuous — no blur/brightness jump.
+            opacity: showPoster ? 0.9 : 0,
+            transition: "none",
+          }}
           draggable={false}
         />
       )}
@@ -200,7 +205,14 @@ export function ViewerLiveVideo({
         playsInline
         autoPlay
         className="absolute inset-0 h-full w-full object-cover"
-        style={{ display: status === "live" ? "block" : "none" }}
+        // Keep the element mounted; flip visibility via opacity with NO
+        // transition so the first painted frame of the live replaces the
+        // poster in the same frame as the "live" status flip.
+        style={{
+          opacity: status === "live" ? 1 : 0,
+          transition: "none",
+          willChange: "opacity",
+        }}
       />
       <audio ref={audioRef} autoPlay />
       {showPoster && (
