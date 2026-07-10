@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
 import { useWallet } from "@/lib/wallet-context";
 import { payOrderWithWallet } from "@/lib/wallet-db";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { convertMoney, formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import {
   confirmOrderPayment,
