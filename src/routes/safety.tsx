@@ -21,6 +21,19 @@ export const Route = createFileRoute("/safety")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/safety" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "Sécurité et pertinence de l'âge — KiDi+",
+          inLanguage: "fr",
+          mainEntityOfPage: "https://kidiplus.com/safety",
+          publisher: { "@type": "Organization", name: "KiDi+" },
+        }),
+      },
+    ],
   }),
 });
 

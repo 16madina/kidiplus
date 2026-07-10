@@ -13,9 +13,23 @@ export const Route = createFileRoute("/terms")({
       { property: "og:title", content: "Conditions d'utilisation — KiDi+" },
       { property: "og:description", content: "Éligibilité, ventes, paiements, modération, contact." },
       { property: "og:type", content: "article" },
+      { property: "og:url", content: "https://kidiplus.com/terms" },
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/terms" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "Conditions d'utilisation — KiDi+",
+          inLanguage: "fr",
+          mainEntityOfPage: "https://kidiplus.com/terms",
+          publisher: { "@type": "Organization", name: "KiDi+" },
+        }),
+      },
+    ],
   }),
 });
 
