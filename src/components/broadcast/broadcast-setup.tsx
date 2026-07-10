@@ -396,15 +396,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   haptic.selection();
                   coverInputRef.current?.click();
                 }}
-                className="!min-h-6 h-6 gap-1 rounded-full px-2 text-[10px] font-semibold"
+                className="!min-h-7 h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
                 style={{
-                  color: GOLD,
-                  background: "oklch(0.16 0.04 260 / 0.7)",
-                  border: `1px solid ${GOLD_SOFT}`,
+                  color: "#0a0a12",
+                  background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
+                  boxShadow: `0 4px 12px ${GOLD_SOFT}`,
                 }}
                 aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
               >
-                <Camera size={10} strokeWidth={2.2} />
+                <Camera size={11} strokeWidth={2.4} />
                 <span>{t("common.edit", "Modifier")}</span>
               </Press>
             </div>
