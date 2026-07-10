@@ -118,12 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s?.user) {
+        // Real session appeared — leave guest mode.
+        try { window.sessionStorage.removeItem(GUEST_STORAGE_KEY); } catch { /* ignore */ }
+        setGuestMode(false);
         // Defer to avoid deadlocks per Supabase guidance.
         setTimeout(() => void fetchProfile(s.user.id), 0);
       } else {
         setProfile(null);
       }
     });
+
     // 2) Hydrate current session.
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
