@@ -89,15 +89,6 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
             transition={{ duration: 0.22, ease: EASE_IOS }}
             className="fixed inset-0 z-[95]"
           >
-            <button
-              type="button"
-              aria-label="Fermer"
-              onClick={() => setFlowOpen(false)}
-              className="absolute right-3 top-3 z-[96] flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md"
-              style={{ top: "calc(env(safe-area-inset-top) + 10px)" }}
-            >
-              <X size={18} />
-            </button>
             <AuthFlow allowGuest={false} />
           </motion.div>
         )}
