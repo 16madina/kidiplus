@@ -22,19 +22,23 @@ export async function getToken(
   name: string | undefined,
   role: Role,
 ): Promise<TokenResponse> {
-  // Attach the Supabase bearer token so the server can identify the caller
-  // and authorize host (publish) grants against the live's owner/moderators.
+  // Attach the Supabase bearer token when we have one so the server can
+  // identify the caller and authorize host (publish) grants. Viewer tokens
+  // are allowed anonymously — the server issues a strictly view-only guest
+  // token (canPublish=false, canPublishData=false). Hosting still requires
+  // a session and is rejected server-side without a Bearer.
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (!accessToken) {
-    throw new Error("You must be signed in to join a live");
+  if (!accessToken && role === "host") {
+    throw new Error("You must be signed in to host a live");
   }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch("/api/livekit-token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers,
     body: JSON.stringify({ room, identity, name, role }),
   });
   if (!res.ok) {
@@ -43,6 +47,7 @@ export async function getToken(
   }
   return (await res.json()) as TokenResponse;
 }
+
 
 
 export async function connectRoom(
