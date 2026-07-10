@@ -408,7 +408,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           }
           localVideoTrackRef.current = newTrack;
           lastAppliedFacingRef.current = target;
-          console.log("[flip] done", { facing: target });
+          console.log(`[flip] done facing=${target} total=${(performance.now() - flipStart).toFixed(0)}ms`);
         } catch (err) {
           console.warn("[flip] failed, reverting", err);
           // Unpublish + stop the new track, keep old one publishing.
