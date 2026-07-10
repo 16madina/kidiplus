@@ -80,7 +80,9 @@ export function RealLiveViewerScreen() {
   const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
+  const { requireAuth, openAuth } = useAuthPrompt();
   const { requestWithPrePrompt } = usePush();
+
   const { currency: walletCurrency } = useWallet();
   const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
