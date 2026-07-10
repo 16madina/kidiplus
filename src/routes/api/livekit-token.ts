@@ -68,6 +68,8 @@ export const Route = createFileRoute("/api/livekit-token")({
         const LIVEKIT_URL = process.env.LIVEKIT_URL;
         const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
         const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
+        const SUPABASE_URL = process.env.SUPABASE_URL;
+        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
         if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
           return json(
@@ -75,6 +77,40 @@ export const Route = createFileRoute("/api/livekit-token")({
             500,
             origin,
           );
+        }
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+          return json(
+            { error: "Auth backend not configured on server" },
+            500,
+            origin,
+          );
+        }
+
+        // Require a Supabase bearer token. Publish (host) tokens can grant
+        // control of another user's live broadcast, so no anonymous access.
+        const authHeader = request.headers.get("authorization") ?? "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return json({ error: "Unauthorized" }, 401, origin);
+        }
+        const bearer = authHeader.slice("Bearer ".length).trim();
+        if (!bearer || bearer.split(".").length !== 3) {
+          return json({ error: "Unauthorized" }, 401, origin);
+        }
+
+        // Resolve the caller from the token, using the publishable key.
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: {
+            storage: undefined,
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        });
+        const { data: claimsData, error: claimsError } =
+          await supabaseAuth.auth.getClaims(bearer);
+        const callerId = claimsData?.claims?.sub;
+        if (claimsError || !callerId) {
+          return json({ error: "Unauthorized" }, 401, origin);
         }
 
         let body: {
@@ -97,7 +133,7 @@ export const Route = createFileRoute("/api/livekit-token")({
             ? body.name.trim().slice(0, 64)
             : undefined;
         // Default to least-privileged viewer role for anything unexpected.
-        const role = body.role === "host" ? "host" : "viewer";
+        const requestedRole = body.role === "host" ? "host" : "viewer";
 
         if (!room || !identity) {
           return json({ error: "Missing room or identity" }, 400, origin);
@@ -110,6 +146,41 @@ export const Route = createFileRoute("/api/livekit-token")({
             400,
             origin,
           );
+        }
+
+        // Authorize host (publish-capable) tokens against the room owner
+        // and its live moderators. Everyone else is downgraded to viewer.
+        let role: "host" | "viewer" = "viewer";
+        if (requestedRole === "host") {
+          const { supabaseAdmin } = await import(
+            "@/integrations/supabase/client.server"
+          );
+          const { data: liveRow, error: liveError } = await supabaseAdmin
+            .from("lives")
+            .select("id, seller_id")
+            .eq("room_name", room)
+            .maybeSingle();
+          if (liveError || !liveRow) {
+            return json({ error: "Room not found" }, 404, origin);
+          }
+          let allowed = liveRow.seller_id === callerId;
+          if (!allowed) {
+            const { data: modRow } = await supabaseAdmin
+              .from("live_moderators")
+              .select("user_id")
+              .eq("live_id", liveRow.id)
+              .eq("user_id", callerId)
+              .maybeSingle();
+            allowed = !!modRow;
+          }
+          if (!allowed) {
+            return json(
+              { error: "Not authorized to publish to this room" },
+              403,
+              origin,
+            );
+          }
+          role = "host";
         }
 
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
@@ -131,6 +202,7 @@ export const Route = createFileRoute("/api/livekit-token")({
         // Only the signed JWT + the public wss URL leave the server.
         return json({ token, url: LIVEKIT_URL }, 200, origin);
       },
+
     },
   },
 });
