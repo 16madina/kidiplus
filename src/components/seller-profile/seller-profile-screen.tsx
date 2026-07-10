@@ -316,9 +316,7 @@ function SellerProfileInner({
 
               <div className="mt-2 flex items-center gap-1">
                 <h1 className="text-[20px] font-bold tracking-tight">{profile.display_name}</h1>
-                {profile.is_seller && (
-                  <BadgeCheck size={18} className="text-accent" fill="currentColor" strokeWidth={0} />
-                )}
+                <VerifiedBadge verified={profile.is_verified} size={17} />
               </div>
               <p className="text-[12px] text-muted-foreground">@{profile.handle}</p>
               {profile.bio && (
