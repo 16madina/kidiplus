@@ -1,7 +1,7 @@
 // Full-screen cropper for the live cover image. Uses react-easy-crop for
 // pan/zoom, then rasterizes the visible crop to a resized JPEG File so the
 // upload stays small.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ImgHTMLAttributes } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, RotateCcw } from "lucide-react";
