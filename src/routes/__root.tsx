@@ -90,6 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#10162B" },
       { name: "format-detection", content: "telephone=no" },
+      { name: "google-site-verification", content: "f--lksdZ27RJAf1xNhc0w7ZPdHwMsH1l_tg6uzOxtQc" },
       { title: "KiDi+ — Live Shopping & Enchères" },
       {
         name: "description",
