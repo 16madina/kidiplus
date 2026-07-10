@@ -45,6 +45,7 @@ import { mapPayErrorToI18n } from "@/lib/pay-errors";
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
+const DJAMO_INDIGO = "#3730A3";
 
 type CheckoutResp = {
   clientSecret?: string;
@@ -296,6 +297,7 @@ export function PaymentSheet({
                       active
                       icon={<CreditCard size={20} />}
                       label={t("pay.method.card")}
+                      subtitle={t("pay.method.cardSub")}
                       right={
                         <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
                           <span>VISA</span>
@@ -305,18 +307,28 @@ export function PaymentSheet({
                       }
                     />
 
-                    <MethodRow
-                      disabled
-                      brandColor={WAVE_BLUE}
-                      label="Wave"
-                      badge={t("pay.method.comingSoon")}
-                    />
-                    <MethodRow
-                      disabled
-                      brandColor={ORANGE}
-                      label="Orange Money"
-                      badge={t("pay.method.comingSoon")}
-                    />
+                    {orderCurrency === "XOF" && (
+                      <>
+                        <MethodRow
+                          active
+                          brandColor={WAVE_BLUE}
+                          label={t("pay.method.waveVisa")}
+                          subtitle={t("pay.method.waveVisaSub")}
+                        />
+                        <MethodRow
+                          active
+                          brandColor={ORANGE}
+                          label={t("pay.method.orangeVisa")}
+                          subtitle={t("pay.method.orangeVisaSub")}
+                        />
+                        <MethodRow
+                          active
+                          brandColor={DJAMO_INDIGO}
+                          label={t("pay.method.djamo")}
+                          subtitle={t("pay.method.djamoSub")}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -455,6 +467,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 function MethodRow({
   icon,
   label,
+  subtitle,
   right,
   badge,
   brandColor,
@@ -463,6 +476,7 @@ function MethodRow({
 }: {
   icon?: React.ReactNode;
   label: string;
+  subtitle?: string;
   right?: React.ReactNode;
   badge?: string;
   brandColor?: string;
@@ -484,7 +498,12 @@ function MethodRow({
       >
         {brandColor ? <span className="text-[13px] font-bold">{label[0]}</span> : icon}
       </div>
-      <div className="flex-1 text-[14px] font-semibold">{label}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] font-semibold">{label}</div>
+        {subtitle && (
+          <div className="truncate text-[11px] text-muted-foreground">{subtitle}</div>
+        )}
+      </div>
       {badge ? (
         <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           {badge}
