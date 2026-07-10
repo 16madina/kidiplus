@@ -1,42 +1,49 @@
-## Problème
+## Objectif
 
-Les logos Wave / Orange Money / Djamo s'affichent en cercles blancs vides dans la sheet "Recharger" (et probablement aussi dans "Payer"). Les fichiers existent sur le CDN et retournent bien 200, mais les balises `<img>` restent visuellement vides dans l'iframe de preview.
+Ajouter dans l'Admin Panel un bouton "Vidéo démo" qui te laisse **uploader un nouveau .mp4** ; la carte Démo de la home utilisera automatiquement la nouvelle vidéo — sans redéploiement, sans passer par le code.
 
-La cause probable : on utilise des pointeurs `*.asset.json` avec une URL relative `/__l5e/assets-v1/...`. Selon le contexte d'exécution (preview iframe, publish, natif Capacitor), cette URL relative ne résout pas toujours et le fichier ne se charge pas — donc conteneur blanc, aucune image.
+## Comment ça marchera pour toi
 
-## Correctif
+1. Profil → Admin → onglet **Overview** → carte "Vidéo démo" (nouveau).
+2. Tu vois la vidéo actuelle (lecteur intégré) + la date de mise à jour.
+3. Bouton **"Remplacer la vidéo"** → sélecteur de fichier (.mp4 / .webm / .mov, max 100 MB).
+4. Barre de progression pendant l'upload, puis toast de confirmation.
+5. La carte Démo sur la home affiche la nouvelle vidéo **immédiatement** (cache-busté par URL).
 
-Passer des pointeurs JSON à de vrais fichiers image bundlés par Vite, qui produisent une URL absolue fingerprintée et fonctionnent partout (preview, publish, iOS/Android Capacitor).
+## Détails techniques
 
-### Étapes
+**Backend (Lovable Cloud)**
 
-1. Télécharger les 3 logos depuis le CDN (URLs actuelles connues) et les écrire comme vrais fichiers dans `src/assets/` :
-   - `src/assets/wave-logo.webp`
-   - `src/assets/orange-money-logo.png`
-   - `src/assets/djamo-logo.png`
+- Bucket Storage public `demo-videos` (SELECT anon, INSERT/UPDATE/DELETE réservés aux admins via policy `has_role(auth.uid(),'admin')`).
+- Table `public.app_settings (key text PK, value jsonb, updated_at timestamptz, updated_by uuid)`.
+  - GRANT SELECT à `anon` + `authenticated` (lecture publique de la config non sensible).
+  - GRANT INSERT/UPDATE réservé via RLS aux admins.
+  - Ligne `key='demo_video'` → `value = { url, size, content_type, uploaded_at }`.
+- La vidéo actuelle (CDN Lovable Assets) reste le **fallback** si aucun override n'existe.
 
-2. Supprimer les 3 pointeurs `*.asset.json` associés.
+**Frontend**
 
-3. Mettre à jour les imports dans :
-   - `src/components/wallet/topup-sheet.tsx`
-   - `src/components/payments/payment-sheet.tsx`
+- `src/lib/demo-video-db.ts` :
+  - `fetchDemoVideoUrl()` — lit `app_settings.demo_video`, retourne l'URL ou le fallback bundlé.
+  - `uploadDemoVideo(file)` — upload dans le bucket sous `demo-video-{timestamp}.mp4`, puis upsert dans `app_settings`.
+- `src/components/home/demo-card.tsx` :
+  - `useDemoAvailable()` remplacé par `useDemoVideo()` qui charge d'abord l'URL depuis la DB, puis fait le HEAD probe.
+  - `DemoPlayer` reçoit l'URL en prop (plus d'import statique).
+- `src/components/admin/admin-demo-video.tsx` (nouveau) :
+  - Aperçu vidéo + input file caché + bouton Upload + progression + gestion d'erreur.
+  - Utilise le client Supabase browser (RLS impose déjà l'admin).
+- Insertion de la carte dans `OverviewTab` de `admin-dashboard-screen.tsx`, sous les KPIs.
 
-   Remplacer :
-   ```ts
-   import waveLogo from "@/assets/wave-logo.asset.json";
-   ...
-   <img src={waveLogo.url} .../>
-   ```
-   par :
-   ```ts
-   import waveLogo from "@/assets/wave-logo.webp";
-   ...
-   <img src={waveLogo} .../>
-   ```
-   Idem pour Orange Money et Djamo.
+**Sécurité**
 
-4. Garder le conteneur logo tel quel (`h-10 w-10 rounded-xl bg-white overflow-hidden` + `img object-contain`) — le fond blanc est nécessaire car le logo Djamo est sur fond sombre et Wave a des bords transparents.
+- Upload et update de settings gouvernés par RLS `has_role(auth.uid(), 'admin')`.
+- Un utilisateur non-admin peut lire la config publique (URL vidéo) mais pas l'écrire.
+- Validation côté client : type MIME `video/*`, taille max 100 MB.
 
-5. Vérifier après build : les 3 lignes doivent afficher le vrai logo (Wave = tuile bleue avec pingouin, Orange Money = flèches noir/orange, Djamo = "djamo" sur fond sombre).
+## Ce que je NE fais pas
 
-Aucun changement de logique métier, aucun changement i18n, aucun changement backend.
+- Pas de suppression des anciennes vidéos (chaque upload crée un nouveau fichier ; tu pourras nettoyer plus tard depuis le dashboard Lovable Cloud si besoin).
+- Pas de re-encodage / compression (Apple accepte les .mp4 H.264 directement — c'est ton fichier tel quel).
+- Pas de modification du titre/sous-titre de la carte (ça reste dans les traductions).
+
+OK pour que je code ?
