@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import splashAsset from "@/assets/splash.mp4.asset.json";
 import { EASE_IOS } from "@/lib/motion";
 import { Logo } from "@/components/brand/logo";
+import { hideNativeSplash } from "@/lib/native";
+
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
