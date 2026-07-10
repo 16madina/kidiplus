@@ -461,6 +461,7 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
+      <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
     </div>
   );
 }
