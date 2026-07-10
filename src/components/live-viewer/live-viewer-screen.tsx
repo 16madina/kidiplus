@@ -1,6 +1,6 @@
 import { motion, useMotionValue, animate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Plus, Share2, X, Eye, Gift } from "lucide-react";
+import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
