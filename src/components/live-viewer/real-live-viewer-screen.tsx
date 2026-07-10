@@ -413,6 +413,9 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     const nowT = Date.now();
     if (nowT - lastTap.current < 300) {
+      // Guests can't send hearts (canPublishData=false server-side) — a
+      // double-tap prompts sign-up instead of dead-tapping.
+      if (isGuest) { openAuth(); lastTap.current = 0; return; }
       room.sendHeart();
       setTimeout(() => room.sendHeart(), 80);
       setTimeout(() => room.sendHeart(), 160);
@@ -423,10 +426,12 @@ export function RealLiveViewerScreen() {
   };
   const fireHeart = () => {
     if (liveEnded) return;
+    if (isGuest) { openAuth(); return; }
     haptic.medium();
     room.sendHeart();
     if (active) void logLiveInteraction(active, "like");
   };
+
 
   // Follow (local)
   const [following, setFollowing] = useState(false);
