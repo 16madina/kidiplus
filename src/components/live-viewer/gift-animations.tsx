@@ -212,7 +212,7 @@ function HeartAnim({ name, dur }: { name: string; dur: number }) {
             transition={{ duration: 1.1, delay: 0.35, ease: EASE_IOS }}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[20px]"
           >
-            ✨
+            💛
           </motion.span>
         ))}
       </div>
@@ -287,7 +287,7 @@ function DiamondAnim({ name, dur }: { name: string; dur: number }) {
             }}
           />
         </motion.div>
-        {/* Sparkle burst on landing */}
+        {/* Diamond burst on landing */}
         {burst.map((s) => (
           <motion.span
             key={s.i}
@@ -301,7 +301,7 @@ function DiamondAnim({ name, dur }: { name: string; dur: number }) {
             transition={{ duration: 1, delay: 0.7, ease: EASE_IOS }}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[24px]"
           >
-            ✨
+            💎
           </motion.span>
         ))}
       </div>
@@ -334,7 +334,7 @@ function CrownAnim({ name, dur }: { name: string; dur: number }) {
           className="absolute left-1/2 top-0 leading-none"
           style={{ fontSize: p.size, color: "oklch(0.85 0.18 85)" }}
         >
-          ✨
+          🪙
         </motion.span>
       ))}
       {/* Crown descends and settles */}
@@ -502,7 +502,7 @@ function LionAnim({ name, dur }: { name: string; dur: number }) {
             transition={{ duration: 1.3, delay: 0.35, ease: EASE_IOS }}
             className="absolute left-1/2 top-1/2 text-[28px]"
           >
-            ⭐
+            🔥
           </motion.span>
         ))}
         <motion.span
@@ -555,7 +555,7 @@ function LionAnim({ name, dur }: { name: string; dur: number }) {
           className="absolute left-1/2 top-0 leading-none"
           style={{ fontSize: c.size, color: "oklch(0.85 0.18 85)" }}
         >
-          {c.i % 3 === 0 ? "⭐" : "✨"}
+          {c.i % 3 === 0 ? "🎉" : "🪙"}
         </motion.span>
       ))}
     </motion.div>
