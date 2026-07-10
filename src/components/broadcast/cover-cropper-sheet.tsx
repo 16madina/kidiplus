@@ -161,7 +161,7 @@ export function CoverCropperSheet({ open, imageSrc, onClose, onConfirm }: Props)
               // src/styles.css). The cropper never adds those, so the image
               // stays invisible without this attribute — user only sees the
               // grid overlay on a black background.
-              mediaProps={{ "data-loaded": "true" } as React.ImgHTMLAttributes<HTMLElement>}
+              mediaProps={{ "data-loaded": "true" } as ImgHTMLAttributes<HTMLElement>}
             />
           </div>
 
