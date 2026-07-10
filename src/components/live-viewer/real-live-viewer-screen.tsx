@@ -233,7 +233,9 @@ export function RealLiveViewerScreen() {
   const showGiftError = useGiftError();
 
   const doSendGift = async (key: GiftKey) => {
-    if (!active?.liveId || !user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!user) { openAuth(); return; }
+    if (!active?.liveId) { toast.error(t("pay.errors.notSignedIn")); return; }
+
     if (liveEnded) return;
     setSendingGift(true);
     haptic.medium();
