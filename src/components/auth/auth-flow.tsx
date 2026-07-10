@@ -84,12 +84,11 @@ function Welcome({
           draggable={false}
           className="absolute inset-0 h-full w-full select-none object-cover"
         />
-        {/* Bottom fade to solid navy so the buttons sit clean */}
         <div
-          className="absolute inset-x-0 bottom-0 h-[42%]"
+          className="absolute inset-x-0 bottom-0 h-[26%]"
           style={{
             background:
-              "linear-gradient(180deg, rgba(11,20,54,0) 0%, rgba(11,20,54,0.85) 45%, #0B1436 100%)",
+              "linear-gradient(180deg, rgba(11,20,54,0) 0%, rgba(11,20,54,0.7) 55%, #0B1436 100%)",
           }}
         />
       </div>
@@ -98,11 +97,10 @@ function Welcome({
       <div
         className="relative flex h-full flex-col items-center px-6"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top) + 28px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+          paddingTop: "calc(env(safe-area-inset-top) + 18px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
         }}
       >
-        {/* Top: big badge logo */}
         <motion.img
           initial={{ scale: 0.85, opacity: 0, y: 8 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -112,35 +110,39 @@ function Welcome({
           draggable={false}
           className="select-none"
           style={{
-            width: 128,
-            height: 128,
-            filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.45))",
+            width: 108,
+            height: 108,
+            filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.5))",
           }}
         />
 
-        {/* KIDI+ wordmark under the badge */}
-        <motion.img
+        {/* KIDI+ wordmark as crisp white text */}
+        <motion.h1
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_IOS, delay: 0.1 }}
-          src={wordmark.url}
-          alt="KIDI+"
-          draggable={false}
-          className="mt-3 select-none"
-          style={{ height: 64, width: "auto" }}
-        />
+          className="mt-2 text-white"
+          style={{
+            fontSize: 52,
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
+            lineHeight: 1,
+            textShadow: "0 4px 20px rgba(0,0,0,0.55)",
+          }}
+        >
+          KIDI<span style={{ color: GOLD }}>+</span>
+        </motion.h1>
 
-        {/* Tagline */}
         <motion.p
           initial={{ y: 8, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_IOS, delay: 0.18 }}
-          className="mt-4 text-center text-white"
+          className="mt-3 text-center text-white"
           style={{
-            fontSize: 17,
+            fontSize: 15,
             lineHeight: 1.35,
             fontWeight: 500,
-            textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+            textShadow: "0 2px 12px rgba(0,0,0,0.6)",
             maxWidth: 320,
           }}
         >
@@ -151,7 +153,6 @@ function Welcome({
           </span>
         </motion.p>
 
-        {/* Spacer — hero image is part of the background */}
         <div className="flex-1" />
 
         {/* Bottom: actions */}
@@ -159,16 +160,16 @@ function Welcome({
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.25 }}
-          className="w-full flex flex-col gap-2.5"
+          className="w-full flex flex-col gap-2"
         >
           <Press
             onClick={onSignUp}
-            className="!min-h-[56px] h-[56px] w-full rounded-full text-[16px] font-bold"
+            className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-bold"
             style={{
               background: `linear-gradient(180deg, #F7CE5A 0%, ${GOLD} 55%, #D9A73A 100%)`,
               color: "#151022",
               boxShadow:
-                "0 14px 36px rgba(245,195,74,0.35), inset 0 1px 0 rgba(255,255,255,0.45)",
+                "0 12px 28px rgba(245,195,74,0.35), inset 0 1px 0 rgba(255,255,255,0.45)",
             }}
           >
             {t("auth.welcome.signUp")}
@@ -176,7 +177,7 @@ function Welcome({
 
           <Press
             onClick={onSignIn}
-            className="!min-h-[54px] h-[54px] w-full rounded-full text-[15px] font-semibold text-white"
+            className="!min-h-[48px] h-[48px] w-full rounded-full text-[14px] font-semibold text-white"
             style={{
               backgroundColor: "transparent",
               border: "1.5px solid rgba(255,255,255,0.35)",
@@ -187,22 +188,16 @@ function Welcome({
 
           {onGuest && (
             <>
-              <div className="my-1 flex items-center gap-3">
-                <span
-                  className="h-px flex-1"
-                  style={{ background: "rgba(255,255,255,0.22)" }}
-                />
-                <span className="text-[11px] font-semibold tracking-[0.22em] text-white/70">
+              <div className="flex items-center gap-3">
+                <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.22)" }} />
+                <span className="text-[10px] font-semibold tracking-[0.22em] text-white/70">
                   {t("auth.welcome.or")}
                 </span>
-                <span
-                  className="h-px flex-1"
-                  style={{ background: "rgba(255,255,255,0.22)" }}
-                />
+                <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.22)" }} />
               </div>
               <Press
                 onClick={onGuest}
-                className="!min-h-[54px] flex h-[54px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold text-white"
+                className="!min-h-[48px] flex h-[48px] w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-white"
                 style={{
                   backgroundColor: "transparent",
                   border: "1.5px solid rgba(255,255,255,0.28)",
@@ -218,3 +213,4 @@ function Welcome({
     </motion.div>
   );
 }
+
