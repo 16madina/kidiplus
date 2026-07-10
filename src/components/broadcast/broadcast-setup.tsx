@@ -30,6 +30,10 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
+import { CoverCropperSheet } from "./cover-cropper-sheet";
+
+const MIN_TITLE_LENGTH = 3;
+const MAX_TITLE_LENGTH = 80;
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
@@ -75,7 +79,19 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.display_name, profile?.avatar_url]);
 
+  // Raw (uncropped) source we last loaded into the cropper. Lets the user
+  // re-open the cropper to fine-tune without re-picking the file.
+  const [rawCoverSrc, setRawCoverSrc] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+
   const pickCover = () => {
+    // If we already have a raw source (a previously picked file, or the
+    // prefilled shop avatar URL), tapping the cover re-opens the cropper.
+    if (rawCoverSrc) {
+      setCropperOpen(true);
+      haptic.selection();
+      return;
+    }
     // Direct programmatic click inside a user-gesture handler — required for
     // the file dialog to open reliably across browsers, and NOT swallowed by
     // Press/motion whileTap animations.
@@ -86,14 +102,33 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = urlTrackerRef.current.track(URL.createObjectURL(file));
-    if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
-    b.setCover(url);
-    b.setCoverFile(file);
+    setRawCoverSrc(url);
+    setCropperOpen(true);
     e.target.value = "";
     haptic.selection();
   };
 
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0;
+  // When we prefill the cover from the user's profile avatar, keep the URL as
+  // the raw source too — so the first tap opens the cropper on it.
+  useEffect(() => {
+    if (!rawCoverSrc && b.cover && !isBlobUrl(b.cover) && b.cover.startsWith("http")) {
+      setRawCoverSrc(b.cover);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b.cover]);
+
+  const onCropConfirm = (file: File, previewUrl: string) => {
+    urlTrackerRef.current.track(previewUrl);
+    if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
+    b.setCover(previewUrl);
+    b.setCoverFile(file);
+    setCropperOpen(false);
+    haptic.success();
+  };
+
+  const titleLen = b.title.trim().length;
+  const titleTooShort = titleLen > 0 && titleLen < MIN_TITLE_LENGTH;
+  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0;
   const [launching, setLaunching] = useState(false);
 
 
@@ -131,7 +166,34 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   };
 
   const launch = async () => {
-    if (!canLaunch || launching) return;
+    if (launching) return;
+    // Explicit, user-visible validation so the disabled button doesn't feel
+    // silently broken.
+    const trimmed = b.title.trim();
+    if (trimmed.length === 0) {
+      haptic.warning();
+      toast.error(
+        t("broadcast.setup.errors.titleRequired", "Ajoute un titre à ton live avant de continuer"),
+      );
+      return;
+    }
+    if (trimmed.length < MIN_TITLE_LENGTH) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.titleTooShort",
+          `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+        ),
+      );
+      return;
+    }
+    if (b.products.length === 0) {
+      haptic.warning();
+      toast.error(
+        t("broadcast.setup.errors.noProducts", "Ajoute au moins un produit à vendre"),
+      );
+      return;
+    }
     if (!b.hostIdentity) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
@@ -292,51 +354,62 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         <div className="mx-auto mb-1 h-1 w-10 rounded-full" style={{ background: GOLD_SOFT }} />
 
         {/* Cover + title */}
-        <div className="flex items-start gap-3">
-          <Press
-            onClick={pickCover}
-            className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
-            style={{
-              backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
-              border: `1.5px solid ${GOLD}`,
-              boxShadow: `0 0 16px ${GOLD_SOFT}`,
-            }}
-            aria-label={t("broadcast.setup.addCover")}
-          >
-            {b.cover ? (
-              <motion.img
-                key={b.cover}
-                src={b.cover}
-                alt=""
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2, ease: EASE_IOS }}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
-                <ImageIcon size={24} strokeWidth={1.6} />
-              </div>
-            )}
-          </Press>
-          <input
-            value={b.title}
-            onChange={(e) => b.setTitle(e.target.value)}
-            placeholder={t("broadcast.setup.titlePlaceholder", "Titre du live...")}
-            maxLength={80}
-            className="h-16 flex-1 rounded-2xl px-4 text-[15px] font-medium text-white placeholder:text-white/50 outline-none"
-            style={{
-              backgroundColor: "oklch(0.16 0.04 260 / 0.7)",
-              border: `1px solid ${GOLD_SOFT}`,
-            }}
-          />
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onCoverFile}
-          />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-start gap-3">
+            <Press
+              onClick={pickCover}
+              className="!min-h-16 relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl p-0"
+              style={{
+                backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
+                border: `1.5px solid ${GOLD}`,
+                boxShadow: `0 0 16px ${GOLD_SOFT}`,
+              }}
+              aria-label={t("broadcast.setup.addCover")}
+            >
+              {b.cover ? (
+                <motion.img
+                  key={b.cover}
+                  src={b.cover}
+                  alt=""
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, ease: EASE_IOS }}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
+                  <ImageIcon size={24} strokeWidth={1.6} />
+                </div>
+              )}
+            </Press>
+            <input
+              value={b.title}
+              onChange={(e) => b.setTitle(e.target.value)}
+              placeholder={t("broadcast.setup.titlePlaceholder", "Titre du live...")}
+              maxLength={MAX_TITLE_LENGTH}
+              aria-invalid={titleTooShort || undefined}
+              className="h-16 flex-1 rounded-2xl px-4 text-[15px] font-medium text-white placeholder:text-white/50 outline-none"
+              style={{
+                backgroundColor: "oklch(0.16 0.04 260 / 0.7)",
+                border: `1px solid ${titleTooShort ? "oklch(0.68 0.19 25)" : GOLD_SOFT}`,
+              }}
+            />
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onCoverFile}
+            />
+          </div>
+          {titleTooShort && (
+            <span className="px-1 text-[11px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.titleTooShort",
+                `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+              )}
+            </span>
+          )}
         </div>
 
         {/* Category pills — horizontally slidable + "Voir plus" dropdown */}
@@ -510,16 +583,20 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           </motion.div>
         </div>
 
-        {/* Launch */}
+        {/* Launch — button stays clickable so the validation toast can fire
+            when the user taps with an incomplete form. Visual state still
+            reflects readiness. */}
         <Press
           onClick={launch}
-          disabled={!canLaunch || launching}
+          disabled={launching}
           hapticOnTap={false}
-          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold disabled:opacity-40"
+          aria-disabled={!canLaunch || undefined}
+          className="!min-h-14 mt-1 h-14 w-full rounded-2xl text-[16px] font-bold"
           style={{
             background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
             boxShadow: `0 10px 30px ${GOLD_SOFT}`,
             color: "#0a0a12",
+            opacity: launching ? 0.6 : canLaunch ? 1 : 0.5,
           }}
         >
           {launching ? t("common.loading") : t("broadcast.setup.start", "Lancer le live")}
@@ -537,6 +614,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         onConfirm={(items) => {
           for (const it of items) b.addProduct(it);
         }}
+      />
+      <CoverCropperSheet
+        open={cropperOpen}
+        imageSrc={rawCoverSrc}
+        onClose={() => setCropperOpen(false)}
+        onConfirm={onCropConfirm}
       />
     </motion.div>
   );
