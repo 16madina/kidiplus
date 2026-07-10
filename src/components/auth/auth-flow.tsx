@@ -100,15 +100,15 @@ function Welcome({
           draggable={false}
           onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
           data-loaded="true"
-          className="absolute inset-0 h-full w-full select-none object-cover"
-          style={{ objectPosition: "center bottom" }}
+          className="absolute inset-0 h-full w-full select-none object-contain"
+          style={{ objectPosition: "center center", transform: "scale(0.9)" }}
         />
         {/* Top fade to hide LIVE badge behind the wordmark */}
         <div
-          className="absolute inset-x-0 top-0 h-[38%]"
+          className="absolute inset-x-0 top-0 h-[48%]"
           style={{
             background:
-              "linear-gradient(180deg, #0B1436 0%, rgba(11,20,54,0.85) 45%, rgba(11,20,54,0) 100%)",
+              "linear-gradient(180deg, #0B1436 0%, rgba(11,20,54,0.98) 40%, rgba(11,20,54,0.66) 72%, rgba(11,20,54,0) 100%)",
           }}
         />
         <div
@@ -123,10 +123,10 @@ function Welcome({
 
       {/* Foreground content */}
       <div
-        className="relative flex h-full flex-col items-center px-6"
+        className="relative z-10 flex h-full flex-col items-center px-6"
         style={{
-          paddingTop: "calc(env(safe-area-inset-top) + 18px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
+          paddingTop: "calc(env(safe-area-inset-top) + 12px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)",
         }}
       >
         <motion.img
@@ -138,8 +138,8 @@ function Welcome({
           draggable={false}
           className="select-none"
           style={{
-            width: 108,
-            height: 108,
+            width: 92,
+            height: 92,
             filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.5))",
           }}
         />
@@ -149,11 +149,11 @@ function Welcome({
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_IOS, delay: 0.1 }}
-          className="mt-2 text-white"
+          className="relative z-20 mt-1 text-white"
           style={{
-            fontSize: 52,
+            fontSize: 48,
             fontWeight: 900,
-            letterSpacing: "-0.02em",
+            letterSpacing: 0,
             lineHeight: 1,
             textShadow: "0 4px 20px rgba(0,0,0,0.55)",
           }}
@@ -165,9 +165,9 @@ function Welcome({
           initial={{ y: 8, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_IOS, delay: 0.18 }}
-          className="mt-3 text-center text-white"
+          className="relative z-20 mt-2 text-center text-white"
           style={{
-            fontSize: 15,
+            fontSize: 14,
             lineHeight: 1.35,
             fontWeight: 500,
             textShadow: "0 2px 12px rgba(0,0,0,0.6)",
@@ -182,14 +182,14 @@ function Welcome({
         </motion.p>
 
         {/* Spacer: push actions up from the bottom while keeping them visible. */}
-        <div className="flex-1" style={{ maxHeight: "28vh", minHeight: 0 }} />
+        <div className="flex-1" style={{ maxHeight: "18vh", minHeight: 8 }} />
 
         {/* Actions */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.25 }}
-          className="w-full flex flex-col gap-2"
+          className="relative z-20 w-full flex flex-col gap-2"
         >
           <Press
             onClick={onSignUp}
@@ -217,19 +217,13 @@ function Welcome({
 
           {onGuest && (
             <>
-              <div className="flex items-center gap-3">
-                <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.22)" }} />
-                <span className="text-[10px] font-semibold tracking-[0.22em] text-white/70">
-                  {t("auth.welcome.or")}
-                </span>
-                <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.22)" }} />
-              </div>
               <Press
                 onClick={onGuest}
                 className="!min-h-[48px] flex h-[48px] w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold text-white"
                 style={{
-                  backgroundColor: "transparent",
-                  border: "1.5px solid rgba(255,255,255,0.28)",
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  border: "1.5px solid rgba(255,255,255,0.38)",
+                  boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
                 }}
               >
                 <User size={16} strokeWidth={2} />
@@ -239,7 +233,7 @@ function Welcome({
           )}
         </motion.div>
 
-        <div className="flex-1" style={{ maxHeight: "6vh", minHeight: 0 }} />
+        <div className="flex-1" style={{ maxHeight: "3vh", minHeight: 0 }} />
       </div>
     </motion.div>
   );
