@@ -338,6 +338,47 @@ export type Database = {
           },
         ]
       }
+      live_interactions: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          kind: string
+          live_id: string | null
+          seller_id: string | null
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          live_id?: string | null
+          seller_id?: string | null
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          live_id?: string | null
+          seller_id?: string | null
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_interactions_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_moderators: {
         Row: {
           added_by: string

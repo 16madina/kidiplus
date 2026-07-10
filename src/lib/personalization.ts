@@ -13,14 +13,16 @@ type Affinity = Map<string, number>;
 export type PersonalizedRanker = (streams: LiveStream[]) => LiveStream[];
 
 interface Signals {
-  followed: Set<string>;      // seller ids the user follows
-  purchased: Set<string>;     // seller ids the user bought from
-  categoryAffinity: Affinity; // category -> weighted score
+  followed: Set<string>;         // seller ids the user follows
+  purchased: Set<string>;        // seller ids the user bought from
+  engagedSellers: Map<string, number>; // seller id -> engagement score (likes/clicks)
+  categoryAffinity: Affinity;    // category -> weighted score
 }
 
 const EMPTY: Signals = {
   followed: new Set(),
   purchased: new Set(),
+  engagedSellers: new Map(),
   categoryAffinity: new Map(),
 };
 
@@ -35,7 +37,7 @@ export function usePersonalizedRanking(): PersonalizedRanker {
     }
     let alive = true;
     (async () => {
-      const [followsRes, bidsRes, ordersRes, remindersRes] = await Promise.all([
+      const [followsRes, bidsRes, ordersRes, remindersRes, interactionsRes] = await Promise.all([
         supabase
           .from("follows")
           .select("followed_id")
@@ -58,6 +60,12 @@ export function usePersonalizedRanking(): PersonalizedRanker {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(50),
+        supabase
+          .from("live_interactions")
+          .select("kind, weight, category, seller_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(200),
       ]);
       if (!alive) return;
 
@@ -90,7 +98,23 @@ export function usePersonalizedRanking(): PersonalizedRanker {
         bump(row?.live?.category, 2);
       }
 
-      setSignals({ followed, purchased, categoryAffinity: aff });
+      const engagedSellers = new Map<string, number>();
+      const KIND_WEIGHT: Record<string, number> = { view: 1, click: 2, like: 3 };
+      for (const row of (interactionsRes.data ?? []) as Array<{
+        kind?: string | null;
+        weight?: number | null;
+        category?: string | null;
+        seller_id?: string | null;
+      }>) {
+        const kind = row?.kind ?? "view";
+        const w = (row?.weight ?? 1) * (KIND_WEIGHT[kind] ?? 1);
+        bump(row?.category, w);
+        if (row?.seller_id) {
+          engagedSellers.set(row.seller_id, (engagedSellers.get(row.seller_id) ?? 0) + w);
+        }
+      }
+
+      setSignals({ followed, purchased, engagedSellers, categoryAffinity: aff });
     })();
     return () => {
       alive = false;
@@ -99,9 +123,12 @@ export function usePersonalizedRanking(): PersonalizedRanker {
 
   return useCallback<PersonalizedRanker>(
     (streams) => {
-      const { followed, purchased, categoryAffinity } = signals;
+      const { followed, purchased, engagedSellers, categoryAffinity } = signals;
       const hasSignal =
-        followed.size > 0 || purchased.size > 0 || categoryAffinity.size > 0;
+        followed.size > 0 ||
+        purchased.size > 0 ||
+        engagedSellers.size > 0 ||
+        categoryAffinity.size > 0;
 
       // Signed-out or no signal → sort by popularity as a sensible default.
       if (!hasSignal) {
@@ -113,6 +140,8 @@ export function usePersonalizedRanking(): PersonalizedRanker {
         if (s.sellerId && followed.has(s.sellerId)) score += 100;
         // Prior purchases from this seller.
         if (s.sellerId && purchased.has(s.sellerId)) score += 60;
+        // Recent likes / clicks on this seller.
+        if (s.sellerId) score += (engagedSellers.get(s.sellerId) ?? 0) * 4;
         // Past interactions in the same category.
         const affinity = categoryAffinity.get(s.category) ?? 0;
         score += affinity * 5;

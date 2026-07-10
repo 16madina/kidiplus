@@ -9,6 +9,7 @@ import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
+import { logLiveInteraction } from "@/lib/interactions-db";
 import { useAppActive } from "@/lib/app-state";
 import { usePush } from "@/lib/push";
 import {
@@ -97,6 +98,7 @@ function MockLiveViewerScreen() {
   const fireHeart = () => {
     haptic.medium();
     setHeartTrigger((v) => v + 1);
+    if (active) void logLiveInteraction(active, "like");
   };
   const lastTap = useRef(0);
   const onVideoTap = () => {
@@ -106,6 +108,7 @@ function MockLiveViewerScreen() {
       fireHeart();
       setTimeout(() => setHeartTrigger((v) => v + 1), 80);
       setTimeout(() => setHeartTrigger((v) => v + 1), 160);
+      if (active) void logLiveInteraction(active, "like", 2);
     }
     lastTap.current = now;
   };
