@@ -11,7 +11,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 
 export function CertificationSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const { user, profile, refresh } = useAuth();
+  const { user, profile } = useAuth();
   const [elig, setElig] = useState<Eligibility | null>(null);
   const [req, setReq] = useState<VerificationRequestRow | null>(null);
   const [loading, setLoading] = useState(false);
