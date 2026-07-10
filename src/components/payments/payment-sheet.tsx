@@ -297,6 +297,7 @@ export function PaymentSheet({
                       active
                       icon={<CreditCard size={20} />}
                       label={t("pay.method.card")}
+                      subtitle={t("pay.method.cardSub")}
                       right={
                         <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
                           <span>VISA</span>
