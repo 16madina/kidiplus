@@ -97,6 +97,8 @@ function Welcome({
           alt=""
           aria-hidden
           draggable={false}
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+          data-loaded="true"
           className="absolute inset-0 h-full w-full select-none object-cover"
         />
         <div
