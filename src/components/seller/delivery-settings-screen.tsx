@@ -167,7 +167,8 @@ export function SellerDeliverySettingsScreen({
             {grouped.map(([countryCode, items]) => (
               <div key={countryCode} className="space-y-2">
                 <p className="flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  <span>{countryLabel(countryCode, i18n.language)}</span>
+                  <CountryFlag code={countryCode} className="h-4 w-6 rounded-sm" />
+                  <span>{countryName(countryCode, i18n.language)}</span>
                 </p>
                 <ul className="space-y-2">
                   {items.map(({ idx, zone: z }) => {
@@ -195,7 +196,7 @@ export function SellerDeliverySettingsScreen({
                             className="!min-h-9 shrink-0 rounded-lg border border-border bg-background px-2 text-[13px] flex items-center gap-1"
                             aria-label={t("delivery.zoneCountry", "Pays")}
                           >
-                            <span>{countryFlag(z.country || sellerCountry) || "🌍"}</span>
+                            <CountryFlag code={z.country || sellerCountry} className="h-4 w-6 rounded-sm" />
                             <ChevronDown size={12} />
                           </Press>
                           <input
@@ -293,7 +294,7 @@ export function SellerDeliverySettingsScreen({
                                             }}
                                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
                                           >
-                                            <span>{c.flag}</span>
+                                            <CountryFlag code={c.code} className="h-4 w-6 rounded-sm" />
                                             <span>{i18n.language.startsWith("en") ? c.nameEn : c.name}</span>
                                           </button>
                                         </li>
