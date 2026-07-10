@@ -513,9 +513,12 @@
   },
   "auth": {
     "welcome": {
-      "tagline": "Live shopping, no compromises.",
+      "tagline": "The app where you buy, you sell, but",
+      "taglineAccent": "the highest bidder wins.",
+      "or": "OR",
       "signIn": "Sign in",
-      "signUp": "Create account"
+      "signUp": "Create account",
+      "continueAsGuest": "Continue as guest"
     },
     "signIn": {
       "title": "Welcome to KiDi+",
