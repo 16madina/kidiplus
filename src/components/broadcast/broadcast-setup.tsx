@@ -29,6 +29,7 @@ import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
+import { useAuth } from "@/lib/auth-context";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
