@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Truck, Plus, Trash2, ChevronDown } from "lucide-react";
+import { Truck, Plus, Trash2, ChevronDown, Search } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
