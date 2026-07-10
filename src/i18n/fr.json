@@ -1124,6 +1124,7 @@
   },
   "delivery": {
     "title": "Livraison",
+    "notInYourCountry": "Livraison indisponible dans ton pays 🌍",
     "menuLabel": "Livraison",
     "settings": "Paramètres de livraison",
     "mode": "Mode de livraison",
