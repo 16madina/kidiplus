@@ -836,6 +836,7 @@ export type Database = {
           id: string
           is_admin: boolean
           is_seller: boolean
+          is_verified: boolean
           language: string
           moderation_status: string
           rating_avg: number
@@ -859,6 +860,7 @@ export type Database = {
           id: string
           is_admin?: boolean
           is_seller?: boolean
+          is_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
@@ -882,6 +884,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           is_seller?: boolean
+          is_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
@@ -1221,6 +1224,47 @@ export type Database = {
           },
         ]
       }
+      verification_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_transactions: {
         Row: {
           amount: number
@@ -1394,9 +1438,17 @@ export type Database = {
         Args: { _note?: string; _report_id: string; _status: string }
         Returns: Json
       }
+      admin_review_verification: {
+        Args: { _approve: boolean; _id: string; _note?: string }
+        Returns: Json
+      }
       admin_revoke_sanction: { Args: { _sanction_id: string }; Returns: Json }
       admin_send_message: {
         Args: { _body: string; _title: string; _user_id: string }
+        Returns: Json
+      }
+      admin_set_verified: {
+        Args: { _user: string; _verified: boolean }
         Returns: Json
       }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
@@ -1492,6 +1544,7 @@ export type Database = {
         Args: { _amount: number; _destination: Json; _method: string }
         Returns: Json
       }
+      request_verification: { Args: { _message?: string }; Returns: Json }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
         Returns: Json
@@ -1508,6 +1561,7 @@ export type Database = {
       }
       sync_my_wallet_currency: { Args: never; Returns: Json }
       unblock_user: { Args: { _blocked_id: string }; Returns: Json }
+      verification_eligibility: { Args: { _user: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
