@@ -36,6 +36,9 @@ import { EASE_IOS } from "@/lib/motion";
 import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
 import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AuthPromptProvider } from "@/lib/auth-prompt-context";
+import { GuestShell } from "@/components/guest-shell";
+
 
 
 export type TabKey = "home" | "search" | "live" | "activity" | "profile";
