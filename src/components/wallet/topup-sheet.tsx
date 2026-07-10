@@ -41,6 +41,7 @@ import { mapPayErrorToI18n } from "@/lib/pay-errors";
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
+const DJAMO_INDIGO = "#3730A3";
 
 type Step =
   | { kind: "amount" }
