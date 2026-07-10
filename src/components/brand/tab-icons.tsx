@@ -3,9 +3,7 @@
 // Reproduces the reference set: an arched doorway (Accueil), a compass rose
 // (Explorer), a wrapped gift box (Activité) and a portrait badge (Profil).
 // Each icon has an outline (inactive) and a filled (active) variant that swap
-// with a subtle spring. A small gold "+" spark in the top-right corner is the
-// shared KiDi+ signature — kept discreet so the silhouette reads first.
-
+// with a subtle spring.
 import { motion, AnimatePresence } from "framer-motion";
 
 type IconProps = {
@@ -42,22 +40,6 @@ function Svg({
     </svg>
   );
 }
-
-// Signature gold "+" spark — subtle, top-right.
-function GoldPlus({ cx = 19.5, cy = 4.5, r = 1.4 }: { cx?: number; cy?: number; r?: number }) {
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={r + 1.2} fill="var(--accent)" opacity={0.14} stroke="none" />
-      <path
-        d={`M${cx - r} ${cy} L${cx + r} ${cy} M${cx} ${cy - r} L${cx} ${cy + r}`}
-        stroke="var(--accent)"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-    </g>
-  );
-}
-
 function IconWrap({
   active,
   outline,
@@ -112,7 +94,6 @@ export function HomeIcon({ active = false }: IconProps) {
       <path d={innerArch} />
       {/* Door knob */}
       <circle cx="14" cy="15.5" r="0.6" fill="currentColor" stroke="none" />
-      <GoldPlus />
     </Svg>
   );
   const filled = (
@@ -120,7 +101,6 @@ export function HomeIcon({ active = false }: IconProps) {
       <path d={outerArch} fill="var(--accent)" stroke="var(--accent)" />
       <path d={innerArch} fill="var(--background)" stroke="var(--accent)" />
       <circle cx="14" cy="15.5" r="0.7" fill="var(--accent)" stroke="none" />
-      <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
@@ -137,7 +117,6 @@ export function ExploreIcon({ active = false }: IconProps) {
       <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" />
       <path d={star} />
       <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
-      <GoldPlus />
     </Svg>
   );
   const filled = (
@@ -146,7 +125,6 @@ export function ExploreIcon({ active = false }: IconProps) {
       <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" stroke="var(--accent)" />
       <path d={star} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.8} />
       <circle cx="12" cy="12" r="0.9" fill="var(--accent)" stroke="none" />
-      <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
@@ -168,7 +146,6 @@ export function BellIcon({ active = false }: IconProps) {
       <path d={lid} />
       <path d={ribbon} />
       <path d={bow} />
-      <GoldPlus />
     </Svg>
   );
   const filled = (
@@ -177,7 +154,6 @@ export function BellIcon({ active = false }: IconProps) {
       <path d={lid} fill="var(--accent)" stroke="var(--accent)" />
       <path d={ribbon} stroke="var(--primary-foreground)" strokeWidth={1.4} />
       <path d={bow} fill="var(--accent)" stroke="var(--accent)" />
-      <GoldPlus />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
