@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LiveStream } from "@/lib/live-mock";
 import { fetchActiveLives } from "@/lib/lives-db";
+import { logLiveInteraction } from "@/lib/interactions-db";
 
 type Ctx = {
   active: LiveStream | null;
@@ -47,6 +48,7 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback((s: LiveStream) => {
     setActive(s);
+    void logLiveInteraction(s, "click");
     // Seed a single-item playlist so downstream code has a stable cursor;
     // then top up with the ambient list of currently-live streams so the
     // vertical pager works even when the entry point didn't provide a list
@@ -65,6 +67,7 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
     const target = list[index] ?? null;
     if (!target) return;
     setActive(target);
+    void logLiveInteraction(target, "click");
     setPlaylistFromList(list, target);
     // Refresh with fresh DB data so the swipe list stays accurate even if
     // the caller passed a stale filtered array.
