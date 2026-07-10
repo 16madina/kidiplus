@@ -223,6 +223,18 @@ export function HomeScreen() {
               <Bell size={22} strokeWidth={1.9} />
             </Press>
             <Press
+              aria-label={dark ? "Passer en mode clair" : "Passer en mode sombre"}
+              className="h-11 w-11 rounded-full"
+              style={{ color: "var(--foreground)" }}
+              onClick={() => setDark(!dark)}
+            >
+              {dark ? (
+                <Moon size={22} strokeWidth={1.9} />
+              ) : (
+                <Sun size={22} strokeWidth={1.9} />
+              )}
+            </Press>
+            <Press
               aria-label="Share"
               className="h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
