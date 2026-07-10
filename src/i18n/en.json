@@ -513,8 +513,8 @@
   },
   "auth": {
     "welcome": {
-      "tagline": "Who bids",
-      "taglineAccent": "higher?",
+      "tagline": "The app where you buy, you sell but",
+      "taglineAccent": "the highest bidder wins.",
       "or": "OR",
       "signIn": "Sign in",
       "signUp": "Create account",
