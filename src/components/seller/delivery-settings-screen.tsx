@@ -47,6 +47,7 @@ export function SellerDeliverySettingsScreen({
   const [busy, setBusy] = useState(false);
   const [openSuggestIdx, setOpenSuggestIdx] = useState<number | null>(null);
   const [countryPickerIdx, setCountryPickerIdx] = useState<number | null>(null);
+  const [countrySearch, setCountrySearch] = useState("");
 
   useEffect(() => {
     if (!open || !user) return;
