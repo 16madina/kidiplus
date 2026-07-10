@@ -212,13 +212,17 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
           const track = await createLocalVideoTrack({
             facingMode: livekit ? facing : "user",
+            resolution: { width: 1280, height: 720, frameRate: 30 },
           });
           if (cancelled) {
             track.stop();
             await disconnectRoom(room);
             return;
           }
-          await room.localParticipant.publishTrack(track);
+          await room.localParticipant.publishTrack(track, {
+            simulcast: true,
+            videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
+          });
           localVideoTrackRef.current = track;
           if (videoRef.current) {
             track.attach(videoRef.current);
