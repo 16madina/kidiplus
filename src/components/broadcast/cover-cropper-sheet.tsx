@@ -1,7 +1,7 @@
 // Full-screen cropper for the live cover image. Uses react-easy-crop for
 // pan/zoom, then rasterizes the visible crop to a resized JPEG File so the
 // upload stays small.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ImgHTMLAttributes } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, RotateCcw } from "lucide-react";
@@ -156,6 +156,12 @@ export function CoverCropperSheet({ open, imageSrc, onClose, onConfirm }: Props)
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
               objectFit="contain"
+              // Global CSS defaults `img { opacity: 0 }` until an `.is-loaded`
+              // class or `data-loaded="true"` attribute is set (see
+              // src/styles.css). The cropper never adds those, so the image
+              // stays invisible without this attribute — user only sees the
+              // grid overlay on a black background.
+              mediaProps={{ "data-loaded": "true" } as ImgHTMLAttributes<HTMLElement>}
             />
           </div>
 
