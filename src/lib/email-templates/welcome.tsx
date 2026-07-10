@@ -14,22 +14,17 @@ import {
   Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EMAIL_CONFIG, buildOpenLink } from '@/lib/email/config'
 
 interface WelcomeProps {
   displayName?: string
   appUrl?: string
 }
 
-const APP_URL = 'https://kidiplus.com'
-const LOGO_URL = 'https://kidiplus.com/kidi-plus-logo.png'
-
-/** Bridge URL that tries to open the native app on mobile, then falls back to web. */
-const openLink = (appUrl: string, path: string) =>
-  `${appUrl}/open?path=${encodeURIComponent(path)}`
-
-const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
+const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomeProps) => {
   const cleanName = displayName?.trim()
   const greetingName = cleanName || 'à toi'
+  const openLink = (path: string) => buildOpenLink(path, appUrl)
 
   return (
     <Html lang="fr" dir="ltr">
@@ -41,8 +36,8 @@ const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
         <Container style={container}>
           <Section style={header}>
             <Img
-              src={LOGO_URL}
-              alt="KIDI+"
+              src={EMAIL_CONFIG.LOGO_URL}
+              alt={EMAIL_CONFIG.APP_NAME}
               width="140"
               height="140"
               style={logo}
@@ -72,7 +67,7 @@ const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
             <Text style={bullet}>💼 Créer ta boutique et vendre en quelques minutes.</Text>
 
             <Section style={ctaWrap}>
-              <Button href={openLink(appUrl, '/sell/onboarding')} style={ctaButton}>
+              <Button href={openLink('/sell/onboarding')} style={ctaButton}>
                 🚀 Créer ma boutique
               </Button>
             </Section>
@@ -88,7 +83,7 @@ const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
             </Text>
 
             <Section style={ctaWrap}>
-              <Button href={openLink(appUrl, '/')} style={ctaButtonSecondary}>
+              <Button href={openLink('/')} style={ctaButtonSecondary}>
                 👉 Commencer maintenant
               </Button>
             </Section>
@@ -127,7 +122,7 @@ export const template = {
   component: WelcomeEmail,
   subject: '🎉 Bienvenue sur KIDI+ ! Votre aventure commence maintenant.',
   displayName: 'Welcome Email',
-  previewData: { displayName: 'Lazone', appUrl: APP_URL },
+  previewData: { displayName: 'Lazone', appUrl: EMAIL_CONFIG.WEB_URL },
 } satisfies TemplateEntry
 
 const main: React.CSSProperties = {
