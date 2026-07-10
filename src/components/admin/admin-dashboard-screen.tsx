@@ -194,6 +194,10 @@ function OverviewTab({ onGoTab }: { onGoTab: (t: Tab) => void }) {
       <Section title={t("admin.kpi.orders14d")}>
         <DailyChart data={stats.orders_daily} />
       </Section>
+
+      <Section title="Contenu">
+        <AdminDemoVideoCard />
+      </Section>
     </div>
   );
 }
