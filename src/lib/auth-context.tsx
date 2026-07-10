@@ -219,6 +219,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       profile,
+      guestMode: guestMode && !session,
+      enterGuestMode,
+      exitGuestMode,
       signUp,
       signIn,
       signOut,
@@ -232,6 +235,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       session,
       profile,
+      guestMode,
+      enterGuestMode,
+      exitGuestMode,
       signUp,
       signIn,
       signOut,
@@ -242,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       becomeSeller,
     ],
   );
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
