@@ -267,7 +267,16 @@ function MockLiveViewerScreen() {
   const sendDemoGift = (key: GiftKey) => {
     const g = giftByKey(key);
     if (!g) return;
+    const price = giftPrice(key, walletCurrency);
+    if (walletBalance < price) {
+      haptic.error();
+      toast.error(t("gifts.err.insufficient", "Solde insuffisant — recharge ton portefeuille"));
+      setGiftOpen(false);
+      setTopupOpen(true);
+      return;
+    }
     haptic.medium();
+    demoDebit(price);
     const evt: GiftEvt = {
       id: `demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       giftKey: key,
