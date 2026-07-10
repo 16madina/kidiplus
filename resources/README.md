@@ -1,38 +1,46 @@
 # Native icon & splash sources
 
 `@capacitor/assets` regenerates every iOS/Android icon and splash from the
-two source images below.
+source images below.
 
-## Files to drop in this folder
+> **Why the splash is plain navy:** The web app already shows the KiDi+
+> animated splash once the WebView loads. The native splash is intentionally
+> a flat `#0C1122` background with **no logo at all** — this removes the
+> default Capacitor logo that otherwise appears before the app starts, and
+> makes the hand-off to the web splash seamless.
+
+## Files in this folder
 
 | File | Size | Notes |
 | --- | --- | --- |
-| `resources/icon.png` | **1024 × 1024 px** | Full-bleed KiDi+ logo on the deep-navy background (`#0C1122`). No transparency, no rounded corners — iOS masks the icon. |
+| `resources/icon.png` | **1024 × 1024 px** | Centered KiDi+ icon on `#0C1122`. No transparency, no rounded corners — iOS masks the icon. |
 | `resources/icon-foreground.png` | 1024 × 1024 px (optional) | Android adaptive icon foreground (transparent). |
 | `resources/icon-background.png` | 1024 × 1024 px (optional) | Android adaptive icon background — flat `#0C1122`. |
-| `resources/splash.png` | **2732 × 2732 px** | KiDi+ logo centered on `#0C1122`. Center-cropped on all devices. |
-| `resources/splash-dark.png` | 2732 × 2732 px (optional) | Dark-mode splash (same visual is fine). |
+| `resources/splash.png` | **2732 × 2732 px** | **Plain flat `#0C1122`**, no logo. Center-cropped on all devices. |
+| `resources/splash-dark.png` | 2732 × 2732 px | Same plain `#0C1122` for dark mode. |
 
-If you only have `public/logo.png` (lower-res), export a 1024² and 2732²
-version from the original SVG/PSD — upscaling a small PNG will look blurry
-in the App Store.
-
-## Generate
+## Regenerate native assets
 
 ```bash
-# One-off: install the generator
-npm install --save-dev @capacitor/assets
+npm run native:assets
+```
 
-# Regenerate icons + splash for both platforms
+This is the same as:
+
+```bash
 npx @capacitor/assets generate --iconBackgroundColor "#0C1122" \
                                --iconBackgroundColorDark "#0C1122" \
                                --splashBackgroundColor "#0C1122" \
                                --splashBackgroundColorDark "#0C1122"
+```
 
-# Sync into the native projects
+Then sync the new assets into the native projects:
+
+```bash
 npx cap sync ios
 npx cap sync android
 ```
 
 The generator writes into `ios/App/App/Assets.xcassets/` and
 `android/app/src/main/res/` — commit those alongside this folder.
+
