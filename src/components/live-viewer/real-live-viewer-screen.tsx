@@ -542,7 +542,7 @@ export function RealLiveViewerScreen() {
   // returned. A future phase should refund stock on payment_intent.canceled.
   const startFixedPurchase = async (p: LiveProductRow) => {
     if (liveEnded) return;
-    if (!user) { toast.error(t("pay.errors.notSignedIn")); return; }
+    if (!user) { openAuth(); return; }
     if (!active?.liveId || !active?.sellerId) return;
     if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
     // Resolve delivery BEFORE reserving stock so we don't hold stock the
