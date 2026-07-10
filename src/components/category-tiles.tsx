@@ -52,10 +52,11 @@ export function CategoryTiles({
   return (
     <div
       ref={scrollerRef}
-      className="flex overflow-x-auto px-4"
+      className="flex overflow-x-auto pl-5 pr-4"
       style={{
         gap: 10,
         scrollSnapType: "x mandatory",
+        scrollPaddingLeft: 20,
         WebkitOverflowScrolling: "touch",
         overscrollBehaviorX: "contain",
       }}
@@ -149,7 +150,7 @@ export function CategoryTiles({
 
 export function CategoryTilesSkeleton() {
   return (
-    <div className="flex gap-2.5 px-4">
+    <div className="flex gap-2.5 pl-5 pr-4">
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
