@@ -319,11 +319,19 @@ export function ProfileScreen() {
 
               {/* Quick actions */}
               <div className="grid grid-cols-4 gap-1">
-                <QuickAction
-                  icon={<Plus size={18} />}
-                  label={t("profile.quick.recharge")}
-                  onClick={() => { haptic.light(); setWalletOpen(true); }}
-                />
+              {profile?.is_seller ? (
+                  <QuickAction
+                    icon={<Store size={18} />}
+                    label={t("profile.quick.myShop")}
+                    onClick={() => { haptic.light(); setShopOpen(true); }}
+                  />
+                ) : (
+                  <QuickAction
+                    icon={<Plus size={18} />}
+                    label={t("profile.quick.recharge")}
+                    onClick={() => { haptic.light(); setWalletOpen(true); }}
+                  />
+                )}
                 <QuickAction
                   icon={<WalletIcon size={18} />}
                   label={t("profile.quick.wallet")}
