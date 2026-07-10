@@ -24,17 +24,15 @@ export function LiveScreen() {
   const [flipping, setFlipping] = useState(false);
 
   if (guestMode) {
-    // Lazy-load the empty state to keep this hot module light.
-    const { GuestEmptyState } = require("@/components/guest-empty-state") as typeof import("@/components/guest-empty-state");
-    const { Store: StoreIcon } = require("lucide-react") as typeof import("lucide-react");
     return (
       <GuestEmptyState
-        icon={<StoreIcon size={40} className="text-accent" />}
+        icon={<Store size={40} className="text-accent" />}
         title={t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
         subtitle={t("guest.live.subtitle", { defaultValue: "Lance ton live shopping en quelques secondes et vends à ta communauté." })}
       />
     );
   }
+
 
   if (loading || !profile) {
     return (
