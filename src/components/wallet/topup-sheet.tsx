@@ -37,9 +37,9 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-import waveLogo from "@/assets/wave-logo.asset.json";
-import djamoLogo from "@/assets/djamo-logo.asset.json";
-import orangeMoneyLogo from "@/assets/orange-money-logo.asset.json";
+import waveLogo from "@/assets/wave-logo.webp";
+import djamoLogo from "@/assets/djamo-logo.png";
+import orangeMoneyLogo from "@/assets/orange-money-logo.png";
 
 
 const WAVE_BLUE = "#1DC8FE";
@@ -298,19 +298,19 @@ export function TopUpSheet({
                       <MethodRow
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
-                        logoUrl={waveLogo.url}
+                        logoUrl={waveLogo}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        logoUrl={orangeMoneyLogo.url}
+                        logoUrl={orangeMoneyLogo}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
-                        logoUrl={djamoLogo.url}
+                        logoUrl={djamoLogo}
                         active
                       />
                     </>

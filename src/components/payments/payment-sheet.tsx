@@ -39,9 +39,9 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-import waveLogo from "@/assets/wave-logo.asset.json";
-import djamoLogo from "@/assets/djamo-logo.asset.json";
-import orangeMoneyLogo from "@/assets/orange-money-logo.asset.json";
+import waveLogo from "@/assets/wave-logo.webp";
+import djamoLogo from "@/assets/djamo-logo.png";
+import orangeMoneyLogo from "@/assets/orange-money-logo.png";
 
 
 
@@ -315,19 +315,19 @@ export function PaymentSheet({
                       <>
                         <MethodRow
                           active
-                          logoUrl={waveLogo.url}
+                          logoUrl={waveLogo}
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={orangeMoneyLogo.url}
+                          logoUrl={orangeMoneyLogo}
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={djamoLogo.url}
+                          logoUrl={djamoLogo}
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
                         />
