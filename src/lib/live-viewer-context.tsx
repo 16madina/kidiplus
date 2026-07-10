@@ -1,19 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LiveStream } from "@/lib/live-mock";
+import { fetchActiveLives } from "@/lib/lives-db";
 
 type Ctx = {
   active: LiveStream | null;
-  /** Set of real (DB-backed) currently-live streams to cycle through via
-   *  vertical swipes. Populated by openList; may be empty. */
   playlist: LiveStream[];
-  /** Whether the cycle can advance in either direction. */
   hasNext: boolean;
   hasPrev: boolean;
   open: (s: LiveStream) => void;
-  /** Open a live and remember the surrounding list so viewers can swipe
-   *  vertically between currently-live streams (TikTok / Whatnot style).
-   *  Non-real streams (no liveId) are filtered out of the swipe list so we
-   *  never try to hop to mock content. */
   openList: (list: LiveStream[], index: number) => void;
   close: () => void;
   next: () => void;
@@ -27,27 +21,50 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
   const [playlist, setPlaylist] = useState<LiveStream[]>([]);
   const cursorRef = useRef<number>(-1);
 
-  const open = useCallback((s: LiveStream) => {
-    setActive(s);
-    setPlaylist([]);
-    cursorRef.current = -1;
+  const setPlaylistFromList = useCallback((list: LiveStream[], target: LiveStream) => {
+    const real = list.filter((s) => !!s.liveId && !!s.roomName);
+    const withTarget = real.some((s) => s.id === target.id)
+      ? real
+      : (target.liveId && target.roomName ? [target, ...real] : real);
+    setPlaylist(withTarget);
+    cursorRef.current = withTarget.findIndex((s) => s.id === target.id);
   }, []);
 
-  const openList = useCallback((list: LiveStream[], index: number) => {
-    // Only real DB lives can be reconnected — mock streams have no roomName
-    // wired to a real LiveKit room, so skip them.
-    const real = list.filter((s) => !!s.liveId && !!s.roomName);
-    const target = list[index] ?? null;
-    if (!target) return;
-    if (target.liveId && target.roomName) {
-      setPlaylist(real);
-      cursorRef.current = real.findIndex((s) => s.id === target.id);
+  const refreshPlaylistFromDb = useCallback(async (target: LiveStream) => {
+    if (!target.liveId || !target.roomName) return;
+    try {
+      const rows = await fetchActiveLives(60);
+      setPlaylistFromList(rows, target);
+    } catch (e) {
+      console.debug("[pager] refreshPlaylistFromDb failed", e);
+    }
+  }, [setPlaylistFromList]);
+
+  const open = useCallback((s: LiveStream) => {
+    setActive(s);
+    // Seed a single-item playlist so downstream code has a stable cursor;
+    // then top up with the ambient list of currently-live streams so the
+    // vertical pager works even when the entry point didn't provide a list
+    // (search results, seller profile, deep links, etc.).
+    if (s.liveId && s.roomName) {
+      setPlaylist([s]);
+      cursorRef.current = 0;
+      void refreshPlaylistFromDb(s);
     } else {
       setPlaylist([]);
       cursorRef.current = -1;
     }
+  }, [refreshPlaylistFromDb]);
+
+  const openList = useCallback((list: LiveStream[], index: number) => {
+    const target = list[index] ?? null;
+    if (!target) return;
     setActive(target);
-  }, []);
+    setPlaylistFromList(list, target);
+    // Refresh with fresh DB data so the swipe list stays accurate even if
+    // the caller passed a stale filtered array.
+    if (target.liveId && target.roomName) void refreshPlaylistFromDb(target);
+  }, [setPlaylistFromList, refreshPlaylistFromDb]);
 
   const close = useCallback(() => {
     setActive(null);
@@ -70,6 +87,15 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
 
   const hasNext = playlist.length > 1 && cursorRef.current >= 0 && cursorRef.current < playlist.length - 1;
   const hasPrev = playlist.length > 1 && cursorRef.current > 0;
+
+  // While a live is mounted, disable body overscroll so iOS Safari doesn't
+  // eat vertical pan gestures at the pager level.
+  useEffect(() => {
+    if (!active) return;
+    const prev = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => { document.body.style.overscrollBehavior = prev; };
+  }, [active]);
 
   const value = useMemo<Ctx>(
     () => ({ active, playlist, hasNext, hasPrev, open, openList, close, next, prev }),
