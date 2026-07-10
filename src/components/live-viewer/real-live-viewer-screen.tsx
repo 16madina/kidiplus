@@ -732,6 +732,7 @@ export function RealLiveViewerScreen() {
             }
             disabled={liveEnded}
             deliveryBlockedLabel={deliveryBlockedLabel}
+            lastBidder={
               room.lastBid && room.lastBid.productId === currentAsProduct.id
                 ? room.lastBid.bidderName : undefined
             }
