@@ -298,25 +298,23 @@ export function TopUpSheet({
                       <MethodRow
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
-                        brandColor={WAVE_BLUE}
                         logoUrl={waveLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        brandColor="#ffffff"
                         logoUrl={orangeMoneyLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
-                        brandColor={DJAMO_INDIGO}
                         logoUrl={djamoLogo.url}
                         active
                       />
                     </>
+
                   )}
 
 
@@ -412,12 +410,14 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: brandColor ?? "transparent",
-          color: brandColor ? "white" : "inherit",
-        }}
+        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white"
+        style={
+          logoUrl
+            ? undefined
+            : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
+        }
       >
+
         {logoUrl ? (
           <img src={logoUrl} alt="" className="h-full w-full object-contain" />
         ) : icon === "card" ? (
