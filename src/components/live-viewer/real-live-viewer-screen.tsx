@@ -747,7 +747,7 @@ export function RealLiveViewerScreen() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <WalletPill onTap={() => setTopupOpen(true)} />
+            <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
             <div className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <Eye size={13} />{displayViewers}
