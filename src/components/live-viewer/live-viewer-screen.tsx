@@ -598,7 +598,7 @@ function MockLiveViewerScreen() {
       <GiftTraySheet
         open={giftOpen}
         onClose={() => setGiftOpen(false)}
-        liveCurrency={active.currency ?? "EUR"}
+        liveCurrency={normalizeCurrency(walletCurrency ?? active.currency ?? "EUR")}
         locale={i18n.language}
         sending={false}
         onSend={sendDemoGift}
