@@ -14,7 +14,7 @@
 // The player is a native <video controls playsInline> in a full-screen
 // black overlay, with a top-right close button. No chat/bid/gift overlays.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import demoVideoAsset from "@/assets/demo-video.mp4.asset.json";
 import { AnimatePresence, motion } from "framer-motion";
 import { Play, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
