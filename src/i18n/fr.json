@@ -1197,9 +1197,7 @@
     "rejected": "Refusé",
     "rejectNote": "Motif du refus (optionnel)",
     "noPending": "Aucune demande en attente",
-    "badgeTitle": "Compte certifié"
-  },
-  "live": {
+    "badgeTitle": "Compte certifié",
     "swipeHint": "Glisse vers le haut pour le live suivant ↑"
   }
 }
