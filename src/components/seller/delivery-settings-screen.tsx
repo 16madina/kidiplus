@@ -19,7 +19,6 @@ import {
 } from "@/lib/delivery-db";
 import type { DeliveryMode, DeliveryZone } from "@/lib/delivery";
 import {
-  countriesByContinent,
   CONTINENT_LABEL,
   countryLabel,
   countryFlag,
