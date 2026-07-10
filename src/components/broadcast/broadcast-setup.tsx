@@ -166,7 +166,34 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   };
 
   const launch = async () => {
-    if (!canLaunch || launching) return;
+    if (launching) return;
+    // Explicit, user-visible validation so the disabled button doesn't feel
+    // silently broken.
+    const trimmed = b.title.trim();
+    if (trimmed.length === 0) {
+      haptic.warning();
+      toast.error(
+        t("broadcast.setup.errors.titleRequired", "Ajoute un titre à ton live avant de continuer"),
+      );
+      return;
+    }
+    if (trimmed.length < MIN_TITLE_LENGTH) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.titleTooShort",
+          `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+        ),
+      );
+      return;
+    }
+    if (b.products.length === 0) {
+      haptic.warning();
+      toast.error(
+        t("broadcast.setup.errors.noProducts", "Ajoute au moins un produit à vendre"),
+      );
+      return;
+    }
     if (!b.hostIdentity) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
