@@ -32,6 +32,7 @@ import {
   ReportsTab, ComposeMessageSheet, UserSanctionsHistory, EndLiveButton,
 } from "./moderation-pieces";
 import { SanctionSheet } from "./sanction-sheet";
+import { AdminDemoVideoCard } from "./admin-demo-video";
 
 
 type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
