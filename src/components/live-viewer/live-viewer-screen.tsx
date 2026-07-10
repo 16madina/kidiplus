@@ -49,7 +49,7 @@ export function LiveViewerScreen() {
 }
 
 function MockLiveViewerScreen() {
-  const { active, close } = useLiveViewer();
+  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
@@ -294,7 +294,9 @@ function MockLiveViewerScreen() {
   };
 
 
-  // Swipe-down to dismiss on the top area
+  // Full-screen vertical pager for mock lives too. The home feed opens a
+  // playlist of fictitious streams, so this is what makes iPhone swipe tests
+  // work when there are no real lives running.
   const dragY = useMotionValue(0);
 
   if (!active) return null;
@@ -340,11 +342,77 @@ function MockLiveViewerScreen() {
 
 
       {/* Double-tap capture layer */}
-      <div
-        className="absolute inset-0 z-10"
-        onClick={onVideoTap}
+      <div className="absolute inset-0 z-10" onClick={onVideoTap} aria-hidden />
+
+      <motion.div
+        className="absolute inset-0 z-[25]"
         aria-hidden
+        style={{
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
+        drag="y"
+        dragElastic={{ top: hasNext ? 0.55 : 0.12, bottom: hasPrev ? 0.55 : 0.12 }}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragMomentum={false}
+        onTap={onVideoTap}
+        onDragStart={(_, info) => {
+          console.debug("[pager:mock] dragStart", { hasNext, hasPrev, y: info.point.y });
+        }}
+        onDrag={(_, info) => dragY.set(info.offset.y)}
+        onDragEnd={(_, info) => {
+          const strong = Math.abs(info.offset.y) > 90 || Math.abs(info.velocity.y) > 500;
+          const up = info.offset.y < 0;
+          const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          console.debug("[pager:mock] dragEnd", {
+            offsetY: info.offset.y,
+            velY: info.velocity.y,
+            strong,
+            up,
+            hasNext,
+            hasPrev,
+          });
+          if (up && strong && hasNext) {
+            void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              nextLive();
+            });
+            return;
+          }
+          if (!up && strong && hasPrev) {
+            void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              prevLive();
+            });
+            return;
+          }
+          animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
+        }}
       />
+
+      <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
+        {hasNext && (
+          <Press
+            aria-label="Live suivant"
+            onClick={() => nextLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↑
+          </Press>
+        )}
+        {hasPrev && (
+          <Press
+            aria-label="Live précédent"
+            onClick={() => prevLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↓
+          </Press>
+        )}
+      </div>
 
       {/* Top gradient */}
       <div
@@ -365,21 +433,8 @@ function MockLiveViewerScreen() {
         }}
       />
 
-      {/* Top bar — draggable to dismiss */}
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.5 }}
-        onDrag={(_, info) => dragY.set(Math.max(0, info.offset.y))}
-        onDragEnd={(_, info) => {
-          if (info.offset.y > 120 || info.velocity.y > 600) {
-            close();
-          } else {
-            animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
-          }
-        }}
-        className="absolute inset-x-0 top-0 z-30 pt-safe"
-      >
+      {/* Top bar */}
+      <div className="absolute inset-x-0 top-0 z-30 pt-safe">
         <div className="flex items-start justify-between gap-2 px-3 pt-2">
           {/* Left: seller info + follow */}
           <div className="flex min-w-0 items-center gap-2">
@@ -482,7 +537,7 @@ function MockLiveViewerScreen() {
             </Press>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Chat */}
       <div
