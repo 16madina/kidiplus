@@ -25,6 +25,9 @@ export async function hideNativeSplash(): Promise<void> {
   try {
     await SplashScreen.hide({ fadeOutDuration: 200 });
   } catch {}
+}
+
+
 
 let started = false;
 
