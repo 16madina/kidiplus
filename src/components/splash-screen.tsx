@@ -26,9 +26,13 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.clearTimeout(timeout);
       window.clearTimeout(skipTimeout);
       window.clearTimeout(playingWatchdog);
+      // Safety net: if we never fired 'playing' (autoplay blocked, decode
+      // error…) still drop the native splash so the app becomes visible.
+      void hideNativeSplash();
       setExiting(true);
       window.setTimeout(onDone, 260);
     };
+
 
     const forceSilentInlineAutoplay = () => {
       v.muted = true;
