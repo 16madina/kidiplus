@@ -71,7 +71,11 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     const onPlaying = () => {
       videoVisibleRef.current = true;
       setVideoVisible(true);
+      // The first video frame is on screen — safe to hide the native
+      // Capacitor splash now (no white flash between the two).
+      void hideNativeSplash();
     };
+
 
     v.addEventListener("loadedmetadata", tryPlay);
     v.addEventListener("canplay", tryPlay);
