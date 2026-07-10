@@ -250,9 +250,7 @@ function SellerProfileInner({
           <motion.div className="min-w-0 flex-1 text-center" style={{ opacity: navTitleOpacity, y: navTitleY }}>
             <div className="flex items-center justify-center gap-1">
               <span className="truncate text-[15px] font-bold">{profile.display_name}</span>
-              {profile.is_seller && (
-                <BadgeCheck size={15} className="text-accent" fill="currentColor" strokeWidth={0} />
-              )}
+              <VerifiedBadge verified={profile.is_verified} size={14} />
             </div>
           </motion.div>
           <Press aria-label={t("common.more")} onClick={() => setActionsOpen(true)} className="h-10 w-10 rounded-full text-foreground">
