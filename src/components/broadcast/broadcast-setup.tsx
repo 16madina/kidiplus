@@ -66,7 +66,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
   // Prefill title with the shop/display name and cover with the shop avatar,
   // so the user can launch a live without extra taps. They can still tap the
-  // cover or edit the title to override.
+  // cover or edit the title to override. avatar_url is a storage path — we
+  // must resolve it to a signed URL before it can be shown/uploaded.
   const { profile } = useAuth();
   useEffect(() => {
     if (!profile) return;
@@ -74,7 +75,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       b.setTitle(profile.display_name);
     }
     if (!b.cover && !b.coverFile && profile.avatar_url) {
-      b.setCover(profile.avatar_url);
+      let cancelled = false;
+      void resolveAvatarUrl(profile.avatar_url).then((url) => {
+        if (!cancelled && url && !b.cover && !b.coverFile) b.setCover(url);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.display_name, profile?.avatar_url]);
