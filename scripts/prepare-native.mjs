@@ -48,7 +48,6 @@ const html = `<!doctype html>
   </head>
   <body>
     <div class="wrap">
-      <div class="brand">KiDi+</div>
       <div id="loading" class="spinner" aria-label="Chargement"></div>
       <div id="retry" class="retry" role="alert">
         <p>Impossible de charger l'application. Vérifie ta connexion.</p>
