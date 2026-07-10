@@ -841,33 +841,60 @@ export function RealLiveViewerScreen() {
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex items-center gap-2 px-3 pb-safe"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
-        <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={t("live.chatPlaceholder")}
-            disabled={liveEnded}
-            className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+        {isGuest ? (
+          // Guest composer: read-only chat + prompt-to-sign-in bar. Guests
+          // physically cannot send chat data (canPublishData=false on the
+          // LiveKit token, and RLS blocks all live-writes), so we replace
+          // the input with a tap-to-sign-in surface rather than a disabled
+          // control that would silently swallow taps.
+          <Press
+            onClick={() => openAuth()}
+            aria-label={t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+            className="!min-h-11 h-11 flex-1 rounded-full px-4 text-left text-[14px] font-semibold text-white"
             style={{
               backgroundColor: "rgba(0,0,0,0.5)",
               backdropFilter: "blur(14px)",
               WebkitBackdropFilter: "blur(14px)",
               border: "1px solid rgba(255,255,255,0.15)",
             }}
-          />
-        </form>
-        <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
-          className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Send size={17} />
-        </Press>
+          >
+            {t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+          </Press>
+        ) : (
+          <>
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={t("live.chatPlaceholder")}
+                disabled={liveEnded}
+                className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(14px)",
+                  WebkitBackdropFilter: "blur(14px)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
+              />
+            </form>
+            <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
+              className="h-11 w-11 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              <Send size={17} />
+            </Press>
+          </>
+        )}
         <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
           className="h-11 w-11 rounded-full text-white"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
           <Heart size={17} fill="currentColor" />
         </Press>
         <Press
-          onClick={liveEnded ? undefined : () => { haptic.light(); setGiftTrayOpen(true); }}
+          onClick={liveEnded ? undefined : () => {
+            if (isGuest) { openAuth(); return; }
+            haptic.light();
+            setGiftTrayOpen(true);
+          }}
           disabled={liveEnded}
           aria-label={t("gifts.open", "Cadeaux")}
           className="h-11 w-11 rounded-full text-white"
@@ -880,6 +907,7 @@ export function RealLiveViewerScreen() {
           <Gift size={17} />
         </Press>
       </div>
+
 
       {isModerator && user && active?.liveId && !liveEnded && (
         <ModeratorDock
