@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
+const DARK_STORAGE_KEY = "kidi-theme-dark";
+
 type Ctx = {
   dark: boolean;
   setDark: (v: boolean) => void;
@@ -16,7 +18,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [notif, setNotif] = useState(true);
   const [sounds, setSounds] = useState(true);
 
-  const setDark = useCallback((v: boolean) => setDarkState(v), []);
+  useEffect(() => {
+    const saved = localStorage.getItem(DARK_STORAGE_KEY);
+    if (saved !== null) {
+      setDarkState(saved === "1");
+    }
+  }, []);
+
+  const setDark = useCallback((v: boolean) => {
+    setDarkState(v);
+    try {
+      localStorage.setItem(DARK_STORAGE_KEY, v ? "1" : "0");
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
