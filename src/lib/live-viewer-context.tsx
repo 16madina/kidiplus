@@ -7,6 +7,8 @@ type Ctx = {
   playlist: LiveStream[];
   hasNext: boolean;
   hasPrev: boolean;
+  peekNext: LiveStream | null;
+  peekPrev: LiveStream | null;
   open: (s: LiveStream) => void;
   openList: (list: LiveStream[], index: number) => void;
   close: () => void;
