@@ -33,14 +33,15 @@ function coerce(row: any, sellerId: string): SellerDeliverySettings {
 }
 
 export async function fetchDeliverySettings(sellerId: string): Promise<SellerDeliverySettings | null> {
-  const { data, error } = await sb
-    .from("seller_delivery_settings")
-    .select("*")
-    .eq("seller_id", sellerId)
-    .maybeSingle();
+  // Direct table read is restricted to the owner/admin; use the RPC so buyers
+  // can still fetch a seller's delivery config for checkout.
+  const { data, error } = await (sb as any).rpc("get_seller_delivery_settings", {
+    _seller_id: sellerId,
+  });
   if (error) return null;
-  if (!data) return null;
-  return coerce(data, sellerId);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return coerce(row, sellerId);
 }
 
 /** Guaranteed-non-null read: returns defaults if there's no row yet. */
