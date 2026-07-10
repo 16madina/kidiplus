@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestDeliveryRouteImport } from './routes/test-delivery'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -27,6 +28,11 @@ import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.co
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 
+const TestDeliveryRoute = TestDeliveryRouteImport.update({
+  id: '/test-delivery',
+  path: '/test-delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
+  '/test-delivery': typeof TestDeliveryRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
+  '/test-delivery': typeof TestDeliveryRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
+  '/test-delivery': typeof TestDeliveryRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
+    | '/test-delivery'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
+    | '/test-delivery'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/safety'
     | '/terms'
+    | '/test-delivery'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SafetyRoute: typeof SafetyRoute
   TermsRoute: typeof TermsRoute
+  TestDeliveryRoute: typeof TestDeliveryRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -252,6 +265,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test-delivery': {
+      id: '/test-delivery'
+      path: '/test-delivery'
+      fullPath: '/test-delivery'
+      preLoaderRoute: typeof TestDeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SafetyRoute: SafetyRoute,
   TermsRoute: TermsRoute,
+  TestDeliveryRoute: TestDeliveryRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
@@ -418,3 +439,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
