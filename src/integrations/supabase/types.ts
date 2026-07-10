@@ -935,6 +935,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_debug_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          ok: boolean
+          platform: string
+          step: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          ok: boolean
+          platform: string
+          step: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          ok?: boolean
+          platform?: string
+          step?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
