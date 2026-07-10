@@ -24,7 +24,7 @@ export async function fetchEligibility(userId: string): Promise<Eligibility | nu
 export type SubmitResult = { ok: boolean; error?: string; id?: string; eligibility?: Eligibility };
 
 export async function submitVerificationRequest(message?: string): Promise<SubmitResult> {
-  const { data, error } = await supabase.rpc("request_verification", { _message: message ?? null });
+  const { data, error } = await supabase.rpc("request_verification", { _message: message ?? undefined });
   if (error) return { ok: false, error: error.message };
   return data as unknown as SubmitResult;
 }
@@ -82,7 +82,7 @@ export async function fetchPendingRequests(): Promise<PendingRequestWithProfile[
 }
 
 export async function reviewRequest(id: string, approve: boolean, note?: string): Promise<{ ok: boolean; error?: string }> {
-  const { data, error } = await supabase.rpc("admin_review_verification", { _id: id, _approve: approve, _note: note ?? null });
+  const { data, error } = await supabase.rpc("admin_review_verification", { _id: id, _approve: approve, _note: note ?? undefined });
   if (error) return { ok: false, error: error.message };
   return data as unknown as { ok: boolean; error?: string };
 }
