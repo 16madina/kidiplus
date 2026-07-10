@@ -98,7 +98,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
             >
               <X size={18} />
             </button>
-            <AuthFlow />
+            <AuthFlow allowGuest={false} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -7,11 +7,14 @@ import { EASE_IOS } from "@/lib/motion";
 import { SignInScreen } from "./sign-in-screen";
 import { SignUpScreen } from "./sign-up-screen";
 import { ForgotPasswordScreen } from "./forgot-password-screen";
+import { useAuth } from "@/lib/auth-context";
 
 type View = "welcome" | "signin" | "signup" | "forgot";
 
-export function AuthFlow() {
+export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
   const [view, setView] = useState<View>("welcome");
+  const { enterGuestMode } = useAuth();
+
 
   return (
     <div
@@ -29,8 +32,10 @@ export function AuthFlow() {
             key="welcome"
             onSignIn={() => setView("signin")}
             onSignUp={() => setView("signup")}
+            onGuest={allowGuest ? enterGuestMode : undefined}
           />
         )}
+
         {view === "signin" && (
           <SignInScreen
             key="signin"
@@ -57,10 +62,13 @@ export function AuthFlow() {
 function Welcome({
   onSignIn,
   onSignUp,
+  onGuest,
 }: {
   onSignIn: () => void;
   onSignUp: () => void;
+  onGuest?: () => void;
 }) {
+
   const { t } = useTranslation();
   return (
     <motion.div
@@ -126,6 +134,15 @@ function Welcome({
         >
           {t("auth.welcome.signIn")}
         </Press>
+        {onGuest && (
+          <Press
+            onClick={onGuest}
+            className="!min-h-11 h-11 w-full rounded-2xl text-[14px] font-semibold text-white/85"
+            style={{ backgroundColor: "transparent" }}
+          >
+            {t("auth.welcome.continueAsGuest", { defaultValue: "Continuer en tant qu'invité →" })}
+          </Press>
+        )}
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           {t("auth.signUp.terms")}
         </p>
@@ -133,3 +150,4 @@ function Welcome({
     </motion.div>
   );
 }
+

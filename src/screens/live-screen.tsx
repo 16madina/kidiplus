@@ -14,9 +14,26 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { useState } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { GuestEmptyState } from "@/components/guest-empty-state";
+
 
 
 export function LiveScreen() {
+  const { t } = useTranslation();
+  const { guestMode } = useAuth();
+  if (guestMode) {
+    return (
+      <GuestEmptyState
+        icon={<Store size={40} className="text-accent" />}
+        title={t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
+        subtitle={t("guest.live.subtitle", { defaultValue: "Lance ton live shopping en quelques secondes et vends à ta communauté." })}
+      />
+    );
+  }
+  return <LiveScreenAuthed />;
+}
+
+function LiveScreenAuthed() {
   const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
@@ -28,6 +45,8 @@ export function LiveScreen() {
       </div>
     );
   }
+
+
 
   if (!profile.is_seller) {
     return (

@@ -88,7 +88,7 @@ export function AppShell() {
 }
 
 function AuthGate() {
-  const { loading, session } = useAuth();
+  const { loading, session, guestMode } = useAuth();
   if (loading) {
     return (
       <div
@@ -99,11 +99,17 @@ function AuthGate() {
       </div>
     );
   }
+  // Full app shell for both authenticated users and guests (via the
+  // "Continuer en tant qu'invité" opt-in). Guests get read-only surfaces
+  // and every write path is intercepted by <AuthPromptProvider>. If neither,
+  // fall back to the minimal <GuestShell> which still supports /live/$id
+  // deep-links + the AuthFlow underneath.
+  const allowShell = !!session || guestMode;
   return (
     <ImmersiveProvider>
       <AuthPromptProvider>
         <AnimatePresence mode="wait">
-          {session ? (
+          {allowShell ? (
             <motion.div
               key="app"
               initial={{ opacity: 0 }}
@@ -113,7 +119,7 @@ function AuthGate() {
               className="h-full w-full"
             >
               <AppShellInner />
-              <ModerationBanGate>{null}</ModerationBanGate>
+              {session && <ModerationBanGate>{null}</ModerationBanGate>}
             </motion.div>
           ) : (
             <motion.div
@@ -132,6 +138,7 @@ function AuthGate() {
     </ImmersiveProvider>
   );
 }
+
 
 
 

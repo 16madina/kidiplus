@@ -40,6 +40,11 @@ type AuthCtx = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  /** Guest mode: browsing without a session. UI-only flag; the DB never
+   *  trusts it — RLS still blocks every write for `auth.uid() IS NULL`. */
+  guestMode: boolean;
+  enterGuestMode: () => void;
+  exitGuestMode: () => void;
   signUp: (args: {
     email: string;
     password: string;
@@ -54,13 +59,34 @@ type AuthCtx = {
   becomeSeller: () => Promise<void>;
 };
 
+
 const AuthContext = createContext<AuthCtx | null>(null);
+
+const GUEST_STORAGE_KEY = "kidi:guestMode";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guestMode, setGuestMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem(GUEST_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const profileFetchToken = useRef(0);
+
+  const enterGuestMode = useCallback(() => {
+    try { window.sessionStorage.setItem(GUEST_STORAGE_KEY, "1"); } catch { /* ignore */ }
+    setGuestMode(true);
+  }, []);
+  const exitGuestMode = useCallback(() => {
+    try { window.sessionStorage.removeItem(GUEST_STORAGE_KEY); } catch { /* ignore */ }
+    setGuestMode(false);
+  }, []);
+
 
   const fetchProfile = useCallback(async (userId: string) => {
     const token = ++profileFetchToken.current;
@@ -92,12 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s?.user) {
+        // Real session appeared — leave guest mode.
+        try { window.sessionStorage.removeItem(GUEST_STORAGE_KEY); } catch { /* ignore */ }
+        setGuestMode(false);
         // Defer to avoid deadlocks per Supabase guidance.
         setTimeout(() => void fetchProfile(s.user.id), 0);
       } else {
         setProfile(null);
       }
     });
+
     // 2) Hydrate current session.
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -189,6 +219,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       profile,
+      guestMode: guestMode && !session,
+      enterGuestMode,
+      exitGuestMode,
       signUp,
       signIn,
       signOut,
@@ -202,6 +235,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       session,
       profile,
+      guestMode,
+      enterGuestMode,
+      exitGuestMode,
       signUp,
       signIn,
       signOut,
@@ -212,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       becomeSeller,
     ],
   );
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
