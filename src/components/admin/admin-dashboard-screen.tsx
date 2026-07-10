@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
-  Flag, MessageSquare, ShieldAlert, AlertTriangle,
+  Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck,
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
@@ -34,7 +34,7 @@ import {
 import { SanctionSheet } from "./sanction-sheet";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -55,6 +55,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
+            {tab === "verify" && open && <VerificationsTab />}
           </div>
         </>
       )}
@@ -73,6 +74,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
+    { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
   ];
@@ -835,6 +837,83 @@ function LivesTab() {
           </div>
         </li>
       ))}
+    </ul>
+  );
+}
+
+// ---------- Verifications ----------
+
+function VerificationsTab() {
+  const { t } = useTranslation();
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof import("@/lib/verification-db").fetchPendingRequests>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const mod = await import("@/lib/verification-db");
+    setRows(await mod.fetchPendingRequests());
+    setLoading(false);
+  };
+  useEffect(() => { void load(); }, []);
+
+  async function act(id: string, approve: boolean) {
+    setBusy(id);
+    const mod = await import("@/lib/verification-db");
+    const note = approve ? undefined : window.prompt(t("verify.rejectNote", "Motif du refus (optionnel)")) || undefined;
+    const res = await mod.reviewRequest(id, approve, note);
+    setBusy(null);
+    if (!res.ok) { toast.error(res.error ?? "Erreur"); return; }
+    toast.success(approve ? t("verify.approved", "Approuvé ✓") : t("verify.rejected", "Refusé"));
+    await load();
+  }
+
+  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">…</div>;
+  if (rows.length === 0) return <div className="py-8 text-center text-sm text-muted-foreground">{t("verify.noPending", "Aucune demande en attente")}</div>;
+
+  return (
+    <ul className="space-y-2">
+      {rows.map((r) => {
+        const e = r.eligibility;
+        return (
+          <li key={r.id} className="rounded-2xl border border-border bg-card p-3">
+            <div className="flex items-center gap-3">
+              <img src={r.profile?.avatar_url || "/placeholder.svg"} alt="" className="h-10 w-10 rounded-full object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-semibold">{r.profile?.display_name}</p>
+                <p className="truncate text-[11px] text-muted-foreground">@{r.profile?.handle}</p>
+              </div>
+            </div>
+            {e && (
+              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
+                <div>Ventes: <span className="text-foreground">{e.sales_count}</span> {e.sales_ok ? "✓" : "✗"}</div>
+                <div>Note: <span className="text-foreground">{e.rating_avg} ★ / {e.review_count}</span> {e.rating_ok ? "✓" : "✗"}</div>
+                <div>Ancienneté: <span className="text-foreground">{e.age_days}j</span> {e.age_ok ? "✓" : "✗"}</div>
+                <div>Sanctions: {e.no_sanction ? "aucune ✓" : "actives ✗"}</div>
+              </div>
+            )}
+            {r.message && <p className="mt-2 rounded-lg bg-muted/40 p-2 text-[12px] italic">"{r.message}"</p>}
+            <div className="mt-3 flex gap-2">
+              <Press
+                onClick={() => void act(r.id, true)}
+                disabled={busy === r.id}
+                className="flex-1 rounded-full py-2 text-[13px] font-semibold text-white"
+                style={{ backgroundColor: "oklch(0.6 0.17 155)" }}
+              >
+                <Check size={14} className="inline" /> {t("verify.approve", "Approuver")}
+              </Press>
+              <Press
+                onClick={() => void act(r.id, false)}
+                disabled={busy === r.id}
+                className="flex-1 rounded-full py-2 text-[13px] font-semibold text-white"
+                style={{ backgroundColor: "oklch(0.55 0.16 25)" }}
+              >
+                <X size={14} className="inline" /> {t("verify.reject", "Rejeter")}
+              </Press>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

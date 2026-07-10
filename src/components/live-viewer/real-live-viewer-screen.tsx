@@ -47,6 +47,7 @@ import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
 import { sendGiftRpc } from "@/lib/live-gifts-db";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { VerifiedBadge } from "@/components/verified-badge";
 
 
 
@@ -104,6 +105,7 @@ export function RealLiveViewerScreen() {
   // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
   const [sellerCountry, setSellerCountry] = useState<string | null>(null);
+  const [sellerVerified, setSellerVerified] = useState(false);
   const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
   useEffect(() => {
     if (!active?.sellerId) return;
@@ -111,11 +113,13 @@ export function RealLiveViewerScreen() {
     void (async () => {
       const [settings, sellerProfile] = await Promise.all([
         fetchDeliverySettings(active.sellerId!),
-        supabase.from("profiles").select("country").eq("id", active.sellerId!).maybeSingle(),
+        supabase.from("profiles").select("country, is_verified").eq("id", active.sellerId!).maybeSingle(),
       ]);
       if (cancelled) return;
       setSellerSettings(settings);
-      setSellerCountry(((sellerProfile.data as { country?: string | null } | null)?.country) ?? null);
+      const p = sellerProfile.data as { country?: string | null; is_verified?: boolean } | null;
+      setSellerCountry(p?.country ?? null);
+      setSellerVerified(!!p?.is_verified);
     })();
     return () => { cancelled = true; };
   }, [active?.sellerId]);
@@ -613,22 +617,25 @@ export function RealLiveViewerScreen() {
       )}
 
       {/* Video interaction layer: tap for hearts + vertical swipe to cycle
-          between currently-live streams (TikTok / Whatnot style). Chat,
-          composer, product sheets and moderation menus sit on higher z
-          layers and receive their own events before this one. */}
+          between currently-live streams (TikTok / Whatnot style). Sits
+          ABOVE chat (z-20) so touches on the chat area still trigger
+          swipes; interactive controls (top bar, auction card, composer)
+          are on z-30 and receive their own events first. */}
       <motion.div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-[25]"
         aria-hidden
+        style={{ touchAction: "pan-y" }}
         drag="y"
         dragElastic={{ top: hasNext ? 0.55 : 0.12, bottom: hasPrev ? 0.55 : 0.15 }}
         dragConstraints={{ top: 0, bottom: 0 }}
         onDrag={(_, info) => dragY.set(info.offset.y)}
         onTap={onVideoTap}
         onDragEnd={(_, info) => {
-          const strong = Math.abs(info.offset.y) > 80 || Math.abs(info.velocity.y) > 600;
+          const strong = Math.abs(info.offset.y) > 60 || Math.abs(info.velocity.y) > 400;
           const up = info.offset.y < 0;
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
           if (up && strong && hasNext) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
             void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               nextLive();
@@ -636,6 +643,7 @@ export function RealLiveViewerScreen() {
             return;
           }
           if (!up && strong && hasPrev) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch {}
             void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
               dragY.set(0);
               prevLive();
@@ -650,6 +658,32 @@ export function RealLiveViewerScreen() {
           animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
         }}
       />
+
+      {/* Desktop-only chevron fallback (mobile users get the swipe). */}
+      <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
+        {hasNext && (
+          <Press
+            aria-label="Next live"
+            onClick={() => nextLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↑
+          </Press>
+        )}
+        {hasPrev && (
+          <Press
+            aria-label="Previous live"
+            onClick={() => prevLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↓
+          </Press>
+        )}
+      </div>
+
+      <SwipeHint hasNext={hasNext} />
 
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
@@ -677,9 +711,10 @@ export function RealLiveViewerScreen() {
             >
               <img src={active.avatar} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90" />
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-bold text-white"
+                <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  {active.seller}
+                  <span className="truncate">{active.seller}</span>
+                  <VerifiedBadge verified={sellerVerified} size={13} />
                 </p>
                 <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   {displayViewers} {t("live.viewers", { count: displayViewers })}
@@ -906,3 +941,38 @@ export function RealLiveViewerScreen() {
     </motion.div>
   );
 }
+
+function SwipeHint({ hasNext }: { hasNext: boolean }) {
+  const { t } = useTranslation();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!hasNext) return;
+    try {
+      if (localStorage.getItem("hint.liveSwipe.v1")) return;
+    } catch { /* ignore */ }
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
+    }, 3200);
+    return () => clearTimeout(timer);
+  }, [hasNext]);
+  if (!visible) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="pointer-events-none absolute inset-x-0 z-[27] flex justify-center"
+      style={{ top: "35%" }}
+    >
+      <span
+        className="rounded-full px-4 py-2 text-[13px] font-semibold text-white"
+        style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)" }}
+      >
+        {t("verify.swipeHint", "Glisse vers le haut pour le live suivant ↑")}
+      </span>
+    </motion.div>
+  );
+}
+

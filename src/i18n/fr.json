@@ -806,7 +806,8 @@
       "users": "Utilisateurs",
       "payments": "Paiements",
       "lives": "Lives",
-      "reports": "Signalements"
+      "reports": "Signalements",
+      "verify": "Certifs"
     },
     "toDo": {
       "title": "À traiter",
@@ -1170,5 +1171,33 @@
     "refunded": "Acheteur remboursé",
     "refundedWallet": "Remboursé sur le portefeuille",
     "refundManualNote": "Remboursement carte à effectuer manuellement dans Stripe."
+  },
+  "verify": {
+    "title": "Certification",
+    "menuLabel": "Certification",
+    "criteria": "Critères",
+    "crit": {
+      "seller": "Boutique vendeur activée",
+      "sales": "10 ventes livrées",
+      "rating": "Note ≥ 4/5 (min. 5 avis)",
+      "age": "Compte ≥ 30 jours",
+      "noSanction": "Aucune sanction en cours"
+    },
+    "youAreVerified": "Ton compte est certifié",
+    "verifiedHint": "Le badge s'affiche à côté de ton nom partout dans l'app.",
+    "pending": "Demande en cours d'examen",
+    "pendingHint": "L'équipe reviendra vers toi rapidement.",
+    "messagePlaceholder": "Un mot pour l'équipe (optionnel)",
+    "submit": "Demander la certification",
+    "submitted": "Demande envoyée ✓",
+    "submitError": "Erreur : ",
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "approved": "Approuvé ✓",
+    "rejected": "Refusé",
+    "rejectNote": "Motif du refus (optionnel)",
+    "noPending": "Aucune demande en attente",
+    "badgeTitle": "Compte certifié",
+    "swipeHint": "Glisse vers le haut pour le live suivant ↑"
   }
 }

@@ -806,7 +806,8 @@
       "users": "Users",
       "payments": "Payments",
       "lives": "Lives",
-      "reports": "Reports"
+      "reports": "Reports",
+      "verify": "Verify"
     },
     "toDo": {
       "title": "To handle",
@@ -1170,5 +1171,33 @@
     "refunded": "Buyer refunded",
     "refundedWallet": "Refunded to wallet",
     "refundManualNote": "Card refund must be issued manually in Stripe."
+  },
+  "verify": {
+    "title": "Verification",
+    "menuLabel": "Verification",
+    "criteria": "Requirements",
+    "crit": {
+      "seller": "Seller shop activated",
+      "sales": "10 delivered sales",
+      "rating": "Rating ≥ 4/5 (min. 5 reviews)",
+      "age": "Account ≥ 30 days",
+      "noSanction": "No active sanction"
+    },
+    "youAreVerified": "Your account is verified",
+    "verifiedHint": "The badge shows next to your name across the app.",
+    "pending": "Request under review",
+    "pendingHint": "The team will get back to you soon.",
+    "messagePlaceholder": "A note for the team (optional)",
+    "submit": "Request verification",
+    "submitted": "Request sent ✓",
+    "submitError": "Error: ",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Approved ✓",
+    "rejected": "Rejected",
+    "rejectNote": "Reason for rejection (optional)",
+    "noPending": "No pending requests",
+    "badgeTitle": "Verified account",
+    "swipeHint": "Swipe up for the next live ↑"
   }
 }

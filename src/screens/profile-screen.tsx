@@ -49,6 +49,8 @@ import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
+import { CertificationSheet } from "@/components/verify/certification-sheet";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +87,7 @@ export function ProfileScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -282,6 +285,7 @@ export function ProfileScreen() {
             <div className="text-center">
               <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
                 {profile?.display_name ?? "…"}
+                <VerifiedBadge verified={profile?.is_verified} size={16} />
                 {profile?.is_seller && (
                   <span
                     aria-hidden
@@ -386,6 +390,15 @@ export function ProfileScreen() {
           index={1}
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => toast(soon) },
+            ...(profile?.is_seller
+              ? [{
+                  icon: <BadgeCheck size={16} />,
+                  label: t("verify.menuLabel", "Certification"),
+                  tint: "oklch(0.68 0.16 80)",
+                  trailing: profile?.is_verified ? "✓" : undefined,
+                  onClick: () => setCertOpen(true),
+                }]
+              : []),
             { icon: <UserX size={16} />, label: t("block.listTitle"), tint: "oklch(0.55 0.12 30)", onClick: () => setBlockedOpen(true) },
             { icon: <FileText size={16} />, label: t("profile.menu.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
             { icon: <FileText size={16} />, label: t("profile.menu.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
@@ -448,6 +461,7 @@ export function ProfileScreen() {
       <LegalScreen open={legalOpen === "community"} onClose={() => setLegalOpen(null)} kind="community" />
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
+      <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
     </div>
   );
 }
