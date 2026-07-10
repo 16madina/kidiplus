@@ -99,7 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "KiDi+ — Live Shopping & Enchères" },
       {
         property: "og:description",
-        content: "Lives, enchères et shopping en temps réel sur KiDi+.",
+        content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -107,15 +107,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
       { property: "og:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
       { name: "twitter:description", content: "KiDi+ — regarde des lives, participe aux enchères en temps réel et vends à ta communauté." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783440231192-IMG_3876.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783440231192-IMG_3876.webp" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783684301088-ChatGPT_Image_8_juill._2026,_11_h_48_min_49_s.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/HniuLdmUhpS7IHY6c9micr37Ttj1/social-images/social-1783684301088-ChatGPT_Image_8_juill._2026,_11_h_48_min_49_s.webp" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.json" },
     ],
