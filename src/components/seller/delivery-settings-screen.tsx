@@ -19,7 +19,8 @@ import {
 } from "@/lib/delivery-db";
 import type { DeliveryMode, DeliveryZone } from "@/lib/delivery";
 import {
-  COUNTRIES,
+  countriesByContinent,
+  CONTINENT_LABEL,
   countryLabel,
   countryFlag,
   defaultCountryFromCurrency,
@@ -245,20 +246,29 @@ export function SellerDeliverySettingsScreen({
                                 className="fixed inset-0 z-10"
                                 onClick={() => setCountryPickerIdx(null)}
                               />
-                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-64 w-56 overflow-auto rounded-lg border border-border bg-background shadow-lg">
-                                {COUNTRIES.map((c) => (
-                                  <li key={c.code}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)));
-                                        setCountryPickerIdx(null);
-                                      }}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
-                                    >
-                                      <span>{c.flag}</span>
-                                      <span>{i18n.language.startsWith("en") ? c.nameEn : c.name}</span>
-                                    </button>
+                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-72 w-64 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                                {countriesByContinent(sellerCountry).map(({ continent, countries }) => (
+                                  <li key={continent}>
+                                    <div className="sticky top-0 bg-muted/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                                      {i18n.language.startsWith("en") ? CONTINENT_LABEL[continent].en : CONTINENT_LABEL[continent].fr}
+                                    </div>
+                                    <ul>
+                                      {countries.map((c) => (
+                                        <li key={c.code}>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)));
+                                              setCountryPickerIdx(null);
+                                            }}
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
+                                          >
+                                            <span>{c.flag}</span>
+                                            <span>{i18n.language.startsWith("en") ? c.nameEn : c.name}</span>
+                                          </button>
+                                        </li>
+                                      ))}
+                                    </ul>
                                   </li>
                                 ))}
                               </ul>

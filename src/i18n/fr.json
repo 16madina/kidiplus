@@ -1145,7 +1145,7 @@
     "mode": "Mode de livraison",
     "modes": {
       "flat": "Tarif fixe",
-      "zones": "Par zones",
+      "zones": "Par Pays / par Zones",
       "courier": "Payé au livreur"
     },
     "modeHelp": {
