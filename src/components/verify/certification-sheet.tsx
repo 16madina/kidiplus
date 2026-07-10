@@ -1,7 +1,7 @@
 // Self-serve certification (verified badge) sheet for sellers.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BottomSheet } from "@/components/bottom-sheet";
+import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { toast } from "sonner";
 import { Check, X } from "lucide-react";
