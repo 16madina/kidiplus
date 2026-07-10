@@ -16,8 +16,12 @@ import bg3 from "@/assets/welcome-bgs/bg-3.jpg.asset.json";
 import bg4 from "@/assets/welcome-bgs/bg-4.jpg.asset.json";
 import bg5 from "@/assets/welcome-bgs/bg-5.jpg.asset.json";
 import bg6 from "@/assets/welcome-bgs/bg-6.jpg.asset.json";
+import bg7 from "@/assets/welcome-bgs/bg-7.jpg.asset.json";
+import bg8 from "@/assets/welcome-bgs/bg-8.jpg.asset.json";
+import bg9 from "@/assets/welcome-bgs/bg-9.jpg.asset.json";
+import bg10 from "@/assets/welcome-bgs/bg-10.jpg.asset.json";
 
-const WELCOME_BGS = [bg1, bg2, bg3, bg4, bg5, bg6];
+const WELCOME_BGS = [bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8, bg9, bg10];
 
 
 
