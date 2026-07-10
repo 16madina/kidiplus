@@ -48,6 +48,7 @@ import { GiftAnimationsLayer } from "./gift-animations";
 import { sendGiftRpc } from "@/lib/live-gifts-db";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { logLiveInteraction } from "@/lib/interactions-db";
 
 
 
@@ -404,6 +405,7 @@ export function RealLiveViewerScreen() {
       setTimeout(() => room.sendHeart(), 80);
       setTimeout(() => room.sendHeart(), 160);
       haptic.medium();
+      if (active) void logLiveInteraction(active, "like", 2);
     }
     lastTap.current = nowT;
   };
@@ -411,6 +413,7 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     haptic.medium();
     room.sendHeart();
+    if (active) void logLiveInteraction(active, "like");
   };
 
   // Follow (local)
