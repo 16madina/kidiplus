@@ -49,6 +49,8 @@ import { BlockedUsersScreen } from "@/components/moderation/blocked-users-screen
 import { DeleteAccountScreen } from "@/components/account/delete-account-screen";
 import { AddressBookScreen } from "@/components/buyer/address-book-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
+import { CertificationSheet } from "@/components/verify/certification-sheet";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
