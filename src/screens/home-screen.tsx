@@ -19,6 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { usePersonalizedRanking } from "@/lib/personalization";
+import { useSettings } from "@/lib/settings-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
