@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { User } from "lucide-react";
+
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { SignInScreen } from "./sign-in-screen";
