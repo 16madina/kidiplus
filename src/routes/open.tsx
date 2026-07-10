@@ -74,11 +74,11 @@ function OpenBridge() {
       <h1 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Ouverture de KIDI+…</h1>
       <p style={{ opacity: 0.8, margin: 0, fontSize: 14 }}>
         {fallback
-          ? "L'application n'a pas répondu, ouverture du site."
+          ? "L'application n'est pas installée. Télécharge-la ci-dessous."
           : "Nous tentons d'ouvrir l'application. Patiente un instant…"}
       </p>
       <a
-        href={webUrl}
+        href={downloadUrl}
         style={{
           marginTop: 12,
           background: '#E11D48',
@@ -90,7 +90,7 @@ function OpenBridge() {
           fontSize: 14,
         }}
       >
-        Continuer sur le site
+        Télécharger l'application
       </a>
     </main>
   )
