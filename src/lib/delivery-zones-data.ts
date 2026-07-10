@@ -272,6 +272,39 @@ export function countriesByContinent(
   }));
 }
 
+function normalizeSearch(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Search countries by name (localized), ISO code or continent; keeps user's continent first. */
+export function searchCountries(
+  query: string,
+  userCountry: string | null | undefined,
+): { continent: Continent; countries: CountryOption[] }[] {
+  const q = normalizeSearch(query.trim());
+  const all = countriesByContinent(userCountry);
+  if (!q) return all;
+  return all
+    .map(({ continent, countries }) => ({
+      continent,
+      countries: countries.filter((c) => {
+        const haystack = [
+          normalizeSearch(c.name),
+          normalizeSearch(c.nameEn),
+          c.code.toLowerCase(),
+          normalizeSearch(CONTINENT_LABEL[continent].fr),
+          normalizeSearch(CONTINENT_LABEL[continent].en),
+        ];
+        return haystack.some((h) => h.includes(q));
+      }),
+    }))
+    .filter(({ countries }) => countries.length > 0);
+}
+
+
 /** Curated zone suggestions per country. */
 export const ZONE_SUGGESTIONS: Record<string, string[]> = {
   CI: [
