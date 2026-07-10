@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { User } from "lucide-react";
@@ -10,7 +10,19 @@ import { ForgotPasswordScreen } from "./forgot-password-screen";
 import { useAuth } from "@/lib/auth-context";
 import badge from "@/assets/kidi-badge-v2.png.asset.json";
 import wordmark from "@/assets/kidi-wordmark.png.asset.json";
-import bg from "@/assets/kidi-welcome-bg.jpg.asset.json";
+import bg1 from "@/assets/welcome-bgs/bg-1.jpg.asset.json";
+import bg2 from "@/assets/welcome-bgs/bg-2.jpg.asset.json";
+import bg3 from "@/assets/welcome-bgs/bg-3.jpg.asset.json";
+import bg4 from "@/assets/welcome-bgs/bg-4.jpg.asset.json";
+import bg5 from "@/assets/welcome-bgs/bg-5.jpg.asset.json";
+import bg6 from "@/assets/welcome-bgs/bg-6.jpg.asset.json";
+import bg7 from "@/assets/welcome-bgs/bg-7.jpg.asset.json";
+import bg8 from "@/assets/welcome-bgs/bg-8.jpg.asset.json";
+import bg9 from "@/assets/welcome-bgs/bg-9.jpg.asset.json";
+import bg10 from "@/assets/welcome-bgs/bg-10.jpg.asset.json";
+
+const WELCOME_BGS = [bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8, bg9, bg10];
+
 
 type View = "welcome" | "signin" | "signup" | "forgot";
 
