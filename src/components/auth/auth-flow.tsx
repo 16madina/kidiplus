@@ -32,8 +32,10 @@ export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
             key="welcome"
             onSignIn={() => setView("signin")}
             onSignUp={() => setView("signup")}
+            onGuest={allowGuest ? enterGuestMode : undefined}
           />
         )}
+
         {view === "signin" && (
           <SignInScreen
             key="signin"
