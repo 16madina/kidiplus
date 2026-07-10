@@ -249,14 +249,15 @@ function MockLiveViewerScreen() {
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
   const send = () => {
-    const t = draft.trim();
-    if (!t) return;
+    const txt = draft.trim();
+    if (!txt) return;
     setMessages((prev) => [
       ...prev,
-      { id: `me-${Date.now()}`, user: "toi", color: "oklch(0.82 0.16 200)", text: t },
+      { id: `me-${Date.now()}`, user: "toi", color: "oklch(0.82 0.16 200)", text: txt },
     ]);
     setDraft("");
   };
+
 
   const sendDemoGift = (key: GiftKey) => {
     const g = giftByKey(key);
