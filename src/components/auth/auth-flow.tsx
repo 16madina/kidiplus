@@ -183,7 +183,7 @@ function Welcome({
         </motion.p>
 
         {/* Spacer: push actions up from the bottom while keeping them visible. */}
-        <div className="flex-1" style={{ maxHeight: "18vh", minHeight: 8 }} />
+        <div className="flex-1" style={{ minHeight: 8 }} />
 
         {/* Actions */}
         <motion.div
