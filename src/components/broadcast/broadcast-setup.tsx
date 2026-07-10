@@ -60,6 +60,21 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     return () => tracker.disposeAll();
   }, []);
 
+  // Prefill title with the shop/display name and cover with the shop avatar,
+  // so the user can launch a live without extra taps. They can still tap the
+  // cover or edit the title to override.
+  const { profile } = useAuth();
+  useEffect(() => {
+    if (!profile) return;
+    if (!b.title.trim() && profile.display_name) {
+      b.setTitle(profile.display_name);
+    }
+    if (!b.cover && !b.coverFile && profile.avatar_url) {
+      b.setCover(profile.avatar_url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.display_name, profile?.avatar_url]);
+
   const pickCover = () => {
     // Direct programmatic click inside a user-gesture handler — required for
     // the file dialog to open reliably across browsers, and NOT swallowed by
