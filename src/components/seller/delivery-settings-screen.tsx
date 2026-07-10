@@ -166,7 +166,7 @@ export function SellerDeliverySettingsScreen({
               <div key={countryCode} className="space-y-2">
                 <p className="flex min-w-0 items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   <CountryFlag code={countryCode} className="h-4 w-6 shrink-0 rounded-sm" />
-                  <span className="truncate" title={countryName(countryCode, i18n.language)}>{countryName(countryCode, i18n.language)}</span>
+                  <span className="min-w-0 truncate" title={countryName(countryCode, i18n.language)}>{countryName(countryCode, i18n.language)}</span>
                 </p>
                 <ul className="space-y-2">
                   {items.map(({ idx, zone: z }) => {
