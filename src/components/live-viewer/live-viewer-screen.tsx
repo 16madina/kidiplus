@@ -248,7 +248,7 @@ function MockLiveViewerScreen() {
   const [topupOpen, setTopupOpen] = useState(false);
   const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
   const { t, i18n } = useTranslation();
-  const { currency: walletCurrency } = useWallet();
+  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
 
 
   // Composer message send (local echo)
