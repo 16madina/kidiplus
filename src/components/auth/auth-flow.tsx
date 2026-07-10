@@ -101,6 +101,15 @@ function Welcome({
           onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
           data-loaded="true"
           className="absolute inset-0 h-full w-full select-none object-cover"
+          style={{ objectPosition: "center bottom" }}
+        />
+        {/* Top fade to hide LIVE badge behind the wordmark */}
+        <div
+          className="absolute inset-x-0 top-0 h-[38%]"
+          style={{
+            background:
+              "linear-gradient(180deg, #0B1436 0%, rgba(11,20,54,0.85) 45%, rgba(11,20,54,0) 100%)",
+          }}
         />
         <div
           className="absolute inset-x-0 bottom-0 h-[26%]"
@@ -110,6 +119,7 @@ function Welcome({
           }}
         />
       </div>
+
 
       {/* Foreground content */}
       <div
