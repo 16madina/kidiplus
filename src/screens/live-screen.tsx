@@ -69,7 +69,7 @@ function LiveScreenAuthed() {
         >
           <Store size={30} color="white" />
         </div>
-        <h1 className="text-[24px] font-bold">{t("broadcast.becomeSellerTitle")} ✨</h1>
+        <h1 className="text-[24px] font-bold">{t("broadcast.becomeSellerTitle")}</h1>
         <p className="mt-2 max-w-xs text-[14px] leading-snug text-muted-foreground">
           {t("broadcast.becomeSellerBody")}
         </p>

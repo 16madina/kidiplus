@@ -66,7 +66,7 @@
     "imageTooBig": "Image too large (max 5 MB)"
   },
   "reviews": {
-    "leave": "Leave a review ⭐",
+    "leave": "Leave a review",
     "edit": "Edit your review",
     "rate": "How would you rate this order?",
     "commentPlaceholder": "A comment (optional)…",
@@ -247,7 +247,7 @@
   },
   "live": {
     "liveBadge": "Live",
-    "allDone": "All items are done ✨",
+    "allDone": "All items are done",
     "addProduct": "Add",
     "productAdded": "Product added",
     "en_direct": "LIVE",
@@ -424,7 +424,7 @@
     "reminderSet": "Reminder set 🔔",
     "reminderHint": "We'll notify you as soon as the live starts.",
     "form": {
-      "title": "Schedule a live ✨",
+      "title": "Schedule a live",
       "editTitle": "Edit live",
       "subtitle": "Prepare your live, add your items and announce it to your community.",
       "coverTitle": "Cover image",

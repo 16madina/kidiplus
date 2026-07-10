@@ -666,7 +666,7 @@ function OrderDetailBody({ order }: { order: OrderRow }) {
           className="!min-h-12 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white"
           style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
         >
-          <Check size={16} /> {t("reviews.leave", { defaultValue: "Laisser un avis ⭐" })}
+          <Check size={16} /> {t("reviews.leave", { defaultValue: "Laisser un avis" })}
         </Press>
       )}
 

@@ -10,7 +10,7 @@ import {
   Menu,
   Radio,
   SlidersHorizontal,
-  Sparkles,
+  
   ShoppingBag,
   Users as UsersIcon,
   Video,
@@ -391,8 +391,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
       {items && items.length > 0 && (
         <section className="mt-6">
           <div className="mb-2 flex items-center justify-between px-4">
-            <h2 className="flex items-center gap-1.5 font-serif text-[17px] font-bold" style={{ color: NAVY }}>
-              <Sparkles size={16} style={{ color: GOLD }} />
+            <h2 className="font-serif text-[17px] font-bold" style={{ color: NAVY }}>
               Produits en vedette
             </h2>
             <Press

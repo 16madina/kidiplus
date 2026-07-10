@@ -842,7 +842,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <div className="text-[11px] font-semibold leading-snug">
-                {t("live.allDone", "Tous les articles sont passés ✨")}
+                {t("live.allDone", "Tous les articles sont passés")}
               </div>
               <Press
                 onClick={() => { haptic.selection(); setAddOpen(true); }}

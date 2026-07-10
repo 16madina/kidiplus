@@ -123,7 +123,7 @@ export function SignUpScreen({
     <AuthScreenShell title={t("auth.welcome.signUp")} onBack={onBack}>
       <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
         <h2 className="text-[26px] font-bold leading-tight">
-          {t("auth.signUp.title")} ✨
+          {t("auth.signUp.title")}
         </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
           {t("auth.signUp.subtitle")}

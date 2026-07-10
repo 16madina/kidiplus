@@ -66,7 +66,7 @@
     "imageTooBig": "Image trop lourde (max 5 Mo)"
   },
   "reviews": {
-    "leave": "Laisser un avis ⭐",
+    "leave": "Laisser un avis",
     "edit": "Modifier ton avis",
     "rate": "Comment évalues-tu cette commande ?",
     "commentPlaceholder": "Un commentaire (optionnel)…",
@@ -247,7 +247,7 @@
   },
   "live": {
     "liveBadge": "Live",
-    "allDone": "Tous les articles sont passés ✨",
+    "allDone": "Tous les articles sont passés",
     "addProduct": "Ajouter",
     "productAdded": "Produit ajouté",
     "en_direct": "EN DIRECT",
@@ -424,7 +424,7 @@
     "reminderSet": "Rappel activé 🔔",
     "reminderHint": "On te préviendra dès que le live commence.",
     "form": {
-      "title": "Programmer un live ✨",
+      "title": "Programmer un live",
       "editTitle": "Modifier le live",
       "subtitle": "Prépare ton live, ajoute tes articles et annonce-le à ta communauté.",
       "coverTitle": "Image de couverture",
