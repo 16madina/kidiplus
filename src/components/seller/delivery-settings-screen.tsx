@@ -253,7 +253,7 @@ export function SellerDeliverySettingsScreen({
                                 className="fixed inset-0 z-10"
                                 onClick={() => setCountryPickerIdx(null)}
                               />
-                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-80 w-56 max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                              <ul className="absolute left-0 top-full z-20 mt-1 max-h-80 w-64 max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-border bg-background shadow-lg">
                                 <li className="sticky top-0 z-30 border-b border-border bg-background p-2">
                                   <div className="relative">
                                     <Search
