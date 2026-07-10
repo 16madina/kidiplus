@@ -156,6 +156,12 @@ export function CoverCropperSheet({ open, imageSrc, onClose, onConfirm }: Props)
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
               objectFit="contain"
+              // Global CSS defaults `img { opacity: 0 }` until an `.is-loaded`
+              // class or `data-loaded="true"` attribute is set (see
+              // src/styles.css). The cropper never adds those, so the image
+              // stays invisible without this attribute — user only sees the
+              // grid overlay on a black background.
+              mediaProps={{ "data-loaded": "true" }}
             />
           </div>
 
