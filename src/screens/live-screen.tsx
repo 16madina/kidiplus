@@ -14,6 +14,8 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { useState } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { GuestEmptyState } from "@/components/guest-empty-state";
+
 
 
 export function LiveScreen() {
