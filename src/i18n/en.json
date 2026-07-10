@@ -191,7 +191,13 @@
       "new": "New"
     },
     "livesNearYou": "Lives near you",
-    "empty": "No lives in this category right now."
+    "empty": "No lives in this category right now.",
+    "demo": {
+      "badge": "🎬 DEMO",
+      "title": "How to use KiDi+",
+      "subtitle": "Watch the demo · 1 min",
+      "close": "Close"
+    }
   },
   "search": {
     "placeholder": "Search",
