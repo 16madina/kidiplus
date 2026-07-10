@@ -37,11 +37,15 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
+import waveLogo from "@/assets/wave-logo.asset.json";
+import djamoLogo from "@/assets/djamo-logo.asset.json";
+import orangeMoneyLogo from "@/assets/orange-money-logo.asset.json";
 
 
 const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
-const DJAMO_INDIGO = "#3730A3";
+const DJAMO_INDIGO = "#1a1a1a";
+
 
 type Step =
   | { kind: "amount" }
@@ -295,22 +299,26 @@ export function TopUpSheet({
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
                         brandColor={WAVE_BLUE}
+                        logoUrl={waveLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        brandColor={ORANGE}
+                        brandColor="#ffffff"
+                        logoUrl={orangeMoneyLogo.url}
                         active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         brandColor={DJAMO_INDIGO}
+                        logoUrl={djamoLogo.url}
                         active
                       />
                     </>
                   )}
+
 
                   {step.kind === "not_configured" && (
                     <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed p-4 text-center">
@@ -386,6 +394,7 @@ function MethodRow({
   active,
   disabled,
   icon,
+  logoUrl,
 }: {
   label: string;
   subtitle?: string;
@@ -394,6 +403,7 @@ function MethodRow({
   active?: boolean;
   disabled?: boolean;
   icon?: "card";
+  logoUrl?: string;
 }) {
   return (
     <div
@@ -402,19 +412,21 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-9 w-9 place-items-center rounded-xl"
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl"
         style={{
           backgroundColor: brandColor ?? "transparent",
           color: brandColor ? "white" : "inherit",
         }}
       >
-        {brandColor ? (
-          <span className="text-[13px] font-bold">{label[0]}</span>
+        {logoUrl ? (
+          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
         ) : icon === "card" ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="5" width="20" height="14" rx="2" />
             <path d="M2 10h20" />
           </svg>
+        ) : brandColor ? (
+          <span className="text-[13px] font-bold">{label[0]}</span>
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
@@ -431,6 +443,7 @@ function MethodRow({
     </div>
   );
 }
+
 
 function StripeInline({
   clientSecret,

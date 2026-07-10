@@ -39,13 +39,17 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
+import waveLogo from "@/assets/wave-logo.asset.json";
+import djamoLogo from "@/assets/djamo-logo.asset.json";
+import orangeMoneyLogo from "@/assets/orange-money-logo.asset.json";
 
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
-const ORANGE = "#FF6600";
-const DJAMO_INDIGO = "#3730A3";
+const ORANGE = "#ffffff";
+const DJAMO_INDIGO = "#1a1a1a";
+
 
 type CheckoutResp = {
   clientSecret?: string;
@@ -312,22 +316,26 @@ export function PaymentSheet({
                         <MethodRow
                           active
                           brandColor={WAVE_BLUE}
+                          logoUrl={waveLogo.url}
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
                           active
                           brandColor={ORANGE}
+                          logoUrl={orangeMoneyLogo.url}
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
                           active
                           brandColor={DJAMO_INDIGO}
+                          logoUrl={djamoLogo.url}
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
                         />
                       </>
+
                     )}
                   </div>
                 </div>
@@ -473,6 +481,7 @@ function MethodRow({
   brandColor,
   active,
   disabled,
+  logoUrl,
 }: {
   icon?: React.ReactNode;
   label: string;
@@ -482,6 +491,7 @@ function MethodRow({
   brandColor?: string;
   active?: boolean;
   disabled?: boolean;
+  logoUrl?: string;
 }) {
   return (
     <div
@@ -490,14 +500,21 @@ function MethodRow({
       } ${disabled ? "opacity-60" : ""}`}
     >
       <div
-        className="grid h-9 w-9 place-items-center rounded-xl"
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl"
         style={{
           backgroundColor: brandColor ?? "transparent",
           color: brandColor ? "white" : "inherit",
         }}
       >
-        {brandColor ? <span className="text-[13px] font-bold">{label[0]}</span> : icon}
+        {logoUrl ? (
+          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        ) : brandColor ? (
+          <span className="text-[13px] font-bold">{label[0]}</span>
+        ) : (
+          icon
+        )}
       </div>
+
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
         {subtitle && (
