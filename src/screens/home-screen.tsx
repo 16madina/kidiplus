@@ -94,13 +94,15 @@ export function HomeScreen() {
   const rankForYou = usePersonalizedRanking();
 
   const filtered = useMemo(() => {
-    // Real lives always come first; mock streams fill the grid below.
-    const merged = [...realLives, ...items];
-    const scoped = applyHomeCategory(merged, category);
-    // "Pour toi" reorders by personalization signals (follows, past bids,
-    // popularity) before the filter pill is applied on top.
-    const base = category === "Pour toi" ? rankForYou(scoped) : scoped;
-    return applyHomeFilter(base, filter);
+    // Real DB lives are always pinned to the top, in newest-first order
+    // (fetchActiveLives already sorts by started_at desc). Filters &
+    // personalization apply only to the mock filler below, so a freshly
+    // launched live never ends up buried at the bottom of the feed.
+    const realScoped = applyHomeCategory(realLives, category);
+    const mocksScoped = applyHomeCategory(items, category);
+    const mocksBase = category === "Pour toi" ? rankForYou(mocksScoped) : mocksScoped;
+    const mocksFinal = applyHomeFilter(mocksBase, filter);
+    return [...realScoped, ...mocksFinal];
   }, [items, realLives, category, filter, rankForYou]);
 
 
