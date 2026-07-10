@@ -239,18 +239,26 @@ const COUNTRY_BY_CODE: Map<string, CountryOption> = new Map(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
-export function countryLabel(code: string | null | undefined, locale?: string): string {
+export function countryName(code: string | null | undefined, locale?: string): string {
   if (!code) return "";
   const c = COUNTRY_BY_CODE.get(code.toUpperCase());
   if (!c) return code;
   const en = (locale ?? "").toLowerCase().startsWith("en");
-  return `${c.flag} ${en ? c.nameEn : c.name}`;
+  return en ? c.nameEn : c.name;
+}
+
+export function countryLabel(code: string | null | undefined, locale?: string): string {
+  const name = countryName(code, locale);
+  if (!name) return "";
+  const c = COUNTRY_BY_CODE.get((code ?? "").toUpperCase());
+  return c ? `${c.flag} ${name}` : name;
 }
 
 export function countryFlag(code: string | null | undefined): string {
   if (!code) return "";
   return COUNTRY_BY_CODE.get(code.toUpperCase())?.flag ?? "";
 }
+
 
 export function continentOfCountry(code: string | null | undefined): Continent | null {
   if (!code) return null;
