@@ -183,9 +183,14 @@ export function SellerDeliverySettingsScreen({
                         {/* Row 1: country + name */}
                         <div className="flex items-center gap-2 relative">
                           <Press
-                            onClick={() =>
-                              setCountryPickerIdx(countryPickerIdx === idx ? null : idx)
-                            }
+                            onClick={() => {
+                              if (countryPickerIdx === idx) {
+                                setCountryPickerIdx(null);
+                              } else {
+                                setCountryPickerIdx(idx);
+                                setCountrySearch("");
+                              }
+                            }}
                             className="!min-h-9 shrink-0 rounded-lg border border-border bg-background px-2 text-[13px] flex items-center gap-1"
                             aria-label={t("delivery.zoneCountry", "Pays")}
                           >
