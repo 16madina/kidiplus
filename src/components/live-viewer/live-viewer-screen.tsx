@@ -49,7 +49,7 @@ export function LiveViewerScreen() {
 }
 
 function MockLiveViewerScreen() {
-  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
+  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
