@@ -30,6 +30,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { CoverCropperSheet } from "./cover-cropper-sheet";
 
 const MIN_TITLE_LENGTH = 3;
