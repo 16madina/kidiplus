@@ -27,10 +27,11 @@ export async function bootstrapNative(): Promise<void> {
     await syncStatusBarWithTheme();
   } catch {}
 
-  // Hide splash with a short fade.
-  try {
-    await SplashScreen.hide({ fadeOutDuration: 250 });
-  } catch {}
+  // NOTE: We do NOT hide the native splash here anymore. The React
+  // <SplashScreen> component calls `hideNativeSplash()` only once the
+  // splash video is actually painting its first frame — this eliminates
+  // the white flash between the native splash and the video.
+
 
   // Observe theme changes and mirror to the native status bar.
   if (typeof MutationObserver !== "undefined") {
