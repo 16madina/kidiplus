@@ -27,7 +27,7 @@ function LiveDeepLink() {
     // Fire once mounted; AppShell's existing kidi:open-push listener resolves
     // the live via fetchLiveById and calls openLive().
     window.dispatchEvent(
-      new CustomEvent("kidi:open-push", { detail: { kind: "live", live_id: id } }),
+      new CustomEvent("kidi:push-open", { detail: { kind: "live", live_id: id } }),
     );
   }, [id]);
   return <AppShell />;
