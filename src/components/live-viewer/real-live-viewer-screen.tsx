@@ -842,6 +842,7 @@ export function RealLiveViewerScreen() {
           if (row) void startFixedPurchase(row);
         }}
         disabled={liveEnded}
+        deliveryBlockedLabel={deliveryBlockedLabel}
       />
       <PaymentSheet
         order={pendingOrder}
