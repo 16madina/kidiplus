@@ -29,6 +29,7 @@ export type Profile = {
   following_count?: number;
   rating_avg?: number;
   rating_count?: number;
+  is_verified?: boolean;
   created_at: string;
 };
 
