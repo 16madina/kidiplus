@@ -278,3 +278,101 @@ export function EditProfileScreen({
     </PushScreen>
   );
 }
+
+function CountryPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selected = COUNTRIES.find((c) => c.value === value) ?? null;
+  const filtered = query.trim()
+    ? COUNTRIES.filter((c) =>
+        c.name.toLowerCase().includes(query.trim().toLowerCase()),
+      )
+    : COUNTRIES;
+
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Pays
+      </span>
+      <div className="relative">
+        <Press
+          type="button"
+          onClick={() => { haptic.selection(); setOpen((v) => !v); setQuery(""); }}
+          className="!min-h-12 flex w-full items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left"
+          style={{ height: 48 }}
+        >
+          {selected ? (
+            selected.code ? (
+              <CountryFlag code={selected.code} className="h-4 w-6 shrink-0 rounded-sm" />
+            ) : (
+              <span aria-hidden className="text-[16px] leading-none">🌍</span>
+            )
+          ) : null}
+          <span className={`flex-1 text-[15px] ${selected ? "" : "text-muted-foreground"}`}>
+            {selected ? selected.name : "Choisir…"}
+          </span>
+          <ChevronDown size={16} className="shrink-0 text-muted-foreground" />
+        </Press>
+
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-border bg-background shadow-lg">
+              <div className="border-b border-border p-2">
+                <div className="relative">
+                  <Search
+                    size={14}
+                    className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Rechercher un pays"
+                    autoFocus
+                    className="w-full rounded-lg border border-border bg-background py-1.5 pl-7 pr-2 text-[13px] outline-none focus:border-foreground/40"
+                  />
+                </div>
+              </div>
+              <ul className="max-h-72 overflow-auto">
+                {filtered.length === 0 && (
+                  <li className="px-3 py-2 text-[13px] text-muted-foreground">Aucun pays</li>
+                )}
+                {filtered.map((c) => {
+                  const active = c.value === value;
+                  return (
+                    <li key={c.value}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptic.light();
+                          onChange(c.value);
+                          setOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] hover:bg-muted"
+                      >
+                        {c.code ? (
+                          <CountryFlag code={c.code} className="h-4 w-6 shrink-0 rounded-sm" />
+                        ) : (
+                          <span aria-hidden className="text-[16px] leading-none">🌍</span>
+                        )}
+                        <span className="flex-1 truncate">{c.name}</span>
+                        {active && <Check size={14} className="text-foreground/70" />}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+    </label>
+  );
+}
