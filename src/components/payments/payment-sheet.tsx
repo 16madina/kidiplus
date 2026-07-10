@@ -39,13 +39,17 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
+import waveLogo from "@/assets/wave-logo.asset.json";
+import djamoLogo from "@/assets/djamo-logo.asset.json";
+import orangeMoneyLogo from "@/assets/orange-money-logo.asset.json";
 
 
 
 // Brand palette for the mobile-money placeholders (recognizable colors).
 const WAVE_BLUE = "#1DC8FE";
-const ORANGE = "#FF6600";
-const DJAMO_INDIGO = "#3730A3";
+const ORANGE = "#ffffff";
+const DJAMO_INDIGO = "#1a1a1a";
+
 
 type CheckoutResp = {
   clientSecret?: string;
