@@ -936,3 +936,38 @@ export function RealLiveViewerScreen() {
     </motion.div>
   );
 }
+
+function SwipeHint({ hasNext }: { hasNext: boolean }) {
+  const { t } = useTranslation();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!hasNext) return;
+    try {
+      if (localStorage.getItem("hint.liveSwipe.v1")) return;
+    } catch { /* ignore */ }
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
+    }, 3200);
+    return () => clearTimeout(timer);
+  }, [hasNext]);
+  if (!visible) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="pointer-events-none absolute inset-x-0 z-[27] flex justify-center"
+      style={{ top: "35%" }}
+    >
+      <span
+        className="rounded-full px-4 py-2 text-[13px] font-semibold text-white"
+        style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)" }}
+      >
+        {t("verify.swipeHint", "Glisse vers le haut pour le live suivant ↑")}
+      </span>
+    </motion.div>
+  );
+}
+
