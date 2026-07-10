@@ -127,10 +127,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
+          "@id": "https://kidiplus.com/#organization",
           name: "KiDi+",
           url: "https://kidiplus.com",
-          logo: "https://kidiplus.com/icon-512.png",
-          sameAs: [],
+          description:
+            "KiDi+ est la place de marché live shopping dédiée aux produits pour enfants : enchères en direct, ventes flash et chat avec les vendeurs.",
+          logo: {
+            "@type": "ImageObject",
+            url: "https://kidiplus.com/icon-512.png",
+            width: 512,
+            height: 512,
+          },
         }),
       },
       {
@@ -138,12 +145,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
+          "@id": "https://kidiplus.com/#website",
           name: "KiDi+",
           url: "https://kidiplus.com",
           inLanguage: "fr",
+          publisher: { "@id": "https://kidiplus.com/#organization" },
           potentialAction: {
             "@type": "SearchAction",
-            target: "https://kidiplus.com/?live={search_term_string}",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: "https://kidiplus.com/search?q={search_term_string}",
+            },
             "query-input": "required name=search_term_string",
           },
         }),
