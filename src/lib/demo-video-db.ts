@@ -7,7 +7,7 @@
 // signed URL, and store it in app_config so every client picks it up.
 
 import { supabase } from "@/integrations/supabase/client";
-import demoVideoAsset from "@/assets/demo-video.mp4.asset.json";
+import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
