@@ -167,7 +167,8 @@ const tagline: React.CSSProperties = {
 }
 
 const card: React.CSSProperties = {
-  backgroundColor: '#F9FAFB',
+  backgroundColor: '#EEF4FF',
+  border: '1px solid #DCE7FB',
   borderRadius: '16px',
   padding: '32px 24px',
 }
