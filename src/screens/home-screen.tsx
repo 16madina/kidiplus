@@ -19,6 +19,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { dismissKeyboard } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
+import { DemoCard, DemoPlayer, useDemoAvailable } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
@@ -35,6 +36,8 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const demoAvailable = useDemoAvailable();
   const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
