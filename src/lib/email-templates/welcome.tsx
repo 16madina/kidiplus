@@ -14,22 +14,17 @@ import {
   Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EMAIL_CONFIG, buildOpenLink } from '@/lib/email/config'
 
 interface WelcomeProps {
   displayName?: string
   appUrl?: string
 }
 
-const APP_URL = 'https://kidiplus.com'
-const LOGO_URL = 'https://kidiplus.com/kidi-plus-logo.png'
-
-/** Bridge URL that tries to open the native app on mobile, then falls back to web. */
-const openLink = (appUrl: string, path: string) =>
-  `${appUrl}/open?path=${encodeURIComponent(path)}`
-
-const WelcomeEmail = ({ displayName, appUrl = APP_URL }: WelcomeProps) => {
+const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomeProps) => {
   const cleanName = displayName?.trim()
   const greetingName = cleanName || 'à toi'
+  const openLink = (path: string) => buildOpenLink(path, appUrl)
 
   return (
     <Html lang="fr" dir="ltr">
