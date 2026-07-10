@@ -28,6 +28,7 @@ import { listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from
 import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sheet";
 import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/lives-db";
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
+import { VerifiedBadge } from "@/components/verified-badge";
 
 type SellerProfile = {
   id: string;
