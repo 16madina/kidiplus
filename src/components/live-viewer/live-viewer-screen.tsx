@@ -31,7 +31,7 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
-import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { giftByKey, giftPrice, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/wallet-context";
 import { normalizeCurrency } from "@/lib/money";
