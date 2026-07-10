@@ -7,6 +7,8 @@ type Ctx = {
   playlist: LiveStream[];
   hasNext: boolean;
   hasPrev: boolean;
+  peekNext: LiveStream | null;
+  peekPrev: LiveStream | null;
   open: (s: LiveStream) => void;
   openList: (list: LiveStream[], index: number) => void;
   close: () => void;
@@ -90,6 +92,8 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
 
   const hasNext = playlist.length > 1 && cursorRef.current >= 0 && cursorRef.current < playlist.length - 1;
   const hasPrev = playlist.length > 1 && cursorRef.current > 0;
+  const peekNext = hasNext ? playlist[cursorRef.current + 1] : null;
+  const peekPrev = hasPrev ? playlist[cursorRef.current - 1] : null;
 
   // While a live is mounted, disable body overscroll so iOS Safari doesn't
   // eat vertical pan gestures at the pager level.
@@ -101,8 +105,8 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
   }, [active]);
 
   const value = useMemo<Ctx>(
-    () => ({ active, playlist, hasNext, hasPrev, open, openList, close, next, prev }),
-    [active, playlist, hasNext, hasPrev, open, openList, close, next, prev],
+    () => ({ active, playlist, hasNext, hasPrev, peekNext, peekPrev, open, openList, close, next, prev }),
+    [active, playlist, hasNext, hasPrev, peekNext, peekPrev, open, openList, close, next, prev],
   );
 
   return <LiveViewerContext.Provider value={value}>{children}</LiveViewerContext.Provider>;
