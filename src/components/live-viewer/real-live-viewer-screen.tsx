@@ -707,9 +707,10 @@ export function RealLiveViewerScreen() {
             >
               <img src={active.avatar} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90" />
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-bold text-white"
+                <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  {active.seller}
+                  <span className="truncate">{active.seller}</span>
+                  <VerifiedBadge verified={sellerVerified} size={13} />
                 </p>
                 <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   {displayViewers} {t("live.viewers", { count: displayViewers })}
