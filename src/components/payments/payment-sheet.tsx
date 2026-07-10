@@ -315,26 +315,24 @@ export function PaymentSheet({
                       <>
                         <MethodRow
                           active
-                          brandColor={WAVE_BLUE}
                           logoUrl={waveLogo.url}
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
                           active
-                          brandColor={ORANGE}
                           logoUrl={orangeMoneyLogo.url}
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
                           active
-                          brandColor={DJAMO_INDIGO}
                           logoUrl={djamoLogo.url}
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
                         />
                       </>
+
 
                     )}
                   </div>
