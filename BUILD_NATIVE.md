@@ -110,10 +110,33 @@ implementation platform('com.google.firebase:firebase-bom:33.5.1')
 implementation 'com.google.firebase:firebase-messaging'
 ```
 
-### 5d. Re-sync
+### 5d. AndroidManifest — permission runtime Android 13+
+
+Édite `android/app/src/main/AndroidManifest.xml` et ajoute, au niveau
+`<manifest>` (au-dessus de `<application>`), la permission suivante — sans
+elle, `PushNotifications.requestPermissions()` **throw** sur Android 13+
+(API 33) et l'UI affiche "Impossible de demander l'autorisation" :
+
+```xml
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+```
+
+Vérifie aussi dans `android/variables.gradle` (ou `android/app/build.gradle`)
+que `targetSdkVersion` et `compileSdkVersion` sont **≥ 33** (34 recommandé) —
+sinon Android n'affiche jamais le prompt runtime.
+
+### 5e. Re-sync
 ```bash
 npx cap sync android
 ```
+
+### 5f. Vérifie que l'app id correspond à Firebase
+
+Le fichier `android-config/google-services.json` est déjà configuré pour le
+package `com.kidiplus.app` (identique à `capacitor.config.ts` → `appId`). Si
+tu changes l'un, tu dois régénérer `google-services.json` depuis la console
+Firebase (Project settings → Your apps → Android app → package name).
+
 
 ## 6. Ouvrir dans l'IDE natif
 ```bash
