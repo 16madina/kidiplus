@@ -23,7 +23,8 @@ import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { fetchDemoVideoUrl, DEMO_VIDEO_FALLBACK_URL } from "@/lib/demo-video-db";
 import demoLivePosterAsset from "@/assets/demo-live-poster.jpg.asset.json";
-import logoAsset from "@/assets/logo.png.asset.json";
+import logoBadgeAsset from "@/assets/kidi-logo-badge.png.asset.json";
+
 
 
 
