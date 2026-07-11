@@ -131,9 +131,11 @@ export function TopUpSheet({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...paymentsEnvHeaders(),
         },
         body: JSON.stringify({ amount: chosenAmount }),
       });
+
       const body = (await res.json().catch(() => ({}))) as {
         clientSecret?: string;
         publishableKey?: string;
