@@ -215,6 +215,7 @@ export function useLiveRoom(params: {
           const newRow = payload.new as { status?: "live" | "ended" };
           const oldRow = payload.old as { status?: "live" | "ended" } | null;
           if (newRow.status === "ended" && oldRow?.status !== "ended") {
+            console.warn("[live-end diag] db realtime → lives.status became 'ended'", { liveId, payload });
             setLiveStatus("ended");
           } else if (newRow.status === "live") {
             setLiveStatus("live");
