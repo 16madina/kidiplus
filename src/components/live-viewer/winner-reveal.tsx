@@ -55,6 +55,7 @@ export function WinnerReveal({
 }) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("logo");
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const onDoneRef = useRef(onDone);
   useEffect(() => {
@@ -64,9 +65,11 @@ export function WinnerReveal({
   useEffect(() => {
     if (!open) {
       setPhase("logo");
+      setAvatarFailed(false);
       return;
     }
     setPhase("logo");
+    setAvatarFailed(false);
     const t1 = setTimeout(() => setPhase("flip"), TIMINGS.flip);
     const t2 = setTimeout(() => setPhase("hold"), TIMINGS.hold);
     const t3 = setTimeout(() => setPhase("out"), TIMINGS.out);
@@ -207,10 +210,11 @@ export function WinnerReveal({
                         "0 10px 24px rgba(0,0,0,0.5), 0 0 18px oklch(0.82 0.14 85 / 0.5)",
                     }}
                   >
-                    {winnerAvatarUrl ? (
+                    {winnerAvatarUrl && !avatarFailed ? (
                       <img
                         src={winnerAvatarUrl}
                         alt=""
+                        onError={() => setAvatarFailed(true)}
                         draggable={false}
                         className="h-full w-full rounded-full object-cover"
                       />
