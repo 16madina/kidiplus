@@ -1,17 +1,8 @@
-## Plan
+Je vais corriger l’écran de recharge du portefeuille pour que les moyens de paiement ne ressemblent plus à une simple liste non cliquable.
 
-1. **Remonter les actions d’accueil**
-   - Réduire l’espace vertical réservé à l’image pour que les trois boutons tiennent toujours dans l’écran mobile.
-   - Garder le bloc de boutons au-dessus de la zone basse/safe-area, visible sans scroll.
-
-2. **Ajouter un bouton invité plus évident**
-   - Afficher `Continuer en tant qu’invité` directement sous `Se connecter`, avec un style lisible et contrasté.
-   - Réduire ou supprimer le séparateur `OU` si nécessaire pour gagner de la place.
-
-3. **Ajuster l’image comme demandé**
-   - Centrer l’image de fond.
-   - La réduire avec `object-contain`/scale pour éviter que le badge “LIVE/Like” passe derrière le logo KIDI+.
-   - Renforcer le z-index du logo et du texte pour qu’ils restent au-dessus.
-
-4. **Vérifier en mobile**
-   - Contrôler la vue 430×762 pour confirmer que le logo n’est plus caché et que le bouton invité est visible.
+Plan :
+1. Ajouter un état de sélection pour la méthode de paiement : Carte bancaire, Wave Visa, Orange Visa, et Djamo si disponible.
+2. Transformer chaque ligne de méthode en bouton sélectionnable avec un seul choix actif à la fois.
+3. Afficher clairement les logos Wave, Orange Money et Djamo à gauche, avec une icône carte pour Carte bancaire.
+4. Mettre un indicateur visuel propre sur la méthode choisie, sans que toutes les méthodes paraissent sélectionnées.
+5. Garder le paiement réel à l’étape Stripe actuelle, sans changer la logique de recharge ni les montants.
