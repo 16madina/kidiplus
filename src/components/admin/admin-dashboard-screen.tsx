@@ -36,7 +36,7 @@ import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
