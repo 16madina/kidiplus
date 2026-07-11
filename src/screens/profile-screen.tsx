@@ -399,7 +399,20 @@ function ProfileScreenAuthed() {
           </motion.div>
         </div>
 
+        {/* ============ DÉCOUVRIR KIDI+ ============ */}
+        {demoAvailable !== false && (
+          <>
+            <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
+            <div className="mx-4">
+              <div className="w-[48%] min-w-[160px] max-w-[200px]">
+                <DemoCard onOpen={() => { haptic.light(); setDemoOpen(true); }} />
+              </div>
+            </div>
+          </>
+        )}
+
         {/* ============ GÉNÉRAL ============ */}
+
         <SectionHeader label={t("profile.sections.general")} />
         <MenuGroup
           index={0}
