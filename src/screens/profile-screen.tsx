@@ -120,6 +120,9 @@ function ProfileScreenAuthed() {
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
