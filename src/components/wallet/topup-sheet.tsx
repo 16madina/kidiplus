@@ -39,17 +39,10 @@ import {
 } from "@/lib/payment-confirm";
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-// Brand logos live in `public/brands/` so they resolve via absolute URLs
-// in every context (Vite dev, published site, and Capacitor iOS/Android).
-const waveLogo = "/brands/wave.webp";
-const djamoLogo = "/brands/djamo.png";
-const orangeMoneyLogo = "/brands/orange-money.png";
-
-const WAVE_BLUE = "#1DC8FE";
-const ORANGE = "#FF6600";
-const DJAMO_INDIGO = "#1a1a1a";
+import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+
 
 
 type Step =
