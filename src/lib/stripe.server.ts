@@ -84,9 +84,10 @@ export function getStripeConfig(hint?: StripeEnv | null): {
 // every api.stripe.com request through the Lovable connector-gateway, which
 // attaches the real Stripe secret key. When a legacy STRIPE_SECRET_KEY is
 // present we use it directly (BYOK mode).
-export function createStripeClient(): Stripe {
-  const cfg = getStripeConfig();
+export function createStripeClient(hint?: StripeEnv | null): Stripe {
+  const cfg = getStripeConfig(hint);
   const env = cfg.env;
+
   const gatewayKey =
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
