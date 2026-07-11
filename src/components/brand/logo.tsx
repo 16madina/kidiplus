@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
+import logoDarkAsset from "@/assets/logo-dark.png.asset.json";
 
 
 /**
@@ -8,6 +9,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
  * otherwise falls back to a bold wordmark with a gold "+".
  *
  * Gold accent token: var(--primary) (brand gold).
+ * Automatically swaps to a white-wordmark variant in dark mode.
  */
 export function Logo({
   size = 44,
@@ -22,12 +24,24 @@ export function Logo({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const update = () => setIsDark(root.classList.contains("dark"));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
   const showImage = variant !== "wordmark" && !imgFailed;
 
   if (showImage) {
     return (
       <img
-        src={logoAsset.url}
+        src={isDark ? logoDarkAsset.url : logoAsset.url}
         alt="KiDi+"
         onLoad={() => setLoaded(true)}
         onError={() => setImgFailed(true)}
