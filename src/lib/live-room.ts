@@ -180,11 +180,9 @@ export function useLiveRoom(params: {
           (running as unknown as { auction_round?: number }).auction_round ?? 1;
         const { data: bid } = await supabase
           .from("live_bids")
-          // @ts-expect-error auction_round column added in migration 20260711
           .select("product_id, bidder_id, bidder_name, amount, auction_round")
           .eq("live_id", liveId)
           .eq("product_id", running.id)
-          // @ts-expect-error auction_round column added in migration 20260711
           .eq("auction_round", runningRound)
           .order("amount", { ascending: false })
           .order("created_at", { ascending: false })
