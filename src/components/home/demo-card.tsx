@@ -185,6 +185,19 @@ export function DemoCardSkeleton() {
         backgroundColor: "#1a1a1a",
       }}
     >
+      {/* live poster background — visible from the first frame so the
+          card never looks empty while the video HEAD probe is in flight */}
+      <img
+        src={demoLivePosterAsset.url}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+        decoding="async"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-black/15"
+      />
       <span
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -217,7 +230,7 @@ export function DemoCardSkeleton() {
           animate={{ opacity: [0.35, 0.7, 0.35] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
           className="h-16 w-16 rounded-full"
-          style={{ backgroundColor: "rgba(255,255,255,0.18)" }}
+          style={{ backgroundColor: "rgba(255,255,255,0.35)" }}
         />
       </div>
     </div>
