@@ -16,6 +16,7 @@ import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
@@ -103,6 +104,24 @@ export function PushProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const registerForPush = useCallback(async () => {
+    await PushNotifications.register();
+
+    // Android fallback: on some builds the native registration listener can be
+    // late, so read the FCM token directly and persist it right away.
+    if (currentPlatform() === "android") {
+      try {
+        const { token: fcmToken } = await FirebaseMessaging.getToken();
+        if (fcmToken) {
+          setToken(fcmToken);
+          void persistToken(fcmToken);
+        }
+      } catch (e) {
+        console.warn("[push] android fcm token fallback failed", e);
+      }
+    }
+  }, [persistToken]);
+
   // Listeners + auto-register when permission is already granted.
   useEffect(() => {
     if (!isNative()) return;
@@ -147,7 +166,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
         const s = await PushNotifications.checkPermissions();
         if (cancelled) return;
         if (s.receive === "granted") {
-          await PushNotifications.register();
+          await registerForPush();
           // Cold-start: check for a notification that launched the app.
           try {
             const delivered = await PushNotifications.getDeliveredNotifications();
@@ -169,7 +188,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       try { handles.forEach((h) => h.remove()); } catch {}
     };
-  }, [persistToken]);
+  }, [persistToken, registerForPush]);
 
   // Re-persist token when the user signs in later.
   useEffect(() => {
@@ -197,7 +216,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       const granted = res.receive === "granted";
       setStatus(normalizePermission(res.receive));
       if (granted) {
-        await PushNotifications.register();
+        await registerForPush();
         toast.success("Notifications activées");
         haptic.success();
       } else {
