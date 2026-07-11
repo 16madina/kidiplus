@@ -68,7 +68,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
     }
     try {
       const s = await PushNotifications.checkPermissions();
-      setStatus(s.receive as PushStatus);
+      setStatus(normalizePermission(s.receive));
     } catch {
       setStatus("unknown");
     }
