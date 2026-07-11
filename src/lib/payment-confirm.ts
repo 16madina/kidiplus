@@ -3,6 +3,8 @@
 // Keeps a pending PI id in localStorage so a page reload can retry.
 
 import { supabase } from "@/integrations/supabase/client";
+import { paymentsEnvHeaders } from "@/lib/stripe-publishable";
+
 
 const TOPUP_KEY = "kidi:pendingTopupPI";
 const ORDER_KEY_PREFIX = "kidi:pendingOrderPI:";
