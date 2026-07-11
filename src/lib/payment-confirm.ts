@@ -51,7 +51,7 @@ async function postWithRetry(
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...paymentsEnvHeaders() },
         body: JSON.stringify({ paymentIntentId }),
       });
       const body = await res.json().catch(() => ({}));
