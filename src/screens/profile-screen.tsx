@@ -27,6 +27,7 @@ import {
   Camera,
   Fingerprint,
   ScanFace,
+  Play,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -56,8 +57,7 @@ import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
-import { DemoCard, DemoPlayer } from "@/components/home/demo-card";
-import { useDemoVideo } from "@/components/home/demo-card";
+import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
@@ -120,8 +120,7 @@ function ProfileScreenAuthed() {
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
-  const [demoOpen, setDemoOpen] = useState(false);
-  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+  const [discoverOpen, setDiscoverOpen] = useState(false);
 
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -400,22 +399,24 @@ function ProfileScreenAuthed() {
         </div>
 
         {/* ============ DÉCOUVRIR KIDI+ ============ */}
-        {demoAvailable !== false && (
-          <>
-            <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
-            <div className="mx-4">
-              <div className="w-[48%] min-w-[160px] max-w-[200px]">
-                <DemoCard onOpen={() => { haptic.light(); setDemoOpen(true); }} />
-              </div>
-            </div>
-          </>
-        )}
+        <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
+        <MenuGroup
+          index={0}
+          items={[
+            {
+              icon: <Play size={16} />,
+              label: t("profile.discover.button", { defaultValue: "Tutoriels & astuces" }),
+              tint: "oklch(0.65 0.18 75)",
+              onClick: () => { haptic.light(); setDiscoverOpen(true); },
+            },
+          ]}
+        />
 
         {/* ============ GÉNÉRAL ============ */}
 
         <SectionHeader label={t("profile.sections.general")} />
         <MenuGroup
-          index={0}
+          index={1}
           items={[
             { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
             ...(profile?.is_seller
@@ -434,7 +435,7 @@ function ProfileScreenAuthed() {
         {/* ============ COMPTE ============ */}
         <SectionHeader label={t("profile.sections.account")} />
         <MenuGroup
-          index={1}
+          index={2}
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => setSettingsOpen(true) },
             ...(profile?.is_seller
@@ -460,7 +461,7 @@ function ProfileScreenAuthed() {
           <>
             <SectionHeader label={t("profile.sections.admin")} />
             <MenuGroup
-              index={2}
+              index={3}
               items={[
                 { icon: <ShieldCheck size={16} />, label: t("admin.title"), tint: "oklch(0.3 0.06 265)", onClick: () => setAdminOpen(true) },
               ]}
@@ -470,7 +471,7 @@ function ProfileScreenAuthed() {
 
         {/* ============ Danger ============ */}
         <MenuGroup
-          index={3}
+          index={4}
           items={[
             {
               icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
@@ -510,7 +511,7 @@ function ProfileScreenAuthed() {
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
+      <DiscoverScreen open={discoverOpen} onClose={() => setDiscoverOpen(false)} />
     </div>
   );
 }
