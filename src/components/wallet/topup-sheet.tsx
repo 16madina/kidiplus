@@ -300,7 +300,7 @@ export function TopUpSheet({
                     })}
                   </p>
                   <MethodRow
-                    icon="card"
+                    brand="card"
                     label={t("pay.method.card")}
                     subtitle={t("pay.method.cardSub")}
                     active={selectedMethod === "card"}
@@ -309,31 +309,29 @@ export function TopUpSheet({
                   {cur === "XOF" && (
                     <>
                       <MethodRow
+                        brand="wave"
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
-                        logoUrl={waveLogo}
-                        brandColor={WAVE_BLUE}
                         active={selectedMethod === "wave"}
                         onClick={() => setSelectedMethod("wave")}
                       />
                       <MethodRow
+                        brand="orange"
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        logoUrl={orangeMoneyLogo}
-                        brandColor={ORANGE}
                         active={selectedMethod === "orange"}
                         onClick={() => setSelectedMethod("orange")}
                       />
                       <MethodRow
+                        brand="djamo"
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
-                        logoUrl={djamoLogo}
-                        brandColor={DJAMO_INDIGO}
                         active={selectedMethod === "djamo"}
                         onClick={() => setSelectedMethod("djamo")}
                       />
                     </>
                   )}
+
 
 
 
