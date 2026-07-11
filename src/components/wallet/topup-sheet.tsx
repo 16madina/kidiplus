@@ -16,13 +16,12 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import {
-  CardCvcElement,
-  CardExpiryElement,
-  CardNumberElement,
   Elements,
+  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { Press } from "@/components/press";
