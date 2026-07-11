@@ -39,7 +39,7 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+  const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
