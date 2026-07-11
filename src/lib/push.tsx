@@ -55,6 +55,17 @@ function currentPlatform(): "ios" | "android" | "web" {
 const PREPROMPT_SHOWN_KEY = "push:preprompt_shown";
 const LAST_TOKEN_KEY = "push:last_token";
 
+/**
+ * Capacitor peut renvoyer "granted" | "denied" | "prompt" | "prompt-with-rationale"
+ * (Android). On mappe tout ce qui n'est pas granted/denied vers "prompt" pour
+ * éviter l'état "Inconnu" dans l'UI.
+ */
+function normalizePermission(v: string | undefined | null): PushStatus {
+  if (v === "granted" || v === "denied" || v === "prompt") return v;
+  if (v === "prompt-with-rationale") return "prompt";
+  return "prompt";
+}
+
 export function PushProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<PushStatus>("unknown");
   const [token, setToken] = useState<string | null>(null);
@@ -68,7 +79,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
     }
     try {
       const s = await PushNotifications.checkPermissions();
-      setStatus(s.receive as PushStatus);
+      setStatus(normalizePermission(s.receive));
     } catch {
       setStatus("unknown");
     }
@@ -178,7 +189,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
     try {
       const res = await PushNotifications.requestPermissions();
       const granted = res.receive === "granted";
-      setStatus(res.receive as PushStatus);
+      setStatus(normalizePermission(res.receive));
       if (granted) {
         await PushNotifications.register();
         toast.success("Notifications activées");
