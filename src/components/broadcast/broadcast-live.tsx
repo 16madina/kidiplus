@@ -204,23 +204,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     if (!activeAuction || !activeProduct) return;
     if (timeLeft > 0) return;
-    if (endingRef.current === activeAuction.productId) return;
-    endingRef.current = activeAuction.productId;
-    const lastBidMatches = room.lastBid && room.lastBid.productId === activeAuction.productId;
+    const round = activeProduct.auction_round ?? 1;
+    const endKey = `${activeAuction.productId}:${round}`;
+    if (endingRef.current === endKey) return;
+    endingRef.current = endKey;
+    const lastBidMatches =
+      !!room.lastBid &&
+      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
     const productId = activeAuction.productId;
     void (async () => {
-      const [res, winnerAvatarUrl] = await Promise.all([
-        finalizeAuctionInDb({
-          liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-        }),
-        resolveWinnerAvatar(winnerId),
-      ]);
+      const res = await finalizeAuctionInDb({
+        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+      });
+      const resolvedWinnerId = res.winnerId ?? winnerId;
+      const resolvedWinnerName = res.winnerName ?? winnerName;
+      const resolvedPrice = res.finalPrice ?? finalPrice;
+      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
       room.broadcastAuctionEnd({
-        productId, winnerId, winnerName, winnerAvatarUrl, finalPrice,
-        orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
+        productId,
+        winnerId: resolvedWinnerId,
+        winnerName: resolvedWinnerName,
+        winnerAvatarUrl,
+        finalPrice: Number(resolvedPrice ?? 0),
+        orderId: res.orderId ?? null,
+        autoPaid: !!res.autoPaid,
       });
     })();
   }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
@@ -237,6 +248,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (seenExtendBidRef.current === bid.ts) return;
     seenExtendBidRef.current = bid.ts;
     if (!activeAuction || bid.productId !== activeAuction.productId) return;
+    const activeRound = activeProduct?.auction_round ?? 1;
+    if (bid.auctionRound !== activeRound) return;
     const msLeft = activeAuction.deadlineMs - Date.now();
     if (msLeft <= 0) return;
     if (msLeft > AUCTION_EXTENSION_WINDOW_SECONDS * 1000) return;
@@ -244,7 +257,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Only extend if the new deadline is actually later.
     if (newDeadline <= activeAuction.deadlineMs) return;
     room.broadcastAuctionExtend({ productId: activeAuction.productId, deadlineMs: newDeadline });
-  }, [room.lastBid, activeAuction, room]);
+  }, [room.lastBid, activeAuction, activeProduct, room]);
 
   // Sudden-death flash for everyone (host sees it too).
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);
@@ -261,6 +274,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [winnerReveal, setWinnerReveal] = useState<{
     key: number;
     name: string | null;
+    winnerId: string | null;
     avatar: string | null;
     variant: "winner" | "unsold";
     productName: string | null;
@@ -280,6 +294,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       setWinnerReveal({
         key: Date.now(),
         name: null,
+        winnerId: null,
         avatar: null,
         variant: "unsold",
         productName: prod?.name ?? null,
@@ -294,18 +309,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setWinnerReveal({
       key: Date.now(),
       name: evt.winnerName,
+      winnerId: evt.winnerId,
       avatar: evt.winnerAvatarUrl ?? null,
       variant: "winner",
       productName: prod?.name ?? null,
     });
-    if (!evt.winnerAvatarUrl && evt.winnerId) {
-      void resolveWinnerAvatar(evt.winnerId).then((url) => {
-        if (!url) return;
-        setWinnerReveal((prev) =>
-          prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
-        );
-      });
-    }
+    // Always try to refresh avatar from profiles (broadcast URL can be stale/broken).
+    void resolveWinnerAvatar(evt.winnerId).then((url) => {
+      if (!url) return;
+      setWinnerReveal((prev) =>
+        prev && prev.winnerId === evt.winnerId ? { ...prev, avatar: url } : prev,
+      );
+    });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
   }, [room.lastAuctionEnd, room.products, t, room, fmt, resolveWinnerAvatar]);
@@ -414,20 +429,30 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const endAuctionNow = async () => {
     if (!activeAuction || !activeProduct) return;
-    const lastBidMatches = room.lastBid && room.lastBid.productId === activeAuction.productId;
+    const round = activeProduct.auction_round ?? 1;
+    const lastBidMatches =
+      !!room.lastBid &&
+      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = activeProduct.price;
     const productId = activeAuction.productId;
-    const [res, winnerAvatarUrl] = await Promise.all([
-      finalizeAuctionInDb({
-        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-      }),
-      resolveWinnerAvatar(winnerId),
-    ]);
+    const res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    const resolvedWinnerId = res.winnerId ?? winnerId;
+    const resolvedWinnerName = res.winnerName ?? winnerName;
+    const resolvedPrice = res.finalPrice ?? finalPrice;
+    const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
     room.broadcastAuctionEnd({
-      productId, winnerId, winnerName, winnerAvatarUrl, finalPrice,
-      orderId: res.orderId ?? null, autoPaid: !!res.autoPaid,
+      productId,
+      winnerId: resolvedWinnerId,
+      winnerName: resolvedWinnerName,
+      winnerAvatarUrl,
+      finalPrice: Number(resolvedPrice ?? 0),
+      orderId: res.orderId ?? null,
+      autoPaid: !!res.autoPaid,
     });
   };
 
@@ -683,6 +708,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}
         winnerName={winnerReveal?.name ?? null}
+        winnerId={winnerReveal?.winnerId ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
         isMe={false}
         variant={winnerReveal?.variant ?? "winner"}

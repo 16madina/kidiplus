@@ -305,6 +305,7 @@ export function RealLiveViewerScreen() {
   const [winnerReveal, setWinnerReveal] = useState<{
     key: number;
     name: string | null;
+    winnerId: string | null;
     avatar: string | null;
     isMe: boolean;
     variant: "winner" | "unsold";
@@ -328,6 +329,7 @@ export function RealLiveViewerScreen() {
       setWinnerReveal({
         key: Date.now(),
         name: null,
+        winnerId: null,
         avatar: null,
         isMe: false,
         variant: "unsold",
@@ -346,26 +348,26 @@ export function RealLiveViewerScreen() {
     setWinnerReveal({
       key: Date.now(),
       name: evt.winnerName,
+      winnerId: evt.winnerId,
       avatar: evt.winnerAvatarUrl ?? null,
       isMe,
       variant: "winner",
       productName: prod?.name ?? null,
     });
-    if (!evt.winnerAvatarUrl && evt.winnerId) {
-      void (async () => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", evt.winnerId!)
-          .maybeSingle();
-        const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
-        if (url) {
-          setWinnerReveal((prev) =>
-            prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
-          );
-        }
-      })();
-    }
+    // Always refresh avatar from profiles — broadcast signed URLs can 403.
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", evt.winnerId!)
+        .maybeSingle();
+      const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
+      if (url) {
+        setWinnerReveal((prev) =>
+          prev && prev.winnerId === evt.winnerId ? { ...prev, avatar: url } : prev,
+        );
+      }
+    })();
 
     // If I won and this is a real live with a known seller, either celebrate
     // an auto-paid wallet purchase or open the payment sheet.
@@ -507,7 +509,11 @@ export function RealLiveViewerScreen() {
     if (!user) { openAuth(); return; }
     if (secondsLeft <= 0) return;
     if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
-    if (room.lastBid?.productId === currentProduct.id && room.lastBid.bidderId === user.id) {
+    if (
+      room.lastBid?.productId === currentProduct.id &&
+      room.lastBid.auctionRound === (currentProduct.auction_round ?? 1) &&
+      room.lastBid.bidderId === user.id
+    ) {
       toast(t("live.highestBidder"));
       return;
     }
@@ -856,12 +862,17 @@ export function RealLiveViewerScreen() {
               !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
             }
             isHighestBidder={
-              !!user && room.lastBid?.productId === currentAsProduct.id && room.lastBid.bidderId === user.id
+              !!user &&
+              room.lastBid?.productId === currentAsProduct.id &&
+              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1) &&
+              room.lastBid.bidderId === user.id
             }
             disabled={liveEnded}
             deliveryBlockedLabel={deliveryBlockedLabel}
             lastBidder={
-              room.lastBid && room.lastBid.productId === currentAsProduct.id
+              room.lastBid &&
+              room.lastBid.productId === currentAsProduct.id &&
+              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1)
                 ? room.lastBid.bidderName : undefined
             }
             onBid={() => { void doBid(); }}
@@ -997,6 +1008,7 @@ export function RealLiveViewerScreen() {
         key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}
         winnerName={winnerReveal?.name ?? null}
+        winnerId={winnerReveal?.winnerId ?? null}
         winnerAvatarUrl={winnerReveal?.avatar ?? null}
         isMe={!!winnerReveal?.isMe}
         variant={winnerReveal?.variant ?? "winner"}

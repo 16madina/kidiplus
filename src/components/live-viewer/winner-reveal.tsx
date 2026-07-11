@@ -18,6 +18,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Frown } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 
 type Phase = "logo" | "flip" | "hold" | "out";
 export type RevealVariant = "winner" | "unsold";
@@ -39,6 +41,7 @@ function firstName(full: string | null | undefined): string {
 export function WinnerReveal({
   open,
   winnerName,
+  winnerId,
   winnerAvatarUrl,
   isMe = false,
   variant = "winner",
@@ -47,6 +50,7 @@ export function WinnerReveal({
 }: {
   open: boolean;
   winnerName: string | null;
+  winnerId?: string | null;
   winnerAvatarUrl?: string | null;
   isMe?: boolean;
   variant?: RevealVariant;
@@ -56,6 +60,7 @@ export function WinnerReveal({
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("logo");
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [resolvedAvatar, setResolvedAvatar] = useState<string | null>(winnerAvatarUrl ?? null);
 
   const onDoneRef = useRef(onDone);
   useEffect(() => {
@@ -66,13 +71,16 @@ export function WinnerReveal({
     if (!open) {
       setPhase("logo");
       setAvatarFailed(false);
+      setResolvedAvatar(null);
       return;
     }
     setPhase("logo");
     setAvatarFailed(false);
+    setResolvedAvatar(winnerAvatarUrl ?? null);
     console.debug("[winner-reveal diag] open", {
       variant,
       winnerName,
+      winnerId,
       winnerAvatarUrl,
       hasUrl: !!winnerAvatarUrl,
     });
@@ -86,7 +94,34 @@ export function WinnerReveal({
       clearTimeout(t3);
       clearTimeout(t4);
     };
-  }, [open]);
+  }, [open, winnerId, winnerName, winnerAvatarUrl, variant]);
+
+  // Self-heal avatar: resolve from profiles on mount / when winner changes.
+  useEffect(() => {
+    if (!open || variant !== "winner" || !winnerId) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", winnerId)
+          .maybeSingle();
+        if (!data?.avatar_url || cancelled) return;
+        const url = await resolveAvatarUrl(data.avatar_url);
+        if (url && !cancelled) {
+          setResolvedAvatar(url);
+          setAvatarFailed(false);
+        }
+      } catch (e) {
+        console.debug("[winner-reveal diag] avatar resolve failed", e);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, winnerId, variant]);
 
   if (!open) return null;
 
@@ -101,6 +136,7 @@ export function WinnerReveal({
   const logoGlow = isUnsold
     ? "drop-shadow(0 12px 28px rgba(0,0,0,0.55)) drop-shadow(0 0 22px oklch(0.7 0.22 25 / 0.5))"
     : "drop-shadow(0 12px 28px rgba(0,0,0,0.55)) drop-shadow(0 0 22px oklch(0.82 0.14 85 / 0.45))";
+  const displayAvatar = resolvedAvatar;
 
   return (
     <AnimatePresence>
@@ -227,18 +263,18 @@ export function WinnerReveal({
                     >
                       {(shownName[0] ?? "?").toUpperCase()}
                     </div>
-                    {winnerAvatarUrl && !avatarFailed && (
+                    {displayAvatar && !avatarFailed && (
                       <img
-                        src={winnerAvatarUrl}
+                        src={displayAvatar}
                         alt=""
                         onError={() => {
-                          console.debug("[winner-avatar diag] img error", winnerAvatarUrl);
+                          console.debug("[winner-avatar diag] img error", displayAvatar);
                           setAvatarFailed(true);
                         }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
                           if (!img.naturalWidth || !img.naturalHeight) {
-                            console.debug("[winner-avatar diag] empty naturalSize", winnerAvatarUrl);
+                            console.debug("[winner-avatar diag] empty naturalSize", displayAvatar);
                             setAvatarFailed(true);
                           }
                         }}
