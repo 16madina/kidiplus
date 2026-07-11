@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
-  Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck,
+  Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
 } from "lucide-react";
+import { AdminPushPanel } from "./admin-push-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
@@ -35,7 +36,7 @@ import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -53,6 +54,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
           <div className="px-4 py-4 pb-24">
             {tab === "overview" && open && <OverviewTab onGoTab={setTab} />}
             {tab === "users" && open && <UsersTab />}
+            {tab === "push" && open && <AdminPushPanel />}
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
@@ -74,6 +76,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; icon: React.ReactNode; label: string }> = [
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
+    { id: "push",     icon: <Bell size={14} />,            label: "Push" },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
