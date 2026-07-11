@@ -1,68 +1,60 @@
+import { useState } from "react";
+import logoAsset from "@/assets/logo.png.asset.json";
+
+
 /**
- * KiDi+ brand logo — pure SVG, theme-aware.
+ * KiDi+ brand logo.
+ * Renders the uploaded brand mark from Lovable Assets by default,
+ * otherwise falls back to a bold wordmark with a gold "+".
  *
- * The wordmark colors are driven by CSS variables so the logo is always
- * legible on both light and dark backgrounds without swapping assets:
- * - "KiDi" uses `var(--foreground)` (dark text on light bg, light text on dark bg)
- * - "+" uses `var(--primary)` (brand gold)
- *
- * Callers can override via the `tone` prop:
- * - "auto"   → foreground + primary (default, theme-aware)
- * - "onDark" → white + gold, for photo/dark hero backgrounds
- * - "onLight"→ navy + gold, for light-only surfaces
+ * Gold accent token: var(--primary) (brand gold).
  */
 export function Logo({
   size = 44,
-  tone = "auto",
+  variant = "auto",
   className,
-  // Legacy props kept for backwards-compat; ignored.
-  variant: _variant,
 }: {
+  /** Height in px for the image variant; also drives wordmark font-size. */
   size?: number;
-  tone?: "auto" | "onDark" | "onLight";
-  className?: string;
+  /** "image" forces the image, "wordmark" forces text, "auto" tries image first. */
   variant?: "auto" | "image" | "wordmark";
+  className?: string;
 }) {
-  const wordColor =
-    tone === "onDark"
-      ? "#FFFFFF"
-      : tone === "onLight"
-        ? "#10162B"
-        : "var(--foreground)";
-  const plusColor =
-    tone === "auto" ? "var(--primary)" : "#E8B93B";
+  const [imgFailed, setImgFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const showImage = variant !== "wordmark" && !imgFailed;
 
-  // Font size roughly matches the previous raster height.
+  if (showImage) {
+    return (
+      <img
+        src={logoAsset.url}
+        alt="KiDi+"
+        onLoad={() => setLoaded(true)}
+        onError={() => setImgFailed(true)}
+        className={`${className} ${loaded ? "is-loaded" : ""}`}
+        draggable={false}
+        style={{ height: size, width: "auto", display: "block" }}
+      />
+    );
+  }
+
+  // Wordmark fallback — bold, tight, with the "+" in gold.
   const fontSize = Math.round(size * 0.78);
-  // Approximate width — enough to fit "KiDi+" at font-weight 900.
-  const width = Math.round(size * 2.2);
-
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={width}
-      height={size}
-      viewBox={`0 0 ${width} ${size}`}
-      role="img"
-      aria-label="KiDi+"
+    <span
       className={className}
-      style={{ display: "block" }}
+      style={{
+        fontSize,
+        fontWeight: 900,
+        letterSpacing: "-0.03em",
+        lineHeight: 1,
+        color: "var(--foreground)",
+        display: "inline-flex",
+        alignItems: "baseline",
+      }}
     >
-      <title>KiDi+</title>
-      <text
-        x="0"
-        y={size * 0.82}
-        fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-        fontWeight={900}
-        fontSize={fontSize}
-        letterSpacing="-0.03em"
-        fill={wordColor}
-      >
-        KiDi
-        <tspan fill={plusColor} dx="1">
-          +
-        </tspan>
-      </text>
-    </svg>
+      KiDi
+      <span style={{ color: "var(--primary)", marginLeft: "0.02em" }}>+</span>
+    </span>
   );
 }
