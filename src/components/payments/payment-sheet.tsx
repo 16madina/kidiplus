@@ -293,7 +293,7 @@ export function PaymentSheet({
                     />
                     <MethodRow
                       active
-                      icon={<CreditCard size={20} />}
+                      brand="card"
                       label={t("pay.method.card")}
                       subtitle={t("pay.method.cardSub")}
                       right={
@@ -309,27 +309,25 @@ export function PaymentSheet({
                       <>
                         <MethodRow
                           active
-                          logoUrl={waveLogo}
-                          brandColor={WAVE_BLUE}
+                          brand="wave"
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={orangeMoneyLogo}
-                          brandColor={ORANGE}
+                          brand="orange"
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={djamoLogo}
-                          brandColor={DJAMO_INDIGO}
+                          brand="djamo"
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
                         />
                       </>
                     )}
+
                   </div>
                 </div>
 
