@@ -67,6 +67,25 @@ function normalizePermission(v: string | undefined | null): PushStatus {
   return "prompt";
 }
 
+async function checkPushPermission(platform = currentPlatform()): Promise<{ receive: string }> {
+  try {
+    return await PushNotifications.checkPermissions();
+  } catch (e) {
+    if (platform !== "android") throw e;
+    return await FirebaseMessaging.checkPermissions();
+  }
+}
+
+async function requestPushPermission(platform = currentPlatform()): Promise<{ receive: string }> {
+  try {
+    return await PushNotifications.requestPermissions();
+  } catch (e) {
+    if (platform !== "android") throw e;
+    console.warn("[push] PushNotifications.requestPermissions failed; trying FirebaseMessaging", e);
+    return await FirebaseMessaging.requestPermissions();
+  }
+}
+
 export function PushProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<PushStatus>("unknown");
   const [token, setToken] = useState<string | null>(null);
@@ -79,7 +98,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const s = await PushNotifications.checkPermissions();
+      const s = await checkPushPermission();
       setStatus(normalizePermission(s.receive));
     } catch {
       setStatus("unknown");
@@ -163,7 +182,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
     // If OS permission is already granted, register at startup so we get a token.
     (async () => {
       try {
-        const s = await PushNotifications.checkPermissions();
+        const s = await checkPushPermission();
         if (cancelled) return;
         if (s.receive === "granted") {
           await registerForPush();
@@ -214,9 +233,9 @@ export function PushProvider({ children }: { children: ReactNode }) {
     let permResult: { receive: string } | null = null;
     let before: { receive: string } | null = null;
     try {
-      before = await PushNotifications.checkPermissions().catch(() => null);
+      before = await checkPushPermission(platform).catch(() => null);
       console.info("[push] before request:", before?.receive, "platform:", platform);
-      permResult = await PushNotifications.requestPermissions();
+      permResult = await requestPushPermission(platform);
       console.info("[push] request result:", permResult.receive);
     } catch (e) {
       // requestPermissions a réellement throw. Sur Android c'est souvent :
@@ -228,7 +247,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       toast.error("Impossible de demander l'autorisation", {
         description:
           platform === "android"
-            ? "Vérifie POST_NOTIFICATIONS dans AndroidManifest.xml + google-services.json, puis rebuild."
+            ? `Permission Android non disponible dans le build installé : ${msg}`
             : `Erreur système : ${msg}`,
       });
       return false;
