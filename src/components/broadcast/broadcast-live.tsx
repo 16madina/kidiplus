@@ -298,9 +298,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       variant: "winner",
       productName: prod?.name ?? null,
     });
+    if (!evt.winnerAvatarUrl && evt.winnerId) {
+      void resolveWinnerAvatar(evt.winnerId).then((url) => {
+        if (!url) return;
+        setWinnerReveal((prev) =>
+          prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
+        );
+      });
+    }
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room, fmt]);
+  }, [room.lastAuctionEnd, room.products, t, room, fmt, resolveWinnerAvatar]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
