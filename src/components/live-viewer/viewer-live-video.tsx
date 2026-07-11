@@ -67,7 +67,7 @@ export function ViewerLiveVideo({
         endTimer = null;
       }
     };
-    const scheduleEnd = () => {
+    const scheduleEnd = (reason: string) => {
       if (cancelled) return;
       clearEndTimer();
       if (!hadVideo) {
@@ -79,7 +79,10 @@ export function ViewerLiveVideo({
       setStatus("waiting");
       endTimer = setTimeout(() => {
         endTimer = null;
-        if (!cancelled) setStatus("ended");
+        if (!cancelled) {
+          console.warn("[live-end diag] viewer video → 'ended' (4s absence)", { reason });
+          setStatus("ended");
+        }
       }, 4_000);
     };
 
