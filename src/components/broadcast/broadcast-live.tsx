@@ -274,31 +274,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   // React to auction:end (from ourselves too) — flash + confetti + system msg + reveal.
   const [winnerReveal, setWinnerReveal] = useState<{
-    key: number;
+    key: string;
     name: string | null;
     winnerId: string | null;
     avatar: string | null;
     variant: "winner" | "unsold";
     productName: string | null;
   } | null>(null);
-  const seenEndRef = useRef<string | null>(null);
+  const seenEndIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    // Must include round/order/ts — same user can win the same product again
-    // at the same price; the old product+price+winner key skipped the popup.
-    const key =
-      evt.orderId ??
-      `${evt.productId}:${evt.auctionRound ?? "?"}:${evt.ts ?? evt.finalPrice}:${evt.winnerId ?? "none"}`;
-    if (seenEndRef.current === key) return;
-    seenEndRef.current = key;
+    // Only dedupe by unique endId — never by product/winner/price/order.
+    // Same buyer can win the same item N times in one live.
+    const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
+    if (seenEndIdsRef.current.has(endId)) return;
+    seenEndIdsRef.current.add(endId);
+    // Bound memory across a long live.
+    if (seenEndIdsRef.current.size > 200) {
+      const first = seenEndIdsRef.current.values().next().value;
+      if (first) seenEndIdsRef.current.delete(first);
+    }
     const prod = room.products.find((p) => p.id === evt.productId);
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
       room.systemMessage(label);
       setWinnerReveal({
-        key: Date.now(),
+        key: endId,
         name: null,
         winnerId: null,
         avatar: null,
@@ -313,7 +316,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.success();
     room.systemMessage(label + (prod ? ` — ${prod.name}` : ""));
     setWinnerReveal({
-      key: Date.now(),
+      key: endId,
       name: evt.winnerName,
       winnerId: evt.winnerId,
       avatar: evt.winnerAvatarUrl ?? null,
@@ -324,7 +327,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     void resolveWinnerAvatar(evt.winnerId).then((url) => {
       if (!url) return;
       setWinnerReveal((prev) =>
-        prev && prev.winnerId === evt.winnerId ? { ...prev, avatar: url } : prev,
+        prev && prev.key === endId ? { ...prev, avatar: url } : prev,
       );
     });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
@@ -721,6 +724,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         isMe={false}
         variant={winnerReveal?.variant ?? "winner"}
         productName={winnerReveal?.productName ?? null}
+        revealKey={winnerReveal?.key ?? null}
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
@@ -1035,9 +1039,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                           </Press>
                         </div>
                       ) : soldOut ? (
-                        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
-                          {t("live.sold")}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                            {t("live.sold")}
+                          </span>
+                          <Press
+                            onClick={() => {
+                              void startAuction(p);
+                              setProductsOpen(false);
+                            }}
+                            className="!min-h-10 rounded-full bg-foreground px-4 text-[13px] font-bold text-background"
+                          >
+                            {t("live.startAuctionAgain", "Rejouer")}
+                          </Press>
+                        </div>
                       ) : auctionActive ? (
                         <Press
                           onClick={() => { void endAuctionNow(); }}

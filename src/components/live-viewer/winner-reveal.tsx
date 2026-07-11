@@ -46,6 +46,7 @@ export function WinnerReveal({
   isMe = false,
   variant = "winner",
   productName,
+  revealKey,
   onDone,
 }: {
   open: boolean;
@@ -55,6 +56,8 @@ export function WinnerReveal({
   isMe?: boolean;
   variant?: RevealVariant;
   productName?: string | null;
+  /** Unique per auction end — remounts the animation even if same winner. */
+  revealKey?: string | null;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
@@ -81,6 +84,7 @@ export function WinnerReveal({
       variant,
       winnerName,
       winnerId,
+      revealKey,
       winnerAvatarUrl,
       hasUrl: !!winnerAvatarUrl,
     });
@@ -94,17 +98,16 @@ export function WinnerReveal({
       clearTimeout(t3);
       clearTimeout(t4);
     };
-    // Intentionally NOT depending on winnerAvatarUrl — late avatar refresh
-    // must not restart the reveal animation.
+    // revealKey must re-trigger for every win (same winnerId is common).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, winnerId, winnerName, variant]);
+  }, [open, revealKey, winnerId, winnerName, variant]);
 
   // Accept late-arriving signed URLs from the parent without resetting timers.
   useEffect(() => {
     if (!open || !winnerAvatarUrl) return;
     setResolvedAvatar(winnerAvatarUrl);
     setAvatarFailed(false);
-  }, [open, winnerAvatarUrl]);
+  }, [open, winnerAvatarUrl, revealKey]);
 
   // Self-heal avatar: resolve from profiles on mount / when winner changes.
   useEffect(() => {
@@ -112,13 +115,20 @@ export function WinnerReveal({
     let cancelled = false;
     const load = async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("profiles")
           .select("avatar_url")
           .eq("id", winnerId)
           .maybeSingle();
+        if (error) {
+          console.debug("[winner-reveal diag] profile fetch error", error);
+        }
         if (!data?.avatar_url || cancelled) return;
         const url = await resolveAvatarUrl(data.avatar_url);
+        console.debug("[winner-reveal diag] resolved avatar", {
+          path: data.avatar_url,
+          hasUrl: !!url,
+        });
         if (url && !cancelled) {
           setResolvedAvatar(url);
           setAvatarFailed(false);
@@ -131,7 +141,7 @@ export function WinnerReveal({
     return () => {
       cancelled = true;
     };
-  }, [open, winnerId, variant]);
+  }, [open, winnerId, variant, revealKey]);
 
   if (!open) return null;
 
@@ -262,36 +272,43 @@ export function WinnerReveal({
                         "0 10px 24px rgba(0,0,0,0.5), 0 0 18px oklch(0.82 0.14 85 / 0.5)",
                     }}
                   >
-                    {/* Initials always render as the base layer so a null/
-                        broken avatar never leaves an empty gold circle. */}
+                    {/* Initials as fallback; photo via background-image — <img>
+                        often fails to paint inside rotateY + backface-hidden. */}
                     <div
                       className="absolute inset-[3px] grid place-items-center rounded-full text-[28px] font-black"
                       style={{
                         background: "oklch(0.16 0.05 260)",
                         color: "oklch(0.9 0.14 90)",
+                        transform: "translateZ(1px)",
                       }}
                     >
                       {(shownName[0] ?? "?").toUpperCase()}
                     </div>
                     {displayAvatar && !avatarFailed && (
-                      <img
+                      <div
                         key={displayAvatar}
+                        role="img"
+                        aria-hidden
+                        className="absolute inset-[3px] z-[1] rounded-full"
+                        style={{
+                          backgroundImage: `url(${JSON.stringify(displayAvatar)})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          transform: "translateZ(2px)",
+                        }}
+                        onError={() => setAvatarFailed(true)}
+                      />
+                    )}
+                    {/* Hidden preload to detect broken URLs (div bg can't onError). */}
+                    {displayAvatar && !avatarFailed && (
+                      <img
                         src={displayAvatar}
                         alt=""
+                        className="pointer-events-none absolute h-0 w-0 opacity-0"
                         onError={() => {
                           console.debug("[winner-avatar diag] img error", displayAvatar);
                           setAvatarFailed(true);
                         }}
-                        onLoad={(e) => {
-                          const img = e.currentTarget;
-                          if (!img.naturalWidth || !img.naturalHeight) {
-                            console.debug("[winner-avatar diag] empty naturalSize", displayAvatar);
-                            setAvatarFailed(true);
-                          }
-                        }}
-                        draggable={false}
-                        className="absolute inset-[3px] z-[1] rounded-full object-cover"
-                        style={{ width: "calc(100% - 6px)", height: "calc(100% - 6px)" }}
                       />
                     )}
                   </div>
