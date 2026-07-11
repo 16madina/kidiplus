@@ -68,19 +68,24 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
         onClick={onOpen}
         aria-label={t("home.demo.title")}
         className="!block h-full w-full overflow-hidden rounded-2xl p-0 text-left"
-        style={{
-          aspectRatio: "3 / 4",
-          backgroundImage:
-            "linear-gradient(150deg, #1a2340 0%, #0d1530 55%, #050912 100%)",
-        }}
+        style={{ aspectRatio: "3 / 4" }}
       >
-        {/* soft gold radial highlight */}
+        {/* live poster background */}
+        <img
+          src={demoLivePosterAsset.url}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+        />
+
+        {/* subtle top vignette for header readability */}
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "radial-gradient(120% 90% at 50% 45%, rgba(200,162,74,0.28) 0%, rgba(200,162,74,0) 60%)",
+              "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%)",
           }}
         />
 
@@ -94,29 +99,46 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
           </span>
         </div>
 
+        {/* LIVE badge — pulsing */}
+        <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2">
+          <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-white">
+              LIVE
+            </span>
+          </div>
+        </div>
+
+        {/* viewers count */}
+        <div className="absolute right-2 top-2 z-10">
+          <div className="flex items-center gap-1 rounded-full bg-black/45 px-2 py-1 text-white backdrop-blur-sm">
+            <Eye size={11} strokeWidth={2.2} />
+            <span className="text-[10px] font-semibold">2 540</span>
+          </div>
+        </div>
+
         {/* center play button */}
         <div className="absolute inset-0 z-10 grid place-items-center">
           <motion.div
             initial={{ scale: 0.92, opacity: 0.9 }}
             animate={{ scale: [0.98, 1.04, 0.98] }}
             transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            className="grid h-16 w-16 place-items-center rounded-full shadow-xl"
+            className="grid h-14 w-14 place-items-center rounded-full shadow-xl"
             style={{
-              backgroundColor: "rgba(255,255,255,0.94)",
-              boxShadow: "0 10px 40px rgba(200,162,74,0.35)",
+              backgroundColor: "rgba(255,255,255,0.92)",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.35)",
             }}
           >
-            <Play size={28} fill="#0d1530" color="#0d1530" strokeWidth={0} />
+            <Play size={26} fill="#0d1530" color="#0d1530" strokeWidth={0} />
           </motion.div>
         </div>
 
         {/* bottom title */}
         <div
           className="absolute inset-x-0 bottom-0 z-10 p-2.5 pt-10 text-left"
-          style={{
-            backgroundImage:
-              "linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0))",
-          }}
         >
           <p className="truncate text-[13px] font-semibold text-white">
             {t("home.demo.title")}
@@ -132,6 +154,7 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
     </motion.div>
   );
 }
+
 
 /**
  * Skeleton for the pinned demo card. Matches DemoCard's 3/4 aspect ratio and
