@@ -8,7 +8,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // visually similar, but Android can lose the Capacitor bridge after that
 // redirect; then `Capacitor.isNativePlatform()` returns false and push /
 // biometric features behave like the app is a normal website.
-const nativeAppUrl = process.env.NATIVE_APP_URL || "https://kidiplus.lovable.app";
+//
+// Use kidiplus.com (the live domain). lovable.app can redirect and break
+// bridge injection on the final origin.
+// Dev hot-reload: set NATIVE_APP_URL=http://YOUR_LAN_IP:8080 before cap sync.
+const nativeAppUrl = process.env.NATIVE_APP_URL || "https://kidiplus.com";
 
 const config: CapacitorConfig = {
   appId: "com.kidiplus.app",

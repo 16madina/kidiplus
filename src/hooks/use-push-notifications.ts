@@ -4,7 +4,6 @@
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
-import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDeviceToken } from "@/lib/device-tokens.functions";
 import { logPushEvent } from "@/lib/push-debug.functions";
@@ -38,10 +37,22 @@ async function runRegistration(userId: string) {
     }
     await log(platform, "permission_granted", true);
 
+    const tokenPromise = new Promise<string>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error("fcm_token_timeout")), 15_000);
+      void PushNotifications.addListener("registration", (t) => {
+        window.clearTimeout(timer);
+        resolve(t.value);
+      });
+      void PushNotifications.addListener("registrationError", (e) => {
+        window.clearTimeout(timer);
+        reject(new Error((e as { error?: string }).error ?? "registration_error"));
+      });
+    });
+
     await PushNotifications.register();
     await log(platform, "native_register", true);
 
-    const { token } = await FirebaseMessaging.getToken();
+    const token = await tokenPromise;
     if (!token) {
       await log(platform, "fcm_token_empty", false);
       registeredUserIds.delete(userId);
@@ -51,16 +62,6 @@ async function runRegistration(userId: string) {
 
     await registerDeviceToken({ data: { token, platform } });
     await log(platform, "saved_to_backend", true);
-
-    await FirebaseMessaging.addListener("tokenReceived", async ({ token: newToken }) => {
-      if (!newToken) return;
-      try {
-        await registerDeviceToken({ data: { token: newToken, platform } });
-        await log(platform, "token_refreshed", true);
-      } catch (e) {
-        await log(platform, "token_refresh_failed", false, String(e));
-      }
-    });
 
     await PushNotifications.addListener("pushNotificationReceived", (notif) => {
       console.log("[push] received", notif);

@@ -16,10 +16,11 @@ import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
-import { FirebaseMessaging } from "@capacitor-firebase/messaging";
+import { App } from "@capacitor/app";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
+import { isNative as isNativeShell } from "@/lib/native";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDeviceToken } from "@/lib/device-tokens.functions";
 import { normalizePushData, openFromPush } from "@/lib/push-router";
@@ -38,11 +39,7 @@ type Ctx = {
 const PushContext = createContext<Ctx | null>(null);
 
 function isNative(): boolean {
-  try {
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
-  }
+  return isNativeShell();
 }
 
 function currentPlatform(): "ios" | "android" | "web" {
@@ -67,23 +64,32 @@ function normalizePermission(v: string | undefined | null): PushStatus {
   return "prompt";
 }
 
-async function checkPushPermission(platform = currentPlatform()): Promise<{ receive: string }> {
-  try {
-    return await PushNotifications.checkPermissions();
-  } catch (e) {
-    if (platform !== "android") throw e;
-    return await FirebaseMessaging.checkPermissions();
-  }
+async function checkPushPermission(): Promise<{ receive: string }> {
+  return await PushNotifications.checkPermissions();
 }
 
-async function requestPushPermission(platform = currentPlatform()): Promise<{ receive: string }> {
+/** Wait until the activity is in the foreground (Android blocks permission UI otherwise). */
+async function waitForForeground(maxMs = 10_000): Promise<void> {
   try {
-    return await PushNotifications.requestPermissions();
-  } catch (e) {
-    if (platform !== "android") throw e;
-    console.warn("[push] PushNotifications.requestPermissions failed; trying FirebaseMessaging", e);
-    return await FirebaseMessaging.requestPermissions();
+    const { isActive } = await App.getState();
+    if (isActive) return;
+  } catch {
+    return;
   }
+  await new Promise<void>((resolve) => {
+    const timer = window.setTimeout(resolve, maxMs);
+    void App.addListener("appStateChange", (state) => {
+      if (state.isActive) {
+        window.clearTimeout(timer);
+        resolve();
+      }
+    });
+  });
+}
+
+async function requestPushPermission(): Promise<{ receive: string }> {
+  await waitForForeground();
+  return await PushNotifications.requestPermissions();
 }
 
 export function PushProvider({ children }: { children: ReactNode }) {
@@ -125,21 +131,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
   const registerForPush = useCallback(async () => {
     await PushNotifications.register();
-
-    // Android fallback: on some builds the native registration listener can be
-    // late, so read the FCM token directly and persist it right away.
-    if (currentPlatform() === "android") {
-      try {
-        const { token: fcmToken } = await FirebaseMessaging.getToken();
-        if (fcmToken) {
-          setToken(fcmToken);
-          void persistToken(fcmToken);
-        }
-      } catch (e) {
-        console.warn("[push] android fcm token fallback failed", e);
-      }
-    }
-  }, [persistToken]);
+  }, []);
 
   // Listeners + auto-register when permission is already granted.
   useEffect(() => {
@@ -233,9 +225,9 @@ export function PushProvider({ children }: { children: ReactNode }) {
     let permResult: { receive: string } | null = null;
     let before: { receive: string } | null = null;
     try {
-      before = await checkPushPermission(platform).catch(() => null);
+      before = await checkPushPermission().catch(() => null);
       console.info("[push] before request:", before?.receive, "platform:", platform);
-      permResult = await requestPushPermission(platform);
+      permResult = await requestPushPermission();
       console.info("[push] request result:", permResult.receive);
     } catch (e) {
       // requestPermissions a réellement throw. Sur Android c'est souvent :
@@ -323,7 +315,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
       // petit délai pour ne pas apparaître pendant le splash
       setTimeout(() => {
         if (!cancelled) void requestWithPrePrompt("Reçois les alertes de lives, messages et nouveautés en temps réel.");
-      }, 1200);
+      }, 4000);
     };
 
     void maybeAsk();

@@ -32,7 +32,12 @@ export function SignInScreen({
   const [loading, setLoading] = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bio, setBio] = useState<BiometricInfo>({ available: false, kind: null, label: "" });
+  const [bio, setBio] = useState<BiometricInfo>({
+    available: false,
+    kind: null,
+    label: "",
+    native: false,
+  });
   const [bioEnabled, setBioEnabled] = useState(false);
 
   useEffect(() => {

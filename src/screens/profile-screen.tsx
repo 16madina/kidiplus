@@ -757,7 +757,12 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
 
 function BiometricSettingsSection() {
   const { user } = useAuth();
-  const [bio, setBio] = useState<BiometricInfo>({ available: false, kind: null, label: "" });
+  const [bio, setBio] = useState<BiometricInfo>({
+    available: false,
+    kind: null,
+    label: "",
+    native: false,
+  });
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -777,7 +782,7 @@ function BiometricSettingsSection() {
       if (!v) {
         await disableBiometric();
         setEnabled(false);
-        toast.success(`${bio.label} désactivé`);
+        toast.success(`${bio.label || "Biométrie"} désactivé`);
         return;
       }
       const email = user?.email;
@@ -786,7 +791,7 @@ function BiometricSettingsSection() {
         return;
       }
       const pwd = typeof window !== "undefined"
-        ? window.prompt(`Entrez votre mot de passe pour activer ${bio.label} :`)
+        ? window.prompt(`Entrez votre mot de passe pour activer ${bio.label || "la biométrie"} :`)
         : null;
       if (!pwd) return;
       // Verify the password by re-authenticating before we persist it.
@@ -799,9 +804,10 @@ function BiometricSettingsSection() {
       await enableBiometric(email, pwd);
       setEnabled(true);
       haptic.success();
-      toast.success(`${bio.label} activé`);
-    } catch {
+      toast.success(`${bio.label || "Biométrie"} activé`);
+    } catch (e) {
       haptic.error();
+      console.warn("[biometric] toggle failed", e);
       toast.error("Impossible de modifier la biométrie");
     } finally {
       setBusy(false);
@@ -811,6 +817,32 @@ function BiometricSettingsSection() {
   const available = bio.available;
   const Icon = bio.kind === "faceId" || bio.kind === "face" ? ScanFace : Fingerprint;
   const label = bio.label || "Face ID / Empreinte";
+
+  const statusHint = !bio.native
+    ? "Disponible uniquement dans l'app mobile"
+    : !available
+      ? bio.reason === "not_enrolled"
+        ? "Active un verrouillage d'écran + empreinte dans Réglages Android"
+        : "Biométrie indisponible sur cet appareil"
+      : enabled
+        ? "Activée"
+        : "Utilisez la biométrie pour vous reconnecter";
+
+  const onUnavailableTap = () => {
+    if (!bio.native) {
+      toast.info("Ouvrez l'app mobile KiDi+ pour activer la biométrie");
+      return;
+    }
+    if (bio.reason === "not_enrolled") {
+      toast.info(
+        "Android n'a pas d'empreinte / Face ID utilisable. Va dans Réglages → Sécurité → Empreinte digitale (et active un code PIN), puis reviens ici.",
+      );
+      return;
+    }
+    toast.error("Biométrie indisponible", {
+      description: "Réessaie après avoir configuré le verrouillage d'écran.",
+    });
+  };
 
   return (
     <>
@@ -822,19 +854,11 @@ function BiometricSettingsSection() {
           <MenuIcon icon={<Icon size={16} />} tint="oklch(0.6 0.2 250)" />
           <div className="flex-1">
             <div className="text-[15px] font-medium">Connexion avec {label}</div>
-            <div className="text-[12px] text-muted-foreground">
-              {!available
-                ? "Disponible uniquement dans l'app mobile"
-                : enabled
-                  ? "Activée"
-                  : "Utilisez la biométrie pour vous reconnecter"}
-            </div>
+            <div className="text-[12px] text-muted-foreground">{statusHint}</div>
           </div>
           <IOSSwitch
             checked={enabled && available}
-            onChange={available ? onToggle : () => {
-              toast.info("Ouvrez l'app mobile KiDi+ pour activer la biométrie");
-            }}
+            onChange={available ? onToggle : onUnavailableTap}
             label={label}
           />
         </div>
