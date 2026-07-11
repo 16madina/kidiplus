@@ -170,6 +170,13 @@ export async function endLiveInDb(liveId: string): Promise<void> {
     .eq("id", liveId);
 }
 
+export async function markLiveActiveInDb(liveId: string): Promise<void> {
+  await supabase
+    .from("lives")
+    .update({ status: "live", ended_at: null })
+    .eq("id", liveId);
+}
+
 export async function updateLiveViewerCount(
   liveId: string,
   count: number,

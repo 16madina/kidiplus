@@ -31,7 +31,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
-  createLiveProductInDb, relaunchUnsoldProductInDb,
+  createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { supabase } from "@/integrations/supabase/client";
@@ -298,9 +298,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       variant: "winner",
       productName: prod?.name ?? null,
     });
+    if (!evt.winnerAvatarUrl && evt.winnerId) {
+      void resolveWinnerAvatar(evt.winnerId).then((url) => {
+        if (!url) return;
+        setWinnerReveal((prev) =>
+          prev && prev.name === evt.winnerName ? { ...prev, avatar: url } : prev,
+        );
+      });
+    }
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room, fmt]);
+  }, [room.lastAuctionEnd, room.products, t, room, fmt, resolveWinnerAvatar]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
@@ -313,6 +321,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
   }, [room.lastBid, room.products]);
+
+  useEffect(() => {
+    if (!b.liveId) return;
+    void markLiveActiveInDb(b.liveId).catch(() => {});
+  }, [b.liveId]);
 
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
@@ -334,30 +347,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
   }, []);
 
-  // If the host video connection never comes up for 90s, auto-end the live so
-  // it stops appearing in the public feed while the host figures things out.
-  const autoEndFiredRef = useRef(false);
-  useEffect(() => {
-    if (autoEndFiredRef.current) return;
-    if (videoStatus === "granted") return;
-    if (videoStatus !== "error" && videoStatus !== "connecting" && videoStatus !== "denied" && videoStatus !== "token_failed" && videoStatus !== "connect_failed") return;
-    const timeout = setTimeout(() => {
-      if (autoEndFiredRef.current) return;
-      autoEndFiredRef.current = true;
-      console.warn("[live-end diag] host auto-end fired — videoStatus stayed non-granted for 90s", {
-        liveId: b.liveId, videoStatus,
-      });
-      if (b.liveId) {
-        void import("@/lib/lives-db").then(({ endLiveInDb }) =>
-          endLiveInDb(b.liveId!).catch(() => {}),
-        );
-      }
-    }, 90_000);
-    return () => clearTimeout(timeout);
-  }, [videoStatus, b.liveId]);
-
   const retryConnection = () => {
-    autoEndFiredRef.current = false;
     setRetryKey((k) => k + 1);
     haptic.medium();
   };

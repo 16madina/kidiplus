@@ -59,6 +59,7 @@ export type BroadcastVideoProps = {
 export type BroadcastStatus =
   | "idle"
   | "connecting"
+  | "reconnecting"
   | "granted"
   | "denied"
   | "config_missing"
@@ -207,6 +208,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           roomRef.current = room;
+
+          room.on(RoomEvent.Reconnecting, () => {
+            if (!cancelled) setState("reconnecting");
+          });
+          room.on(RoomEvent.Reconnected, () => {
+            if (!cancelled) setState("granted");
+          });
+          room.on(RoomEvent.Disconnected, () => {
+            if (!cancelled) setState("connect_failed");
+          });
 
           phase = "camera";
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
