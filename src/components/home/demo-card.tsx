@@ -79,15 +79,20 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
           decoding="async"
         />
 
-        {/* subtle top vignette for header readability */}
+        {/* subtle overlay + vignette so badges and text stay readable */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-black/15"
+        />
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)",
           }}
         />
+
 
         {/* DEMO badge */}
         <div className="absolute left-2 top-2 z-10">
