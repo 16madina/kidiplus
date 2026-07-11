@@ -27,6 +27,7 @@ import {
   Camera,
   Fingerprint,
   ScanFace,
+  Play,
 } from "lucide-react";
 
 import { toast } from "sonner";
