@@ -291,10 +291,9 @@ export function DemoPlayer({
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 overflow-hidden rounded-full border border-white/30 bg-black/40">
                 <img
-                  src={demoLivePosterAsset.url}
+                  src={logoAsset.url}
                   alt=""
                   className="h-full w-full object-cover"
-                  style={{ objectPosition: "center 15%" }}
                 />
               </div>
 
@@ -303,6 +302,7 @@ export function DemoPlayer({
                 <p className="text-[10px] text-white/70">Démo live</p>
               </div>
             </div>
+
 
             <div className="flex items-center gap-2">
               {/* LIVE badge */}
