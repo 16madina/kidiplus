@@ -64,6 +64,10 @@ export type AuctionEndEvt = {
   finalPrice: number;
   orderId?: string | null;
   autoPaid?: boolean;
+  /** Current live_products.auction_round — required to re-show reveal on re-wins. */
+  auctionRound?: number;
+  /** Client timestamp so duplicate product/winner/price rounds still dedupe uniquely. */
+  ts?: number;
 };
 
 export type AuctionExtendEvt = {

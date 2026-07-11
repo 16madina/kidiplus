@@ -315,7 +315,10 @@ export function RealLiveViewerScreen() {
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    const key = `${evt.productId}-${evt.finalPrice}-${evt.winnerId ?? "none"}`;
+    // Include round/order/ts so a second win of the same product still reveals.
+    const key =
+      evt.orderId ??
+      `${evt.productId}:${evt.auctionRound ?? "?"}:${evt.ts ?? evt.finalPrice}:${evt.winnerId ?? "none"}`;
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
