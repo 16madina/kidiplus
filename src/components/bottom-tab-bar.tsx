@@ -83,7 +83,19 @@ export function BottomTabBar({
       aria-label="Primary"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 pb-safe"
     >
-      <div className="pointer-events-none relative mx-auto mb-0 max-w-xl px-4">
+      {/* Opaque backdrop: full-bleed, covers from just above the pill down
+          through the safe-area/home-indicator so scrolling content never
+          peeks through the transparent gaps around the floating pill. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0"
+        style={{
+          top: "-8px",
+          background:
+            "linear-gradient(to bottom, color-mix(in oklch, var(--background) 0%, transparent) 0%, var(--background) 24px, var(--background) 100%)",
+        }}
+      />
+      <div className="pointer-events-none relative mx-auto mb-1 max-w-xl px-4">
         {/* Floating pill bar with a notch under the raised live button.
             The notch is a radial-gradient mask that cuts a circle out of
             the pill so the gold button appears to punch through it. */}
@@ -91,6 +103,7 @@ export function BottomTabBar({
           className="pointer-events-auto relative h-16 rounded-full"
           style={{
             backdropFilter: "saturate(180%) blur(24px)",
+            WebkitBackdropFilter: "saturate(180%) blur(24px)",
             backgroundColor:
               "color-mix(in oklch, var(--background) 90%, transparent)",
             border: "1px solid var(--border)",
