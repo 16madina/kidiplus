@@ -292,8 +292,10 @@ export function DemoPlayer({
                   src={demoLivePosterAsset.url}
                   alt=""
                   className="h-full w-full object-cover"
+                  style={{ objectPosition: "center 15%" }}
                 />
               </div>
+
               <div>
                 <p className="text-[12px] font-semibold text-white">KIDI+ Officiel</p>
                 <p className="text-[10px] text-white/70">Démo live</p>
