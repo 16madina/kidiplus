@@ -1,10 +1,19 @@
-import { useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Fingerprint, Loader2, ScanFace } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
+import {
+  enableBiometric,
+  getBiometricInfo,
+  getSavedBiometricEmail,
+  isBiometricEnabled,
+  verifyAndGetCredentials,
+  type BiometricInfo,
+} from "@/lib/biometric";
+import { toast } from "sonner";
 
 export function SignInScreen({
   onBack,
@@ -21,7 +30,34 @@ export function SignInScreen({
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bio, setBio] = useState<BiometricInfo>({ available: false, kind: null, label: "" });
+  const [bioEnabled, setBioEnabled] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const info = await getBiometricInfo();
+      setBio(info);
+      setBioEnabled(isBiometricEnabled());
+      const hint = getSavedBiometricEmail();
+      if (hint) setEmail(hint);
+    })();
+  }, []);
+
+  const askEnableBiometric = async (mail: string, pwd: string) => {
+    if (!bio.available || bioEnabled) return;
+    const ok = typeof window !== "undefined"
+      && window.confirm(`Utiliser ${bio.label} pour vous connecter plus rapidement la prochaine fois ?`);
+    if (!ok) return;
+    try {
+      await enableBiometric(mail, pwd);
+      setBioEnabled(true);
+      toast.success(`${bio.label} activé`);
+    } catch {
+      toast.error("Impossible d'activer la biométrie");
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,11 +70,31 @@ export function SignInScreen({
     try {
       await signIn(email.trim(), password);
       haptic.success();
+      await askEnableBiometric(email.trim(), password);
     } catch (err) {
       haptic.error();
       setError(frenchAuthError(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onBiometric = async () => {
+    setError(null);
+    setBioLoading(true);
+    try {
+      const creds = await verifyAndGetCredentials(`Connectez-vous avec ${bio.label}`);
+      await signIn(creds.email, creds.password);
+      haptic.success();
+    } catch (err) {
+      haptic.error();
+      const msg = err instanceof Error ? err.message : String(err);
+      // User cancelled → silent. Otherwise surface.
+      if (!/cancel|user/i.test(msg)) {
+        setError(frenchAuthError(err));
+      }
+    } finally {
+      setBioLoading(false);
     }
   };
 
@@ -116,6 +172,26 @@ export function SignInScreen({
             t("auth.signIn.submit")
           )}
         </Press>
+
+        {bio.available && bioEnabled && (
+          <Press
+            type="button"
+            onClick={onBiometric}
+            disabled={bioLoading || loading}
+            className="!min-h-12 h-12 w-full rounded-2xl border-2 border-border bg-card text-[15px] font-bold text-foreground"
+          >
+            <span className="inline-flex items-center justify-center gap-2">
+              {bioLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : bio.kind === "faceId" || bio.kind === "face" ? (
+                <ScanFace size={18} />
+              ) : (
+                <Fingerprint size={18} />
+              )}
+              Se connecter avec {bio.label}
+            </span>
+          </Press>
+        )}
 
         <p className="mt-4 text-center text-[13px] text-muted-foreground">
           {t("auth.signIn.noAccount")}{" "}
