@@ -14,7 +14,7 @@ function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Payments-Env",
     "Access-Control-Max-Age": "86400",
   };
   if (origin && isAllowedOrigin(origin)) base["Access-Control-Allow-Origin"] = origin;
