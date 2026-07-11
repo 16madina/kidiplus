@@ -70,6 +70,12 @@ export function WinnerReveal({
     }
     setPhase("logo");
     setAvatarFailed(false);
+    console.debug("[winner-reveal diag] open", {
+      variant,
+      winnerName,
+      winnerAvatarUrl,
+      hasUrl: !!winnerAvatarUrl,
+    });
     const t1 = setTimeout(() => setPhase("flip"), TIMINGS.flip);
     const t2 = setTimeout(() => setPhase("hold"), TIMINGS.hold);
     const t3 = setTimeout(() => setPhase("out"), TIMINGS.out);
