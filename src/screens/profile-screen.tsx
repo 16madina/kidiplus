@@ -644,7 +644,10 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
     haptic.medium();
     try {
       await requestWithPrePrompt("Réglages");
-      await refresh();
+      // NOTE: ne pas appeler refresh() ici — doRequest a déjà mis le status.
+      // Sur web, refresh() écraserait "granted" par "prompt", et sur natif
+      // checkPermissions() juste après requestPermissions() peut renvoyer
+      // une valeur pas encore propagée → statut "Inconnu".
     } finally {
       setBusy(false);
     }
