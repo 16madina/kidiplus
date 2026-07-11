@@ -56,7 +56,10 @@ import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { DemoCard, DemoPlayer } from "@/components/home/demo-card";
+import { useDemoVideo } from "@/components/home/demo-card";
 import { getAdminStatus } from "@/lib/admin.functions";
+
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
 
