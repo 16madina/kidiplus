@@ -8,7 +8,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig } from "@/lib/stripe.server";
+import { createStripeClient, getStripeConfig, envHintFromRequest } from "@/lib/stripe.server";
 import { isAllowedOrigin } from "@/lib/api-cors";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
@@ -37,7 +37,8 @@ export const Route = createFileRoute("/api/wallet-topup/confirm")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const stripeCfg = getStripeConfig();
+        const envHint = envHintFromRequest(request);
+        const stripeCfg = getStripeConfig(envHint);
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -62,7 +63,7 @@ export const Route = createFileRoute("/api/wallet-topup/confirm")({
         const pi = typeof body.paymentIntentId === "string" ? body.paymentIntentId.trim() : "";
         if (!pi || !pi.startsWith("pi_")) return json({ error: "invalid_payment_intent" }, 400, origin);
 
-        const stripe = createStripeClient();
+        const stripe = createStripeClient(envHint);
         let intent;
         try {
           intent = await stripe.paymentIntents.retrieve(pi);
