@@ -16,11 +16,16 @@ export function LiveCard({
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
+    setLoaded(false);
+    setAvatarFailed(false);
     const el = imgRef.current;
     if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
-  }, []);
+  }, [stream.thumbnail, stream.avatar]);
+
+  const sellerInitial = (stream.seller.trim()[0] || "?").toUpperCase();
 
   return (
     <motion.div
@@ -90,14 +95,24 @@ export function LiveCard({
           }}
         >
           <div className="flex items-center gap-1.5">
-            <img
-              src={stream.avatar}
-              alt=""
-              className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-white/90"
-              loading="lazy"
-              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-              draggable={false}
-            />
+            {!avatarFailed ? (
+              <img
+                src={stream.avatar}
+                alt=""
+                className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-white/90"
+                loading="lazy"
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                onError={() => setAvatarFailed(true)}
+                draggable={false}
+              />
+            ) : (
+              <span
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black ring-1 ring-white/90"
+                style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+              >
+                {sellerInitial}
+              </span>
+            )}
             <span className="min-w-0 truncate text-[13px] font-semibold text-white">
               {stream.seller}
             </span>
