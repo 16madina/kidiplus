@@ -342,8 +342,10 @@ export function DemoPlayer({
                   src={demoLivePosterAsset.url}
                   alt=""
                   className="h-full w-full object-cover"
+                  style={{ objectPosition: "left bottom" }}
                 />
               </div>
+
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-semibold text-white">
                   Blazer Crème Taille 38
