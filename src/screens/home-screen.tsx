@@ -272,7 +272,7 @@ export function HomeScreen() {
 
         {/* ROW 2 — Large category tiles */}
         <div className="pt-2">
-          {loading && items.length === 0 ? (
+          {loading ? (
             <CategoryTilesSkeleton />
           ) : (
             <CategoryTiles active={category} onChange={setCategory} />
