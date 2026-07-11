@@ -767,6 +767,7 @@ export type Database = {
           address_id: string | null
           address_snapshot: Json | null
           amount: number
+          auction_round: number | null
           buyer_id: string
           cancelled_reason: string | null
           created_at: string
@@ -799,6 +800,7 @@ export type Database = {
           address_id?: string | null
           address_snapshot?: Json | null
           amount: number
+          auction_round?: number | null
           buyer_id: string
           cancelled_reason?: string | null
           created_at?: string
@@ -831,6 +833,7 @@ export type Database = {
           address_id?: string | null
           address_snapshot?: Json | null
           amount?: number
+          auction_round?: number | null
           buyer_id?: string
           cancelled_reason?: string | null
           created_at?: string
