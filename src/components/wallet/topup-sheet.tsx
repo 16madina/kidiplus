@@ -289,11 +289,16 @@ export function TopUpSheet({
                     />
                   </label>
 
-                  {/* Payment methods */}
+                  {/* Payment methods (info only — actual choice happens in Stripe) */}
                   <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("pay.method.title")}
                   </p>
-                  <MethodRow icon="card" label={t("pay.method.card")} subtitle={t("pay.method.cardSub")} active />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t("wallet.topup.methodsHint", {
+                      defaultValue: "Vous choisirez votre moyen de paiement à l'étape suivante.",
+                    })}
+                  </p>
+                  <MethodRow icon="card" label={t("pay.method.card")} subtitle={t("pay.method.cardSub")} />
                   {cur === "XOF" && (
                     <>
                       <MethodRow
@@ -301,24 +306,22 @@ export function TopUpSheet({
                         subtitle={t("pay.method.waveVisaSub")}
                         logoUrl={waveLogo}
                         brandColor={WAVE_BLUE}
-                        active
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
                         logoUrl={orangeMoneyLogo}
                         brandColor={ORANGE}
-                        active
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         logoUrl={djamoLogo}
                         brandColor={DJAMO_INDIGO}
-                        active
                       />
                     </>
                   )}
+
 
 
                   {step.kind === "not_configured" && (
