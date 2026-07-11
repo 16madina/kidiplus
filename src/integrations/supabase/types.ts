@@ -309,6 +309,7 @@ export type Database = {
       live_bids: {
         Row: {
           amount: number
+          auction_round: number
           bidder_id: string
           bidder_name: string
           created_at: string
@@ -318,6 +319,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          auction_round?: number
           bidder_id: string
           bidder_name: string
           created_at?: string
@@ -327,6 +329,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          auction_round?: number
           bidder_id?: string
           bidder_name?: string
           created_at?: string
@@ -512,6 +515,7 @@ export type Database = {
       live_products: {
         Row: {
           auction_deadline_at: string | null
+          auction_round: number
           created_at: string
           final_price: number | null
           id: string
@@ -531,6 +535,7 @@ export type Database = {
         }
         Insert: {
           auction_deadline_at?: string | null
+          auction_round?: number
           created_at?: string
           final_price?: number | null
           id?: string
@@ -550,6 +555,7 @@ export type Database = {
         }
         Update: {
           auction_deadline_at?: string | null
+          auction_round?: number
           created_at?: string
           final_price?: number | null
           id?: string
@@ -1734,6 +1740,7 @@ export type Database = {
         Args: { _buyer_identity: string; _product_id: string }
         Returns: {
           auction_deadline_at: string | null
+          auction_round: number
           created_at: string
           final_price: number | null
           id: string
