@@ -319,11 +319,15 @@ export function HomeScreen() {
                     // Demo probe: while HEAD is in flight → skeleton;
                     // when available → real card; when 404/error → nothing
                     // (Apple review: no "unavailable" placeholder).
+                    // Demo card: while HEAD is in flight → skeleton
+                    // (already shows the poster image); otherwise show the
+                    // real card. If the video is unavailable we still show
+                    // the card — the click just no-ops gracefully.
                     demoAvailable === null ? (
                       <DemoCardSkeleton key="__demo_sk__" />
-                    ) : demoAvailable ? (
-                      <DemoCard key="__demo__" onOpen={() => setDemoOpen(true)} />
-                    ) : null,
+                    ) : (
+                      <DemoCard key="__demo__" onOpen={() => demoAvailable && setDemoOpen(true)} />
+                    ),
                     ...filtered.map((s, i) => (
                       <LiveCard
                         key={s.id}
