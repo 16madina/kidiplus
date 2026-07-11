@@ -215,6 +215,7 @@ export function useLiveRoom(params: {
           const newRow = payload.new as { status?: "live" | "ended" };
           const oldRow = payload.old as { status?: "live" | "ended" } | null;
           if (newRow.status === "ended" && oldRow?.status !== "ended") {
+            console.warn("[live-end diag] db realtime → lives.status became 'ended'", { liveId, payload });
             setLiveStatus("ended");
           } else if (newRow.status === "live") {
             setLiveStatus("live");
@@ -307,7 +308,14 @@ export function useLiveRoom(params: {
       setHeartTick((n) => n + 1);
     });
     ch.on("broadcast", { event: "auction:start" }, ({ payload }) => {
-      setAuctionStart(payload as AuctionStartEvt);
+      const evt = payload as AuctionStartEvt;
+      setAuctionStart(evt);
+      // Fresh auction round: any lastBid from the previous round MUST NOT
+      // carry over — otherwise the host would auto-finalize with the
+      // previous winner, and the viewer UI would still show them as the
+      // current highest bidder (which is exactly the "previous winner
+      // blocked from bidding" symptom on the client side).
+      setLastBid((cur) => (cur && cur.productId === evt.productId ? null : cur));
     });
     ch.on("broadcast", { event: "auction:end" }, ({ payload }) => {
       const evt = payload as AuctionEndEvt;
@@ -413,6 +421,9 @@ export function useLiveRoom(params: {
       },
       broadcastAuctionStart: (evt) => {
         setAuctionStart(evt);
+        // Fresh round on the host too — do NOT carry over the previous
+        // round's lastBid (see auction:start receiver comment).
+        setLastBid((cur) => (cur && cur.productId === evt.productId ? null : cur));
         void channelRef.current?.send({ type: "broadcast", event: "auction:start", payload: evt });
       },
       broadcastAuctionEnd: (evt) => {

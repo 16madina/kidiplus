@@ -344,6 +344,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const timeout = setTimeout(() => {
       if (autoEndFiredRef.current) return;
       autoEndFiredRef.current = true;
+      console.warn("[live-end diag] host auto-end fired — videoStatus stayed non-granted for 90s", {
+        liveId: b.liveId, videoStatus,
+      });
       if (b.liveId) {
         void import("@/lib/lives-db").then(({ endLiveInDb }) =>
           endLiveInDb(b.liveId!).catch(() => {}),

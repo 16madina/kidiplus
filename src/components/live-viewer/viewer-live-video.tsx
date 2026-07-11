@@ -67,7 +67,7 @@ export function ViewerLiveVideo({
         endTimer = null;
       }
     };
-    const scheduleEnd = () => {
+    const scheduleEnd = (reason: string) => {
       if (cancelled) return;
       clearEndTimer();
       if (!hadVideo) {
@@ -79,7 +79,10 @@ export function ViewerLiveVideo({
       setStatus("waiting");
       endTimer = setTimeout(() => {
         endTimer = null;
-        if (!cancelled) setStatus("ended");
+        if (!cancelled) {
+          console.warn("[live-end diag] viewer video → 'ended' (4s absence)", { reason });
+          setStatus("ended");
+        }
       }, 4_000);
     };
 
@@ -124,7 +127,7 @@ export function ViewerLiveVideo({
             // iframe momentarily hiding the tab).
             if (cancelled) return;
             if (track.kind === Track.Kind.Video) {
-              scheduleEnd();
+              scheduleEnd("TrackUnsubscribed(video)");
             }
           },
         );
@@ -132,12 +135,12 @@ export function ViewerLiveVideo({
         r.on(RoomEvent.ParticipantDisconnected, (_p: RemoteParticipant) => {
           if (cancelled) return;
           const anyoneLeft = r.remoteParticipants.size > 0;
-          if (!anyoneLeft && hadVideo) scheduleEnd();
+          if (!anyoneLeft && hadVideo) scheduleEnd("ParticipantDisconnected(last)");
         });
 
         r.on(RoomEvent.Disconnected, () => {
           if (cancelled) return;
-          if (hadVideo) scheduleEnd();
+          if (hadVideo) scheduleEnd("RoomDisconnected");
           else setStatus("error");
         });
 
