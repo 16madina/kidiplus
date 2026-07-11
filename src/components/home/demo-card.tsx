@@ -21,38 +21,52 @@ import { Play, X, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
-import { fetchDemoVideoUrl, DEMO_VIDEO_FALLBACK_URL } from "@/lib/demo-video-db";
-import demoLivePosterAsset from "@/assets/demo-live-cover.jpg.asset.json";
-
-
-
-
-
-const DEMO_LIVE_POSTER_URL = `${demoLivePosterAsset.url}?v=${demoLivePosterAsset.asset_id}`;
+import {
+  fetchDemoConfig,
+  withVersion,
+  DEMO_VIDEO_FALLBACK_URL,
+  DEMO_COVER_FALLBACK_URL,
+} from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
-/** Resolves the current demo video URL (admin-overridable via app_config)
- *  and probes it with a HEAD request. */
-export function useDemoVideo(): { ok: boolean | null; url: string } {
+/** Resolves the current demo video + cover URLs (admin-overridable via
+ *  app_config). Both URLs carry a `?v=<demo_version>` cache-bust param so
+ *  re-uploads refresh instantly across browsers and CDNs. Re-fetches on
+ *  window focus so a live app picks up admin changes without a full reload. */
+export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
-  const [url, setUrl] = useState<string>(DEMO_VIDEO_FALLBACK_URL);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const resolved = await fetchDemoVideoUrl().catch(() => DEMO_VIDEO_FALLBACK_URL);
-      if (cancelled) return;
-      setUrl(resolved);
-      try {
-        const r = await fetch(resolved, { method: "HEAD", cache: "no-store" });
-        if (!cancelled) setOk(r.ok);
-      } catch {
-        if (!cancelled) setOk(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
+  const [coverUrl, setCoverUrl] = useState<string>(withVersion(DEMO_COVER_FALLBACK_URL, "0"));
+  const [version, setVersion] = useState<string>("0");
+  const lastVersion = useRef<string>("");
+
+  const load = useCallback(async () => {
+    const cfg = await fetchDemoConfig().catch(() => null);
+    if (!cfg) return;
+    if (cfg.version === lastVersion.current) return;
+    lastVersion.current = cfg.version;
+    const vUrl = withVersion(cfg.videoUrl, cfg.version);
+    const cUrl = withVersion(cfg.coverUrl, cfg.version);
+    setUrl(vUrl);
+    setCoverUrl(cUrl);
+    setVersion(cfg.version);
+    try {
+      const r = await fetch(vUrl, { method: "HEAD", cache: "no-store" });
+      setOk(r.ok);
+    } catch {
+      setOk(false);
+    }
   }, []);
-  return { ok, url };
+
+  useEffect(() => {
+    void load();
+    const onFocus = () => { void load(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load]);
+
+  return { ok, url, coverUrl, version };
 }
 
 /** Back-compat: boolean-only availability probe. */
@@ -60,7 +74,7 @@ export function useDemoAvailable(): boolean | null {
   return useDemoVideo().ok;
 }
 
-export function DemoCard({ onOpen }: { onOpen: () => void }) {
+export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
   return (
     <motion.div
@@ -77,8 +91,8 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
       >
         {/* live poster background */}
         <img
-          key={DEMO_LIVE_POSTER_URL}
-          src={DEMO_LIVE_POSTER_URL}
+          key={coverUrl}
+          src={coverUrl}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
@@ -175,8 +189,9 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
  * even before the video is confirmed available (Apple review: no "loading…"
  * text placeholders, no ghost text).
  */
-export function DemoCardSkeleton() {
+export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
   const { t } = useTranslation();
+  const poster = coverUrl ?? withVersion(DEMO_COVER_FALLBACK_URL, "0");
   return (
     <div
       role="status"
@@ -191,8 +206,8 @@ export function DemoCardSkeleton() {
       {/* live poster background — visible from the first frame so the
           card never looks empty while the video HEAD probe is in flight */}
       <img
-        key={DEMO_LIVE_POSTER_URL}
-        src={DEMO_LIVE_POSTER_URL}
+        key={poster}
+        src={poster}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         loading="eager"

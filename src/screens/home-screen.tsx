@@ -39,7 +39,7 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+  const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -324,9 +324,9 @@ export function HomeScreen() {
                     // real card. If the video is unavailable we still show
                     // the card — the click just no-ops gracefully.
                     demoAvailable === null ? (
-                      <DemoCardSkeleton key="__demo_sk__" />
+                      <DemoCardSkeleton key="__demo_sk__" coverUrl={demoCoverUrl} />
                     ) : (
-                      <DemoCard key="__demo__" onOpen={() => demoAvailable && setDemoOpen(true)} />
+                      <DemoCard key="__demo__" onOpen={() => demoAvailable && setDemoOpen(true)} coverUrl={demoCoverUrl} />
                     ),
                     ...filtered.map((s, i) => (
                       <LiveCard
