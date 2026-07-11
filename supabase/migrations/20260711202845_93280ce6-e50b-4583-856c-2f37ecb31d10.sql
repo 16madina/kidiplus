@@ -1,0 +1,1 @@
+CREATE POLICY "demo-covers admin read" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'demo-covers' AND is_admin(auth.uid()));
