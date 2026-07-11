@@ -34,6 +34,7 @@ import { AuthFlow } from "./auth/auth-flow";
 import { SplashScreen } from "./splash-screen";
 import { EASE_IOS } from "@/lib/motion";
 import { ImmersiveProvider, useImmersive } from "@/lib/immersive-context";
+import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthPromptProvider } from "@/lib/auth-prompt-context";
@@ -149,6 +150,7 @@ function AppShellInner() {
   const { active: liveStream, close: closeLive, open: openLive } = useLiveViewer();
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
+  const keyboardOpen = useKeyboardOpen();
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
   useEffect(() => {
@@ -267,7 +269,7 @@ function AppShellInner() {
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
 
-      {!immersive && !liveStream && (
+      {!immersive && !liveStream && !keyboardOpen && (
         <BottomTabBar active={active} onChange={setActive} />
       )}
 
