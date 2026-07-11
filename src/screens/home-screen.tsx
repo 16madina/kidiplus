@@ -48,19 +48,13 @@ export function HomeScreen() {
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
 
-  // Initial paint: mock filler while real lives load in parallel.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setItems(makeStreams(0, PAGE));
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Real lives feed + realtime subscription.
+  // Real lives feed + realtime subscription. No mock filler on home per
+  // Apple review guidance (no AI/demo lives on the landing screen — only
+  // the pinned demo video remains).
   const refreshRealLives = useCallback(async () => {
     const rows = await fetchActiveLives(60);
     setRealLives(rows);
+    setLoading(false);
   }, []);
   useEffect(() => {
     void refreshRealLives();
@@ -92,38 +86,21 @@ export function HomeScreen() {
   const rankForYou = usePersonalizedRanking();
 
   const filtered = useMemo(() => {
-    // Real DB lives are always pinned to the top, in newest-first order
-    // (fetchActiveLives already sorts by started_at desc). Filters &
-    // personalization apply only to the mock filler below, so a freshly
-    // launched live never ends up buried at the bottom of the feed.
-    const realScoped = applyHomeCategory(realLives, category);
-    const mocksScoped = applyHomeCategory(items, category);
-    const mocksBase = category === "Pour toi" ? rankForYou(mocksScoped) : mocksScoped;
-    const mocksFinal = applyHomeFilter(mocksBase, filter);
-    return [...realScoped, ...mocksFinal];
-  }, [items, realLives, category, filter, rankForYou]);
+    // Only real DB lives are shown. Category filter still applies so users
+    // can narrow the feed; personalized ranking runs on "Pour toi".
+    const scoped = applyHomeCategory(realLives, category);
+    const base = category === "Pour toi" ? rankForYou(scoped) : scoped;
+    return applyHomeFilter(base, filter);
+  }, [realLives, category, filter, rankForYou]);
 
 
   const doRefresh = useCallback(() => {
     setRefreshing(true);
     setLoading(true);
-    void refreshRealLives();
-    setTimeout(() => {
-      setItems(makeStreams(Math.floor(Math.random() * 24), PAGE));
-      setLoading(false);
+    void refreshRealLives().finally(() => {
       setRefreshing(false);
-    }, 700);
+    });
   }, [refreshRealLives]);
-
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || loading) return;
-    setLoadingMore(true);
-    setTimeout(() => {
-      setItems((prev) => [...prev, ...makeStreams(prev.length, PAGE)]);
-      setLoadingMore(false);
-    }, 550);
-  }, [loadingMore, loading]);
 
   useEffect(() => {
     const el = scrollerRef.current;
