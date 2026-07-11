@@ -467,7 +467,7 @@ export function SearchScreen() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="h-full"
-              style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
+              style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
             >
               <SwipeableTabs tabs={tabs} index={tab} onIndexChange={setTab} />
             </motion.div>
@@ -480,7 +480,7 @@ export function SearchScreen() {
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="h-full overflow-y-auto"
               style={{
-                paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+                paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
                 WebkitOverflowScrolling: "touch",
                 overscrollBehavior: "contain",
               }}
@@ -545,7 +545,7 @@ export function SearchScreen() {
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="h-full overflow-y-auto"
               style={{
-                paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+                paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
                 WebkitOverflowScrolling: "touch",
                 overscrollBehavior: "contain",
               }}

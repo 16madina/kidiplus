@@ -159,7 +159,7 @@ function ActivityScreenAuthed() {
         style={{
           WebkitOverflowScrolling: "touch",
           overscrollBehavior: "contain",
-          paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
         }}
       >
         <AnimatePresence mode="wait">

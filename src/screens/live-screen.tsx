@@ -57,7 +57,7 @@ function LiveScreenAuthed() {
         transition={{ duration: 0.3, ease: EASE_IOS }}
         className="flex h-full flex-col items-center justify-center px-6 pt-safe text-center"
         style={{
-          paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
         }}
       >
         <div
