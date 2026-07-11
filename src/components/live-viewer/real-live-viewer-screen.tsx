@@ -56,6 +56,31 @@ import { logLiveInteraction } from "@/lib/interactions-db";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
+function SellerAvatar({ src, name, size }: { src: string; name: string; size: "md" | "lg" }) {
+  const [failed, setFailed] = useState(false);
+  const initial = (name.trim()[0] || "?").toUpperCase();
+  const box = size === "lg" ? "h-16 w-16 text-[24px]" : "h-10 w-10 text-[16px]";
+  if (!failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        onError={() => setFailed(true)}
+        className={`${box} shrink-0 rounded-full object-cover ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
+        draggable={false}
+      />
+    );
+  }
+  return (
+    <span
+      className={`${box} grid shrink-0 place-items-center rounded-full font-black ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
+      style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+    >
+      {initial}
+    </span>
+  );
+}
+
 function toProduct(row: LiveProductRow, activeId: string | null): Product {
   const status: Product["status"] =
     row.status === "sold" || row.status === "out" || row.status === "unsold"
@@ -736,7 +761,7 @@ export function RealLiveViewerScreen() {
               aria-label={`Voir le profil de ${active.seller}`}
               className="!block flex min-w-0 items-center gap-2 p-0 text-left"
             >
-              <img src={active.avatar} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90" />
+              <SellerAvatar src={active.avatar} name={active.seller} size="md" />
               <div className="min-w-0">
                 <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
@@ -1000,7 +1025,7 @@ export function RealLiveViewerScreen() {
             className="absolute inset-0 z-[80] grid place-items-center bg-black/85 px-6 text-center text-white"
           >
             <div className="flex max-w-xs flex-col items-center">
-              <img src={active.avatar} alt="" className="h-16 w-16 rounded-full object-cover ring-2 ring-white/80" />
+              <SellerAvatar src={active.avatar} name={active.seller} size="lg" />
               <h2 className="mt-4 text-[24px] font-black leading-tight">{t("live.endedTitle")}</h2>
               <p className="mt-2 text-[14px] text-white/75">{active.seller}</p>
               <Press
