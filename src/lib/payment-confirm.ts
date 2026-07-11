@@ -3,6 +3,8 @@
 // Keeps a pending PI id in localStorage so a page reload can retry.
 
 import { supabase } from "@/integrations/supabase/client";
+import { paymentsEnvHeaders } from "@/lib/stripe-publishable";
+
 
 const TOPUP_KEY = "kidi:pendingTopupPI";
 const ORDER_KEY_PREFIX = "kidi:pendingOrderPI:";
@@ -49,7 +51,7 @@ async function postWithRetry(
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...paymentsEnvHeaders() },
         body: JSON.stringify({ paymentIntentId }),
       });
       const body = await res.json().catch(() => ({}));

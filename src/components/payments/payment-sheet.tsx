@@ -37,18 +37,10 @@ import {
   readPendingOrder,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
-import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-// Brand logos live in `public/brands/` so the URL resolves in every
-// context (Vite dev, published site, Capacitor iOS/Android).
-const waveLogo = "/brands/wave.webp";
-const djamoLogo = "/brands/djamo.png";
-const orangeMoneyLogo = "/brands/orange-money.png";
+import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 
-// Brand palette for the mobile-money placeholders (recognizable colors).
-const WAVE_BLUE = "#1DC8FE";
-const ORANGE = "#ffffff";
-const DJAMO_INDIGO = "#1a1a1a";
 
 
 type CheckoutResp = {
@@ -110,9 +102,11 @@ export function PaymentSheet({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            ...paymentsEnvHeaders(),
           },
           body: JSON.stringify({ orderId: order.id }),
         });
+
         const body = (await res.json().catch(() => ({}))) as CheckoutResp;
         if (cancelled) return;
         if (res.status === 503 || body.error === "stripe_not_configured") {
@@ -299,7 +293,7 @@ export function PaymentSheet({
                     />
                     <MethodRow
                       active
-                      icon={<CreditCard size={20} />}
+                      brand="card"
                       label={t("pay.method.card")}
                       subtitle={t("pay.method.cardSub")}
                       right={
@@ -315,27 +309,25 @@ export function PaymentSheet({
                       <>
                         <MethodRow
                           active
-                          logoUrl={waveLogo}
-                          brandColor={WAVE_BLUE}
+                          brand="wave"
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={orangeMoneyLogo}
-                          brandColor={ORANGE}
+                          brand="orange"
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
                           active
-                          logoUrl={djamoLogo}
-                          brandColor={DJAMO_INDIGO}
+                          brand="djamo"
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
                         />
                       </>
                     )}
+
                   </div>
                 </div>
 
@@ -472,57 +464,29 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 function MethodRow({
-  icon,
+  brand,
   label,
   subtitle,
   right,
   badge,
-  brandColor,
   active,
   disabled,
-  logoUrl,
 }: {
-  icon?: React.ReactNode;
+  brand: BrandKey;
   label: string;
   subtitle?: string;
   right?: React.ReactNode;
   badge?: string;
-  brandColor?: string;
   active?: boolean;
   disabled?: boolean;
-  logoUrl?: string;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImg = logoUrl && !imgFailed;
   return (
     <div
       className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${
         active ? "border-primary bg-primary/5" : "border-border"
       } ${disabled ? "opacity-60" : ""}`}
     >
-      <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
-        style={
-          showImg
-            ? { backgroundColor: "white" }
-            : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
-        }
-      >
-        {showImg ? (
-          <img
-            src={logoUrl}
-            alt=""
-            className="h-full w-full object-contain"
-            onError={() => setImgFailed(true)}
-          />
-        ) : brandColor ? (
-          <span className="text-[13px] font-bold">{label[0]}</span>
-        ) : (
-          icon
-        )}
-      </div>
-
-
+      <BrandBadge brand={brand} size={40} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
         {subtitle && (
@@ -539,6 +503,7 @@ function MethodRow({
     </div>
   );
 }
+
 
 function NotConfigured() {
   const { t } = useTranslation();

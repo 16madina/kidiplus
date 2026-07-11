@@ -37,19 +37,12 @@ import {
   readPendingTopup,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
-import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
-// Brand logos live in `public/brands/` so they resolve via absolute URLs
-// in every context (Vite dev, published site, and Capacitor iOS/Android).
-const waveLogo = "/brands/wave.webp";
-const djamoLogo = "/brands/djamo.png";
-const orangeMoneyLogo = "/brands/orange-money.png";
-
-const WAVE_BLUE = "#1DC8FE";
-const ORANGE = "#FF6600";
-const DJAMO_INDIGO = "#1a1a1a";
+import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+
 
 
 type Step =
@@ -131,9 +124,11 @@ export function TopUpSheet({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...paymentsEnvHeaders(),
         },
         body: JSON.stringify({ amount: chosenAmount }),
       });
+
       const body = (await res.json().catch(() => ({}))) as {
         clientSecret?: string;
         publishableKey?: string;
@@ -305,7 +300,7 @@ export function TopUpSheet({
                     })}
                   </p>
                   <MethodRow
-                    icon="card"
+                    brand="card"
                     label={t("pay.method.card")}
                     subtitle={t("pay.method.cardSub")}
                     active={selectedMethod === "card"}
@@ -314,31 +309,29 @@ export function TopUpSheet({
                   {cur === "XOF" && (
                     <>
                       <MethodRow
+                        brand="wave"
                         label={t("pay.method.waveVisa")}
                         subtitle={t("pay.method.waveVisaSub")}
-                        logoUrl={waveLogo}
-                        brandColor={WAVE_BLUE}
                         active={selectedMethod === "wave"}
                         onClick={() => setSelectedMethod("wave")}
                       />
                       <MethodRow
+                        brand="orange"
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
-                        logoUrl={orangeMoneyLogo}
-                        brandColor={ORANGE}
                         active={selectedMethod === "orange"}
                         onClick={() => setSelectedMethod("orange")}
                       />
                       <MethodRow
+                        brand="djamo"
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
-                        logoUrl={djamoLogo}
-                        brandColor={DJAMO_INDIGO}
                         active={selectedMethod === "djamo"}
                         onClick={() => setSelectedMethod("djamo")}
                       />
                     </>
                   )}
+
 
 
 
@@ -409,28 +402,22 @@ export function TopUpSheet({
 }
 
 function MethodRow({
+  brand,
   label,
   subtitle,
-  brandColor,
   badge,
   active,
   disabled,
-  icon,
-  logoUrl,
   onClick,
 }: {
+  brand: BrandKey;
   label: string;
   subtitle?: string;
-  brandColor?: string;
   badge?: string;
   active?: boolean;
   disabled?: boolean;
-  icon?: "card";
-  logoUrl?: string;
   onClick?: () => void;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImg = logoUrl && !imgFailed;
   return (
     <button
       type="button"
@@ -441,30 +428,7 @@ function MethodRow({
         active ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background"
       } ${disabled ? "opacity-60" : "active:scale-[0.99]"}`}
     >
-      <div
-        className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/70 px-1"
-        style={
-          showImg
-            ? { backgroundColor: "white" }
-            : { backgroundColor: brandColor ?? "white", color: brandColor ? "white" : "inherit" }
-        }
-      >
-        {showImg ? (
-          <img
-            src={logoUrl}
-            alt=""
-            className="max-h-10 max-w-full object-contain"
-            onError={() => setImgFailed(true)}
-          />
-        ) : icon === "card" ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="2" y="5" width="20" height="14" rx="2" />
-            <path d="M2 10h20" />
-          </svg>
-        ) : (
-          <span className="text-[13px] font-bold">{label[0]}</span>
-        )}
-      </div>
+      <BrandBadge brand={brand} size={44} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
         {subtitle && (
@@ -487,6 +451,7 @@ function MethodRow({
     </button>
   );
 }
+
 
 
 function StripeInline({

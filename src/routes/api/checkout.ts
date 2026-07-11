@@ -18,7 +18,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig, mapStripeError } from "@/lib/stripe.server";
+import { createStripeClient, getStripeConfig, mapStripeError, envHintFromRequest } from "@/lib/stripe.server";
 import { toStripeAmountFor } from "@/lib/fees";
 import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 import { isAllowedOrigin } from "@/lib/api-cors";
@@ -26,7 +26,7 @@ function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Payments-Env",
     "Access-Control-Max-Age": "86400",
   };
   if (origin && isAllowedOrigin(origin)) base["Access-Control-Allow-Origin"] = origin;
@@ -59,7 +59,8 @@ export const Route = createFileRoute("/api/checkout")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const stripeCfg = getStripeConfig();
+        const envHint = envHintFromRequest(request);
+        const stripeCfg = getStripeConfig(envHint);
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -122,7 +123,7 @@ export const Route = createFileRoute("/api/checkout")({
         }
         // The `currency` const is already prepared above (lowercase).
 
-        const stripe = createStripeClient();
+        const stripe = createStripeClient(envHint);
 
         // Reuse an existing intent if we already created one for this order.
         let intent;

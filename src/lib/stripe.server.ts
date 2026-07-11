@@ -18,21 +18,35 @@ export type StripeEnv = "sandbox" | "live";
 
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
-function pickEnv(): StripeEnv {
+function pickEnv(hint?: StripeEnv | null): StripeEnv {
+  // Explicit hint from the client (x-payments-env header) is authoritative —
+  // this is the only reliable signal at Worker runtime, since VITE_* env
+  // vars are NOT injected into `process.env` on Cloudflare Workers, so any
+  // fallback based on VITE_PAYMENTS_CLIENT_TOKEN is unreliable and can
+  // silently route PI creation to the wrong Stripe account.
+  if (hint === "live" || hint === "sandbox") return hint;
   const pk = process.env.VITE_PAYMENTS_CLIENT_TOKEN ?? process.env.STRIPE_PUBLISHABLE_KEY ?? "";
   if (pk.startsWith("pk_live_")) return "live";
+  if (pk.startsWith("pk_test_")) return "sandbox";
+  // Last resort: prefer live if only the live gateway key exists, else sandbox.
   if (process.env.STRIPE_LIVE_API_KEY && !process.env.STRIPE_SANDBOX_API_KEY) return "live";
   return "sandbox";
 }
 
-export function getStripeConfig(): {
+export function envHintFromRequest(request: Request): StripeEnv | null {
+  const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
+  if (h === "live" || h === "sandbox") return h;
+  return null;
+}
+
+export function getStripeConfig(hint?: StripeEnv | null): {
   ok: boolean;
   env: StripeEnv;
   publishableKey: string;
   webhookSecret: string;
   reason?: string;
 } {
-  const env = pickEnv();
+  const env = pickEnv(hint);
 
   const gatewayKey =
     env === "live"
@@ -49,9 +63,6 @@ export function getStripeConfig(): {
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
-  // Prefer the manually-configured STRIPE_WEBHOOK_SECRET (user's own endpoint
-  // pointed at /api/stripe-webhook) over the Lovable-managed webhook secret,
-  // which is bound to a different endpoint URL and won't match our signatures.
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
   const haveApi = !!(gatewayKey || legacySecret);
@@ -68,13 +79,15 @@ export function getStripeConfig(): {
   return { ok: true, env, publishableKey, webhookSecret };
 }
 
+
 // Build a Stripe SDK client. When using the managed gateway key we route
 // every api.stripe.com request through the Lovable connector-gateway, which
 // attaches the real Stripe secret key. When a legacy STRIPE_SECRET_KEY is
 // present we use it directly (BYOK mode).
-export function createStripeClient(): Stripe {
-  const cfg = getStripeConfig();
+export function createStripeClient(hint?: StripeEnv | null): Stripe {
+  const cfg = getStripeConfig(hint);
   const env = cfg.env;
+
   const gatewayKey =
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
