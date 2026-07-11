@@ -76,6 +76,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; icon: React.ReactNode; label: string }> = [
     { id: "overview", icon: <LayoutDashboard size={14} />, label: t("admin.tabs.overview") },
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
+    { id: "push",     icon: <Bell size={14} />,            label: "Push" },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
