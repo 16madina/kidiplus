@@ -189,7 +189,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
     try {
       const res = await PushNotifications.requestPermissions();
       const granted = res.receive === "granted";
-      setStatus(res.receive as PushStatus);
+      setStatus(normalizePermission(res.receive));
       if (granted) {
         await PushNotifications.register();
         toast.success("Notifications activées");
