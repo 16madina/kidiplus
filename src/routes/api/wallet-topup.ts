@@ -106,7 +106,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
           intent = await stripe.paymentIntents.create({
             amount: amountMinor,
             currency: currency.toLowerCase(),
-            automatic_payment_methods: { enabled: true },
+            payment_method_types: ["card"],
             metadata: {
               kind: "wallet_topup",
               userId,

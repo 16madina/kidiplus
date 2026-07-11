@@ -1,8 +1,8 @@
-Je vais corriger l’écran de recharge du portefeuille pour que les moyens de paiement ne ressemblent plus à une simple liste non cliquable.
+Je vais corriger l’écran de recharge pour que l’utilisateur voie directement les champs carte Stripe au lieu d’un grand bloc vide.
 
 Plan :
-1. Ajouter un état de sélection pour la méthode de paiement : Carte bancaire, Wave Visa, Orange Visa, et Djamo si disponible.
-2. Transformer chaque ligne de méthode en bouton sélectionnable avec un seul choix actif à la fois.
-3. Afficher clairement les logos Wave, Orange Money et Djamo à gauche, avec une icône carte pour Carte bancaire.
-4. Mettre un indicateur visuel propre sur la méthode choisie, sans que toutes les méthodes paraissent sélectionnées.
-5. Garder le paiement réel à l’étape Stripe actuelle, sans changer la logique de recharge ni les montants.
+1. Remplacer le rendu actuel du `PaymentElement` qui reste vide par des champs Stripe explicites : numéro de carte, expiration et CVC.
+2. Garder le flux existant de recharge du portefeuille : création du paiement côté backend, confirmation Stripe côté écran de recharge, puis crédit du portefeuille après succès.
+3. Forcer la méthode Stripe côté backend sur le paiement par carte pour que le formulaire corresponde exactement à l’écran demandé.
+4. Ajouter un état de chargement/erreur plus clair si Stripe ne charge pas, sans bloquer l’utilisateur dans un écran vide.
+5. Vérifier dans l’aperçu que les champs carte apparaissent bien et que le bouton “Payer 5 000 FCFA” reste désactivé tant que les champs ne sont pas remplis.

@@ -16,8 +16,10 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import {
+  CardCvcElement,
+  CardExpiryElement,
+  CardNumberElement,
   Elements,
-  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -527,21 +529,38 @@ function StripeInlineForm({
   const elements = useElements();
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
-  const [complete, setComplete] = useState(false);
+  const [complete, setComplete] = useState({ number: false, expiry: false, cvc: false });
   const [error, setError] = useState<string | null>(null);
+  const allComplete = complete.number && complete.expiry && complete.cvc;
+  const stripeFieldOptions = {
+    style: {
+      base: {
+        color: "#111827",
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontSize: "16px",
+        fontSmoothing: "antialiased",
+        "::placeholder": { color: "#8A94A6" },
+      },
+      invalid: { color: "#E11D48" },
+    },
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || busy || !ready || !complete) {
+    if (!stripe || !elements || busy || !ready || !allComplete) {
       setError("Entre les informations de ta carte avant de payer.");
+      return;
+    }
+    const cardNumber = elements.getElement(CardNumberElement);
+    if (!cardNumber) {
+      setError("Le champ numéro de carte n'est pas prêt. Ferme puis réessaie la recharge.");
       return;
     }
     setBusy(true);
     setError(null);
     haptic.medium();
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
+    const { error, paymentIntent } = await stripe.confirmCardPayment(elements.getElement(CardNumberElement) ? elements._commonOptions?.clientSecret ?? "" : "", {
+      payment_method: { card: cardNumber },
     });
     setBusy(false);
     if (error) {
@@ -576,7 +595,7 @@ function StripeInlineForm({
           Entre le numéro de carte, la date, le CVC et le nom dans le formulaire ci-dessous.
         </p>
       </div>
-      <div className="relative min-h-[260px] rounded-2xl border border-border bg-background p-3">
+      <div className="relative rounded-2xl border border-border bg-background p-3">
         {!ready && (
           <div className="absolute inset-0 grid place-items-center rounded-2xl bg-background">
             <div className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
@@ -585,18 +604,47 @@ function StripeInlineForm({
             </div>
           </div>
         )}
-        <PaymentElement
-          options={{ layout: "accordion" }}
-          onReady={() => setReady(true)}
-          onChange={(event) => {
-            setComplete(event.complete);
-            if (event.complete) setError(null);
-          }}
-          onLoadError={() => {
-            setReady(true);
-            setError("Le formulaire de carte ne s'est pas chargé. Ferme puis réessaie la recharge.");
-          }}
-        />
+        <div className="space-y-3">
+          <label className="block rounded-xl border border-border bg-muted/20 px-3 py-3 focus-within:border-primary">
+            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Numéro de carte
+            </span>
+            <CardNumberElement
+              options={stripeFieldOptions}
+              onReady={() => setReady(true)}
+              onChange={(event) => {
+                setComplete((prev) => ({ ...prev, number: event.complete }));
+                setError(event.error?.message ?? null);
+              }}
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block rounded-xl border border-border bg-muted/20 px-3 py-3 focus-within:border-primary">
+              <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Expiration
+              </span>
+              <CardExpiryElement
+                options={stripeFieldOptions}
+                onChange={(event) => {
+                  setComplete((prev) => ({ ...prev, expiry: event.complete }));
+                  setError(event.error?.message ?? null);
+                }}
+              />
+            </label>
+            <label className="block rounded-xl border border-border bg-muted/20 px-3 py-3 focus-within:border-primary">
+              <span className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                CVC
+              </span>
+              <CardCvcElement
+                options={stripeFieldOptions}
+                onChange={(event) => {
+                  setComplete((prev) => ({ ...prev, cvc: event.complete }));
+                  setError(event.error?.message ?? null);
+                }}
+              />
+            </label>
+          </div>
+        </div>
       </div>
       {error && (
         <p className="rounded-xl bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
@@ -606,7 +654,7 @@ function StripeInlineForm({
       <div className="mt-auto pt-3">
         <Press
           type="submit"
-          disabled={!stripe || busy || !ready || !complete}
+          disabled={!stripe || busy || !ready || !allComplete}
           className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
         >
           {busy ? "…" : t("wallet.topup.confirmCta", { amount: amountLabel })}
