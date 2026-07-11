@@ -464,57 +464,29 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 function MethodRow({
-  icon,
+  brand,
   label,
   subtitle,
   right,
   badge,
-  brandColor,
   active,
   disabled,
-  logoUrl,
 }: {
-  icon?: React.ReactNode;
+  brand: BrandKey;
   label: string;
   subtitle?: string;
   right?: React.ReactNode;
   badge?: string;
-  brandColor?: string;
   active?: boolean;
   disabled?: boolean;
-  logoUrl?: string;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImg = logoUrl && !imgFailed;
   return (
     <div
       className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${
         active ? "border-primary bg-primary/5" : "border-border"
       } ${disabled ? "opacity-60" : ""}`}
     >
-      <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
-        style={
-          showImg
-            ? { backgroundColor: "white" }
-            : { backgroundColor: brandColor ?? "transparent", color: brandColor ? "white" : "inherit" }
-        }
-      >
-        {showImg ? (
-          <img
-            src={logoUrl}
-            alt=""
-            className="h-full w-full object-contain"
-            onError={() => setImgFailed(true)}
-          />
-        ) : brandColor ? (
-          <span className="text-[13px] font-bold">{label[0]}</span>
-        ) : (
-          icon
-        )}
-      </div>
-
-
+      <BrandBadge brand={brand} size={40} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-semibold">{label}</div>
         {subtitle && (
@@ -531,6 +503,7 @@ function MethodRow({
     </div>
   );
 }
+
 
 function NotConfigured() {
   const { t } = useTranslation();
