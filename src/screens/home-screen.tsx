@@ -34,11 +34,9 @@ export function HomeScreen() {
   const { dark, setDark } = useSettings();
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
-  const [items, setItems] = useState<LiveStream[]>([]);
   const [realLives, setRealLives] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
