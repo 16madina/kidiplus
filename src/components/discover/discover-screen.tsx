@@ -14,7 +14,7 @@ function SectionHeader({ label }: { label: string }) {
 
 export function DiscoverScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+  const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const [playerOpen, setPlayerOpen] = useState(false);
 
   return (
