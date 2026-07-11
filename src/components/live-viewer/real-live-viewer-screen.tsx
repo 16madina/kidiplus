@@ -176,6 +176,11 @@ export function RealLiveViewerScreen() {
         .select("status")
         .eq("id", active.liveId)
         .maybeSingle();
+      console.warn("[live-end diag] video 'ended' debounce elapsed — DB status re-check", {
+        liveId: active.liveId,
+        dbStatus: data?.status,
+        videoStatus: viewerVideoStatus,
+      });
       if (data?.status === "ended") {
         setHostDisconnectEnded(true);
       }
