@@ -399,16 +399,18 @@ function ProfileScreenAuthed() {
         </div>
 
         {/* ============ DÉCOUVRIR KIDI+ ============ */}
-        {demoAvailable !== false && (
-          <>
-            <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
-            <div className="mx-4">
-              <div className="w-[48%] min-w-[160px] max-w-[200px]">
-                <DemoCard onOpen={() => { haptic.light(); setDemoOpen(true); }} />
-              </div>
-            </div>
-          </>
-        )}
+        <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
+        <MenuGroup
+          index={0}
+          items={[
+            {
+              icon: <Play size={16} />,
+              label: t("profile.discover.button", { defaultValue: "Tutoriels & astuces" }),
+              tint: "oklch(0.65 0.18 75)",
+              onClick: () => { haptic.light(); setDiscoverOpen(true); },
+            },
+          ]}
+        />
 
         {/* ============ GÉNÉRAL ============ */}
 
