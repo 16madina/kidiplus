@@ -33,6 +33,8 @@ export function AdminDemoVideoCard() {
   const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_FALLBACK_URL);
   const [version, setVersion] = useState<string>("0");
   const [loading, setLoading] = useState(true);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+  const [coverPreviewError, setCoverPreviewError] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +120,11 @@ export function AdminDemoVideoCard() {
   const previewCoverUrl = withVersion(coverUrl, version);
   const previewVideoUrl = withVersion(videoUrl, version);
 
+  useEffect(() => {
+    setCoverLoaded(false);
+    setCoverPreviewError(false);
+  }, [previewCoverUrl]);
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -136,20 +143,34 @@ export function AdminDemoVideoCard() {
         <span className="text-[12px] font-medium">Image de couverture</span>
       </div>
       <div
-        className="relative mb-2 overflow-hidden rounded-xl bg-black"
+        className="relative mb-2 overflow-hidden rounded-xl bg-muted"
         style={{ aspectRatio: "3 / 4", maxWidth: 220 }}
       >
-        {loading ? (
-          <div className="absolute inset-0 grid place-items-center">
+        <img
+          key={previewCoverUrl}
+          src={previewCoverUrl}
+          alt="Aperçu de la couverture démo"
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+          onLoad={() => {
+            setCoverLoaded(true);
+            setCoverPreviewError(false);
+          }}
+          onError={() => {
+            setCoverLoaded(false);
+            setCoverPreviewError(true);
+          }}
+        />
+        {(loading || !coverLoaded) && !coverPreviewError && (
+          <div className="absolute inset-0 grid place-items-center bg-black/10">
             <Loader2 className="animate-spin text-white/60" size={20} />
           </div>
-        ) : (
-          <img
-            key={previewCoverUrl}
-            src={previewCoverUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+        )}
+        {coverPreviewError && (
+          <div className="absolute inset-0 grid place-items-center bg-muted px-4 text-center text-[12px] text-muted-foreground">
+            Aperçu indisponible — réessaie l’upload.
+          </div>
         )}
       </div>
       <div className="mb-2 text-[11px] text-muted-foreground">
