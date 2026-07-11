@@ -235,6 +235,39 @@ export function PushProvider({ children }: { children: ReactNode }) {
     [status, doRequest],
   );
 
+  // Auto pre-prompt au démarrage : dès qu'un utilisateur est connecté et que
+  // l'autorisation OS n'est ni accordée ni refusée, on ouvre le pré-prompt
+  // (une fois par session, natif uniquement, après un petit délai pour laisser
+  // le splash / l'UI s'installer).
+  const autoPromptedRef = useRef(false);
+  useEffect(() => {
+    if (!isNative()) return;
+    if (autoPromptedRef.current) return;
+    if (status !== "prompt") return;
+
+    let cancelled = false;
+    const maybeAsk = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (cancelled || !data?.user) return;
+      if (autoPromptedRef.current) return;
+      autoPromptedRef.current = true;
+      // petit délai pour ne pas apparaître pendant le splash
+      setTimeout(() => {
+        if (!cancelled) void requestWithPrePrompt("Reçois les alertes de lives, messages et nouveautés en temps réel.");
+      }, 1200);
+    };
+
+    void maybeAsk();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void maybeAsk();
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [status, requestWithPrePrompt]);
+
+
   const onActivate = async () => {
     haptic.medium();
     const ok = await doRequest();
