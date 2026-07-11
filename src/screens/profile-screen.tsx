@@ -416,7 +416,7 @@ function ProfileScreenAuthed() {
 
         <SectionHeader label={t("profile.sections.general")} />
         <MenuGroup
-          index={0}
+          index={1}
           items={[
             { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
             ...(profile?.is_seller
@@ -435,7 +435,7 @@ function ProfileScreenAuthed() {
         {/* ============ COMPTE ============ */}
         <SectionHeader label={t("profile.sections.account")} />
         <MenuGroup
-          index={1}
+          index={2}
           items={[
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => setSettingsOpen(true) },
             ...(profile?.is_seller
@@ -461,7 +461,7 @@ function ProfileScreenAuthed() {
           <>
             <SectionHeader label={t("profile.sections.admin")} />
             <MenuGroup
-              index={2}
+              index={3}
               items={[
                 { icon: <ShieldCheck size={16} />, label: t("admin.title"), tint: "oklch(0.3 0.06 265)", onClick: () => setAdminOpen(true) },
               ]}
@@ -471,7 +471,7 @@ function ProfileScreenAuthed() {
 
         {/* ============ Danger ============ */}
         <MenuGroup
-          index={3}
+          index={4}
           items={[
             {
               icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
