@@ -202,40 +202,71 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
   const doRequest = useCallback(async (): Promise<boolean> => {
     if (!isNative()) {
-      setStatus("granted");
-      return true;
-    }
-    try {
-      // Sur Android, si l'OS a déjà refusé, requestPermissions() renvoie
-      // "denied" immédiatement sans afficher de dialogue. On log pour
-      // diagnostiquer et on guide l'utilisateur vers les Réglages système.
-      const before = await PushNotifications.checkPermissions().catch(() => null);
-      console.info("[push] before request:", before?.receive);
-      const res = await PushNotifications.requestPermissions();
-      console.info("[push] request result:", res.receive);
-      const granted = res.receive === "granted";
-      setStatus(normalizePermission(res.receive));
-      if (granted) {
-        await registerForPush();
-        toast.success("Notifications activées");
-        haptic.success();
-      } else {
-        const alreadyDenied = before?.receive === "denied";
-        toast.error("Notifications refusées", {
-          description: alreadyDenied
-            ? "Ouvre Réglages système > Applications > KiDi+ > Notifications pour les activer."
-            : "Active-les dans Réglages > Notifications > KiDi+.",
-        });
-      }
-      return granted;
-    } catch (e) {
-      console.warn("[push] requestPermissions threw", e);
-      toast.error("Impossible de demander l'autorisation", {
-        description: "Réessaie ou active les notifications dans les Réglages système.",
+      toast.error("Notifications indisponibles ici", {
+        description: "Les notifications push ne fonctionnent que dans l'app installée (iOS / Android).",
       });
       return false;
     }
-  }, []);
+
+    const platform = currentPlatform();
+
+    // Étape 1 : demander la permission OS (Android 13+ = POST_NOTIFICATIONS runtime prompt).
+    let permResult: { receive: string } | null = null;
+    let before: { receive: string } | null = null;
+    try {
+      before = await PushNotifications.checkPermissions().catch(() => null);
+      console.info("[push] before request:", before?.receive, "platform:", platform);
+      permResult = await PushNotifications.requestPermissions();
+      console.info("[push] request result:", permResult.receive);
+    } catch (e) {
+      // requestPermissions a réellement throw. Sur Android c'est souvent :
+      //   - <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> manquant
+      //   - targetSdkVersion < 33 (pas de prompt runtime)
+      //   - plugin google-services non appliqué (init Firebase échoue au démarrage)
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[push] requestPermissions threw", { platform, error: msg, raw: e });
+      toast.error("Impossible de demander l'autorisation", {
+        description:
+          platform === "android"
+            ? "Vérifie POST_NOTIFICATIONS dans AndroidManifest.xml + google-services.json, puis rebuild."
+            : `Erreur système : ${msg}`,
+      });
+      return false;
+    }
+
+    const granted = permResult.receive === "granted";
+    setStatus(normalizePermission(permResult.receive));
+
+    if (!granted) {
+      const alreadyDenied = before?.receive === "denied";
+      toast.error("Notifications refusées", {
+        description: alreadyDenied
+          ? "Ouvre Réglages système > Applications > KiDi+ > Notifications pour les activer."
+          : "Active-les dans Réglages > Notifications > KiDi+.",
+      });
+      return false;
+    }
+
+    // Étape 2 : enregistrement FCM/APNs. C'est ici qu'on tombe si
+    // google-services.json manque ou si le plugin google-services n'est
+    // pas appliqué dans les Gradle (Android) — .register() jette alors.
+    try {
+      await registerForPush();
+      toast.success("Notifications activées");
+      haptic.success();
+      return true;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[push] register/FCM failed", { platform, error: msg, raw: e });
+      toast.error("Configuration des notifications incomplète", {
+        description:
+          platform === "android"
+            ? "google-services.json ou Firebase Messaging manquant dans le build Android."
+            : "APNs (Apple Push) n'est pas configuré pour cette app.",
+      });
+      return false;
+    }
+  }, [registerForPush]);
 
   const requestWithPrePrompt = useCallback(
     async (reason: string): Promise<boolean> => {
