@@ -269,10 +269,10 @@ export function DemoPlayer({
       {open && (
         <motion.div
           key="demo-player"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.25, ease: EASE_IOS }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[100] bg-black"
         >
           <video
@@ -283,91 +283,20 @@ export function DemoPlayer({
             playsInline
             className="absolute inset-0 h-full w-full object-contain"
           />
-
-          {/* live header overlay */}
-          <div
-            className="absolute inset-x-0 z-10 flex items-center justify-between px-3"
-            style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+          {/* top-right close button only — clean, no confusing overlays */}
+          <button
+            type="button"
+            onClick={stop}
+            aria-label={t("home.demo.close")}
+            className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full"
+            style={{ top: "calc(env(safe-area-inset-top) + 12px)", backgroundColor: "rgba(0,0,0,0.55)" }}
           >
-            <div className="flex items-center gap-2">
-              <div
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/30"
-                style={{ backgroundColor: "#0d1530" }}
-              >
-                <span
-                  className="text-[14px] font-black leading-none"
-                  style={{ color: "#c8a24a" }}
-                >
-                  K
-                </span>
-              </div>
-
-              <div>
-                <p className="text-[12px] font-semibold text-white">KIDI+ Officiel</p>
-                <p className="text-[10px] text-white/70">Démo live</p>
-              </div>
-            </div>
-
-
-
-            <div className="flex items-center gap-2">
-              {/* LIVE badge */}
-              <div className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-2 py-1">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-white">
-                  LIVE
-                </span>
-              </div>
-              {/* viewers */}
-              <div className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-white backdrop-blur-sm">
-                <Eye size={11} strokeWidth={2.2} />
-                <span className="text-[10px] font-semibold">2 540</span>
-              </div>
-              <button
-                type="button"
-                onClick={stop}
-                aria-label={t("home.demo.close")}
-                className="grid h-11 w-11 place-items-center rounded-full bg-black/50"
-              >
-                <X size={22} color="white" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-
-          {/* product banner at bottom — mimics the live UI */}
-          <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3">
-            <div
-              className="flex items-center gap-3 rounded-2xl p-3"
-              style={{ backgroundColor: "rgba(20,20,25,0.82)" }}
-            >
-              <div className="h-14 w-14 overflow-hidden rounded-xl bg-white/10">
-                <img
-                  src={demoLivePosterAsset.url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  style={{ objectPosition: "left bottom" }}
-                />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-white">
-                  Blazer Crème Taille 38
-                </p>
-                <p className="mt-0.5 text-[11px] text-white/70">
-                  ENCHÈRE <span className="text-[14px] font-bold text-white">45,00 €</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-white">
-                <span className="text-[10px] font-semibold">00:15</span>
-              </div>
-            </div>
-          </div>
+            <X size={22} color="white" strokeWidth={2.2} />
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
+
 
