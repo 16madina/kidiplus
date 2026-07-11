@@ -56,7 +56,10 @@ import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { DemoCard, DemoPlayer } from "@/components/home/demo-card";
+import { useDemoVideo } from "@/components/home/demo-card";
 import { getAdminStatus } from "@/lib/admin.functions";
+
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -117,6 +120,9 @@ function ProfileScreenAuthed() {
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
+
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -393,7 +399,20 @@ function ProfileScreenAuthed() {
           </motion.div>
         </div>
 
+        {/* ============ DÉCOUVRIR KIDI+ ============ */}
+        {demoAvailable !== false && (
+          <>
+            <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
+            <div className="mx-4">
+              <div className="w-[48%] min-w-[160px] max-w-[200px]">
+                <DemoCard onOpen={() => { haptic.light(); setDemoOpen(true); }} />
+              </div>
+            </div>
+          </>
+        )}
+
         {/* ============ GÉNÉRAL ============ */}
+
         <SectionHeader label={t("profile.sections.general")} />
         <MenuGroup
           index={0}
@@ -491,9 +510,11 @@ function ProfileScreenAuthed() {
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
     </div>
   );
 }
+
 
 /* ================= HERO subcomponents ================= */
 
