@@ -7,7 +7,7 @@ import { Logo } from "@/components/brand/logo";
 import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
 import { FilterPills } from "@/components/filter-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
-import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import type { LiveStream } from "@/lib/live-mock";
 import {
   applyHomeCategory,
   applyHomeFilter,
@@ -34,11 +34,9 @@ export function HomeScreen() {
   const { dark, setDark } = useSettings();
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
-  const [items, setItems] = useState<LiveStream[]>([]);
   const [realLives, setRealLives] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const { ok: demoAvailable, url: demoUrl } = useDemoVideo();
@@ -50,19 +48,13 @@ export function HomeScreen() {
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
 
-  // Initial paint: mock filler while real lives load in parallel.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setItems(makeStreams(0, PAGE));
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Real lives feed + realtime subscription.
+  // Real lives feed + realtime subscription. No mock filler on home per
+  // Apple review guidance (no AI/demo lives on the landing screen — only
+  // the pinned demo video remains).
   const refreshRealLives = useCallback(async () => {
     const rows = await fetchActiveLives(60);
     setRealLives(rows);
+    setLoading(false);
   }, []);
   useEffect(() => {
     void refreshRealLives();
@@ -94,38 +86,21 @@ export function HomeScreen() {
   const rankForYou = usePersonalizedRanking();
 
   const filtered = useMemo(() => {
-    // Real DB lives are always pinned to the top, in newest-first order
-    // (fetchActiveLives already sorts by started_at desc). Filters &
-    // personalization apply only to the mock filler below, so a freshly
-    // launched live never ends up buried at the bottom of the feed.
-    const realScoped = applyHomeCategory(realLives, category);
-    const mocksScoped = applyHomeCategory(items, category);
-    const mocksBase = category === "Pour toi" ? rankForYou(mocksScoped) : mocksScoped;
-    const mocksFinal = applyHomeFilter(mocksBase, filter);
-    return [...realScoped, ...mocksFinal];
-  }, [items, realLives, category, filter, rankForYou]);
+    // Only real DB lives are shown. Category filter still applies so users
+    // can narrow the feed; personalized ranking runs on "Pour toi".
+    const scoped = applyHomeCategory(realLives, category);
+    const base = category === "Pour toi" ? rankForYou(scoped) : scoped;
+    return applyHomeFilter(base, filter);
+  }, [realLives, category, filter, rankForYou]);
 
 
   const doRefresh = useCallback(() => {
     setRefreshing(true);
     setLoading(true);
-    void refreshRealLives();
-    setTimeout(() => {
-      setItems(makeStreams(Math.floor(Math.random() * 24), PAGE));
-      setLoading(false);
+    void refreshRealLives().finally(() => {
       setRefreshing(false);
-    }, 700);
+    });
   }, [refreshRealLives]);
-
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || loading) return;
-    setLoadingMore(true);
-    setTimeout(() => {
-      setItems((prev) => [...prev, ...makeStreams(prev.length, PAGE)]);
-      setLoadingMore(false);
-    }, 550);
-  }, [loadingMore, loading]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -138,19 +113,7 @@ export function HomeScreen() {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    const scroller = scrollerRef.current;
-    if (!el || !scroller) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
-      },
-      { root: scroller, rootMargin: "600px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [loadMore]);
+  // No infinite scroll: the feed only lists real active lives.
 
   const dragStartY = useRef<number | null>(null);
   const pulling = useRef(false);
@@ -309,7 +272,7 @@ export function HomeScreen() {
 
         {/* ROW 2 — Large category tiles */}
         <div className="pt-2">
-          {loading && items.length === 0 ? (
+          {loading ? (
             <CategoryTilesSkeleton />
           ) : (
             <CategoryTiles active={category} onChange={setCategory} />
@@ -368,14 +331,6 @@ export function HomeScreen() {
           {!loading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm text-muted-foreground">
               {t("home.empty")}
-            </div>
-          )}
-
-          {!loading && loadingMore && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <LiveCardSkeleton key={`more-sk-${i}`} />
-              ))}
             </div>
           )}
 
