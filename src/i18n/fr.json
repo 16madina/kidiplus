@@ -307,6 +307,8 @@
     "muteMic": "Couper le micro",
     "unmuteMic": "Réactiver le micro",
     "waitingForSeller": "En attente du vendeur…",
+    "nextItemSoon": "Prochain article bientôt… {{name}}",
+    "allSold": "Tous les articles sont passés",
     "ended": "Live terminé",
     "endedTitle": "Le live est terminé 👋",
     "backHome": "Retour à l'accueil",

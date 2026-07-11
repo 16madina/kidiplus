@@ -829,8 +829,24 @@ export function RealLiveViewerScreen() {
         <LiveChat messages={messages} />
       </div>
 
-      {currentAsProduct && (
+      {currentAsProduct ? (
         <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
+          {/* When the featured product is upcoming (no auction active),
+              show an explicit "next item soon" hint above the disabled card
+              so viewers don't stare at empty space between rounds. */}
+          {!liveEnded && !room.auctionStart && currentProduct?.status === "upcoming" && (
+            <div
+              className="mb-2 rounded-2xl px-3 py-2 text-center text-[12px] font-semibold text-white"
+              style={{
+                background: "rgba(15, 15, 20, 0.72)",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              ⏳ {t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}
+            </div>
+          )}
           <AuctionCard
             product={currentAsProduct}
             secondsLeft={secondsLeft}
@@ -871,6 +887,25 @@ export function RealLiveViewerScreen() {
             }
           />
         </div>
+      ) : (
+        // No active auction AND no upcoming product left — everything has
+        // been auctioned. Show a friendly closing state so the viewer
+        // understands why the featured area is empty.
+        !liveEnded && room.products.length > 0 && (
+          <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
+            <div
+              className="rounded-2xl px-3 py-3 text-center text-[13px] font-semibold text-white"
+              style={{
+                background: "rgba(15, 15, 20, 0.72)",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              ✨ {t("live.allSold", "Tous les articles sont passés")}
+            </div>
+          </div>
+        )
       )}
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex items-center gap-2 px-3 pb-safe"

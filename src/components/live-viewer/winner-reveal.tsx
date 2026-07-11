@@ -70,6 +70,12 @@ export function WinnerReveal({
     }
     setPhase("logo");
     setAvatarFailed(false);
+    console.debug("[winner-reveal diag] open", {
+      variant,
+      winnerName,
+      winnerAvatarUrl,
+      hasUrl: !!winnerAvatarUrl,
+    });
     const t1 = setTimeout(() => setPhase("flip"), TIMINGS.flip);
     const t2 = setTimeout(() => setPhase("hold"), TIMINGS.hold);
     const t3 = setTimeout(() => setPhase("out"), TIMINGS.out);
@@ -201,7 +207,7 @@ export function WinnerReveal({
               ) : (
                 <>
                   <div
-                    className="grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full"
+                    className="relative grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full"
                     style={{
                       padding: 3,
                       background:
@@ -210,24 +216,36 @@ export function WinnerReveal({
                         "0 10px 24px rgba(0,0,0,0.5), 0 0 18px oklch(0.82 0.14 85 / 0.5)",
                     }}
                   >
-                    {winnerAvatarUrl && !avatarFailed ? (
+                    {/* Initials always render as the base layer so a null/
+                        broken avatar never leaves an empty gold circle. */}
+                    <div
+                      className="absolute inset-[3px] grid place-items-center rounded-full text-[28px] font-black"
+                      style={{
+                        background: "oklch(0.16 0.05 260)",
+                        color: "oklch(0.9 0.14 90)",
+                      }}
+                    >
+                      {(shownName[0] ?? "?").toUpperCase()}
+                    </div>
+                    {winnerAvatarUrl && !avatarFailed && (
                       <img
                         src={winnerAvatarUrl}
                         alt=""
-                        onError={() => setAvatarFailed(true)}
-                        draggable={false}
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="grid h-full w-full place-items-center rounded-full text-[28px] font-black"
-                        style={{
-                          background: "oklch(0.16 0.05 260)",
-                          color: "oklch(0.9 0.14 90)",
+                        onError={() => {
+                          console.debug("[winner-avatar diag] img error", winnerAvatarUrl);
+                          setAvatarFailed(true);
                         }}
-                      >
-                        {(shownName[0] ?? "?").toUpperCase()}
-                      </div>
+                        onLoad={(e) => {
+                          const img = e.currentTarget;
+                          if (!img.naturalWidth || !img.naturalHeight) {
+                            console.debug("[winner-avatar diag] empty naturalSize", winnerAvatarUrl);
+                            setAvatarFailed(true);
+                          }
+                        }}
+                        draggable={false}
+                        className="absolute inset-[3px] rounded-full object-cover"
+                        style={{ width: "calc(100% - 6px)", height: "calc(100% - 6px)" }}
+                      />
                     )}
                   </div>
                   <p

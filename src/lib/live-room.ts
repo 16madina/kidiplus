@@ -148,17 +148,9 @@ export function useLiveRoom(params: {
     if (!liveId) return;
     let alive = true;
     void (async () => {
-      const [p, liveRes, bidRes] = await Promise.all([
+      const [p, liveRes] = await Promise.all([
         fetchLiveProducts(liveId),
         supabase.from("lives").select("status").eq("id", liveId).maybeSingle(),
-        supabase
-          .from("live_bids")
-          .select("product_id, bidder_id, bidder_name, amount")
-          .eq("live_id", liveId)
-          .order("amount", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
       ]);
       const hydrated = await Promise.all(p.map(hydrateImage));
       if (!alive) return;
@@ -178,15 +170,33 @@ export function useLiveRoom(params: {
           deadlineMs: new Date(running.auction_deadline_at).getTime(),
           timerSec: running.timer_seconds,
         });
-      }
-      if (bidRes.data) {
-        setLastBid({
-          productId: bidRes.data.product_id,
-          bidderId: bidRes.data.bidder_id,
-          bidderName: bidRes.data.bidder_name,
-          amount: Number(bidRes.data.amount),
-          ts: Date.now(),
-        });
+        // Only load lastBid for the CURRENTLY active auction AND its current
+        // round. Loading unfiltered would return a stale winning bid from a
+        // previous auction/round, making the host finalize with a stale
+        // winner (or against the wrong product) and preventing the current
+        // round's actual highest bidder from being credited — the exact
+        // "bidding into the void" symptom on re-auctioned items.
+        const runningRound =
+          (running as unknown as { auction_round?: number }).auction_round ?? 1;
+        const { data: bid } = await supabase
+          .from("live_bids")
+          .select("product_id, bidder_id, bidder_name, amount, auction_round")
+          .eq("live_id", liveId)
+          .eq("product_id", running.id)
+          .eq("auction_round", runningRound)
+          .order("amount", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (bid && alive) {
+          setLastBid({
+            productId: (bid as { product_id: string }).product_id,
+            bidderId: (bid as { bidder_id: string }).bidder_id,
+            bidderName: (bid as { bidder_name: string }).bidder_name,
+            amount: Number((bid as { amount: number }).amount),
+            ts: Date.now(),
+          });
+        }
       }
     })();
     return () => {
@@ -273,7 +283,13 @@ export function useLiveRoom(params: {
             bidder_id: string;
             bidder_name: string;
             amount: number;
+            auction_round?: number;
           };
+          console.debug("[auction-round diag] live_bids INSERT", {
+            product_id: row.product_id,
+            round: row.auction_round,
+            amount: row.amount,
+          });
           setLastBid({
             productId: row.product_id,
             bidderId: row.bidder_id,
