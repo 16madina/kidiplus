@@ -28,6 +28,8 @@ import demoLivePosterAsset from "@/assets/demo-live-cover.jpg.asset.json";
 
 
 
+const DEMO_LIVE_POSTER_URL = `${demoLivePosterAsset.url}?v=${demoLivePosterAsset.asset_id}`;
+
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
 /** Resolves the current demo video URL (admin-overridable via app_config)
@@ -75,7 +77,8 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
       >
         {/* live poster background */}
         <img
-          src={demoLivePosterAsset.url}
+          key={DEMO_LIVE_POSTER_URL}
+          src={DEMO_LIVE_POSTER_URL}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
@@ -188,7 +191,8 @@ export function DemoCardSkeleton() {
       {/* live poster background — visible from the first frame so the
           card never looks empty while the video HEAD probe is in flight */}
       <img
-        src={demoLivePosterAsset.url}
+        key={DEMO_LIVE_POSTER_URL}
+        src={DEMO_LIVE_POSTER_URL}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         loading="eager"
