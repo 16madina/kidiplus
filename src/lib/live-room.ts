@@ -283,7 +283,13 @@ export function useLiveRoom(params: {
             bidder_id: string;
             bidder_name: string;
             amount: number;
+            auction_round?: number;
           };
+          console.debug("[auction-round diag] live_bids INSERT", {
+            product_id: row.product_id,
+            round: row.auction_round,
+            amount: row.amount,
+          });
           setLastBid({
             productId: row.product_id,
             bidderId: row.bidder_id,
