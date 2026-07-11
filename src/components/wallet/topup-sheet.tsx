@@ -18,7 +18,6 @@ import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
-  type PaymentElementChangeEvent,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -589,7 +588,7 @@ function StripeInlineForm({
         <PaymentElement
           options={{ layout: "accordion" }}
           onReady={() => setReady(true)}
-          onChange={(event: PaymentElementChangeEvent) => {
+          onChange={(event) => {
             setComplete(event.complete);
             if (event.complete) setError(null);
           }}
