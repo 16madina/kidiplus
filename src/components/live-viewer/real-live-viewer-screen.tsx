@@ -180,6 +180,10 @@ export function RealLiveViewerScreen() {
   
 
   useEffect(() => {
+    if (room.liveStatus === "live") {
+      setHostDisconnectEnded(false);
+      return;
+    }
     if (room.liveStatus === "ended") {
       setHostDisconnectEnded(false);
       return;
