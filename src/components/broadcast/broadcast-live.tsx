@@ -232,6 +232,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         finalPrice: Number(resolvedPrice ?? 0),
         orderId: res.orderId ?? null,
         autoPaid: !!res.autoPaid,
+        auctionRound: round,
+        ts: Date.now(),
       });
     })();
   }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
@@ -283,7 +285,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    const key = `${evt.productId}-${evt.finalPrice}-${evt.winnerId ?? "none"}`;
+    // Must include round/order/ts — same user can win the same product again
+    // at the same price; the old product+price+winner key skipped the popup.
+    const key =
+      evt.orderId ??
+      `${evt.productId}:${evt.auctionRound ?? "?"}:${evt.ts ?? evt.finalPrice}:${evt.winnerId ?? "none"}`;
     if (seenEndRef.current === key) return;
     seenEndRef.current = key;
     const prod = room.products.find((p) => p.id === evt.productId);
@@ -453,6 +459,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       finalPrice: Number(resolvedPrice ?? 0),
       orderId: res.orderId ?? null,
       autoPaid: !!res.autoPaid,
+      auctionRound: round,
+      ts: Date.now(),
     });
   };
 

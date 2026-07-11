@@ -4,24 +4,54 @@ import { supabase } from "@/integrations/supabase/client";
 const cache = new Map<string, { url: string; expiresAt: number }>();
 
 /**
+ * Normalize profiles.avatar_url into a storage object path when possible.
+ * Handles raw paths and expired Supabase signed/public URLs so we can re-sign.
+ */
+function avatarStoragePath(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^\/+/, "").replace(/^avatars\//i, "");
+  }
+
+  const storageMatch = trimmed.match(
+    /\/storage\/v1\/object\/(?:public|sign)\/avatars\/([^?]+)/i,
+  );
+  if (storageMatch?.[1]) return decodeURIComponent(storageMatch[1]);
+
+  const renderMatch = trimmed.match(
+    /\/storage\/v1\/render\/image\/public\/avatars\/([^?]+)/i,
+  );
+  if (renderMatch?.[1]) return decodeURIComponent(renderMatch[1]);
+
+  return null;
+}
+
+/**
  * Resolves an avatar_url stored in profiles to a displayable URL.
- * - Already-absolute URLs (http/https) are returned as-is (external avatars).
- * - Bucket paths (e.g. "<uid>/avatar.jpg") are signed on demand and cached.
+ * - External http(s) URLs (non-Supabase) are returned as-is.
+ * - Bucket paths and Supabase storage URLs are signed on demand and cached.
  */
 export async function resolveAvatarUrl(
   value: string | null | undefined,
 ): Promise<string | null> {
   if (!value) return null;
-  if (/^https?:\/\//i.test(value)) return value;
 
-  const cached = cache.get(value);
+  const path = avatarStoragePath(value);
+  if (!path) {
+    // Non-Supabase absolute URL (CDN, pravatar, etc.)
+    return /^https?:\/\//i.test(value) ? value : null;
+  }
+
+  const cached = cache.get(path);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
 
   const { data, error } = await supabase.storage
     .from("avatars")
-    .createSignedUrl(value, 60 * 60 * 24 * 7); // 7 days
+    .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
   if (error || !data) return null;
-  cache.set(value, {
+  cache.set(path, {
     url: data.signedUrl,
     expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
   });

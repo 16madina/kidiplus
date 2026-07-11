@@ -94,7 +94,17 @@ export function WinnerReveal({
       clearTimeout(t3);
       clearTimeout(t4);
     };
-  }, [open, winnerId, winnerName, winnerAvatarUrl, variant]);
+    // Intentionally NOT depending on winnerAvatarUrl — late avatar refresh
+    // must not restart the reveal animation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, winnerId, winnerName, variant]);
+
+  // Accept late-arriving signed URLs from the parent without resetting timers.
+  useEffect(() => {
+    if (!open || !winnerAvatarUrl) return;
+    setResolvedAvatar(winnerAvatarUrl);
+    setAvatarFailed(false);
+  }, [open, winnerAvatarUrl]);
 
   // Self-heal avatar: resolve from profiles on mount / when winner changes.
   useEffect(() => {
@@ -265,6 +275,7 @@ export function WinnerReveal({
                     </div>
                     {displayAvatar && !avatarFailed && (
                       <img
+                        key={displayAvatar}
                         src={displayAvatar}
                         alt=""
                         onError={() => {
@@ -279,7 +290,7 @@ export function WinnerReveal({
                           }
                         }}
                         draggable={false}
-                        className="absolute inset-[3px] rounded-full object-cover"
+                        className="absolute inset-[3px] z-[1] rounded-full object-cover"
                         style={{ width: "calc(100% - 6px)", height: "calc(100% - 6px)" }}
                       />
                     )}
