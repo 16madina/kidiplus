@@ -269,7 +269,7 @@ function AppShellInner() {
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
 
-      {!immersive && !liveStream && (
+      {!immersive && !liveStream && !keyboardOpen && (
         <BottomTabBar active={active} onChange={setActive} />
       )}
 
