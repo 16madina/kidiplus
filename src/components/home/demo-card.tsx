@@ -74,7 +74,7 @@ export function useDemoAvailable(): boolean | null {
   return useDemoVideo().ok;
 }
 
-export function DemoCard({ onOpen }: { onOpen: () => void }) {
+export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
   return (
     <motion.div
@@ -91,8 +91,8 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
       >
         {/* live poster background */}
         <img
-          key={DEMO_LIVE_POSTER_URL}
-          src={DEMO_LIVE_POSTER_URL}
+          key={coverUrl}
+          src={coverUrl}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
