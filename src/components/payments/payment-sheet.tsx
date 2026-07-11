@@ -37,7 +37,7 @@ import {
   readPendingOrder,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
-import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 // Brand logos live in `public/brands/` so the URL resolves in every
 // context (Vite dev, published site, Capacitor iOS/Android).
