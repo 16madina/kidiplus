@@ -15,7 +15,6 @@
     "native:sync": "npm run native:prepare && npx cap sync",
     "native:android": "npm run native:sync && npx cap open android",
     "native:ios": "npm run native:sync && npx cap open ios"
-
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.3.0",
@@ -31,6 +30,7 @@
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
+    "@capgo/capacitor-native-biometric": "^8.6.1",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/email-js": "^0.1.0",
     "@lovable.dev/webhooks-js": "^0.0.1",
