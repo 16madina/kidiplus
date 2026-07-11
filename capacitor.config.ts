@@ -1,23 +1,15 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// KiDi+ native shell — TRUE NATIVE PRODUCTION BUILD.
+// KiDi+ native shell.
 //
-// The WebView loads the BUNDLED assets from `dist/` (webDir below).
-// `server.url` is INTENTIONALLY DISABLED for production: setting it makes
-// Capacitor load a remote URL, which surfaces browser-style chrome and
-// breaks the "native app" feel (this is what shipped the Safari-looking
-// build to the device).
-//
-// ─── Dev hot-reload ONLY (LAN reload against Vite) ────────────────────────
-// Uncomment the `server` block below, set your Mac's LAN IP, then run:
-//   npx cap sync ios && npx cap run ios
-// Do NOT commit an active `server.url`.
-//
-// server: {
-//   url: "http://192.168.1.10:8080",
-//   cleartext: true,
-// },
-// ──────────────────────────────────────────────────────────────────────────
+// TanStack Start renders the live app from the published URL. For native
+// Android/iOS plugins to work, Capacitor must load that URL as the app's own
+// `server.url`. A local launcher that redirects via `allowNavigation` looks
+// visually similar, but Android can lose the Capacitor bridge after that
+// redirect; then `Capacitor.isNativePlatform()` returns false and push /
+// biometric features behave like the app is a normal website.
+const nativeAppUrl = process.env.NATIVE_APP_URL || "https://kidiplus.lovable.app";
+
 const config: CapacitorConfig = {
   appId: "com.kidiplus.app",
   appName: "KiDi+",
@@ -36,12 +28,13 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
   },
-  // Only in-webview navigation to these hosts is permitted. Everything else
-  // is handed off to the system browser (correct for external links).
   server: {
-    // NOTE: `url` is intentionally omitted (see banner above).
+    url: nativeAppUrl,
+    cleartext: false,
     androidScheme: "https",
     iosScheme: "capacitor",
+    // Keep trusted KiDi+ routes in the WebView. External links still leave the
+    // app via the system browser / Capacitor Browser plugin.
     allowNavigation: [
       "kidiplus.lovable.app",
       "kidiplus.com",
