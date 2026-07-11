@@ -22,7 +22,7 @@ import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
-import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
+import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
@@ -307,11 +307,21 @@ export function HomeScreen() {
               className="grid grid-cols-2 gap-2"
             >
               {loading
-                ? Array.from({ length: 8 }).map((_, i) => (
-                    <LiveCardSkeleton key={`sk-${i}`} />
-                  ))
+                ? [
+                    // Pinned demo slot keeps its shape during initial load —
+                    // real skeleton, not a "coming soon" placeholder.
+                    <DemoCardSkeleton key="__demo_sk__" />,
+                    ...Array.from({ length: 7 }).map((_, i) => (
+                      <LiveCardSkeleton key={`sk-${i}`} />
+                    )),
+                  ]
                 : [
-                    demoAvailable ? (
+                    // Demo probe: while HEAD is in flight → skeleton;
+                    // when available → real card; when 404/error → nothing
+                    // (Apple review: no "unavailable" placeholder).
+                    demoAvailable === null ? (
+                      <DemoCardSkeleton key="__demo_sk__" />
+                    ) : demoAvailable ? (
                       <DemoCard key="__demo__" onOpen={() => setDemoOpen(true)} />
                     ) : null,
                     ...filtered.map((s, i) => (

@@ -130,6 +130,60 @@ export function DemoCard({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/**
+ * Skeleton for the pinned demo card. Matches DemoCard's 3/4 aspect ratio and
+ * rounded shape so the grid never reflows when the real card resolves. Uses
+ * the same navy → gold palette (no shimmering white/gray) to stay on-brand
+ * during the HEAD probe, and shows the DÉMO badge so the intent is obvious
+ * even before the video is confirmed available (Apple review: no "loading…"
+ * text placeholders, no ghost text).
+ */
+export function DemoCardSkeleton() {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="status"
+      aria-label={t("home.demo.title")}
+      aria-busy="true"
+      className="relative overflow-hidden rounded-2xl"
+      style={{
+        aspectRatio: "3 / 4",
+        backgroundImage:
+          "linear-gradient(150deg, #1a2340 0%, #0d1530 55%, #050912 100%)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 90% at 50% 45%, rgba(200,162,74,0.18) 0%, rgba(200,162,74,0) 60%)",
+        }}
+      />
+      {/* DEMO badge (identical to real card so no layout jump) */}
+      <div className="absolute left-2 top-2 z-10">
+        <span
+          className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          style={{ backgroundColor: "#c8a24a", color: "#0d1530" }}
+        >
+          {t("home.demo.badge")}
+        </span>
+      </div>
+      {/* subtle pulsing disk in place of the play button */}
+      <div className="absolute inset-0 z-10 grid place-items-center">
+        <motion.div
+          animate={{ opacity: [0.35, 0.7, 0.35] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          className="h-16 w-16 rounded-full"
+          style={{ backgroundColor: "rgba(255,255,255,0.18)" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+
+
 export function DemoPlayer({
   open,
   onClose,
