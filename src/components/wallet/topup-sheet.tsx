@@ -526,11 +526,16 @@ function StripeInlineForm({
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || busy) return;
+    if (!stripe || !elements || busy || !ready || !complete) {
+      setError("Entre les informations de ta carte avant de payer.");
+      return;
+    }
     setBusy(true);
     setError(null);
     haptic.medium();
@@ -563,7 +568,36 @@ function StripeInlineForm({
 
   return (
     <form onSubmit={submit} className="mt-5 flex flex-1 flex-col gap-3">
-      <PaymentElement options={{ layout: "tabs" }} />
+      <div>
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Paiement sécurisé
+        </p>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Entre le numéro de carte, la date, le CVC et le nom dans le formulaire ci-dessous.
+        </p>
+      </div>
+      <div className="relative min-h-[260px] rounded-2xl border border-border bg-background p-3">
+        {!ready && (
+          <div className="absolute inset-0 grid place-items-center rounded-2xl bg-background">
+            <div className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+              <Loader2 className="animate-spin" size={16} />
+              Chargement du formulaire carte…
+            </div>
+          </div>
+        )}
+        <PaymentElement
+          options={{ layout: "accordion" }}
+          onReady={() => setReady(true)}
+          onChange={(event) => {
+            setComplete(event.complete);
+            if (event.complete) setError(null);
+          }}
+          onLoadError={() => {
+            setReady(true);
+            setError("Le formulaire de carte ne s'est pas chargé. Ferme puis réessaie la recharge.");
+          }}
+        />
+      </div>
       {error && (
         <p className="rounded-xl bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
           {error}
@@ -572,7 +606,7 @@ function StripeInlineForm({
       <div className="mt-auto pt-3">
         <Press
           type="submit"
-          disabled={!stripe || busy}
+          disabled={!stripe || busy || !ready || !complete}
           className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
         >
           {busy ? "…" : t("wallet.topup.confirmCta", { amount: amountLabel })}
