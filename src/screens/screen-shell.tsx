@@ -13,7 +13,7 @@ export function ScreenShell({
     <div
       className="h-full overflow-y-auto pt-safe"
       style={{
-        paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
         WebkitOverflowScrolling: "touch",
         overscrollBehavior: "contain",
       }}
