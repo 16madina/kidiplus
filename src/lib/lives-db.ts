@@ -370,6 +370,8 @@ export type LiveProductRow = {
   /** Absolute epoch timestamp (ISO) of the auction deadline. Set by the
    *  start_auction RPC so late joiners can rehydrate a synchronized timer. */
   auction_deadline_at: string | null;
+  /** Incremented each time start_auction runs on this product row. */
+  auction_round?: number;
 };
 
 
@@ -469,7 +471,16 @@ export async function finalizeAuctionInDb(args: {
   winnerId: string | null;
   winnerName: string | null;
   finalPrice: number;
-}): Promise<{ ok: boolean; orderId: string | null; autoPaid: boolean; error?: string }> {
+}): Promise<{
+  ok: boolean;
+  orderId: string | null;
+  autoPaid: boolean;
+  unsold?: boolean;
+  winnerId?: string | null;
+  winnerName?: string | null;
+  finalPrice?: number | null;
+  error?: string;
+}> {
   const { data, error } = await supabase.rpc("finalize_auction_winner", {
     _live_id: args.liveId,
     _product_id: args.productId,
@@ -478,9 +489,26 @@ export async function finalizeAuctionInDb(args: {
     _final_price: args.finalPrice,
   } as never);
   if (error) return { ok: false, orderId: null, autoPaid: false, error: error.message };
-  const r = (data ?? {}) as { ok?: boolean; order_id?: string | null; auto_paid?: boolean; error?: string };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    order_id?: string | null;
+    auto_paid?: boolean;
+    unsold?: boolean;
+    winner_id?: string | null;
+    winner_name?: string | null;
+    final_price?: number | null;
+    error?: string;
+  };
   if (!r.ok) return { ok: false, orderId: null, autoPaid: false, error: r.error };
-  return { ok: true, orderId: r.order_id ?? null, autoPaid: !!r.auto_paid };
+  return {
+    ok: true,
+    orderId: r.order_id ?? null,
+    autoPaid: !!r.auto_paid,
+    unsold: !!r.unsold,
+    winnerId: r.winner_id ?? null,
+    winnerName: r.winner_name ?? null,
+    finalPrice: r.final_price ?? null,
+  };
 }
 
 /** Opportunistic cleanup — cancels overdue unpaid auction orders. */

@@ -91,7 +91,14 @@ export type LiveRoomState = {
   auctionStart: AuctionStartEvt | null;
   lastAuctionEnd: AuctionEndEvt | null;
   lastExtension: AuctionExtendEvt | null;
-  lastBid: { productId: string; bidderId: string; bidderName: string; amount: number; ts: number } | null;
+  lastBid: {
+    productId: string;
+    bidderId: string;
+    bidderName: string;
+    amount: number;
+    ts: number;
+    auctionRound: number;
+  } | null;
   lastGift: GiftEvt | null;
   sendChat: (text: string) => void;
   sendHeart: () => void;
@@ -195,6 +202,7 @@ export function useLiveRoom(params: {
             bidderName: (bid as { bidder_name: string }).bidder_name,
             amount: Number((bid as { amount: number }).amount),
             ts: Date.now(),
+            auctionRound: Number((bid as { auction_round?: number }).auction_round ?? runningRound),
           });
         }
       }
@@ -285,9 +293,10 @@ export function useLiveRoom(params: {
             amount: number;
             auction_round?: number;
           };
+          const round = Number(row.auction_round ?? 1);
           console.debug("[auction-round diag] live_bids INSERT", {
             product_id: row.product_id,
-            round: row.auction_round,
+            round,
             amount: row.amount,
           });
           setLastBid({
@@ -296,6 +305,7 @@ export function useLiveRoom(params: {
             bidderName: row.bidder_name,
             amount: Number(row.amount),
             ts: Date.now(),
+            auctionRound: round,
           });
         },
       )
