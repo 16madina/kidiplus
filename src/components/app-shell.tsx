@@ -150,6 +150,7 @@ function AppShellInner() {
   const { active: liveStream, close: closeLive, open: openLive } = useLiveViewer();
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
+  const keyboardOpen = useKeyboardOpen();
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
   useEffect(() => {
