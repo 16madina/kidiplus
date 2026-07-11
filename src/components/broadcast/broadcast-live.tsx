@@ -31,7 +31,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
-  createLiveProductInDb, relaunchUnsoldProductInDb,
+  createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { supabase } from "@/integrations/supabase/client";
@@ -321,6 +321,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
   }, [room.lastBid, room.products]);
+
+  useEffect(() => {
+    if (!b.liveId || videoStatus !== "granted") return;
+    void markLiveActiveInDb(b.liveId).catch(() => {});
+  }, [b.liveId, videoStatus]);
 
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
