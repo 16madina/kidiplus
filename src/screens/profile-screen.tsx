@@ -25,6 +25,9 @@ import {
   UserPen,
   Store,
   Camera,
+  Fingerprint,
+  ScanFace,
+  ShieldCheck as ShieldCheckIcon2,
 } from "lucide-react";
 
 import { toast } from "sonner";
