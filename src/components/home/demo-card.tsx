@@ -174,8 +174,7 @@ export function DemoCardSkeleton() {
       className="relative overflow-hidden rounded-2xl"
       style={{
         aspectRatio: "3 / 4",
-        backgroundImage:
-          "linear-gradient(150deg, #1a2340 0%, #0d1530 55%, #050912 100%)",
+        backgroundColor: "#1a1a1a",
       }}
     >
       <span
@@ -183,10 +182,10 @@ export function DemoCardSkeleton() {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(120% 90% at 50% 45%, rgba(200,162,74,0.18) 0%, rgba(200,162,74,0) 60%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%)",
         }}
       />
-      {/* DEMO badge (identical to real card so no layout jump) */}
+      {/* DEMO badge */}
       <div className="absolute left-2 top-2 z-10">
         <span
           className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -194,6 +193,15 @@ export function DemoCardSkeleton() {
         >
           {t("home.demo.badge")}
         </span>
+      </div>
+      {/* LIVE badge placeholder */}
+      <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2">
+        <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1">
+          <span className="h-2 w-2 rounded-full bg-red-500/70" />
+          <span className="text-[10px] font-bold uppercase tracking-wide text-white/70">
+            LIVE
+          </span>
+        </div>
       </div>
       {/* subtle pulsing disk in place of the play button */}
       <div className="absolute inset-0 z-10 grid place-items-center">
@@ -207,6 +215,7 @@ export function DemoCardSkeleton() {
     </div>
   );
 }
+
 
 
 
