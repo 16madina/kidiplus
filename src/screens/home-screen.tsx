@@ -7,7 +7,7 @@ import { Logo } from "@/components/brand/logo";
 import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
 import { FilterPills } from "@/components/filter-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
-import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import type { LiveStream } from "@/lib/live-mock";
 import {
   applyHomeCategory,
   applyHomeFilter,
