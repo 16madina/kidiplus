@@ -110,9 +110,11 @@ export function PaymentSheet({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            ...paymentsEnvHeaders(),
           },
           body: JSON.stringify({ orderId: order.id }),
         });
+
         const body = (await res.json().catch(() => ({}))) as CheckoutResp;
         if (cancelled) return;
         if (res.status === 503 || body.error === "stripe_not_configured") {
