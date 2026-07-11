@@ -334,14 +334,6 @@ export function HomeScreen() {
             </div>
           )}
 
-          {!loading && loadingMore && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <LiveCardSkeleton key={`more-sk-${i}`} />
-              ))}
-            </div>
-          )}
-
           <div ref={sentinelRef} className="h-4 w-full" />
         </div>
       </div>
