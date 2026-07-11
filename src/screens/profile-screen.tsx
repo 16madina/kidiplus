@@ -63,6 +63,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
 import type { Lang } from "@/i18n";
+import {
+  disableBiometric,
+  enableBiometric,
+  getBiometricInfo,
+  isBiometricEnabled,
+  type BiometricInfo,
+} from "@/lib/biometric";
 
 /* ============================================================
    Design tokens for this screen
