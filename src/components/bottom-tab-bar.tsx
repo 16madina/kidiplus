@@ -83,7 +83,7 @@ export function BottomTabBar({
       aria-label="Primary"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 pb-safe"
     >
-      <div className="pointer-events-none relative mx-auto mb-3 max-w-xl px-4">
+      <div className="pointer-events-none relative mx-auto mb-1 max-w-xl px-4">
         {/* Floating pill bar with a notch under the raised live button.
             The notch is a radial-gradient mask that cuts a circle out of
             the pill so the gold button appears to punch through it. */}
