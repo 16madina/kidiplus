@@ -726,8 +726,91 @@ function SettingsPushScreen({ open, onClose }: { open: boolean; onClose: () => v
             onChange={setSounds}
           />
         </div>
+
+        <BiometricSettingsSection />
       </div>
     </PushScreen>
+  );
+}
+
+function BiometricSettingsSection() {
+  const { user } = useAuth();
+  const [bio, setBio] = useState<BiometricInfo>({ available: false, kind: null, label: "" });
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const info = await getBiometricInfo();
+      setBio(info);
+      setEnabled(isBiometricEnabled());
+    })();
+  }, []);
+
+  const onToggle = useCallback(async (v: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    haptic.light();
+    try {
+      if (!v) {
+        await disableBiometric();
+        setEnabled(false);
+        toast.success(`${bio.label} désactivé`);
+        return;
+      }
+      const email = user?.email;
+      if (!email) {
+        toast.error("Compte introuvable");
+        return;
+      }
+      const pwd = typeof window !== "undefined"
+        ? window.prompt(`Entrez votre mot de passe pour activer ${bio.label} :`)
+        : null;
+      if (!pwd) return;
+      // Verify the password by re-authenticating before we persist it.
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+      if (error) {
+        haptic.error();
+        toast.error("Mot de passe incorrect");
+        return;
+      }
+      await enableBiometric(email, pwd);
+      setEnabled(true);
+      haptic.success();
+      toast.success(`${bio.label} activé`);
+    } catch {
+      haptic.error();
+      toast.error("Impossible de modifier la biométrie");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, bio.label, user?.email]);
+
+  if (!bio.available) return null;
+
+  const Icon = bio.kind === "faceId" || bio.kind === "face" ? ScanFace : Fingerprint;
+
+  return (
+    <>
+      <h2 className="mb-2 mt-6 px-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Sécurité
+      </h2>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <MenuIcon icon={<Icon size={16} />} tint="oklch(0.6 0.2 250)" />
+          <div className="flex-1">
+            <div className="text-[15px] font-medium">Connexion avec {bio.label}</div>
+            <div className="text-[12px] text-muted-foreground">
+              {enabled ? "Activée" : "Utilisez la biométrie pour vous reconnecter"}
+            </div>
+          </div>
+          <IOSSwitch checked={enabled} onChange={onToggle} label={bio.label} />
+        </div>
+      </div>
+      <p className="mt-2 px-2 text-[12px] text-muted-foreground">
+        Vos identifiants sont stockés en sécurité dans le trousseau du téléphone.
+      </p>
+    </>
   );
 }
 
