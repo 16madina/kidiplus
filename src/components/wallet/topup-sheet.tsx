@@ -47,6 +47,8 @@ const WAVE_BLUE = "#1DC8FE";
 const ORANGE = "#FF6600";
 const DJAMO_INDIGO = "#1a1a1a";
 
+type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+
 
 type Step =
   | { kind: "amount" }
@@ -73,6 +75,7 @@ export function TopUpSheet({
 
   const [step, setStep] = useState<Step>({ kind: "amount" });
   const [selected, setSelected] = useState<number>(PRESETS[1] ?? PRESETS[0]);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card");
   const [custom, setCustom] = useState<string>("");
   const [confettiKey, setConfettiKey] = useState(0);
 
@@ -80,6 +83,7 @@ export function TopUpSheet({
     if (open) {
       setStep({ kind: "amount" });
       setSelected(PRESETS[1] ?? PRESETS[0]);
+      setSelectedMethod("card");
       setCustom("");
       // Recovery: if a previous attempt left a pending PI in localStorage,
       // try to confirm it now (idempotent). Silent — if it fails we just
@@ -298,7 +302,13 @@ export function TopUpSheet({
                       defaultValue: "Vous choisirez votre moyen de paiement à l'étape suivante.",
                     })}
                   </p>
-                  <MethodRow icon="card" label={t("pay.method.card")} subtitle={t("pay.method.cardSub")} />
+                  <MethodRow
+                    icon="card"
+                    label={t("pay.method.card")}
+                    subtitle={t("pay.method.cardSub")}
+                    active={selectedMethod === "card"}
+                    onClick={() => setSelectedMethod("card")}
+                  />
                   {cur === "XOF" && (
                     <>
                       <MethodRow
@@ -306,18 +316,24 @@ export function TopUpSheet({
                         subtitle={t("pay.method.waveVisaSub")}
                         logoUrl={waveLogo}
                         brandColor={WAVE_BLUE}
+                        active={selectedMethod === "wave"}
+                        onClick={() => setSelectedMethod("wave")}
                       />
                       <MethodRow
                         label={t("pay.method.orangeVisa")}
                         subtitle={t("pay.method.orangeVisaSub")}
                         logoUrl={orangeMoneyLogo}
                         brandColor={ORANGE}
+                        active={selectedMethod === "orange"}
+                        onClick={() => setSelectedMethod("orange")}
                       />
                       <MethodRow
                         label={t("pay.method.djamo")}
                         subtitle={t("pay.method.djamoSub")}
                         logoUrl={djamoLogo}
                         brandColor={DJAMO_INDIGO}
+                        active={selectedMethod === "djamo"}
+                        onClick={() => setSelectedMethod("djamo")}
                       />
                     </>
                   )}
@@ -399,6 +415,7 @@ function MethodRow({
   disabled,
   icon,
   logoUrl,
+  onClick,
 }: {
   label: string;
   subtitle?: string;
@@ -408,17 +425,22 @@ function MethodRow({
   disabled?: boolean;
   icon?: "card";
   logoUrl?: string;
+  onClick?: () => void;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const showImg = logoUrl && !imgFailed;
   return (
-    <div
-      className={`mt-2 flex items-center gap-3 rounded-2xl border px-3 py-3 ${
-        active ? "border-primary bg-primary/5" : "border-border"
-      } ${disabled ? "opacity-60" : ""}`}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={`mt-2 flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+        active ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background"
+      } ${disabled ? "opacity-60" : "active:scale-[0.99]"}`}
     >
       <div
-        className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl"
+        className="grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/70 px-1"
         style={
           showImg
             ? { backgroundColor: "white" }
@@ -429,7 +451,7 @@ function MethodRow({
           <img
             src={logoUrl}
             alt=""
-            className="h-full w-full object-contain"
+            className="max-h-10 max-w-full object-contain"
             onError={() => setImgFailed(true)}
           />
         ) : icon === "card" ? (
@@ -452,7 +474,15 @@ function MethodRow({
           {badge}
         </span>
       )}
-    </div>
+      <span
+        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+          active ? "border-primary bg-primary text-primary-foreground" : "border-border"
+        }`}
+        aria-hidden="true"
+      >
+        {active && <Check size={13} strokeWidth={3} />}
+      </span>
+    </button>
   );
 }
 
