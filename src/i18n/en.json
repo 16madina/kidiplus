@@ -307,6 +307,8 @@
     "muteMic": "Mute mic",
     "unmuteMic": "Unmute mic",
     "waitingForSeller": "Waiting for seller…",
+    "nextItemSoon": "Next item soon… {{name}}",
+    "allSold": "All items are sold",
     "ended": "Live ended",
     "endedTitle": "The live has ended 👋",
     "backHome": "Back home",
