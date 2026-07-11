@@ -189,8 +189,9 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
  * even before the video is confirmed available (Apple review: no "loading…"
  * text placeholders, no ghost text).
  */
-export function DemoCardSkeleton() {
+export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
   const { t } = useTranslation();
+  const poster = coverUrl ?? withVersion(DEMO_COVER_FALLBACK_URL, "0");
   return (
     <div
       role="status"
@@ -205,8 +206,8 @@ export function DemoCardSkeleton() {
       {/* live poster background — visible from the first frame so the
           card never looks empty while the video HEAD probe is in flight */}
       <img
-        key={DEMO_LIVE_POSTER_URL}
-        src={DEMO_LIVE_POSTER_URL}
+        key={poster}
+        src={poster}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         loading="eager"
