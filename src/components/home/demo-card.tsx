@@ -290,13 +290,16 @@ export function DemoPlayer({
             style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
           >
             <div className="flex items-center gap-2">
-              <div className="h-9 w-9 overflow-hidden rounded-full border border-white/30 bg-black/40">
-                <img
-                  src={logoBadgeAsset.url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-
+              <div
+                className="grid h-9 w-9 place-items-center rounded-full border border-white/30"
+                style={{ backgroundColor: "#0d1530" }}
+              >
+                <span
+                  className="text-[14px] font-black leading-none"
+                  style={{ color: "#c8a24a" }}
+                >
+                  K
+                </span>
               </div>
 
               <div>
@@ -304,6 +307,7 @@ export function DemoPlayer({
                 <p className="text-[10px] text-white/70">Démo live</p>
               </div>
             </div>
+
 
 
             <div className="flex items-center gap-2">
