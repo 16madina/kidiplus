@@ -786,9 +786,9 @@ function BiometricSettingsSection() {
     }
   }, [busy, bio.label, user?.email]);
 
-  if (!bio.available) return null;
-
+  const available = bio.available;
   const Icon = bio.kind === "faceId" || bio.kind === "face" ? ScanFace : Fingerprint;
+  const label = bio.label || "Face ID / Empreinte";
 
   return (
     <>
@@ -799,12 +799,22 @@ function BiometricSettingsSection() {
         <div className="flex items-center gap-3 px-3 py-2.5">
           <MenuIcon icon={<Icon size={16} />} tint="oklch(0.6 0.2 250)" />
           <div className="flex-1">
-            <div className="text-[15px] font-medium">Connexion avec {bio.label}</div>
+            <div className="text-[15px] font-medium">Connexion avec {label}</div>
             <div className="text-[12px] text-muted-foreground">
-              {enabled ? "Activée" : "Utilisez la biométrie pour vous reconnecter"}
+              {!available
+                ? "Disponible uniquement dans l'app mobile"
+                : enabled
+                  ? "Activée"
+                  : "Utilisez la biométrie pour vous reconnecter"}
             </div>
           </div>
-          <IOSSwitch checked={enabled} onChange={onToggle} label={bio.label} />
+          <IOSSwitch
+            checked={enabled && available}
+            onChange={available ? onToggle : () => {
+              toast.info("Ouvrez l'app mobile KiDi+ pour activer la biométrie");
+            }}
+            label={label}
+          />
         </div>
       </div>
       <p className="mt-2 px-2 text-[12px] text-muted-foreground">
