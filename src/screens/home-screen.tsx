@@ -22,7 +22,7 @@ import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
-import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
+import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 
 
 const PAGE = 12;
