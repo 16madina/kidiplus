@@ -2,7 +2,15 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PushScreen } from "@/components/push-screen";
 import { DemoCard, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
-import { SectionHeader } from "@/screens/profile-screen";
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <h2 className="mb-2 mt-6 px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      {label}
+    </h2>
+  );
+}
+
 
 export function DiscoverScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
