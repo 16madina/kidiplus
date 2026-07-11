@@ -7,9 +7,21 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Share } from "@capacitor/share";
 
 
+/** True when running inside the Capacitor WebView (iOS / Android). */
 export function isNative(): boolean {
   try {
-    return Capacitor.isNativePlatform();
+    if (Capacitor.isNativePlatform()) return true;
+    // Fallback: SSR bundle can initialize before the native bridge script runs,
+    // or the page may have navigated to an allowlisted host where Capacitor
+    // reports "web" even though androidBridge / webkit bridge is present.
+    if (typeof window !== "undefined") {
+      const w = window as Window & {
+        androidBridge?: unknown;
+        webkit?: { messageHandlers?: { bridge?: unknown } };
+      };
+      if (w.androidBridge || w.webkit?.messageHandlers?.bridge) return true;
+    }
+    return false;
   } catch {
     return false;
   }
