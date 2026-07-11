@@ -180,6 +180,9 @@ export function DemoCardSkeleton() {
       </div>
     </div>
   );
+}
+
+
 
 export function DemoPlayer({
   open,
