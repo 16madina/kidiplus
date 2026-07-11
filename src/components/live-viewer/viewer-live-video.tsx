@@ -127,7 +127,7 @@ export function ViewerLiveVideo({
             // iframe momentarily hiding the tab).
             if (cancelled) return;
             if (track.kind === Track.Kind.Video) {
-              scheduleEnd();
+              scheduleEnd("TrackUnsubscribed(video)");
             }
           },
         );
@@ -135,12 +135,12 @@ export function ViewerLiveVideo({
         r.on(RoomEvent.ParticipantDisconnected, (_p: RemoteParticipant) => {
           if (cancelled) return;
           const anyoneLeft = r.remoteParticipants.size > 0;
-          if (!anyoneLeft && hadVideo) scheduleEnd();
+          if (!anyoneLeft && hadVideo) scheduleEnd("ParticipantDisconnected(last)");
         });
 
         r.on(RoomEvent.Disconnected, () => {
           if (cancelled) return;
-          if (hadVideo) scheduleEnd();
+          if (hadVideo) scheduleEnd("RoomDisconnected");
           else setStatus("error");
         });
 
