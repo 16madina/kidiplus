@@ -510,9 +510,11 @@ function ProfileScreenAuthed() {
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
     </div>
   );
 }
+
 
 /* ================= HERO subcomponents ================= */
 
