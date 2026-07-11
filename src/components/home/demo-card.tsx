@@ -292,10 +292,11 @@ export function DemoPlayer({
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 overflow-hidden rounded-full border border-white/30 bg-black/40">
                 <img
-                  src={logoAsset.url}
+                  src={logoBadgeAsset.url}
                   alt=""
                   className="h-full w-full object-cover"
                 />
+
               </div>
 
               <div>
