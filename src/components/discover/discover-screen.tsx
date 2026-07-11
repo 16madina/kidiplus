@@ -39,7 +39,7 @@ export function DiscoverScreen({ open, onClose }: { open: boolean; onClose: () =
 
           {demoAvailable !== false && (
             <div className="w-[48%] min-w-[160px] max-w-[200px]">
-              <DemoCard onOpen={() => setPlayerOpen(true)} />
+              <DemoCard onOpen={() => setPlayerOpen(true)} coverUrl={demoCoverUrl} />
             </div>
           )}
 
