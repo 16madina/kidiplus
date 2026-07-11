@@ -54,6 +54,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
           <div className="px-4 py-4 pb-24">
             {tab === "overview" && open && <OverviewTab onGoTab={setTab} />}
             {tab === "users" && open && <UsersTab />}
+            {tab === "push" && open && <AdminPushPanel />}
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
