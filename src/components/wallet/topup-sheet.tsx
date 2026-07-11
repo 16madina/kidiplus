@@ -512,15 +512,17 @@ function StripeInline({
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <StripeInlineForm amountLabel={amountLabel} onSuccess={onSuccess} />
+      <StripeInlineForm clientSecret={clientSecret} amountLabel={amountLabel} onSuccess={onSuccess} />
     </Elements>
   );
 }
 
 function StripeInlineForm({
+  clientSecret,
   amountLabel,
   onSuccess,
 }: {
+  clientSecret: string;
   amountLabel: string;
   onSuccess: (paymentIntentId: string) => void;
 }) {
@@ -559,7 +561,7 @@ function StripeInlineForm({
     setBusy(true);
     setError(null);
     haptic.medium();
-    const { error, paymentIntent } = await stripe.confirmCardPayment(elements.getElement(CardNumberElement) ? elements._commonOptions?.clientSecret ?? "" : "", {
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: { card: cardNumber },
     });
     setBusy(false);
