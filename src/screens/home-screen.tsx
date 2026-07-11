@@ -113,19 +113,7 @@ export function HomeScreen() {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    const scroller = scrollerRef.current;
-    if (!el || !scroller) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
-      },
-      { root: scroller, rootMargin: "600px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [loadMore]);
+  // No infinite scroll: the feed only lists real active lives.
 
   const dragStartY = useRef<number | null>(null);
   const pulling = useRef(false);
