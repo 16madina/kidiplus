@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 
@@ -8,6 +8,8 @@ import logoAsset from "@/assets/logo.png.asset.json";
  * otherwise falls back to a bold wordmark with a gold "+".
  *
  * Gold accent token: var(--primary) (brand gold).
+ * In dark mode, the raster logo's navy text becomes invisible on the dark
+ * background, so "auto" falls back to the wordmark (white text + gold "+").
  */
 export function Logo({
   size = 44,
@@ -22,7 +24,27 @@ export function Logo({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const showImage = variant !== "wordmark" && !imgFailed;
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+  });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = document.documentElement;
+    const update = () => setIsDark(el.classList.contains("dark"));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
+  // In dark mode, the raster logo's dark navy wordmark disappears on the
+  // dark background. Auto-fallback to the wordmark variant which uses
+  // var(--foreground) (white) + gold "+".
+  const showImage =
+    variant === "image" || (variant === "auto" && !imgFailed && !isDark);
+
 
   if (showImage) {
     return (
