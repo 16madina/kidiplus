@@ -323,9 +323,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, [room.lastBid, room.products]);
 
   useEffect(() => {
-    if (!b.liveId || videoStatus !== "granted") return;
+    if (!b.liveId) return;
     void markLiveActiveInDb(b.liveId).catch(() => {});
-  }, [b.liveId, videoStatus]);
+  }, [b.liveId]);
 
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
