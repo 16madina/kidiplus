@@ -549,7 +549,14 @@ function StripeCardForm({
       clientSecret,
       appearance: {
         theme: "stripe" as const,
-        variables: { colorPrimary: "#c8a24a", borderRadius: "12px" },
+        variables: {
+          colorPrimary: "#D4A62A",
+          colorText: "#10162B",
+          colorDanger: "#E11D48",
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          borderRadius: "12px",
+          spacingUnit: "4px",
+        },
       },
     }),
     [clientSecret],
@@ -572,11 +579,13 @@ function StripePayForm({
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || busy) return;
+    if (!stripe || !elements || busy || !ready || !complete) return;
     setBusy(true);
     setError(null);
     haptic.medium();
@@ -606,7 +615,23 @@ function StripePayForm({
 
   return (
     <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
-      <PaymentElement options={{ layout: "tabs" }} />
+      <div className="relative">
+        {!ready && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin text-muted-foreground" size={20} />
+          </div>
+        )}
+        <PaymentElement
+          options={{ layout: "tabs" }}
+          onReady={() => setReady(true)}
+          onChange={(e) => setComplete(e.complete)}
+        />
+      </div>
+      <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+        <span aria-hidden>🔒</span>
+        <span>Paiement sécurisé par</span>
+        <span className="font-bold tracking-tight" style={{ color: "#635BFF" }}>Stripe</span>
+      </div>
       {error && (
         <p className="rounded-xl bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
           {error}
@@ -614,11 +639,12 @@ function StripePayForm({
       )}
       <Press
         type="submit"
-        disabled={!stripe || busy}
+        disabled={!stripe || busy || !ready || !complete}
         className="mt-1 w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
       >
-        {busy ? "…" : t("pay.payNow", { total: totalLabel })}
+        {busy ? <Loader2 className="mx-auto animate-spin" size={18} /> : t("pay.payNow", { total: totalLabel })}
       </Press>
     </form>
   );
 }
+
