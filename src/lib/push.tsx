@@ -187,7 +187,13 @@ export function PushProvider({ children }: { children: ReactNode }) {
       return true;
     }
     try {
+      // Sur Android, si l'OS a déjà refusé, requestPermissions() renvoie
+      // "denied" immédiatement sans afficher de dialogue. On log pour
+      // diagnostiquer et on guide l'utilisateur vers les Réglages système.
+      const before = await PushNotifications.checkPermissions().catch(() => null);
+      console.info("[push] before request:", before?.receive);
       const res = await PushNotifications.requestPermissions();
+      console.info("[push] request result:", res.receive);
       const granted = res.receive === "granted";
       setStatus(normalizePermission(res.receive));
       if (granted) {
@@ -195,12 +201,19 @@ export function PushProvider({ children }: { children: ReactNode }) {
         toast.success("Notifications activées");
         haptic.success();
       } else {
+        const alreadyDenied = before?.receive === "denied";
         toast.error("Notifications refusées", {
-          description: "Active-les dans Réglages > Notifications > KiDi+.",
+          description: alreadyDenied
+            ? "Ouvre Réglages système > Applications > KiDi+ > Notifications pour les activer."
+            : "Active-les dans Réglages > Notifications > KiDi+.",
         });
       }
       return granted;
-    } catch {
+    } catch (e) {
+      console.warn("[push] requestPermissions threw", e);
+      toast.error("Impossible de demander l'autorisation", {
+        description: "Réessaie ou active les notifications dans les Réglages système.",
+      });
       return false;
     }
   }, []);
