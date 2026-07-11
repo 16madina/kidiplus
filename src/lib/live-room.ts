@@ -420,6 +420,9 @@ export function useLiveRoom(params: {
       },
       broadcastAuctionStart: (evt) => {
         setAuctionStart(evt);
+        // Fresh round on the host too — do NOT carry over the previous
+        // round's lastBid (see auction:start receiver comment).
+        setLastBid((cur) => (cur && cur.productId === evt.productId ? null : cur));
         void channelRef.current?.send({ type: "broadcast", event: "auction:start", payload: evt });
       },
       broadcastAuctionEnd: (evt) => {
