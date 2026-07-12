@@ -1242,6 +1242,12 @@
     "recent": "Recent referral earnings",
     "noEarnings": "No earnings yet.",
     "balanceHint": "Referral earnings are added to your balance and withdrawable via \"Withdraw earnings\".",
+    "walletHint": "Your referral earnings are withdrawable here, separately from your seller earnings.",
+    "badgeTitle": "KiDi+ referred member",
+    "wallet": {
+      "title": "Referral wallet",
+      "withdraw": "Withdraw"
+    },
     "intro": "Share your code. For every signup, you earn the KiDi+ commission on their first orders.",
     "quota": "Quota",
     "claim": {
