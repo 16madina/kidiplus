@@ -185,6 +185,29 @@ export function SignUpScreen({
           </button>
         </div>
 
+        <div className="relative">
+          <AuthInput
+            label={t("auth.signUp.promoCode", "Code promo (optionnel)")}
+            type="text"
+            autoCapitalize="characters"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+            placeholder="KIDIPLUS"
+            maxLength={20}
+          />
+          {promoCode.trim() && promoValid !== null && (
+            <span
+              className={`absolute right-3 top-[34px] grid h-10 w-10 place-items-center rounded-full ${
+                promoValid ? "text-green-600" : "text-red-500"
+              }`}
+            >
+              {promoValid ? <Check size={18} /> : <XIcon size={18} />}
+            </span>
+          )}
+        </div>
+
+
+
         <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
           <input
             type="checkbox"
