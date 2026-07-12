@@ -17,6 +17,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OpenRouteImport } from './routes/open'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as CommunityRouteImport } from './routes/community'
+import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
@@ -74,6 +75,11 @@ const DownloadRoute = DownloadRouteImport.update({
 const CommunityRoute = CommunityRouteImport.update({
   id: '/community',
   path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth-callback',
+  path: '/auth-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountDeletionRoute = AccountDeletionRouteImport.update({
@@ -174,6 +180,7 @@ const LovableEmailQueueProcessRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account-deletion': typeof AccountDeletionRoute
+  '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/open': typeof OpenRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account-deletion'
+    | '/auth-callback'
     | '/community'
     | '/download'
     | '/open'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account-deletion'
+    | '/auth-callback'
     | '/community'
     | '/download'
     | '/open'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account-deletion'
+    | '/auth-callback'
     | '/community'
     | '/download'
     | '/open'
@@ -346,6 +358,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountDeletionRoute: typeof AccountDeletionRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   CommunityRoute: typeof CommunityRoute
   DownloadRoute: typeof DownloadRoute
   OpenRoute: typeof OpenRoute
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       path: '/community'
       fullPath: '/community'
       preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-callback': {
+      id: '/auth-callback'
+      path: '/auth-callback'
+      fullPath: '/auth-callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account-deletion': {
@@ -584,6 +604,7 @@ const ApiWalletTopupRouteWithChildren = ApiWalletTopupRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountDeletionRoute: AccountDeletionRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   CommunityRoute: CommunityRoute,
   DownloadRoute: DownloadRoute,
   OpenRoute: OpenRoute,
