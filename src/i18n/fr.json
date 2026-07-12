@@ -1060,6 +1060,7 @@
     "unblock": "Débloquer",
     "confirm": "Bloquer cet utilisateur ? Ses lives et messages seront masqués.",
     "blocked": "Utilisateur bloqué.",
+    "autoClosedLive": "Ce live est masqué car tu as bloqué l'hôte.",
     "unblocked": "Utilisateur débloqué.",
     "failed": "Action impossible.",
     "listTitle": "Utilisateurs bloqués",
