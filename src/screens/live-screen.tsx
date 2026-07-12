@@ -54,18 +54,18 @@ export function LiveScreen() {
         >
           <div className="mt-4">
             <div
-              className="mx-auto mb-3 grid h-24 w-24 place-items-center overflow-hidden rounded-2xl"
+              className="mx-auto mb-3 grid h-20 w-20 place-items-center overflow-hidden rounded-2xl"
               style={{
-                background: NAVY,
-                boxShadow: "0 10px 24px -8px rgba(16,22,43,0.55)",
+                boxShadow: "0 8px 20px -6px rgba(16,22,43,0.25)",
               }}
             >
               <img
                 src={kidiLiveLogo.url}
                 alt="KiDi+"
-                className="h-20 w-20 object-contain"
+                className="h-16 w-16 object-contain"
                 draggable={false}
                 data-loaded="true"
+                style={{ filter: "drop-shadow(0 2px 3px rgba(16,22,43,0.25))" }}
               />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
