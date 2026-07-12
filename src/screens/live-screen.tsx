@@ -105,7 +105,7 @@ export function LiveScreen() {
           className="relative z-10 flex flex-1 flex-col px-6 pt-safe text-center"
           style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="mt-10">
+          <div className="mt-12">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/80 shadow-sm backdrop-blur">
               <Logo size={56} variant="image" />
             </div>
