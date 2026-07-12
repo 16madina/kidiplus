@@ -2,25 +2,15 @@
 // Onboarding pitch with soft gold themed background, CTAs pinned at top,
 // features and trust footer below.
 
-import { motion } from "framer-motion";
 import { UserPlus, LogIn, Bell, Package, ShieldAlert, Wallet, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
-import { EASE_IOS } from "@/lib/motion";
 import activityBg from "@/assets/guest-activity-bg.png.asset.json";
 
 const GOLD = "#E8B93B";
-const NAVY = "#10162B";
-
-const FLOATERS = [
-  { icon: Bell, label: "Notifications en direct", top: "15%", right: "6%", delay: 0 },
-  { icon: Package, label: "Suivi de commandes", top: "30%", left: "4%", delay: 0.15 },
-  { icon: Wallet, label: "Escrow sécurisé", top: "55%", right: "5%", delay: 0.3 },
-  { icon: ShieldAlert, label: "Gestion des litiges", top: "70%", left: "6%", delay: 0.45 },
-];
 
 export function GuestActivityScreen() {
   const { t } = useTranslation();
