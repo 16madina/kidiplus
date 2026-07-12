@@ -1,0 +1,153 @@
+// Influencer referral dashboard — their codes, stats, earnings, share.
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Copy, Share2, Users, Package, Coins, Loader2 } from "lucide-react";
+import { PushScreen } from "@/components/push-screen";
+import { Press } from "@/components/press";
+import { haptic } from "@/lib/haptics";
+import { useLanguage } from "@/i18n/language-context";
+import { formatMoney, normalizeCurrency } from "@/lib/money";
+import {
+  fetchMyPromoCodes, fetchMyReferralEarnings, buildShareMessage,
+  type PromoCodeStats, type ReferralEarningRow,
+} from "@/lib/referrals-db";
+
+const NAVY = "#10162B";
+const GOLD = "#E8B93B";
+
+export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
+  const [codes, setCodes] = useState<PromoCodeStats[] | null>(null);
+  const [earnings, setEarnings] = useState<ReferralEarningRow[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    void fetchMyPromoCodes().then(setCodes);
+    void fetchMyReferralEarnings(50).then(setEarnings);
+  }, [open]);
+
+  const copy = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); haptic.success(); toast.success(t("common.copied")); }
+    catch { toast.error("Copy failed"); }
+  };
+
+  const share = async (code: string) => {
+    const msg = buildShareMessage(code, lang);
+    haptic.light();
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      try { await (navigator as any).share({ title: "KiDi+", text: msg }); return; } catch { /* fallback */ }
+    }
+    void copy(msg);
+  };
+
+  return (
+    <PushScreen open={open} onClose={onClose} title={t("referral.title", "Parrainage 🤝")} zIndex={65}>
+      <div className="px-4 py-4 pb-24">
+        {codes === null ? (
+          <div className="flex h-40 items-center justify-center text-muted-foreground">
+            <Loader2 size={18} className="animate-spin" />
+          </div>
+        ) : codes.length === 0 ? (
+          <p className="mt-8 text-center text-[13px] text-muted-foreground">
+            {t("referral.empty", "Aucun code promo n'est encore attribué à ton compte.")}
+          </p>
+        ) : (
+          <>
+            <p className="mb-4 text-[13px] text-muted-foreground">
+              {t("referral.intro", "Partage ton code. Pour chaque inscrit, tu gagnes la commission KiDi+ sur ses premières commandes.")}
+            </p>
+
+            {codes.map((c) => (
+              <div key={c.id} className="mb-4 overflow-hidden rounded-3xl"
+                style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
+                <div className="p-5 text-white">
+                  <div className="text-[11px] uppercase tracking-widest opacity-70">
+                    {t("referral.myCode", "Mon code")}
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-[28px] font-black tracking-wide" style={{ color: GOLD }}>
+                      {c.code}
+                    </span>
+                    {!c.active && (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold">
+                        {t("referral.inactive", "Inactif")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Press onClick={() => copy(c.code)}
+                      className="!min-h-10 inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white/10 py-2 text-[13px] font-semibold text-white">
+                      <Copy size={14} /> {t("common.copy", "Copier")}
+                    </Press>
+                    <Press onClick={() => share(c.code)}
+                      className="!min-h-10 inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2 text-[13px] font-bold"
+                      style={{ background: GOLD, color: NAVY }}>
+                      <Share2 size={14} /> {t("common.share", "Partager")}
+                    </Press>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-px bg-white/5">
+                  <Stat icon={<Users size={14} />} label={t("referral.signups", "Inscrits")} value={String(c.signups)} />
+                  <Stat icon={<Package size={14} />} label={t("referral.ordersCredited", "Commandes")} value={String(c.orders_credited)} />
+                  <Stat
+                    icon={<Coins size={14} />}
+                    label={t("referral.totals", "Gains")}
+                    value={
+                      Object.keys(c.totals).length === 0
+                        ? "—"
+                        : Object.entries(c.totals)
+                            .map(([cur, amt]) => formatMoney(Number(amt), normalizeCurrency(cur), lang))
+                            .join(" · ")
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+
+            <h3 className="mb-2 mt-6 text-[15px] font-bold">{t("referral.recent", "Récents gains de parrainage")}</h3>
+            {earnings.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">{t("referral.noEarnings", "Aucun gain pour l'instant.")}</p>
+            ) : (
+              <div className="rounded-2xl border border-border">
+                {earnings.map((e, i) => (
+                  <div key={e.id}
+                    className={`flex items-center justify-between px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-semibold">
+                        {e.referred_name || e.referred_handle || "—"}
+                      </div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {e.item_name || "—"} · {new Date(e.created_at).toLocaleDateString(lang)}
+                      </div>
+                    </div>
+                    <div className={`shrink-0 text-[13px] font-bold ${e.status === "reversed" ? "text-muted-foreground line-through" : ""}`}>
+                      +{formatMoney(e.amount, normalizeCurrency(e.currency), lang)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="mt-6 text-center text-[11px] text-muted-foreground">
+              {t("referral.balanceHint", "Tes gains de parrainage sont ajoutés à ta balance et retirables via « Retirer mes gains ».")}
+            </p>
+          </>
+        )}
+      </div>
+    </PushScreen>
+  );
+}
+
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-[#141B34] p-3 text-white">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-70">
+        {icon} {label}
+      </div>
+      <div className="mt-1 truncate text-[13px] font-bold">{value}</div>
+    </div>
+  );
+}
