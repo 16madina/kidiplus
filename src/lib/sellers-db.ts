@@ -9,6 +9,8 @@ export type SellerProfile = {
   avatar_url: string | null;
   bio: string | null;
   is_seller: boolean;
+  is_verified?: boolean;
+  is_referred?: boolean;
   followers_count: number;
 };
 
@@ -24,7 +26,7 @@ export async function searchSellerProfiles(
   const q = `%${trimmed}%`;
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, handle, avatar_url, bio, is_seller, followers_count")
+    .select("id, display_name, handle, avatar_url, bio, is_seller, is_verified, is_referred, followers_count")
     .eq("is_seller", true)
     .or(`display_name.ilike.${q},handle.ilike.${q}`)
     .limit(limit);
