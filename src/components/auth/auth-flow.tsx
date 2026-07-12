@@ -51,7 +51,7 @@ export function AuthFlow({
           <Press
             onClick={onClose}
             aria-label="Fermer"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/40 text-white shadow-lg backdrop-blur-md"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#10162B] shadow-lg backdrop-blur-md"
           >
             <X size={22} strokeWidth={2.2} />
           </Press>
