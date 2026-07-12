@@ -29,6 +29,7 @@ import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sh
 import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/lives-db";
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 
 type SellerProfile = {
   id: string;
@@ -38,6 +39,7 @@ type SellerProfile = {
   bio: string | null;
   is_seller: boolean;
   is_verified: boolean;
+  is_referred: boolean;
   followers_count: number;
   rating_avg: number;
   rating_count: number;
@@ -47,7 +49,7 @@ type SellerProfile = {
 /** Resolve the `activeSeller` ref (uuid | handle | display_name) to a profile row. */
 async function resolveSellerRef(ref: string): Promise<SellerProfile | null> {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
-  const cols = "id, display_name, handle, avatar_url, bio, is_seller, is_verified, followers_count, rating_avg, rating_count, currency";
+  const cols = "id, display_name, handle, avatar_url, bio, is_seller, is_verified, is_referred, followers_count, rating_avg, rating_count, currency";
   if (isUuid) {
     const { data } = await supabase.from("profiles").select(cols).eq("id", ref).maybeSingle();
     if (data) return data as SellerProfile;
@@ -252,6 +254,7 @@ function SellerProfileInner({
             <div className="flex items-center justify-center gap-1">
               <span className="truncate text-[15px] font-bold">{profile.display_name}</span>
               <VerifiedBadge verified={profile.is_verified} size={14} />
+              <ReferredBadge referred={profile.is_referred} size={12} />
             </div>
           </motion.div>
           <Press aria-label={t("common.more")} onClick={() => setActionsOpen(true)} className="h-10 w-10 rounded-full text-foreground">
@@ -317,6 +320,7 @@ function SellerProfileInner({
               <div className="mt-2 flex items-center gap-1">
                 <h1 className="text-[20px] font-bold tracking-tight">{profile.display_name}</h1>
                 <VerifiedBadge verified={profile.is_verified} size={17} />
+                <ReferredBadge referred={profile.is_referred} size={14} />
               </div>
               <p className="text-[12px] text-muted-foreground">@{profile.handle}</p>
               {profile.bio && (

@@ -901,7 +901,9 @@
       "confirmPaidTitle": "Confirmer le paiement",
       "confirmRejectTitle": "Refuser la demande",
       "confirmPaidCta": "Confirmer le paiement",
-      "confirmRejectCta": "Confirmer le refus"
+      "confirmRejectCta": "Confirmer le refus",
+      "sourceSeller": "Ventes",
+      "sourceReferral": "Parrainage"
     },
     "lives": {
 
@@ -1242,6 +1244,12 @@
     "recent": "Récents gains de parrainage",
     "noEarnings": "Aucun gain pour l'instant.",
     "balanceHint": "Tes gains de parrainage sont ajoutés à ta balance et retirables via « Retirer mes gains ».",
+    "walletHint": "Tes gains de parrainage sont retirables ici, indépendamment de tes gains vendeur.",
+    "badgeTitle": "Membre parrainé KiDi+",
+    "wallet": {
+      "title": "Portefeuille parrainage",
+      "withdraw": "Retirer"
+    },
     "intro": "Partage ton code. Pour chaque inscrit, tu gagnes la commission KiDi+ sur ses premières commandes.",
     "quota": "Quota",
     "claim": {

@@ -593,6 +593,18 @@ function PaymentsTab() {
                     <div className="text-right">
                       <p className="text-[15px] font-bold tabular-nums">{formatMoney(Number(p.amount), normalizeCurrency(p.currency), i18n.language)}</p>
                       <p className="text-[11px] text-muted-foreground">{t(`payout.method.${p.method}`)}</p>
+                      <span
+                        className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold"
+                        style={
+                          (p.source ?? "seller") === "referral"
+                            ? { background: "#E8B93B22", color: "#8a6a10" }
+                            : { background: "oklch(0.94 0.03 250)", color: "oklch(0.42 0.14 250)" }
+                        }
+                      >
+                        {(p.source ?? "seller") === "referral"
+                          ? t("admin.payouts.sourceReferral", "Parrainage")
+                          : t("admin.payouts.sourceSeller", "Ventes")}
+                      </span>
                     </div>
                   </div>
                   <button type="button" onClick={() => copy(destText)}

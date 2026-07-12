@@ -920,6 +920,7 @@ export type Database = {
           proof_url: string | null
           requested_at: string
           seller_id: string
+          source: string
           status: string
         }
         Insert: {
@@ -935,6 +936,7 @@ export type Database = {
           proof_url?: string | null
           requested_at?: string
           seller_id: string
+          source?: string
           status?: string
         }
         Update: {
@@ -950,6 +952,7 @@ export type Database = {
           proof_url?: string | null
           requested_at?: string
           seller_id?: string
+          source?: string
           status?: string
         }
         Relationships: [
@@ -978,6 +981,7 @@ export type Database = {
           handle: string
           id: string
           is_admin: boolean
+          is_referred: boolean
           is_seller: boolean
           is_verified: boolean
           language: string
@@ -1003,6 +1007,7 @@ export type Database = {
           handle: string
           id: string
           is_admin?: boolean
+          is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
           language?: string
@@ -1028,6 +1033,7 @@ export type Database = {
           handle?: string
           id?: string
           is_admin?: boolean
+          is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
           language?: string
@@ -1123,6 +1129,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_balances: {
+        Row: {
+          available: number
+          currency: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          available?: number
+          currency?: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          available?: number
+          currency?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_balances_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_earnings: {
         Row: {
@@ -1719,6 +1754,21 @@ export type Database = {
         Args: { _owner: string; _promo_id: string }
         Returns: Json
       }
+      _ensure_referral_balance: {
+        Args: { _currency: string; _user: string }
+        Returns: {
+          available: number
+          currency: string
+          owner_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "referral_balances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _ensure_seller_balance: {
         Args: { _currency: string; _user_id: string }
         Returns: {
@@ -2001,7 +2051,12 @@ export type Database = {
       relaunch_unsold_product: { Args: { _product_id: string }; Returns: Json }
       release_overdue_escrow: { Args: never; Returns: Json }
       request_payout: {
-        Args: { _amount: number; _destination: Json; _method: string }
+        Args: {
+          _amount: number
+          _destination: Json
+          _method: string
+          _source?: string
+        }
         Returns: Json
       }
       request_verification: { Args: { _message?: string }; Returns: Json }

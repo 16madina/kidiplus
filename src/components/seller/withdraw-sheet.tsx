@@ -11,7 +11,7 @@ import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
-import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
+import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
@@ -56,11 +56,13 @@ export function WithdrawSheet({
   onClose,
   available,
   currency,
+  source = "seller",
 }: {
   open: boolean;
   onClose: () => void;
   available: number;
   currency: string;
+  source?: PayoutSource;
 }) {
   const { t, i18n } = useTranslation();
   const min = payoutMinimumFor(currency);
@@ -127,7 +129,7 @@ export function WithdrawSheet({
   const submit = async () => {
     setBusy(true);
     haptic.medium();
-    const r = await requestPayout(amount, method, destination);
+    const r = await requestPayout(amount, method, destination, source);
     setBusy(false);
     if (r.ok) {
       haptic.success();

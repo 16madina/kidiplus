@@ -87,6 +87,7 @@ export type AdminPayoutRow = {
   processed_by: string | null;
   requested_at: string;
   processed_at: string | null;
+  source?: "seller" | "referral";
 };
 
 

@@ -31,6 +31,7 @@ export type Profile = {
   rating_avg?: number;
   rating_count?: number;
   is_verified?: boolean;
+  is_referred?: boolean;
   welcome_email_sent?: boolean;
   created_at: string;
 };

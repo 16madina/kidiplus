@@ -58,6 +58,7 @@ import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
@@ -332,6 +333,7 @@ function ProfileScreenAuthed() {
               <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
                 {profile?.display_name ?? "…"}
                 <VerifiedBadge verified={profile?.is_verified} size={16} />
+                <ReferredBadge referred={profile?.is_referred} size={13} />
                 {profile?.is_seller && (
                   <span
                     aria-hidden

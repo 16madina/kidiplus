@@ -29,6 +29,8 @@ import {
 } from "@/lib/shop-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { FollowButton } from "@/components/follow-button";
+import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
@@ -897,7 +899,11 @@ function SellerRow({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold">{profile.display_name}</p>
+            <p className="truncate text-[14px] font-semibold">
+              <span className="align-middle">{profile.display_name}</span>
+              <VerifiedBadge verified={profile.is_verified} size={12} className="ml-1" />
+              <ReferredBadge referred={profile.is_referred} size={11} className="ml-1" />
+            </p>
             <p className="truncate text-[12px] text-muted-foreground">
               @{profile.handle} · {formatFollowersLabel(profile.followers_count, lang)}
               {isLive && (
