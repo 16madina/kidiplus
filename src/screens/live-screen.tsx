@@ -53,12 +53,20 @@ export function LiveScreen() {
           style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mt-4">
-            <img
-              src={kidiLiveLogo.url}
-              alt="KiDi+"
-              className="mx-auto mb-3 h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(16,22,43,0.35)]"
-              draggable={false}
-            />
+            <div
+              className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-3xl"
+              style={{
+                background: `linear-gradient(135deg, ${NAVY} 0%, #1c2544 100%)`,
+                boxShadow: "0 12px 28px -10px rgba(16,22,43,0.55)",
+              }}
+            >
+              <img
+                src={kidiLiveLogo.url}
+                alt="KiDi+"
+                className="h-20 w-20 object-contain"
+                draggable={false}
+              />
+            </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
               {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
             </h2>
