@@ -236,8 +236,10 @@ function ActivityScreenAuthed() {
                     key={o.id}
                     order={o}
                     index={i}
+                    hasReview={reviewedIds.has(o.id)}
                     onOpen={() => setOpenOrder(o)}
                     onPay={() => setPayOrder(o)}
+                    onReview={() => setReviewOrder(o)}
                     onConfirm={async () => {
                       const r = await confirmOrderDelivered(o.id);
                       if (!r.ok) { toast.error(r.error); return; }
@@ -264,6 +266,17 @@ function ActivityScreenAuthed() {
         onClose={() => setPayOrder(null)}
         onPaid={() => setPayOrder(null)}
       />
+      {reviewOrder && (
+        <LeaveReviewSheet
+          open={!!reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          orderId={reviewOrder.id}
+          onSubmitted={() => {
+            const id = reviewOrder.id;
+            setReviewedIds((prev) => { const n = new Set(prev); n.add(id); return n; });
+          }}
+        />
+      )}
     </div>
   );
 }
