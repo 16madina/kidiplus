@@ -221,7 +221,6 @@
       "live": "En live"
     },
     "emptyResults": "Aucun résultat pour «{{query}}»",
-
     "cats": {
       "beauty": "Beauté",
       "womenFashion": "Mode femme",
@@ -464,7 +463,6 @@
       "hint": "Tu pourras modifier ton live avant sa diffusion."
     }
   },
-
   "profile": {
     "mySales": "Mes ventes",
     "editProfile": "Modifier le profil",
@@ -599,6 +597,12 @@
       "invalidEmail": "Adresse email invalide.",
       "network": "Connexion internet instable. Réessaie.",
       "generic": "Une erreur est survenue."
+    },
+    "social": {
+      "continueWith": "Continuer avec {{provider}}",
+      "signUpWith": "S'inscrire avec {{provider}}",
+      "notConfigured": "Ce mode de connexion sera bientôt disponible.",
+      "failed": "Connexion impossible. Réessaie."
     }
   },
   "settings": {
@@ -797,7 +801,6 @@
     "successBody": "Traitement sous 48h.",
     "emptyHistory": "Aucun retrait pour le moment.",
     "rejectionReason": "Motif du refus",
-
     "method": {
       "label": "Méthode",
       "wave": "Wave",
@@ -908,7 +911,6 @@
       "sourceReferral": "Parrainage"
     },
     "lives": {
-
       "empty": "Aucun live.",
       "live": "EN DIRECT",
       "ended": "Terminé",
@@ -932,7 +934,11 @@
       "suspension": "Suspension",
       "ban": "Bannissement"
     },
-    "durations": { "h24": "24 h", "d7": "7 jours", "d30": "30 jours" },
+    "durations": {
+      "h24": "24 h",
+      "d7": "7 jours",
+      "d30": "30 jours"
+    },
     "sanction": {
       "title": "Sanction utilisateur",
       "for": "Sanction pour",
@@ -969,10 +975,24 @@
       "dismissConfirm": "Confirmer le rejet",
       "dismissed": "Signalement rejeté",
       "resolution": "Résolution",
-      "filter": { "open": "Ouverts", "actioned": "Traités", "dismissed": "Rejetés", "all": "Tous" },
-      "status": { "open": "Ouvert", "reviewed": "Vu", "actioned": "Sanctionné", "dismissed": "Rejeté" }
+      "filter": {
+        "open": "Ouverts",
+        "actioned": "Traités",
+        "dismissed": "Rejetés",
+        "all": "Tous"
+      },
+      "status": {
+        "open": "Ouvert",
+        "reviewed": "Vu",
+        "actioned": "Sanctionné",
+        "dismissed": "Rejeté"
+      }
     },
-    "targetType": { "user": "utilisateur", "live": "live", "message": "message" },
+    "targetType": {
+      "user": "utilisateur",
+      "live": "live",
+      "message": "message"
+    },
     "lives": {
       "endBtn": "Terminer ce live",
       "endConfirm": "Confirmer",
