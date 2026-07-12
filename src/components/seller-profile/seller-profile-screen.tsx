@@ -510,6 +510,17 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 function Divider() { return <span className="h-6 w-px bg-border" aria-hidden />; }
+function StatCol({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <span className="text-[15px] font-extrabold tabular-nums">{value}</span>
+    </div>
+  );
+}
 function formatCompact(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(".0", "")}k`;
   return String(n);
