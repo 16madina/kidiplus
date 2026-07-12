@@ -543,6 +543,7 @@ function ProfileScreenAuthed() {
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
+      <ReferralScreen open={referralOpen} onClose={() => setReferralOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
       <DiscoverScreen open={discoverOpen} onClose={() => setDiscoverOpen(false)} />
     </div>
