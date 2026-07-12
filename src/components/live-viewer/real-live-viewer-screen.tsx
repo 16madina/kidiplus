@@ -1011,7 +1011,13 @@ export function RealLiveViewerScreen() {
         </div>
       )}
       {active?.liveId && (
-        <ReportSheet open={reportOpen} onClose={() => setReportOpen(false)} targetType="live" targetId={active.liveId} />
+        <ReportSheet
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="live"
+          targetId={active.liveId}
+          defaultReason="inappropriate"
+        />
       )}
       <AnimatePresence>
         {liveEnded && (
