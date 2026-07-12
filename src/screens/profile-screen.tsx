@@ -123,6 +123,16 @@ function ProfileScreenAuthed() {
   const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [referralOpen, setReferralOpen] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.id) { setIsInfluencer(false); return; }
+    let alive = true;
+    void fetchMyPromoCodes().then((rows) => { if (alive) setIsInfluencer(rows.length > 0); });
+    return () => { alive = false; };
+  }, [profile?.id]);
+
 
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
