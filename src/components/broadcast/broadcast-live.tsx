@@ -562,6 +562,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onStatus={setVideoStatus}
         onCanFlipChange={setCanFlip}
         onFlipBusyChange={setFlipBusy}
+        onFacingApplied={(applied) => setFacing(applied)}
         onFlipRevert={(prev) => setFacing(prev)}
         livekit={
           b.roomName && b.hostIdentity
@@ -900,14 +901,19 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <HostToolRail
         micOn={micOn}
         camOn={cameraOn}
-        canFlip={canFlip}
+        canFlip={canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => {
-          if (flipBusy) return;
-          setFacing(facing === "user" ? "environment" : "user");
+          if (flipBusy || !cameraOn) return;
+          const next = facing === "user" ? "environment" : "user";
+          // Optimistic UI (mirror) — hardware switch runs via LiveKit.
+          setFacing(next);
+          void videoHandleRef.current?.switchCamera(next).catch(() => {
+            // onFlipRevert restores facing on failure.
+          });
         }}
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
