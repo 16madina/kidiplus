@@ -23,17 +23,29 @@ const NAVY = "#10162B";
 const GOLD = "#E8B93B";
 
 export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { lang } = useLanguage();
+  const { user, profile } = useAuth();
   const [codes, setCodes] = useState<PromoCodeStats[] | null>(null);
   const [earnings, setEarnings] = useState<ReferralEarningRow[]>([]);
+  const [balance, setBalance] = useState<ReferralBalance | null>(null);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const reload = async () => {
-    const [c, e] = await Promise.all([fetchMyPromoCodes(), fetchMyReferralEarnings(50)]);
-    setCodes(c); setEarnings(e);
+    const [c, e, b] = await Promise.all([
+      fetchMyPromoCodes(),
+      fetchMyReferralEarnings(50),
+      user ? fetchMyReferralBalance(user.id) : Promise.resolve(null),
+    ]);
+    setCodes(c); setEarnings(e); setBalance(b);
   };
 
-  useEffect(() => { if (open) { setCodes(null); void reload(); } }, [open]);
+  useEffect(() => { if (open) { setCodes(null); void reload(); } }, [open, user?.id]);
+  useEffect(() => {
+    if (!open || !user) return;
+    const un = subscribeMyReferralBalance(user.id, () => { void reload(); });
+    return () => un();
+  }, [open, user?.id]);
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); haptic.success(); toast.success(t("common.copied")); }
