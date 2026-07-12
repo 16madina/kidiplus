@@ -3,7 +3,6 @@ import { Eye, EyeOff, Loader2, Mail, Check, X as XIcon } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
-import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
