@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Gavel, Heart, Loader2, LogIn, ShoppingBag, Store, UserPlus, Video } from "lucide-react";
+import { Loader2, LogIn, Store, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -15,42 +15,10 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
-import { Logo } from "@/components/brand/logo";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
-
-const FLOATERS = [
-  {
-    icon: Video,
-    label: "Prêt à passer en live",
-    top: "30%",
-    right: "6%",
-    delay: 0,
-  },
-  {
-    icon: Gavel,
-    label: "Prêt aux enchères",
-    top: "46%",
-    left: "4%",
-    delay: 0.15,
-  },
-  {
-    icon: ShoppingBag,
-    label: "Vends en direct",
-    top: "60%",
-    right: "5%",
-    delay: 0.3,
-  },
-  {
-    icon: Heart,
-    label: "Rejoins la communauté",
-    top: "74%",
-    left: "6%",
-    delay: 0.45,
-  },
-];
 
 export function LiveScreen() {
   const { t } = useTranslation();
@@ -72,46 +40,22 @@ export function LiveScreen() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(251,246,236,0.82) 0%, rgba(251,246,236,0.55) 25%, rgba(251,246,236,0.35) 55%, rgba(251,246,236,0.92) 100%)",
+              "linear-gradient(180deg, rgba(251,246,236,0.96) 0%, rgba(251,246,236,0.45) 35%, rgba(251,246,236,0.35) 60%, rgba(251,246,236,0.92) 100%)",
           }}
         />
-
-        {FLOATERS.map(({ icon: Icon, label, top, left, right, delay }) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, scale: 0.85, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
-            transition={{
-              opacity: { duration: 0.4, delay, ease: EASE_IOS },
-              scale: { duration: 0.4, delay, ease: EASE_IOS },
-              y: { duration: 3.5, delay: delay + 0.4, repeat: Infinity, ease: "easeInOut" },
-            }}
-            className="absolute z-10 flex items-center gap-2 rounded-full px-3 py-1.5 shadow-sm backdrop-blur"
-            style={{
-              top,
-              left,
-              right,
-              backgroundColor: "rgba(255, 255, 255, 0.78)",
-              border: "1px solid rgba(16, 22, 43, 0.08)",
-            }}
-          >
-            <Icon size={14} style={{ color: GOLD }} />
-            <span className="text-[11.5px] font-bold whitespace-nowrap" style={{ color: NAVY }}>
-              {label}
-            </span>
-          </motion.div>
-        ))}
-
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: EASE_IOS }}
           className="relative z-10 flex flex-1 flex-col px-6 pt-safe text-center"
-          style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+          style={{ paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="mt-16">
-            <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-3xl shadow-lg">
-              <Logo size={80} variant="image" />
+          <div className="mt-6">
+            <div
+              className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl"
+              style={{ background: "linear-gradient(135deg, #E8C547, #C8A03F)" }}
+            >
+              <Store size={24} color="white" />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
               {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
@@ -121,7 +65,7 @@ export function LiveScreen() {
             </p>
           </div>
 
-          <div className="mt-auto flex w-full flex-col gap-2.5">
+          <div className="mb-6 flex w-full flex-col gap-2.5">
             <Press
               onClick={() => { haptic.light(); openAuth(); }}
               className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"

@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
-import logoAsset from "@/assets/kidi-logo-white.webp.asset.json";
-import logoDarkAsset from "@/assets/kidi-logo-white.webp.asset.json";
-
-
-
-
-
-
+import logoAsset from "@/assets/logo.png.asset.json";
+import logoDarkAsset from "@/assets/logo-dark.png.asset.json";
 
 
 /**
