@@ -28,6 +28,7 @@ import {
   Fingerprint,
   ScanFace,
   Play,
+  HeartHandshake,
 } from "lucide-react";
 
 import { toast } from "sonner";
