@@ -65,6 +65,7 @@ export function LiveScreen() {
                 alt="KiDi+"
                 className="h-24 w-24 object-contain"
                 draggable={false}
+                data-loaded="true"
               />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
