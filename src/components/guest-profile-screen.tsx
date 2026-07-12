@@ -32,10 +32,10 @@ export function GuestProfileScreen() {
         backgroundColor: "#FBF6EC",
       }}
     >
-      <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-6 text-center">
+      <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-4 text-center">
         {/* Brand */}
-        <div className="mb-3">
-          <Logo size={160} />
+        <div className="mb-1">
+          <Logo size={140} />
         </div>
 
         {/* Headline */}
