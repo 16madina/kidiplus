@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Rational;
 import android.webkit.WebSettings;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebChromeClient;
@@ -41,6 +42,15 @@ public class MainActivity extends BridgeActivity {
 
     public void setPipEligible(boolean eligible) {
         this.pipEligible = eligible;
+        // Android 12+: declare auto-enter so Home/gesture leave enters PiP
+        // without relying solely on onUserLeaveHint (unreliable on some OEMs).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                setPictureInPictureParams(buildParams(eligible));
+            } catch (IllegalStateException ignored) {
+                /* activity not ready */
+            }
+        }
     }
 
     public boolean enterPipMode() {
@@ -51,22 +61,45 @@ public class MainActivity extends BridgeActivity {
             return false;
         }
         try {
-            PictureInPictureParams params = PipPlugin.buildParams();
-            if (params == null) return false;
-            return enterPictureInPictureMode(params);
+            return enterPictureInPictureMode(buildParams(true));
         } catch (IllegalStateException e) {
             // Activity not in a valid state to enter PiP.
             return false;
         }
     }
 
+    private static PictureInPictureParams buildParams(boolean autoEnter) {
+        PictureInPictureParams.Builder b = new PictureInPictureParams.Builder()
+            .setAspectRatio(new Rational(9, 16));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            b.setAutoEnterEnabled(autoEnter);
+            b.setSeamlessResizeEnabled(true);
+        }
+        return b.build();
+    }
+
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
-        // Auto-enter system PiP when the user presses Home / leaves while a live is open.
-        if (pipEligible && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // Pre-Android 12 fallback when auto-enter is unavailable.
+        if (pipEligible
+            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             enterPipMode();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        // Extra fallback: some devices skip onUserLeaveHint when switching apps.
+        if (pipEligible
+            && !isInPictureInPictureMode()
+            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            && Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+            && !isChangingConfigurations()) {
+            enterPipMode();
+        }
+        super.onPause();
     }
 
     @Override
