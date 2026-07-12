@@ -24,7 +24,7 @@ export function GuestActivityScreen() {
       style={{
         WebkitOverflowScrolling: "touch",
         paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))",
-        backgroundImage: `linear-gradient(rgba(251,246,236,0.78), rgba(251,246,236,0.88)), url(${background})`,
+        backgroundImage: `linear-gradient(rgba(251,246,236,0.82), rgba(251,246,236,0.92)), url(${activityBg.url})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
