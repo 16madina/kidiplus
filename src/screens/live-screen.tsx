@@ -80,8 +80,12 @@ export function LiveScreen() {
           <motion.div
             key={label}
             initial={{ opacity: 0, scale: 0.85, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.4, delay, ease: EASE_IOS }}
+            animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
+            transition={{
+              opacity: { duration: 0.4, delay, ease: EASE_IOS },
+              scale: { duration: 0.4, delay, ease: EASE_IOS },
+              y: { duration: 3.5, delay: delay + 0.4, repeat: Infinity, ease: "easeInOut" },
+            }}
             className="absolute z-10 flex items-center gap-2 rounded-full px-3 py-1.5 shadow-sm backdrop-blur"
             style={{
               top,
