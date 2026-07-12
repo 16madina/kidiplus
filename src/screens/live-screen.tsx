@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Gavel, Heart, Loader2, LogIn, ShoppingBag, UserPlus, Video } from "lucide-react";
+import { Gavel, Heart, Loader2, LogIn, ShoppingBag, Store, UserPlus, Video } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
