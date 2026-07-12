@@ -65,7 +65,7 @@ export function LiveScreen() {
             </p>
           </div>
 
-          <div className="mt-auto flex w-full flex-col gap-2.5">
+          <div className="mb-6 flex w-full flex-col gap-2.5">
             <Press
               onClick={() => { haptic.light(); openAuth(); }}
               className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"
@@ -76,8 +76,8 @@ export function LiveScreen() {
             </Press>
             <Press
               onClick={() => { haptic.light(); openAuth(); }}
-              className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[15px] font-bold backdrop-blur"
-              style={{ color: NAVY }}
+              className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"
+              style={{ background: NAVY, boxShadow: "0 10px 24px -8px rgba(16,22,43,0.35)" }}
             >
               <LogIn size={16} />
               {t("auth.prompt.signIn", { defaultValue: "Se connecter" })}
