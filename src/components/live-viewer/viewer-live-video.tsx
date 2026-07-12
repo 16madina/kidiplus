@@ -14,6 +14,7 @@ import {
   type RemoteParticipant,
 } from "@/lib/livekit";
 import { useAppActive } from "@/lib/app-state";
+import { useMediaSessionActive } from "@/lib/pip-session";
 import { Room } from "livekit-client";
 
 export type ViewerLiveVideoProps = {
@@ -47,13 +48,16 @@ export function ViewerLiveVideo({
   const roomRef = useRef<Room | null>(null);
   const [status, setStatus] = useState<ViewerStatus>("connecting");
   const appActive = useAppActive();
+  // Keep LiveKit connected in Android system PiP even though Capacitor
+  // reports the app as inactive while the PiP window is showing.
+  const sessionActive = useMediaSessionActive(appActive);
 
   useEffect(() => {
     onStatus?.(status);
   }, [status, onStatus]);
 
   useEffect(() => {
-    if (!appActive) return;
+    if (!sessionActive) return;
     let cancelled = false;
     let hadVideo = false;
     // Debounce transitions to "ended". LiveKit routinely fires a brief
@@ -186,7 +190,7 @@ export function ViewerLiveVideo({
       if (videoRef.current) videoRef.current.srcObject = null;
       if (audioRef.current) audioRef.current.srcObject = null;
     };
-  }, [room, identity, name, appActive]);
+  }, [room, identity, name, sessionActive]);
 
 
   const showPoster = status !== "live";

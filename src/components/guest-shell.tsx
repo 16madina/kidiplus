@@ -18,6 +18,7 @@ import { useLiveViewer } from "@/lib/live-viewer-context";
 import { PUSH_OPEN_EVENT, type PushOpenPayload } from "@/lib/push-router";
 import { fetchLiveById } from "@/lib/lives-db";
 import { LiveViewerScreen } from "@/components/live-viewer/live-viewer-screen";
+import { LivePipController } from "@/components/live-viewer/live-pip-controller";
 import { AuthFlow } from "@/components/auth/auth-flow";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -54,6 +55,7 @@ export function GuestShell() {
           </ErrorBoundary>
         )}
       </AnimatePresence>
+      <LivePipController />
     </div>
   );
 }
