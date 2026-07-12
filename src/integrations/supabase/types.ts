@@ -618,6 +618,7 @@ export type Database = {
       }
       lives: {
         Row: {
+          abandon_push_sent_at: string | null
           category: string | null
           cover_url: string | null
           currency: string
@@ -633,6 +634,7 @@ export type Database = {
           viewer_count: number
         }
         Insert: {
+          abandon_push_sent_at?: string | null
           category?: string | null
           cover_url?: string | null
           currency?: string
@@ -648,6 +650,7 @@ export type Database = {
           viewer_count?: number
         }
         Update: {
+          abandon_push_sent_at?: string | null
           category?: string | null
           cover_url?: string | null
           currency?: string
@@ -1735,6 +1738,10 @@ export type Database = {
         Returns: number
       }
       my_moderation_state: { Args: never; Returns: Json }
+      notify_absent_host_lives: {
+        Args: { _max_age_minutes?: number; _warn_after_minutes?: number }
+        Returns: Json
+      }
       notify_live_reminders: { Args: { _live_id: string }; Returns: number }
       pay_order_with_wallet: { Args: { _order_id: string }; Returns: Json }
       place_live_bid: {
