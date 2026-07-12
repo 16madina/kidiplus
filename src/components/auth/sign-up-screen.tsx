@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Loader2, Mail, Check, X as XIcon } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
@@ -8,6 +8,7 @@ import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { TERMS_VERSION } from "@/lib/legal-content";
+import { validatePromoCode, applyPromoCode } from "@/lib/referrals-db";
 
 export function SignUpScreen({
   onBack,
