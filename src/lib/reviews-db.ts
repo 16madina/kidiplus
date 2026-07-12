@@ -55,3 +55,17 @@ export async function listSellerReviews(sellerId: string, limit = 50): Promise<S
     .limit(limit);
   return (data as unknown as SellerReview[] | null) ?? [];
 }
+
+// Returns the set of order ids the current user has already reviewed.
+// Used by the buyer orders list to swap the "Noter" CTA for a "✓ Avis laissé" chip.
+export async function fetchMyReviewedOrderIds(orderIds: string[]): Promise<Set<string>> {
+  if (orderIds.length === 0) return new Set();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return new Set();
+  const { data } = await supabase
+    .from("seller_reviews")
+    .select("order_id")
+    .eq("reviewer_id", auth.user.id)
+    .in("order_id", orderIds);
+  return new Set(((data as { order_id: string }[] | null) ?? []).map((r) => r.order_id));
+}

@@ -31,6 +31,7 @@ import {
 import { OrderTimeline } from "@/components/orders/order-timeline";
 import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchOrderById } from "@/lib/orders-db";
+import { fetchMyReviewedOrderIds } from "@/lib/reviews-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
 import { GuestEmptyState } from "@/components/guest-empty-state";
 
@@ -60,6 +61,8 @@ function ActivityScreenAuthed() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
   const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<OrderRow | null>(null);
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   // Real DB-backed notifications.
   useEffect(() => {
@@ -84,7 +87,11 @@ function ActivityScreenAuthed() {
       await expireOverdueOrders().catch(() => 0);
       await releaseOverdueEscrow().catch(() => null);
       const rows = await fetchMyOrders(user.id);
-      if (alive) setOrders(rows);
+      if (!alive) return;
+      setOrders(rows);
+      const deliveredIds = rows.filter((r) => r.fulfillment_status === "delivered").map((r) => r.id);
+      const set = await fetchMyReviewedOrderIds(deliveredIds).catch(() => new Set<string>());
+      if (alive) setReviewedIds(set);
     };
     void load();
     const unsub = subscribeOrders({ buyerId: user.id }, () => { void load(); });
@@ -229,8 +236,10 @@ function ActivityScreenAuthed() {
                     key={o.id}
                     order={o}
                     index={i}
+                    hasReview={reviewedIds.has(o.id)}
                     onOpen={() => setOpenOrder(o)}
                     onPay={() => setPayOrder(o)}
+                    onReview={() => setReviewOrder(o)}
                     onConfirm={async () => {
                       const r = await confirmOrderDelivered(o.id);
                       if (!r.ok) { toast.error(r.error); return; }
@@ -257,6 +266,17 @@ function ActivityScreenAuthed() {
         onClose={() => setPayOrder(null)}
         onPaid={() => setPayOrder(null)}
       />
+      {reviewOrder && (
+        <LeaveReviewSheet
+          open={!!reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          orderId={reviewOrder.id}
+          onSubmitted={() => {
+            const id = reviewOrder.id;
+            setReviewedIds((prev) => { const n = new Set(prev); n.add(id); return n; });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -468,14 +488,16 @@ const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: 
 };
 
 function OrderCard({
-  order, index, onOpen, onPay, onConfirm, onDispute,
+  order, index, hasReview, onOpen, onPay, onConfirm, onDispute, onReview,
 }: {
   order: OrderRow;
   index: number;
+  hasReview?: boolean;
   onOpen: () => void;
   onPay: () => void;
   onConfirm: () => void;
   onDispute: () => void;
+  onReview: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const meta = statusMeta(order.status);
@@ -576,6 +598,26 @@ function OrderCard({
                 style={{ borderColor: "oklch(0.85 0.14 27)", color: "oklch(0.5 0.18 27)" }}
               >
                 <AlertTriangle size={12} /> {t("orders.reportProblem")}
+              </Press>
+            )}
+          </div>
+        )}
+        {isPaid && order.fulfillment_status === "delivered" && (
+          <div className="border-t border-border p-2">
+            {hasReview ? (
+              <div
+                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold"
+                style={{ backgroundColor: "oklch(0.96 0.03 155)", color: "oklch(0.4 0.12 155)" }}
+              >
+                <Check size={14} /> {t("reviews.left", { defaultValue: "Avis laissé" })}
+              </div>
+            ) : (
+              <Press
+                onClick={onReview}
+                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-bold text-white"
+                style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
+              >
+                ⭐ {t("reviews.rateOrder", { defaultValue: "Noter cette commande" })}
               </Press>
             )}
           </div>

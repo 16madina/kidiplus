@@ -72,7 +72,9 @@
     "commentPlaceholder": "A comment (optional)…",
     "submit": "Submit",
     "thanks": "Thanks for your review!",
-    "empty": "No reviews yet."
+    "empty": "No reviews yet.",
+    "rateOrder": "Rate this order",
+    "left": "Review submitted"
   },
   "sellerProfile": {
     "shopEmpty": "Shop is empty for now.",
