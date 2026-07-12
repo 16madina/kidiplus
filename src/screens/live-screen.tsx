@@ -16,7 +16,7 @@ import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
-import kidiLiveLogo from "@/assets/kidi-live-logo-v2.png.asset.json";
+import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
 
 const GOLD = "#D4AF37";
