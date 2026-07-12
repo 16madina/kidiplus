@@ -11,7 +11,7 @@ import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
-import { requestPayout, type PayoutMethod } from "@/lib/earnings-db";
+import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
