@@ -488,14 +488,16 @@ const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: 
 };
 
 function OrderCard({
-  order, index, onOpen, onPay, onConfirm, onDispute,
+  order, index, hasReview, onOpen, onPay, onConfirm, onDispute, onReview,
 }: {
   order: OrderRow;
   index: number;
+  hasReview?: boolean;
   onOpen: () => void;
   onPay: () => void;
   onConfirm: () => void;
   onDispute: () => void;
+  onReview: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const meta = statusMeta(order.status);
