@@ -31,7 +31,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
-  createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb,
+  createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb, touchLiveHostInDb,
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { supabase } from "@/integrations/supabase/client";
@@ -349,6 +349,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   useEffect(() => {
     if (!b.liveId) return;
     void markLiveActiveInDb(b.liveId).catch(() => {});
+    // Keep host_last_seen_at fresh so abandoned lives expire after ~5 min offline.
+    void touchLiveHostInDb(b.liveId).catch(() => {});
+    const iv = setInterval(() => {
+      void touchLiveHostInDb(b.liveId!).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(iv);
   }, [b.liveId]);
 
 

@@ -126,6 +126,7 @@ export async function createLiveInDb(
       cover_url: input.coverPath,
       room_name: input.roomName,
       status: "live",
+      host_last_seen_at: new Date().toISOString(),
       ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
@@ -173,8 +174,27 @@ export async function endLiveInDb(liveId: string): Promise<void> {
 export async function markLiveActiveInDb(liveId: string): Promise<void> {
   await supabase
     .from("lives")
-    .update({ status: "live", ended_at: null })
+    .update({
+      status: "live",
+      ended_at: null,
+      host_last_seen_at: new Date().toISOString(),
+    } as never)
     .eq("id", liveId);
+}
+
+/** Host heartbeat — keeps abandoned-live expiry from ending an active session. */
+export async function touchLiveHostInDb(liveId: string): Promise<void> {
+  const { error } = await supabase.rpc("touch_live_host", {
+    _live_id: liveId,
+  } as never);
+  // Fallback if migration not applied yet: update column directly.
+  if (error) {
+    await supabase
+      .from("lives")
+      .update({ host_last_seen_at: new Date().toISOString() } as never)
+      .eq("id", liveId)
+      .eq("status", "live");
+  }
 }
 
 export async function updateLiveViewerCount(
@@ -184,23 +204,68 @@ export async function updateLiveViewerCount(
   await supabase.from("lives").update({ viewer_count: count }).eq("id", liveId);
 }
 
-/** Any 'live' rows for this seller older than N seconds — used to recover crashed sessions. */
+export type OpenLiveRow = {
+  id: string;
+  title: string;
+  started_at: string;
+  room_name: string;
+  cover_url: string | null;
+  category: string | null;
+  currency: string | null;
+  host_last_seen_at: string | null;
+};
+
+/** All currently-open lives for this seller (for reconnect banner). */
+export async function findOpenLives(sellerId: string): Promise<OpenLiveRow[]> {
+  const { data } = await supabase
+    .from("lives")
+    .select("id, title, started_at, room_name, cover_url, category, currency, host_last_seen_at")
+    .eq("seller_id", sellerId)
+    .eq("status", "live")
+    .order("started_at", { ascending: false });
+  return ((data ?? []) as OpenLiveRow[]).filter((r) => r.started_at !== null);
+}
+
+/** End seller lives with no host heartbeat for `_maxAgeMinutes` (default 5). */
+export async function expireAbandonedLivesInDb(
+  sellerId: string,
+  maxAgeMinutes = 5,
+): Promise<number> {
+  const { data, error } = await supabase.rpc("expire_abandoned_lives", {
+    _seller_id: sellerId,
+    _max_age_minutes: maxAgeMinutes,
+  } as never);
+  if (!error) {
+    const r = (data ?? {}) as { expired?: number };
+    return Number(r.expired ?? 0);
+  }
+
+  // Client-side fallback when RPC isn't deployed yet.
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60_000).toISOString();
+  const open = await findOpenLives(sellerId);
+  const stale = open.filter((r) => {
+    const last = r.host_last_seen_at || r.started_at;
+    return last < cutoff;
+  });
+  await Promise.all(stale.map((r) => endLiveInDb(r.id).catch(() => {})));
+  return stale.length;
+}
+
+/** @deprecated prefer findOpenLives — kept for older call sites. */
 export async function findDanglingLives(
   sellerId: string,
   olderThanSec = 60,
 ): Promise<Array<{ id: string; title: string; started_at: string; room_name: string }>> {
   const cutoff = new Date(Date.now() - olderThanSec * 1000).toISOString();
-  const { data } = await supabase
-    .from("lives")
-    .select("id, title, started_at, room_name")
-    .eq("seller_id", sellerId)
-    .eq("status", "live")
-    .lt("started_at", cutoff)
-    .order("started_at", { ascending: false });
-  return (data ?? [])
-    .filter((r): r is { id: string; title: string; started_at: string; room_name: string } =>
-      r.started_at !== null,
-    );
+  const open = await findOpenLives(sellerId);
+  return open
+    .filter((r) => r.started_at < cutoff)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      started_at: r.started_at,
+      room_name: r.room_name,
+    }));
 }
 
 
@@ -262,6 +327,19 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
 }
 
 export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
+  // Opportunistic cleanup: end lives whose host vanished for 5+ minutes
+  // so the feed doesn't show ghost rooms.
+  void (async () => {
+    try {
+      await supabase.rpc("expire_abandoned_lives", {
+        _seller_id: null,
+        _max_age_minutes: 5,
+      } as never);
+    } catch {
+      /* ignore — migration may not be applied yet */
+    }
+  })();
+
   const { data, error } = await supabase
     .from("lives")
     .select(
