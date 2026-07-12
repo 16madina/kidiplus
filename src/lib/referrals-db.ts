@@ -138,3 +138,25 @@ export function buildShareMessage(code: string, lang: "fr" | "en" = "fr"): strin
     return `Join me on KiDi+ 🎁 Use my code ${code} at signup: ${url}`;
   return `Rejoins-moi sur KiDi+ 🎁 Utilise mon code ${code} à l'inscription : ${url}`;
 }
+
+// Onboarding message admins can copy and send to a new influencer (WhatsApp-ready).
+export function buildInfluencerOnboardingMessage(
+  code: string,
+  token: string,
+  lang: "fr" | "en" = "fr",
+): string {
+  if (lang === "en") {
+    return (
+      `Welcome to the KiDi+ partners program 🤝\n` +
+      `Your code to share: ${code}\n\n` +
+      `To activate your partner account and receive your earnings:\n` +
+      `open KiDi+ → Profile → Referrals → Claim my code, and enter this activation code: ${token}`
+    );
+  }
+  return (
+    `Bienvenue dans le programme partenaires KiDi+ 🤝\n` +
+    `Ton code à partager : ${code}\n\n` +
+    `Pour activer ton compte partenaire et recevoir tes gains :\n` +
+    `ouvre KiDi+ → Profil → Parrainage → Réclamer mon code, et entre ce code d'activation : ${token}`
+  );
+}
