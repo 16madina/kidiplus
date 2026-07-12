@@ -3,6 +3,10 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import logoDarkAsset from "@/assets/logo-dark.png.asset.json";
 
 
+
+
+
+
 /**
  * KiDi+ brand logo.
  * Renders the uploaded brand mark from Lovable Assets by default,

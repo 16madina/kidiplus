@@ -15,8 +15,8 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
-import { Logo } from "@/components/brand/logo";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
+import kidiLogo from "@/assets/kidi-logo.png.asset.json";
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
@@ -110,8 +110,13 @@ export function LiveScreen() {
           style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mt-16">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/80 shadow-sm backdrop-blur">
-              <Logo size={56} variant="image" />
+            <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-3xl shadow-lg">
+              <img
+                src={kidiLogo.url}
+                alt="KiDi+"
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
               {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
