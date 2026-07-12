@@ -114,9 +114,9 @@ export function GuestProfileScreen() {
 
 function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1">
       <div
-        className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
+        className="grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
         style={{ boxShadow: "0 2px 8px rgba(16,22,43,0.06)" }}
       >
         {icon}
