@@ -116,10 +116,21 @@ function LiveScreenAuthed() {
 
 function BroadcastFlow() {
   const { t } = useTranslation();
-  const { stage, goEntry, goSetup, goLive, goSummary, reset, setHost, setCurrency } = useBroadcast();
+  const {
+    stage, goEntry, goSetup, goLive, goSummary, reset,
+    setHost, setCurrency, setLiveId, setRoomName, setTitle, setCategory, setCover, setSession,
+  } = useBroadcast();
   const { profile, user } = useAuth();
-  const [dangling, setDangling] = useState<Array<{ id: string; title: string }>>([]);
+  const [openLives, setOpenLives] = useState<Array<{
+    id: string;
+    title: string;
+    room_name: string;
+    cover_url: string | null;
+    category: string | null;
+    currency: string | null;
+  }>>([]);
   const [endingAll, setEndingAll] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
     if (user && profile) {
@@ -131,21 +142,80 @@ function BroadcastFlow() {
   useEffect(() => {
     if (!user || stage !== "entry") return;
     let alive = true;
-    void import("@/lib/lives-db").then(({ findDanglingLives }) =>
-      findDanglingLives(user.id).then((rows) => {
-        if (alive) setDangling(rows.map((r) => ({ id: r.id, title: r.title })));
-      }),
-    );
+    void (async () => {
+      const {
+        expireAbandonedLivesInDb,
+        findOpenLives,
+      } = await import("@/lib/lives-db");
+      // Auto-close lives whose host vanished for ~5 minutes.
+      await expireAbandonedLivesInDb(user.id, 5).catch(() => 0);
+      if (!alive) return;
+      const rows = await findOpenLives(user.id);
+      if (alive) {
+        setOpenLives(
+          rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            room_name: r.room_name,
+            cover_url: r.cover_url,
+            category: r.category,
+            currency: r.currency,
+          })),
+        );
+      }
+    })();
     return () => { alive = false; };
   }, [user, stage]);
 
-  const endAllDangling = async () => {
+  const endAllOpen = async () => {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");
-    await Promise.all(dangling.map((d) => endLiveInDb(d.id).catch(() => {})));
-    setDangling([]);
+    await Promise.all(openLives.map((d) => endLiveInDb(d.id).catch(() => {})));
+    setOpenLives([]);
     setEndingAll(false);
     toast.success(t("live.danglingEnded", "Lives précédents terminés"));
+  };
+
+  const reconnectToLive = async () => {
+    const target = openLives[0];
+    if (!target) return;
+    setReconnecting(true);
+    try {
+      // If several ghosts exist, keep the newest and end the rest.
+      const extras = openLives.slice(1);
+      if (extras.length > 0) {
+        const { endLiveInDb } = await import("@/lib/lives-db");
+        await Promise.all(extras.map((d) => endLiveInDb(d.id).catch(() => {})));
+      }
+      const { markLiveActiveInDb, touchLiveHostInDb } = await import("@/lib/lives-db");
+      await markLiveActiveInDb(target.id).catch(() => {});
+      await touchLiveHostInDb(target.id).catch(() => {});
+
+      setLiveId(target.id);
+      setRoomName(target.room_name);
+      setTitle(target.title);
+      if (target.category) setCategory(target.category);
+      if (target.cover_url) setCover(target.cover_url);
+      const cur = (target.currency ?? profile?.currency ?? "EUR").toUpperCase();
+      if (cur === "XOF" || cur === "EUR" || cur === "CAD") setCurrency(cur);
+      setSession({
+        title: target.title,
+        category: target.category || "Fashion",
+        cover: target.cover_url,
+        durationSec: 0,
+        peakViewers: 0,
+        sales: [],
+      });
+      setOpenLives([]);
+      haptic.success();
+      goLive();
+      toast.success(t("live.danglingReconnected", "Reconnecté au live"));
+    } catch (e) {
+      haptic.error();
+      toast.error(e instanceof Error ? e.message : t("common.error", "Une erreur est survenue"));
+    } finally {
+      setReconnecting(false);
+    }
   };
 
   const closeToHome = () => {
@@ -189,8 +259,7 @@ function BroadcastFlow() {
           <BroadcastSummary key="summary" onDone={() => goEntry()} />
         )}
       </AnimatePresence>
-      {stage === "entry" && dangling.length > 0 && (
-
+      {stage === "entry" && openLives.length > 0 && (
         <div
           className="absolute inset-x-3 z-40 rounded-2xl px-3 py-2.5 text-white shadow-lg"
           style={{
@@ -201,18 +270,35 @@ function BroadcastFlow() {
           }}
         >
           <p className="text-[12px] font-semibold leading-tight">
-            {t("live.danglingTitle", { count: dangling.length, defaultValue: "{{count}} live(s) toujours ouvert(s)" })}
+            {t("live.danglingTitle", { count: openLives.length, defaultValue: "{{count}} live(s) toujours ouvert(s)" })}
           </p>
           <p className="mt-0.5 text-[11px] opacity-90 leading-tight">
-            {t("live.danglingBody", "Termine les avant d'en lancer un nouveau.")}
+            {openLives[0]?.title
+              ? t("live.danglingReconnectBody", {
+                  title: openLives[0].title,
+                  defaultValue: "« {{title}} » — reconnecte-toi ou termine le live. Fermeture auto après 5 min d'absence.",
+                })
+              : t("live.danglingBody", "Termine-les avant d'en lancer un nouveau.")}
           </p>
-          <Press
-            onClick={endAllDangling}
-            disabled={endingAll}
-            className="!min-h-8 mt-2 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
-          >
-            {endingAll ? t("common.loading") : t("live.danglingEndAll", "Terminer tout")}
-          </Press>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Press
+              onClick={() => { void reconnectToLive(); }}
+              disabled={reconnecting || endingAll}
+              className="!min-h-8 h-8 rounded-full bg-white px-3 text-[12px] font-bold text-red-600"
+            >
+              {reconnecting
+                ? t("common.loading")
+                : t("live.danglingReconnect", "Reprendre le live")}
+            </Press>
+            <Press
+              onClick={() => { void endAllOpen(); }}
+              disabled={endingAll || reconnecting}
+              className="!min-h-8 h-8 rounded-full px-3 text-[12px] font-bold text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.45)" }}
+            >
+              {endingAll ? t("common.loading") : t("live.danglingEndAll", "Tout terminer")}
+            </Press>
+          </div>
         </div>
       )}
     </div>
