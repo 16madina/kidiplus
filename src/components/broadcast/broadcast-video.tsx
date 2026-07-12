@@ -13,7 +13,9 @@ import {
   connectRoom,
   getToken,
   disconnectRoom,
+  switchHostCameraFacing,
   type LocalVideoTrack,
+  type CameraFacing,
 } from "@/lib/livekit";
 
 /**
@@ -26,10 +28,9 @@ import {
  *     room, publishes camera + mic, and shows the local video track.
  *
  * The published track is always the RAW camera track (no canvas / WebGL
- * pipeline). Camera flip creates a brand new LocalVideoTrack pinned to
- * `facingMode: { exact: 'environment' | 'user' }`, replaces the published
- * track, reattaches the local <video> preview, awaits play(), and only
- * stops the previous track AFTER the new one renders its first frame.
+ * pipeline). Front/back flip uses LiveKit `switchActiveDevice` /
+ * `restartTrack({ deviceId })` so the room stays connected and viewers
+ * keep receiving video without a reconnect.
  */
 
 export type BroadcastVideoLK = {
@@ -39,7 +40,7 @@ export type BroadcastVideoLK = {
 };
 
 export type BroadcastVideoProps = {
-  facing: "user" | "environment";
+  facing: CameraFacing;
   enabled: boolean;
   fallbackImage?: string | null;
   /** When set, use LiveKit host publishing instead of local preview. */
@@ -53,9 +54,11 @@ export type BroadcastVideoProps = {
   /** Called when the user taps "Retry" on the error overlay (preview mode). */
   onRequestRetry?: () => void;
   /** Reports back if a flip attempt failed and facing had to revert. */
-  onFlipRevert?: (facing: "user" | "environment") => void;
+  onFlipRevert?: (facing: CameraFacing) => void;
   /** True while a camera flip is in progress (disable the flip button). */
   onFlipBusyChange?: (busy: boolean) => void;
+  /** Called after a successful live flip with the actual facing applied. */
+  onFacingApplied?: (facing: CameraFacing) => void;
 };
 
 export type BroadcastStatus =
@@ -72,12 +75,13 @@ export type BroadcastStatus =
   | "error";
 
 export type BroadcastVideoHandle = {
-  switchCamera: (facing: "user" | "environment") => Promise<void>;
+  /** Switch front/back camera during live. Returns the facing actually applied. */
+  switchCamera: (facing: CameraFacing) => Promise<CameraFacing>;
 };
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry, onFlipRevert, onFlipBusyChange },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry, onFlipRevert, onFlipBusyChange, onFacingApplied },
     ref,
   ) {
     const { t } = useTranslation();
@@ -124,11 +128,57 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       return () => { cancelled = true; };
     }, [onCanFlipChange, state]);
 
+    // Camera flip bookkeeping — must be declared before useImperativeHandle.
+    const flipInFlightRef = useRef(false);
+    const lastAppliedFacingRef = useRef<CameraFacing | null>(null);
+
     useImperativeHandle(ref, () => ({
-      switchCamera: async () => {
-        // No-op: facing prop change drives the flip effect below.
+      switchCamera: async (target: CameraFacing) => {
+        const room = roomRef.current;
+        const track = localVideoTrackRef.current;
+        if (!livekit || !room || !track) {
+          throw new Error("camera_not_ready");
+        }
+        if (!enabled) {
+          throw new Error("camera_off");
+        }
+        if (flipInFlightRef.current) {
+          throw new Error("flip_busy");
+        }
+
+        flipInFlightRef.current = true;
+        onFlipBusyChange?.(true);
+        const previous = lastAppliedFacingRef.current ?? facing;
+        try {
+          const applied = await switchHostCameraFacing({ room, track, target });
+          const videoEl = videoRef.current;
+          if (videoEl) {
+            try {
+              track.attach(videoEl);
+              videoEl.muted = true;
+              videoEl.playsInline = true;
+              await videoEl.play().catch(() => {});
+            } catch { /* ignore */ }
+          }
+          lastAppliedFacingRef.current = applied;
+          onFacingApplied?.(applied);
+          console.log("[flip] ok", { target, applied });
+          return applied;
+        } catch (err) {
+          console.warn("[flip] failed", err);
+          const videoEl = videoRef.current;
+          if (videoEl) {
+            try { track.attach(videoEl); videoEl.play().catch(() => {}); } catch {}
+          }
+          toast.error(t("live.flipFailed", "Impossible de changer de caméra"));
+          onFlipRevert?.(previous);
+          throw err;
+        } finally {
+          flipInFlightRef.current = false;
+          onFlipBusyChange?.(false);
+        }
       },
-    }));
+    }), [livekit, enabled, facing, onFlipBusyChange, onFacingApplied, onFlipRevert, t]);
 
     // --- Preview mode (getUserMedia) --------------------------------------
     useEffect(() => {
@@ -248,6 +298,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
           });
           localVideoTrackRef.current = track;
+          lastAppliedFacingRef.current = facing;
           if (videoRef.current) {
             track.attach(videoRef.current);
             videoRef.current.play().catch(() => {});
@@ -307,123 +358,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (!room) return;
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
     }, [micEnabled, livekit]);
-
-    // --- Camera flip (prefer in-place restartTrack; fallback to replace) ---
-    const flipInFlightRef = useRef(false);
-    const lastAppliedFacingRef = useRef<"user" | "environment" | null>(null);
-    useEffect(() => {
-      if (!livekit) return;
-      const room = roomRef.current;
-      if (!room) return;
-      const oldTrack = localVideoTrackRef.current;
-      if (!oldTrack) return;
-
-      if (lastAppliedFacingRef.current === null) {
-        lastAppliedFacingRef.current = facing;
-        return;
-      }
-      if (lastAppliedFacingRef.current === facing) return;
-      if (flipInFlightRef.current) return;
-
-      // Wait until the camera is on before swapping hardware.
-      if (!enabled) return;
-
-      const target = facing;
-      const previous = lastAppliedFacingRef.current;
-      flipInFlightRef.current = true;
-      onFlipBusyChange?.(true);
-      let cancelled = false;
-
-      (async () => {
-        console.log("[flip] start", { from: previous, to: target });
-        try {
-          const restart = (oldTrack as LocalVideoTrack & {
-            restartTrack?: (opts?: Record<string, unknown>) => Promise<void>;
-          }).restartTrack;
-          if (typeof restart === "function") {
-            try {
-              await restart.call(oldTrack, {
-                facingMode: { exact: target },
-                resolution: { width: 1280, height: 720, frameRate: 30 },
-              });
-            } catch {
-              await restart.call(oldTrack, {
-                facingMode: target,
-                resolution: { width: 1280, height: 720, frameRate: 30 },
-              });
-            }
-            const videoEl = videoRef.current;
-            if (videoEl) {
-              try {
-                oldTrack.attach(videoEl);
-                videoEl.muted = true;
-                videoEl.playsInline = true;
-                await videoEl.play().catch(() => {});
-              } catch { /* ignore */ }
-            }
-            lastAppliedFacingRef.current = target;
-            console.log("[flip] restartTrack ok", target);
-            return;
-          }
-
-          let newTrack: LocalVideoTrack | null = null;
-          const captureOpts = {
-            resolution: { width: 1280, height: 720, frameRate: 30 },
-          };
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            newTrack = await createLocalVideoTrack({ facingMode: { exact: target } as any, ...captureOpts });
-          } catch {
-            newTrack = await createLocalVideoTrack({ facingMode: target, ...captureOpts });
-          }
-          if (cancelled) { try { newTrack.stop(); } catch {} return; }
-
-          await room.localParticipant.publishTrack(newTrack, {
-            simulcast: true,
-            videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
-          });
-
-          const videoEl = videoRef.current;
-          if (videoEl) {
-            try { oldTrack.detach(videoEl); } catch {}
-            newTrack.attach(videoEl);
-            videoEl.muted = true;
-            videoEl.playsInline = true;
-            await videoEl.play().catch(() => {});
-          }
-
-          await new Promise<void>((resolve) => {
-            const t = setTimeout(() => resolve(), 1200);
-            const el = videoRef.current;
-            el?.addEventListener("loadeddata", () => { clearTimeout(t); resolve(); }, { once: true });
-            if (el && el.readyState >= 2) { clearTimeout(t); resolve(); }
-          });
-
-          if (cancelled) { try { newTrack.stop(); } catch {} return; }
-
-          try {
-            await room.localParticipant.unpublishTrack(oldTrack, false);
-            oldTrack.stop();
-          } catch { /* ignore */ }
-          localVideoTrackRef.current = newTrack;
-          lastAppliedFacingRef.current = target;
-          console.log("[flip] replace ok", target);
-        } catch (err) {
-          console.warn("[flip] failed, reverting", err);
-          const videoEl = videoRef.current;
-          if (videoEl) {
-            try { oldTrack.attach(videoEl); videoEl.play().catch(() => {}); } catch {}
-          }
-          toast.error(t("live.flipFailed", "Impossible de changer de caméra"));
-          onFlipRevert?.(previous);
-        } finally {
-          flipInFlightRef.current = false;
-          onFlipBusyChange?.(false);
-        }
-      })();
-
-      return () => { cancelled = true; };
-    }, [facing, livekit, enabled, t, onFlipRevert, onFlipBusyChange]);
 
     const showVideo = shouldRun && state === "granted";
     const mirrored = facing === "user";
