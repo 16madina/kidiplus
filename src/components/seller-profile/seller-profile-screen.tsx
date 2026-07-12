@@ -254,6 +254,7 @@ function SellerProfileInner({
             <div className="flex items-center justify-center gap-1">
               <span className="truncate text-[15px] font-bold">{profile.display_name}</span>
               <VerifiedBadge verified={profile.is_verified} size={14} />
+              <ReferredBadge referred={profile.is_referred} size={12} />
             </div>
           </motion.div>
           <Press aria-label={t("common.more")} onClick={() => setActionsOpen(true)} className="h-10 w-10 rounded-full text-foreground">
