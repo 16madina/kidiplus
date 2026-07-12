@@ -8,7 +8,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
