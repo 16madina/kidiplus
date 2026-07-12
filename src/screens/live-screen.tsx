@@ -16,7 +16,7 @@ import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
-import kidiLiveLogo from "@/assets/kidi-live-logo-v2.png.asset.json";
+import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
 
 const GOLD = "#D4AF37";
@@ -53,12 +53,19 @@ export function LiveScreen() {
           style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mt-4">
-            <div className="mx-auto mb-3 h-28 w-28 overflow-hidden rounded-3xl" style={{ boxShadow: "0 12px 28px -10px rgba(16,22,43,0.55)" }}>
+            <div
+              className="mx-auto mb-3 grid h-28 w-28 place-items-center overflow-hidden rounded-3xl"
+              style={{
+                background: NAVY,
+                boxShadow: "0 12px 28px -10px rgba(16,22,43,0.55)",
+              }}
+            >
               <img
                 src={kidiLiveLogo.url}
                 alt="KiDi+"
-                className="h-full w-full object-contain"
+                className="h-24 w-24 object-contain"
                 draggable={false}
+                data-loaded="true"
               />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
