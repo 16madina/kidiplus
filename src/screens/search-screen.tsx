@@ -899,7 +899,11 @@ function SellerRow({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold">{profile.display_name}</p>
+            <p className="truncate text-[14px] font-semibold">
+              <span className="align-middle">{profile.display_name}</span>
+              <VerifiedBadge verified={profile.is_verified} size={12} className="ml-1" />
+              <ReferredBadge referred={profile.is_referred} size={11} className="ml-1" />
+            </p>
             <p className="truncate text-[12px] text-muted-foreground">
               @{profile.handle} · {formatFollowersLabel(profile.followers_count, lang)}
               {isLive && (
