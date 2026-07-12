@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles } from "lucide-react";
+import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles, ArrowDownToLine, Wallet as WalletIcon } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
+import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/i18n/language-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { WithdrawSheet } from "@/components/seller/withdraw-sheet";
+import {
+  fetchMyReferralBalance, subscribeMyReferralBalance, type ReferralBalance,
+} from "@/lib/earnings-db";
 import {
   fetchMyPromoCodes, fetchMyReferralEarnings, buildShareMessage, claimPromoCode,
   type PromoCodeStats, type ReferralEarningRow,
