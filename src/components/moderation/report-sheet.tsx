@@ -68,10 +68,14 @@ export function ReportSheet({
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[17px] font-bold">{t("report.title")}</h2>
+              <h2 className="text-[17px] font-bold">
+                {targetType === "live" ? t("report.titleLive") : t("report.title")}
+              </h2>
               <Press onClick={onClose} className="h-9 w-9 rounded-full"><X size={18} /></Press>
             </div>
-            <p className="mb-3 text-[12px] text-muted-foreground">{t("report.subtitle")}</p>
+            <p className="mb-3 text-[12px] text-muted-foreground">
+              {targetType === "live" ? t("report.subtitlePrefilled") : t("report.subtitle")}
+            </p>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               {REASONS.map((r) => {
