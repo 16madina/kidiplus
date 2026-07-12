@@ -2,10 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import splashAsset from "@/assets/splash.mp4.asset.json";
 import { EASE_IOS } from "@/lib/motion";
-import { Logo } from "@/components/brand/logo";
-import { hideNativeSplash } from "@/lib/native";
+import { hideNativeSplash, isNative } from "@/lib/native";
 
-
+/**
+ * Intro splash with brand audio ("qui dit plus ?").
+ *
+ * Strategy (no tap required, never blocks the app):
+ * 1. Prefer unmuted autoplay — Capacitor WebViews already allow this
+ *    (Android: setMediaPlaybackRequiresUserGesture(false);
+ *     iOS Capacitor: mediaTypesRequiringUserActionForPlayback = []).
+ * 2. If the OS still rejects audible autoplay (browser tab, Low Power Mode,
+ *    etc.), fall back to muted video so the animation always plays.
+ */
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [exiting, setExiting] = useState(false);
@@ -33,10 +41,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.setTimeout(onDone, 260);
     };
 
-
-    const forceSilentInlineAutoplay = () => {
-      v.muted = true;
-      v.defaultMuted = true;
+    const applyInlinePlaybackFlags = () => {
       v.playsInline = true;
       // @ts-expect-error webkit-only
       v.webkitPlaysInline = true;
@@ -45,14 +50,25 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       v.disablePictureInPicture = true;
       v.removeAttribute("controls");
       v.setAttribute("autoplay", "");
-      v.setAttribute("muted", "");
       v.setAttribute("playsinline", "");
       v.setAttribute("webkit-playsinline", "true");
       v.setAttribute("x5-playsinline", "true");
       v.setAttribute("preload", "auto");
     };
 
-    forceSilentInlineAutoplay();
+    const setMuted = (muted: boolean) => {
+      v.muted = muted;
+      v.defaultMuted = muted;
+      if (muted) v.setAttribute("muted", "");
+      else v.removeAttribute("muted");
+      try {
+        v.volume = muted ? 0 : 1;
+      } catch {
+        /* ignore */
+      }
+    };
+
+    applyInlinePlaybackFlags();
 
     const timeout = window.setTimeout(finish, 6500);
     let skipTimeout = 0;
@@ -61,11 +77,24 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     }, 1500);
 
     const tryPlay = () => {
-      forceSilentInlineAutoplay();
+      applyInlinePlaybackFlags();
+      // Want sound first — especially in the native app shell.
+      setMuted(false);
       const p = v.play();
       if (p && typeof p.then === "function") {
-        p.catch(() => {
-          skipTimeout = window.setTimeout(finish, 900);
+        p.then(() => {
+          // Audible autoplay accepted.
+          console.debug("[splash] playing with sound", { native: isNative() });
+        }).catch(() => {
+          // OS blocked audible autoplay — keep the animation, drop audio.
+          console.debug("[splash] audible autoplay blocked → muted fallback");
+          setMuted(true);
+          const mutedPlay = v.play();
+          if (mutedPlay && typeof mutedPlay.then === "function") {
+            mutedPlay.catch(() => {
+              skipTimeout = window.setTimeout(finish, 900);
+            });
+          }
         });
       }
     };
@@ -79,7 +108,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       // Capacitor splash now (no white flash between the two).
       void hideNativeSplash();
     };
-
 
     v.addEventListener("loadedmetadata", tryPlay);
     v.addEventListener("canplay", tryPlay);
@@ -115,7 +143,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         ref={videoRef}
         src={splashAsset.url}
         autoPlay
-        muted
         playsInline
         {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}
         preload="auto"

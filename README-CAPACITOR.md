@@ -117,6 +117,30 @@ npx cap open android
 
 Then in Android Studio: pick your device (or emulator) → press ▶ Run.
 
+### Splash video sound (“qui dit plus ?”)
+
+The React splash tries **unmuted** autoplay first, then falls back to muted if the
+OS blocks audible media — so the intro never gets stuck.
+
+Native shells must allow media without a tap:
+
+- **Android** — already in `MainActivity.java`:
+  `settings.setMediaPlaybackRequiresUserGesture(false);`
+- **iOS** — Capacitor sets `mediaTypesRequiringUserActionForPlayback = []` by
+  default. To also hear the splash when the hardware Silent switch is on, set
+  the audio session at launch in `AppDelegate.swift` / `AppDelegate.m`:
+
+```swift
+import AVFoundation
+
+// inside application(_:didFinishLaunchingWithOptions:)
+try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+try? AVAudioSession.sharedInstance().setActive(true)
+```
+
+Then rebuild the native app (`npx cap sync` + Run). The web splash change ships
+with the usual deploy to `kidiplus.com` (Capacitor loads that URL).
+
 ### Android — remove the native video play overlay
 
 If the intro splash video shows a large Android play button, edit this native file on your machine:
