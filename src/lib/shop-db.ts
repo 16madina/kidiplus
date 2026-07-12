@@ -23,7 +23,7 @@ const localPreviewCache = new Map<string, string>(); // storage path -> blob: UR
 const SIGN_TTL_SEC = 60 * 60 * 22; // refresh before 24h expiry
 
 export const MAX_SHOP_IMAGES = 5;
-export const MIN_SHOP_IMAGES = 3;
+export const MIN_SHOP_IMAGES = 1;
 
 export function seedShopImagePreview(path: string, blobUrl: string) {
   const prev = localPreviewCache.get(path);
