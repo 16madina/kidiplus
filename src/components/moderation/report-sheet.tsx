@@ -13,13 +13,18 @@ import { haptic } from "@/lib/haptics";
 const REASONS: ReportReason[] = ["inappropriate", "fraud", "counterfeit", "harassment", "other"];
 
 export function ReportSheet({
-  open, onClose, targetType, targetId,
+  open, onClose, targetType, targetId, defaultReason, defaultNote,
 }: {
-  open: boolean; onClose: () => void; targetType: ReportTargetType; targetId: string;
+  open: boolean;
+  onClose: () => void;
+  targetType: ReportTargetType;
+  targetId: string;
+  defaultReason?: ReportReason;
+  defaultNote?: string;
 }) {
   const { t } = useTranslation();
-  const [reason, setReason] = useState<ReportReason | null>(null);
-  const [note, setNote] = useState("");
+  const [reason, setReason] = useState<ReportReason | null>(defaultReason ?? null);
+  const [note, setNote] = useState(defaultNote ?? "");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
