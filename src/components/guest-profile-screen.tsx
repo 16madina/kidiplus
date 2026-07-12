@@ -46,27 +46,27 @@ export function GuestProfileScreen() {
             {t("guestProfile.title2", { defaultValue: "débloquer ton profil" })}
           </span>
         </h1>
-        <p className="mt-1.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
+        <p className="mt-1 max-w-xs text-[13px] leading-snug text-[#10162B]/60">
           {t("guestProfile.subtitle", {
             defaultValue: "Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap.",
           })}
         </p>
 
         {/* CTAs — pinned near the top */}
-        <div className="mt-4 flex w-full flex-col gap-2">
+        <div className="mt-3 flex w-full flex-col gap-2">
           <Press
             onClick={go}
-            className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[16px] font-bold text-white"
+            className="!min-h-11 flex h-11 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"
             style={{ background: GOLD, boxShadow: "0 10px 24px -8px rgba(232,185,59,0.55)" }}
           >
-            <UserPlus size={18} />
+            <UserPlus size={17} />
             {t("auth.prompt.signUp", { defaultValue: "Créer un compte" })}
           </Press>
           <Press
             onClick={go}
-            className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[16px] font-bold text-[#10162B] backdrop-blur"
+            className="!min-h-11 flex h-11 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[15px] font-bold text-[#10162B] backdrop-blur"
           >
-            <LogIn size={18} />
+            <LogIn size={17} />
             {t("auth.prompt.signIn", { defaultValue: "Se connecter" })}
           </Press>
         </div>
@@ -79,30 +79,30 @@ export function GuestProfileScreen() {
           height={1024}
           loading="lazy"
           draggable={false}
-          className="mt-0 -mb-4 h-auto w-[120px] select-none"
+          className="-mt-2 -mb-6 h-auto w-[90px] select-none"
         />
 
         {/* Feature grid */}
         <div className="mt-0 grid w-full grid-cols-4 gap-1">
-          <Feature icon={<Wallet size={18} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
-          <Feature icon={<Package size={18} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
-          <Feature icon={<MapPin size={18} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
-          <Feature icon={<Settings size={18} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
+          <Feature icon={<Wallet size={17} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
+          <Feature icon={<Package size={17} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
+          <Feature icon={<MapPin size={17} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
+          <Feature icon={<Settings size={17} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
         </div>
 
         {/* Trust footer */}
-        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-2 text-left backdrop-blur">
+        <div className="mt-1 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-2 text-left backdrop-blur">
           <div
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
             style={{ background: "rgba(232,185,59,0.2)", color: GOLD }}
           >
-            <ShieldCheck size={18} />
+            <ShieldCheck size={17} />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-[#10162B]">
+            <p className="text-[12.5px] font-bold text-[#10162B]">
               {t("guestProfile.trust.title", { defaultValue: "Tes données sont protégées" })}
             </p>
-            <p className="text-[11.5px] text-[#10162B]/60">
+            <p className="text-[11px] text-[#10162B]/60">
               {t("guestProfile.trust.sub", { defaultValue: "Paiement sécurisé • Confidentialité garantie" })}
             </p>
           </div>
