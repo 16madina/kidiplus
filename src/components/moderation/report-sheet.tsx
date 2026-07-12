@@ -1,7 +1,7 @@
 // ReportSheet — reason picker + optional note.
 // Bottom sheet, used from live viewer / chat / user profile.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
