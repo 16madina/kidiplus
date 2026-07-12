@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
-import { GuestEmptyState } from "@/components/guest-empty-state";
+import { GuestProfileScreen } from "@/components/guest-profile-screen";
 
 import { PushScreen } from "@/components/push-screen";
 import { usePush } from "@/lib/push";
@@ -89,14 +89,7 @@ const GOLD = "#E8B93B";
 
 export function ProfileScreen() {
   const { guestMode } = useAuth();
-  if (guestMode) {
-    return (
-      <GuestEmptyState
-        title="Crée un compte pour débloquer ton profil"
-        subtitle="Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap."
-      />
-    );
-  }
+  if (guestMode) return <GuestProfileScreen />;
   return <ProfileScreenAuthed />;
 }
 
