@@ -90,7 +90,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         // Extra fallback: some devices skip onUserLeaveHint when switching apps.
         if (pipEligible
             && !isInPictureInPictureMode()
