@@ -58,6 +58,7 @@ import { HelpSupportScreen } from "@/components/help-support-screen";
 import { MyShopScreen } from "@/screens/my-shop-screen";
 import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
