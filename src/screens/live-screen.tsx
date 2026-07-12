@@ -72,7 +72,7 @@ export function LiveScreen() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(251,246,236,0.96) 0%, rgba(251,246,236,0.55) 25%, rgba(251,246,236,0.35) 55%, rgba(251,246,236,0.92) 100%)",
+              "linear-gradient(180deg, rgba(251,246,236,0.82) 0%, rgba(251,246,236,0.55) 25%, rgba(251,246,236,0.35) 55%, rgba(251,246,236,0.92) 100%)",
           }}
         />
 
