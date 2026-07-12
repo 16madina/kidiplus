@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
@@ -27,7 +28,13 @@ const WELCOME_BGS = [bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8, bg9, bg10];
 
 type View = "welcome" | "signin" | "signup" | "forgot";
 
-export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
+export function AuthFlow({
+  allowGuest = true,
+  onClose,
+}: {
+  allowGuest?: boolean;
+  onClose?: () => void;
+} = {}) {
   const [view, setView] = useState<View>("welcome");
   const { enterGuestMode } = useAuth();
 
@@ -36,6 +43,20 @@ export function AuthFlow({ allowGuest = true }: { allowGuest?: boolean } = {}) {
       className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden"
       style={{ isolation: "isolate", backgroundColor: "#0B1436", color: "white" }}
     >
+      {onClose && (
+        <div
+          className="absolute right-0 top-0 z-[60] px-4"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
+        >
+          <Press
+            onClick={onClose}
+            aria-label="Fermer"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#10162B] shadow-lg backdrop-blur-md"
+          >
+            <X size={22} strokeWidth={2.2} />
+          </Press>
+        </div>
+      )}
       <AnimatePresence mode="wait">
         {view === "welcome" && (
           <Welcome
