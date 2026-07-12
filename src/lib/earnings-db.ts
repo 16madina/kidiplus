@@ -27,6 +27,7 @@ export type SellerEarning = {
 
 export type PayoutMethod = "wave" | "orange_money" | "bank_transfer" | "paypal";
 export type PayoutStatus = "requested" | "processing" | "paid" | "rejected";
+export type PayoutSource = "seller" | "referral";
 
 export type PayoutRow = {
   id: string;
