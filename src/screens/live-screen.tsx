@@ -110,10 +110,7 @@ export function LiveScreen() {
           style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mt-16">
-            <div
-              className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-3xl shadow-lg"
-              style={{ backgroundColor: NAVY }}
-            >
+            <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-3xl shadow-lg">
               <img
                 src={kidiLogo.url}
                 alt="KiDi+"
