@@ -16,6 +16,8 @@ import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
+import kidiLiveLogo from "@/assets/kidi-live-logo.png.asset.json";
+import { Gavel, Radio, Sparkles } from "lucide-react";
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
@@ -48,15 +50,15 @@ export function LiveScreen() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: EASE_IOS }}
           className="relative z-10 flex flex-1 flex-col px-6 pt-safe text-center"
-          style={{ paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))" }}
+          style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="mt-6">
-            <div
-              className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl"
-              style={{ background: "linear-gradient(135deg, #E8C547, #C8A03F)" }}
-            >
-              <Store size={24} color="white" />
-            </div>
+          <div className="mt-4">
+            <img
+              src={kidiLiveLogo.url}
+              alt="KiDi+"
+              className="mx-auto mb-3 h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(16,22,43,0.35)]"
+              draggable={false}
+            />
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
               {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
             </h2>
@@ -65,7 +67,30 @@ export function LiveScreen() {
             </p>
           </div>
 
-          <div className="mb-6 flex w-full flex-col gap-2.5">
+          {/* Floating feature pills */}
+          <div className="pointer-events-none relative mt-4 flex-1">
+            <FloatingPill
+              icon={<Radio size={14} />}
+              label={t("guest.live.pill1", { defaultValue: "Prêt à démarrer un live ?" })}
+              style={{ top: "8%", left: "-2%" }}
+              delay={0.15}
+            />
+            <FloatingPill
+              icon={<Gavel size={14} />}
+              label={t("guest.live.pill2", { defaultValue: "Vends aux enchères en direct" })}
+              style={{ top: "38%", right: "-2%" }}
+              delay={0.3}
+              tone="gold"
+            />
+            <FloatingPill
+              icon={<Sparkles size={14} />}
+              label={t("guest.live.pill3", { defaultValue: "Crée ton compte gratuitement" })}
+              style={{ top: "68%", left: "6%" }}
+              delay={0.45}
+            />
+          </div>
+
+          <div className="mt-auto flex w-full flex-col gap-2.5">
             <Press
               onClick={() => { haptic.light(); openAuth(); }}
               className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"
@@ -88,6 +113,37 @@ export function LiveScreen() {
     );
   }
   return <LiveScreenAuthed />;
+}
+
+function FloatingPill({
+  icon,
+  label,
+  style,
+  delay = 0,
+  tone = "navy",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  style?: React.CSSProperties;
+  delay?: number;
+  tone?: "navy" | "gold";
+}) {
+  const bg = tone === "gold" ? GOLD : NAVY;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: [0, -6, 0] }}
+      transition={{
+        opacity: { duration: 0.4, delay, ease: EASE_IOS },
+        y: { duration: 3.6, delay, repeat: Infinity, ease: "easeInOut" },
+      }}
+      className="pointer-events-auto absolute inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold text-white shadow-lg backdrop-blur-md"
+      style={{ background: `${bg}E6`, boxShadow: `0 8px 20px -6px ${bg}66`, ...style }}
+    >
+      {icon}
+      {label}
+    </motion.div>
+  );
 }
 
 function LiveScreenAuthed() {
