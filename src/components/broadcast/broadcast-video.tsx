@@ -93,20 +93,31 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       onStatus?.(state);
     }, [state, onStatus]);
 
-    // Probe device count once to decide whether the flip button should show.
+    // Probe device count to decide whether the flip button should show.
+    // Re-probes on state changes because iOS/Android only expose the full
+    // camera list AFTER camera permission is granted — before that,
+    // enumerateDevices() often returns a single unlabelled device and the
+    // flip button would stay hidden forever.
     useEffect(() => {
       if (!onCanFlipChange) return;
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
         onCanFlipChange(false);
         return;
       }
+      // Optimistic default on touch devices: assume front+back exist so the
+      // button appears immediately. The flip handler already reverts + toasts
+      // if the target camera doesn't actually exist.
+      const isTouch = typeof window !== "undefined"
+        && (("ontouchstart" in window) || ((navigator as Navigator).maxTouchPoints ?? 0) > 0);
+      if (isTouch) onCanFlipChange(true);
       let cancelled = false;
       void navigator.mediaDevices.enumerateDevices().then((devices) => {
         if (cancelled) return;
         const cams = devices.filter((d) => d.kind === "videoinput").length;
-        onCanFlipChange(cams > 1);
+        if (cams > 1) onCanFlipChange(true);
+        else if (!isTouch) onCanFlipChange(false);
       }).catch(() => {
-        if (!cancelled) onCanFlipChange(false);
+        if (!cancelled && !isTouch) onCanFlipChange(false);
       });
       return () => { cancelled = true; };
     }, [onCanFlipChange, state]);
