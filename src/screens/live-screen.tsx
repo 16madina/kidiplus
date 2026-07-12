@@ -57,7 +57,7 @@ export function LiveScreen() {
               <img
                 src={kidiLiveLogo.url}
                 alt="KiDi+"
-                className="h-14 w-14 object-contain"
+                className="h-16 w-16 object-contain"
                 draggable={false}
                 data-loaded="true"
                 style={{ filter: "drop-shadow(0 2px 3px rgba(16,22,43,0.25))" }}
