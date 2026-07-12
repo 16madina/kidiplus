@@ -163,9 +163,63 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
           </>
         )}
       </div>
+            <p className="mt-6 text-center text-[11px] text-muted-foreground">
+              {t("referral.walletHint", "Tes gains de parrainage sont retirables ici, indépendamment de tes gains vendeur.")}
+            </p>
+          </>
+        )}
+      </div>
+
+      <WithdrawSheet
+        open={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+        available={balance?.available ?? 0}
+        currency={balance?.currency ?? profile?.currency ?? "EUR"}
+        source="referral"
+      />
     </PushScreen>
   );
 }
+
+function ReferralWalletCard({
+  balance,
+  fallbackCurrency,
+  onWithdraw,
+}: {
+  balance: ReferralBalance | null;
+  fallbackCurrency: string;
+  onWithdraw: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const cur = balance?.currency ?? fallbackCurrency;
+  const available = balance?.available ?? 0;
+  return (
+    <div
+      className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
+      style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}
+    >
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest opacity-70">
+        <WalletIcon size={12} />
+        {t("referral.wallet.title", "Portefeuille parrainage")} 💼
+      </div>
+      <div className="mt-1 text-[30px] font-black tabular-nums" style={{ color: GOLD }}>
+        {formatMoney(available, normalizeCurrency(cur), i18n.language)}
+      </div>
+      <div className="mt-3">
+        <Press
+          onClick={onWithdraw}
+          disabled={available <= 0}
+          className="!min-h-11 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-[14px] font-bold disabled:opacity-50"
+          style={{ background: GOLD, color: NAVY }}
+        >
+          <ArrowDownToLine size={15} /> {t("referral.wallet.withdraw", "Retirer")}
+        </Press>
+      </div>
+    </div>
+  );
+}
+
+
 
 function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
   const { t } = useTranslation();
