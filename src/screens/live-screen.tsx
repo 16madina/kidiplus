@@ -110,8 +110,8 @@ export function LiveScreen() {
           style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
         >
           <div className="mt-16">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/80 shadow-sm backdrop-blur">
-              <Logo size={56} variant="image" />
+            <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-3xl shadow-lg">
+              <Logo size={80} variant="image" />
             </div>
             <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
               {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
