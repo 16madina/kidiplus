@@ -45,7 +45,7 @@ export function AuthFlow({
     >
       {onClose && (
         <div
-          className="absolute left-0 right-0 top-0 z-[60] flex justify-end px-4"
+          className="absolute right-0 top-0 z-[60] px-4"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
         >
           <Press
