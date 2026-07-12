@@ -114,20 +114,33 @@ export async function findCameraDeviceId(
 /**
  * Switch the published host camera front ↔ back without leaving the room.
  * Prefers LiveKit switchActiveDevice / restartTrack(deviceId).
+ * If `target` is omitted, flips to the opposite of the *actual* current camera
+ * (avoids desync after leave/return when React state still says "environment"
+ * but the hardware restarted on "user").
  */
 export async function switchHostCameraFacing(args: {
   room: Room;
   track: LocalVideoTrack;
-  target: CameraFacing;
+  target?: CameraFacing;
 }): Promise<CameraFacing> {
-  const { room, track, target } = args;
+  const { room, track } = args;
   const settings = track.mediaStreamTrack?.getSettings?.() ?? {};
   const currentId =
     typeof settings.deviceId === "string" ? settings.deviceId : null;
+  const actual =
+    asFacing(
+      facingModeFromLocalTrack(track, {
+        defaultFacingMode: args.target ?? "user",
+      }).facingMode,
+    ) ??
+    args.target ??
+    "user";
+  const target = args.target ?? (actual === "user" ? "environment" : "user");
 
+  // Always pick a different device than the one currently open when possible.
   const deviceId = await findCameraDeviceId(target, currentId);
 
-  if (deviceId) {
+  if (deviceId && deviceId !== currentId) {
     try {
       await room.switchActiveDevice("videoinput", deviceId, true);
     } catch (e) {
@@ -137,6 +150,13 @@ export async function switchHostCameraFacing(args: {
         resolution: { width: 1280, height: 720, frameRate: 30 },
       });
     }
+  } else if (deviceId) {
+    // Same deviceId reported — still force a restart toward target facing.
+    await track.restartTrack({
+      deviceId,
+      facingMode: target,
+      resolution: { width: 1280, height: 720, frameRate: 30 },
+    });
   } else {
     await track.restartTrack({
       facingMode: target,

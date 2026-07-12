@@ -2,6 +2,7 @@
 // and renders them full-bleed. Falls back to a placeholder image while the
 // host is not connected yet, or after they leave.
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   RoomEvent,
   Track,
@@ -25,7 +26,8 @@ export type ViewerLiveVideoProps = {
 
 export type ViewerStatus =
   | "connecting"
-  | "waiting"      // connected but no host publishing yet
+  | "waiting"      // connected but no host publishing yet (before first frame)
+  | "host_away"    // host was live, briefly gone — "back soon"
   | "live"         // remote video attached
   | "reconnecting" // livekit transient reconnect in progress
   | "ended"        // host disconnected after having been live
@@ -39,6 +41,7 @@ export function ViewerLiveVideo({
   posterImage,
   onStatus,
 }: ViewerLiveVideoProps) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
@@ -74,16 +77,17 @@ export function ViewerLiveVideo({
         setStatus("waiting");
         return;
       }
-      // Optimistically show a soft "reconnexion" state, then commit to
-      // "ended" only if no new video track subscribes within the window.
-      setStatus("waiting");
+      // Soft "host will be back" while we wait for the host to republish.
+      // Stay on this message for the abandon window (~5 min) — don't flash
+      // "Live terminé" after a few seconds while the live is still open in DB.
+      setStatus("host_away");
       endTimer = setTimeout(() => {
         endTimer = null;
         if (!cancelled) {
-          console.warn("[live-end diag] viewer video → 'ended' (4s absence)", { reason });
+          console.warn("[live-end diag] viewer video → 'ended' (5m absence)", { reason });
           setStatus("ended");
         }
-      }, 4_000);
+      }, 5 * 60_000);
     };
 
     async function start() {
@@ -187,6 +191,19 @@ export function ViewerLiveVideo({
 
   const showPoster = status !== "live";
 
+  const statusLabel =
+    status === "connecting"
+      ? t("live.viewerConnecting", "Connexion au live…")
+      : status === "reconnecting"
+        ? t("live.viewerReconnecting", "Reconnexion…")
+        : status === "host_away"
+          ? t("live.hostBackSoon", "L'hôte revient bientôt…")
+          : status === "waiting"
+            ? t("live.viewerWaitingStart", "Le live va commencer…")
+            : status === "ended"
+              ? t("live.ended", "Live terminé")
+              : t("live.viewerConnectFailed", "Connexion impossible");
+
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
       {posterImage && (
@@ -228,16 +245,7 @@ export function ViewerLiveVideo({
               WebkitBackdropFilter: "blur(10px)",
             }}
           >
-            {status === "connecting"
-              ? "Connexion au live…"
-              : status === "reconnecting"
-                ? "Reconnexion…"
-                : status === "waiting"
-                  ? "Le live va commencer…"
-                  : status === "ended"
-                    ? "Live terminé"
-                    : "Connexion impossible"}
-
+            {statusLabel}
           </div>
         </div>
       )}
