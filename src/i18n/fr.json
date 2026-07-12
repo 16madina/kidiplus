@@ -1040,6 +1040,7 @@
   },
   "report": {
     "action": "Signaler",
+    "confirm": "Signaler ce live ? Notre équipe examinera ton signalement.",
     "title": "Signaler",
     "subtitle": "Choisis une raison. Notre équipe examine chaque signalement.",
     "submit": "Envoyer le signalement",
