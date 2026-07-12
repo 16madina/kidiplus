@@ -8,7 +8,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -36,6 +36,7 @@ type SellerProfile = {
   display_name: string;
   handle: string;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
   is_seller: boolean;
   is_verified: boolean;
@@ -49,7 +50,7 @@ type SellerProfile = {
 /** Resolve the `activeSeller` ref (uuid | handle | display_name) to a profile row. */
 async function resolveSellerRef(ref: string): Promise<SellerProfile | null> {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
-  const cols = "id, display_name, handle, avatar_url, bio, is_seller, is_verified, is_referred, followers_count, rating_avg, rating_count, currency";
+  const cols = "id, display_name, handle, avatar_url, banner_url, bio, is_seller, is_verified, is_referred, followers_count, rating_avg, rating_count, currency";
   if (isUuid) {
     const { data } = await supabase.from("profiles").select(cols).eq("id", ref).maybeSingle();
     if (data) return data as SellerProfile;
@@ -72,21 +73,24 @@ export function SellerProfileScreen() {
   const { activeSeller, close } = useSellerProfile();
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [salesCount, setSalesCount] = useState<number>(0);
+  const [productsCount, setProductsCount] = useState<number>(0);
+  const [activeProductsCount, setActiveProductsCount] = useState<number>(0);
+  const [livesCount, setLivesCount] = useState<number>(0);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
   const dragX = useMotionValue(0);
 
-  const refreshProfile = async () => {
-    if (!activeSeller) return;
-    const p = await resolveSellerRef(activeSeller);
-    setProfile((prev) => (p ? { ...(prev ?? {} as SellerProfile), ...p } : prev));
-    if (p) {
-      const { count } = await supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("seller_id", p.id)
-        .eq("status", "paid");
-      setSalesCount(count ?? 0);
-    }
+  const loadCounts = async (sellerId: string) => {
+    const [sales, products, activeProducts, lives] = await Promise.all([
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("status", "paid"),
+      supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+      supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("active", true),
+      supabase.from("lives").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+    ]);
+    setSalesCount(sales.count ?? 0);
+    setProductsCount(products.count ?? 0);
+    setActiveProductsCount(activeProducts.count ?? 0);
+    setLivesCount(lives.count ?? 0);
   };
 
   useEffect(() => {
@@ -98,18 +102,14 @@ export function SellerProfileScreen() {
       setProfile(p);
       if (p) {
         void resolveAvatarUrl(p.avatar_url).then((url) => alive && setAvatar(url));
-        const { count } = await supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("seller_id", p.id)
-          .eq("status", "paid");
-        if (alive) setSalesCount(count ?? 0);
+        void resolveAvatarUrl(p.banner_url).then((url) => alive && setBanner(url));
+        void loadCounts(p.id);
       }
     })();
     return () => { alive = false; };
   }, [activeSeller]);
 
-  // Realtime: profile row (followers_count, rating_avg via triggers) + paid orders count.
+  // Realtime: profile row + counts.
   useEffect(() => {
     const sellerId = profile?.id;
     if (!sellerId) return;
@@ -118,18 +118,12 @@ export function SellerProfileScreen() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${sellerId}` }, (payload) => {
         const row = payload.new as Partial<SellerProfile>;
         setProfile((prev) => (prev ? { ...prev, ...row } : prev));
-        if (row.avatar_url !== undefined) {
-          void resolveAvatarUrl(row.avatar_url ?? null).then(setAvatar);
-        }
+        if (row.avatar_url !== undefined) void resolveAvatarUrl(row.avatar_url ?? null).then(setAvatar);
+        if (row.banner_url !== undefined) void resolveAvatarUrl(row.banner_url ?? null).then(setBanner);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${sellerId}` }, () => {
-        void (async () => {
-          const { count } = await supabase
-            .from("orders").select("id", { count: "exact", head: true })
-            .eq("seller_id", sellerId).eq("status", "paid");
-          setSalesCount(count ?? 0);
-        })();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lives", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [profile?.id]);
@@ -154,7 +148,17 @@ export function SellerProfileScreen() {
           </Press>
         </div>
       ) : (
-        <SellerProfileInner profile={profile} avatar={avatar} salesCount={salesCount} onBack={close} dragX={dragX} />
+        <SellerProfileInner
+          profile={profile}
+          avatar={avatar}
+          banner={banner}
+          salesCount={salesCount}
+          productsCount={productsCount}
+          activeProductsCount={activeProductsCount}
+          livesCount={livesCount}
+          onBack={close}
+          dragX={dragX}
+        />
       )}
     </motion.div>
   );
@@ -163,13 +167,21 @@ export function SellerProfileScreen() {
 function SellerProfileInner({
   profile,
   avatar,
+  banner,
   salesCount,
+  productsCount,
+  activeProductsCount,
+  livesCount,
   onBack,
   dragX,
 }: {
   profile: SellerProfile;
   avatar: string | null;
+  banner: string | null;
   salesCount: number;
+  productsCount: number;
+  activeProductsCount: number;
+  livesCount: number;
   onBack: () => void;
   dragX: ReturnType<typeof useMotionValue<number>>;
 }) {
@@ -284,17 +296,39 @@ function SellerProfileInner({
           <div style={{ height: "env(safe-area-inset-top)" }} />
           <div style={{ height: 48 }} />
           <motion.div
-            className="px-5 pt-4"
+            className="relative"
             style={{ opacity: heroOpacity, scale: heroScale, y: heroTranslate, transformOrigin: "50% 0%" }}
           >
-            <div className="flex flex-col items-center text-center">
+            {/* Banner backdrop */}
+            <div className="relative h-40 w-full overflow-hidden" style={{ background: banner ? undefined : "linear-gradient(140deg, #F6ECD9 0%, #EEDDBF 45%, #E4CCA6 100%)" }}>
+              {banner && (
+                <img
+                  src={banner}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  draggable={false}
+                />
+              )}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background: banner
+                    ? "linear-gradient(180deg, rgba(16,22,43,0.10) 0%, rgba(0,0,0,0) 40%, color-mix(in oklch, var(--background) 90%, transparent) 100%)"
+                    : "linear-gradient(180deg, transparent 60%, color-mix(in oklch, var(--background) 90%, transparent) 100%)",
+                }}
+              />
+            </div>
+
+            <div className="-mt-14 flex flex-col items-center px-5 text-center">
               <div
                 className="grid place-items-center rounded-full"
                 style={{
                   background: "#E8B93B",
                   padding: 3,
-                  height: 96,
-                  width: 96,
+                  height: 112,
+                  width: 112,
                   boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
                 }}
               >
@@ -327,9 +361,25 @@ function SellerProfileInner({
                 <p className="mt-1 max-w-xs text-[13px] leading-snug text-muted-foreground">{profile.bio}</p>
               )}
 
+              {/* Stats card — matches Ma boutique */}
+              <div
+                className="mt-4 grid w-full grid-cols-4 items-center rounded-2xl bg-card px-2 py-3"
+                style={{ boxShadow: "0 12px 30px rgba(20,15,5,0.08)", border: "1px solid rgba(200,162,75,0.18)" }}
+              >
+                <StatCol icon={<ShoppingBag size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.products", { defaultValue: "Produits" })} value={String(productsCount)} />
+                <StatCol icon={<UsersIcon size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.followers")} value={formatCompact(profile.followers_count)} />
+                <StatCol icon={<Video size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.lives", { defaultValue: "Lives" })} value={String(livesCount)} />
+                <div className="flex flex-col items-center gap-0.5 border-l border-border/50 pl-2">
+                  <span className="text-[10px] font-medium text-muted-foreground">{t("seller.stats.shop", { defaultValue: "Boutique" })}</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold" style={{ color: activeProductsCount > 0 ? "#12703B" : "#8A8578" }}>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: activeProductsCount > 0 ? "#1FA05A" : "#B4AC96" }} />
+                    {activeProductsCount > 0 ? t("seller.stats.online", { defaultValue: "EN LIGNE" }) : t("seller.stats.offline", { defaultValue: "HORS LIGNE" })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Secondary row: sales + rating */}
               <div className="mt-3 flex items-center gap-6">
-                <Stat label={t("seller.stats.followers")} value={formatCompact(profile.followers_count)} />
-                <Divider />
                 <Stat label={t("seller.stats.sales")} value={formatCompact(salesCount)} />
                 <Divider />
                 <Stat
@@ -353,6 +403,8 @@ function SellerProfileInner({
             </div>
           </motion.div>
         </div>
+
+
 
         <div
           ref={stripRef}
@@ -458,6 +510,17 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 function Divider() { return <span className="h-6 w-px bg-border" aria-hidden />; }
+function StatCol({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <span className="text-[15px] font-extrabold tabular-nums">{value}</span>
+    </div>
+  );
+}
 function formatCompact(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(".0", "")}k`;
   return String(n);
