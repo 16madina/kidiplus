@@ -1,6 +1,6 @@
 // GuestProfileScreen — shown in the Profile tab for non-authenticated users.
-// Rich onboarding pitch: brand logo, headline with gold accent, illustration,
-// four feature icons and dual CTAs to sign up / sign in.
+// Onboarding pitch with soft gold background, CTAs pinned at top, illustration
+// and features below.
 
 import { UserPlus, LogIn, Wallet, Package, MapPin, Settings, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import { Logo } from "@/components/brand/logo";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
 import illustration from "@/assets/guest-profile-illustration.png";
+import background from "@/assets/guest-profile-bg.jpg";
 
 const GOLD = "#E8B93B";
 
@@ -20,53 +21,39 @@ export function GuestProfileScreen() {
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto bg-background pt-safe"
+      className="relative flex h-full flex-col overflow-y-auto pt-safe"
       style={{
         WebkitOverflowScrolling: "touch",
         paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
+        backgroundImage: `url(${background})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundColor: "#FBF6EC",
       }}
     >
-      <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 pt-8 text-center">
+      <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 pt-6 text-center">
         {/* Brand */}
-        <div className="mb-6">
-          <Logo size={44} />
+        <div className="mb-5">
+          <Logo size={40} />
         </div>
 
         {/* Headline */}
-        <h1 className="text-[26px] font-black leading-[1.15] tracking-tight text-foreground">
+        <h1 className="text-[24px] font-black leading-[1.15] tracking-tight text-[#10162B]">
           {t("guestProfile.title1", { defaultValue: "Crée un compte pour" })}
           <br />
           <span style={{ color: GOLD }}>
             {t("guestProfile.title2", { defaultValue: "débloquer ton profil" })}
           </span>
         </h1>
-        <p className="mt-3 max-w-xs text-[14px] leading-snug text-muted-foreground">
+        <p className="mt-2.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
           {t("guestProfile.subtitle", {
             defaultValue: "Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap.",
           })}
         </p>
 
-        {/* Illustration */}
-        <img
-          src={illustration}
-          alt=""
-          width={1024}
-          height={1024}
-          loading="lazy"
-          draggable={false}
-          className="my-4 h-auto w-[260px] select-none"
-        />
-
-        {/* Feature grid */}
-        <div className="mt-2 grid w-full grid-cols-4 gap-2">
-          <Feature icon={<Wallet size={20} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
-          <Feature icon={<Package size={20} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
-          <Feature icon={<MapPin size={20} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
-          <Feature icon={<Settings size={20} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
-        </div>
-
-        {/* CTAs */}
-        <div className="mt-7 flex w-full flex-col gap-3">
+        {/* CTAs — pinned near the top */}
+        <div className="mt-6 flex w-full flex-col gap-3">
           <Press
             onClick={go}
             className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full text-[16px] font-bold text-white"
@@ -77,26 +64,45 @@ export function GuestProfileScreen() {
           </Press>
           <Press
             onClick={go}
-            className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full border border-border bg-card text-[16px] font-bold text-foreground"
+            className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[16px] font-bold text-[#10162B] backdrop-blur"
           >
             <LogIn size={18} />
             {t("auth.prompt.signIn", { defaultValue: "Se connecter" })}
           </Press>
         </div>
 
+        {/* Illustration */}
+        <img
+          src={illustration}
+          alt=""
+          width={1024}
+          height={1024}
+          loading="lazy"
+          draggable={false}
+          className="mt-6 h-auto w-[240px] select-none"
+        />
+
+        {/* Feature grid */}
+        <div className="mt-3 grid w-full grid-cols-4 gap-2">
+          <Feature icon={<Wallet size={20} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
+          <Feature icon={<Package size={20} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
+          <Feature icon={<MapPin size={20} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
+          <Feature icon={<Settings size={20} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
+        </div>
+
         {/* Trust footer */}
-        <div className="mt-6 flex items-center gap-3 rounded-2xl px-4 py-3 text-left">
+        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
           <div
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-            style={{ background: "rgba(232,185,59,0.15)", color: GOLD }}
+            style={{ background: "rgba(232,185,59,0.2)", color: GOLD }}
           >
             <ShieldCheck size={20} />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-foreground">
+            <p className="text-[13px] font-bold text-[#10162B]">
               {t("guestProfile.trust.title", { defaultValue: "Tes données sont protégées" })}
             </p>
-            <p className="text-[11.5px] text-muted-foreground">
+            <p className="text-[11.5px] text-[#10162B]/60">
               {t("guestProfile.trust.sub", { defaultValue: "Paiement sécurisé • Confidentialité garantie" })}
             </p>
           </div>
@@ -110,12 +116,12 @@ function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div
-        className="grid h-11 w-11 place-items-center rounded-full text-foreground/70"
-        style={{ background: "var(--muted)" }}
+        className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
+        style={{ boxShadow: "0 2px 8px rgba(16,22,43,0.06)" }}
       >
         {icon}
       </div>
-      <p className="text-[10.5px] font-semibold leading-tight text-muted-foreground">{label}</p>
+      <p className="text-[10.5px] font-semibold leading-tight text-[#10162B]/70">{label}</p>
     </div>
   );
 }
