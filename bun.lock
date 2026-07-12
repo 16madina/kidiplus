@@ -20,6 +20,7 @@
         "@capacitor/status-bar": "^8.0.2",
         "@capgo/capacitor-native-biometric": "^8.6.1",
         "@hookform/resolvers": "^5.2.2",
+        "@lovable.dev/cloud-auth-js": "^1.1.2",
         "@lovable.dev/email-js": "^0.1.0",
         "@lovable.dev/webhooks-js": "^0.0.1",
         "@radix-ui/react-accordion": "^1.2.12",
@@ -411,6 +412,8 @@
     "@livekit/mutex": ["@livekit/mutex@1.1.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@livekit/mutex/-/mutex-1.1.1.tgz", {}, "sha512-EsshAucklmpuUAfkABPxJNhzj9v2sG7JuzFDL4ML1oJQSV14sqrpTYnsaOudMAw9yOaW53NU3QQTlUQoRs4czw=="],
 
     "@livekit/protocol": ["@livekit/protocol@1.46.6", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@livekit/protocol/-/protocol-1.46.6.tgz", { "dependencies": { "@bufbuild/protobuf": "^1.10.0" } }, "sha512-upzlHP1vi/kZ/QqALZTFskQ0ifqc2f15RKucHYOsIHJsaXvEYanG75mAb7o+Yomfs4XhQ4BaRsdY+TFHXpaqrg=="],
+
+    "@lovable.dev/cloud-auth-js": ["@lovable.dev/cloud-auth-js@1.1.2", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@lovable.dev/cloud-auth-js/-/cloud-auth-js-1.1.2.tgz", {}, "sha512-xz8ocewsgwkp8giau272/eWWU3XrchCg5uba4yQPPYtevHTXaVU3sD+fO1JjyPBHacVcOcwhmgUiU9TKHt63cg=="],
 
     "@lovable.dev/email-js": ["@lovable.dev/email-js@0.1.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@lovable.dev/email-js/-/email-js-0.1.0.tgz", { "dependencies": { "@lovable.dev/webhooks-js": "0.0.1" }, "peerDependencies": { "@react-email/render": ">=1.0.0", "react": ">=18", "react-dom": ">=18" }, "optionalPeers": ["@react-email/render", "react", "react-dom"] }, "sha512-AtWpcToomJu3xh5+6WQ7c7aarWfakX0sPq7KUnixsp8c2ro4w+x7pPHhm/Q5IafD4GPRyejD2ufg9e2LfTxz9Q=="],
 

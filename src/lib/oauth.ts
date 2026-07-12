@@ -2,8 +2,8 @@
 // so Google doesn't block us with `disallowed_useragent` inside the Capacitor
 // WebView.
 //
-// Web  : classic `supabase.auth.signInWithOAuth` redirect. The auth listener
-//        picks up the session on return.
+// Web  : Lovable Cloud managed OAuth broker (`lovable.auth.signInWithOAuth`).
+//        Iframe-safe in the editor preview, full-page redirect in production.
 // Native: `skipBrowserRedirect: true` to get the provider URL, then open it
 //        in the SYSTEM browser via @capacitor/browser. The provider redirects
 //        to our custom scheme (kidiplus://auth-callback), the deep-link
@@ -11,6 +11,7 @@
 //        `/auth-callback`.
 
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { isNative } from "@/lib/native";
 import { NATIVE_OAUTH_REDIRECT } from "@/lib/social-login-config";
 
@@ -28,9 +29,6 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<void>
     if (error) throw error;
     if (!data?.url) throw new Error("No OAuth URL returned");
 
-    // Open system browser (Safari View Controller / Chrome Custom Tabs).
-    // Google explicitly refuses embedded WebViews since 2016
-    // ("disallowed_useragent"), so this is required, not just polish.
     const { Browser } = await import("@capacitor/browser");
     await Browser.open({
       url: data.url,
@@ -40,12 +38,13 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<void>
     return;
   }
 
-  // Web: standard redirect. Same-origin so `redirectTo` is always safe.
-  const redirectTo =
+  // Web: managed OAuth broker. `redirect_uri` must be a public same-origin URL.
+  const redirectUri =
     typeof window !== "undefined" ? window.location.origin : undefined;
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: { redirectTo },
+  const result = await lovable.auth.signInWithOAuth(provider, {
+    redirect_uri: redirectUri,
   });
-  if (error) throw error;
+  if (result.error) throw result.error;
+  // If `result.redirected`, the browser is navigating away. Otherwise the
+  // session is already set and the auth listener will pick it up.
 }
