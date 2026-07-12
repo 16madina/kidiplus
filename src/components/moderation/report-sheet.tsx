@@ -1,7 +1,7 @@
 // ReportSheet — reason picker + optional note.
 // Bottom sheet, used from live viewer / chat / user profile.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -13,14 +13,27 @@ import { haptic } from "@/lib/haptics";
 const REASONS: ReportReason[] = ["inappropriate", "fraud", "counterfeit", "harassment", "other"];
 
 export function ReportSheet({
-  open, onClose, targetType, targetId,
+  open, onClose, targetType, targetId, defaultReason, defaultNote,
 }: {
-  open: boolean; onClose: () => void; targetType: ReportTargetType; targetId: string;
+  open: boolean;
+  onClose: () => void;
+  targetType: ReportTargetType;
+  targetId: string;
+  defaultReason?: ReportReason;
+  defaultNote?: string;
 }) {
   const { t } = useTranslation();
-  const [reason, setReason] = useState<ReportReason | null>(null);
-  const [note, setNote] = useState("");
+  const [reason, setReason] = useState<ReportReason | null>(defaultReason ?? null);
+  const [note, setNote] = useState(defaultNote ?? "");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setReason(defaultReason ?? null);
+      setNote(defaultNote ?? "");
+      setBusy(false);
+    }
+  }, [open, defaultReason, defaultNote]);
 
   const submit = async () => {
     if (!reason) return;
@@ -30,7 +43,8 @@ export function ReportSheet({
     if (r.ok) {
       haptic.success();
       toast.success(t("report.sent"));
-      setReason(null); setNote("");
+      setReason(defaultReason ?? null);
+      setNote(defaultNote ?? "");
       onClose();
     } else {
       haptic.warning();
@@ -54,10 +68,14 @@ export function ReportSheet({
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[17px] font-bold">{t("report.title")}</h2>
+              <h2 className="text-[17px] font-bold">
+                {targetType === "live" ? t("report.titleLive") : t("report.title")}
+              </h2>
               <Press onClick={onClose} className="h-9 w-9 rounded-full"><X size={18} /></Press>
             </div>
-            <p className="mb-3 text-[12px] text-muted-foreground">{t("report.subtitle")}</p>
+            <p className="mb-3 text-[12px] text-muted-foreground">
+              {targetType === "live" ? t("report.subtitlePrefilled") : t("report.subtitle")}
+            </p>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               {REASONS.map((r) => {
