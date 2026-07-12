@@ -167,13 +167,21 @@ export function SellerProfileScreen() {
 function SellerProfileInner({
   profile,
   avatar,
+  banner,
   salesCount,
+  productsCount,
+  activeProductsCount,
+  livesCount,
   onBack,
   dragX,
 }: {
   profile: SellerProfile;
   avatar: string | null;
+  banner: string | null;
   salesCount: number;
+  productsCount: number;
+  activeProductsCount: number;
+  livesCount: number;
   onBack: () => void;
   dragX: ReturnType<typeof useMotionValue<number>>;
 }) {
