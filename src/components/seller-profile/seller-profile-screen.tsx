@@ -296,17 +296,39 @@ function SellerProfileInner({
           <div style={{ height: "env(safe-area-inset-top)" }} />
           <div style={{ height: 48 }} />
           <motion.div
-            className="px-5 pt-4"
+            className="relative"
             style={{ opacity: heroOpacity, scale: heroScale, y: heroTranslate, transformOrigin: "50% 0%" }}
           >
-            <div className="flex flex-col items-center text-center">
+            {/* Banner backdrop */}
+            <div className="relative h-40 w-full overflow-hidden" style={{ background: banner ? undefined : "linear-gradient(140deg, #F6ECD9 0%, #EEDDBF 45%, #E4CCA6 100%)" }}>
+              {banner && (
+                <img
+                  src={banner}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  draggable={false}
+                />
+              )}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background: banner
+                    ? "linear-gradient(180deg, rgba(16,22,43,0.10) 0%, rgba(0,0,0,0) 40%, color-mix(in oklch, var(--background) 90%, transparent) 100%)"
+                    : "linear-gradient(180deg, transparent 60%, color-mix(in oklch, var(--background) 90%, transparent) 100%)",
+                }}
+              />
+            </div>
+
+            <div className="-mt-14 flex flex-col items-center px-5 text-center">
               <div
                 className="grid place-items-center rounded-full"
                 style={{
                   background: "#E8B93B",
                   padding: 3,
-                  height: 96,
-                  width: 96,
+                  height: 112,
+                  width: 112,
                   boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
                 }}
               >
@@ -339,9 +361,25 @@ function SellerProfileInner({
                 <p className="mt-1 max-w-xs text-[13px] leading-snug text-muted-foreground">{profile.bio}</p>
               )}
 
+              {/* Stats card — matches Ma boutique */}
+              <div
+                className="mt-4 grid w-full grid-cols-4 items-center rounded-2xl bg-card px-2 py-3"
+                style={{ boxShadow: "0 12px 30px rgba(20,15,5,0.08)", border: "1px solid rgba(200,162,75,0.18)" }}
+              >
+                <StatCol icon={<ShoppingBag size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.products", { defaultValue: "Produits" })} value={String(productsCount)} />
+                <StatCol icon={<UsersIcon size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.followers")} value={formatCompact(profile.followers_count)} />
+                <StatCol icon={<Video size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.lives", { defaultValue: "Lives" })} value={String(livesCount)} />
+                <div className="flex flex-col items-center gap-0.5 border-l border-border/50 pl-2">
+                  <span className="text-[10px] font-medium text-muted-foreground">{t("seller.stats.shop", { defaultValue: "Boutique" })}</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold" style={{ color: activeProductsCount > 0 ? "#12703B" : "#8A8578" }}>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: activeProductsCount > 0 ? "#1FA05A" : "#B4AC96" }} />
+                    {activeProductsCount > 0 ? t("seller.stats.online", { defaultValue: "EN LIGNE" }) : t("seller.stats.offline", { defaultValue: "HORS LIGNE" })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Secondary row: sales + rating */}
               <div className="mt-3 flex items-center gap-6">
-                <Stat label={t("seller.stats.followers")} value={formatCompact(profile.followers_count)} />
-                <Divider />
                 <Stat label={t("seller.stats.sales")} value={formatCompact(salesCount)} />
                 <Divider />
                 <Stat
@@ -365,6 +403,8 @@ function SellerProfileInner({
             </div>
           </motion.div>
         </div>
+
+
 
         <div
           ref={stripRef}
