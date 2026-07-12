@@ -29,6 +29,19 @@ export function SignUpScreen({
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [confirmAge, setConfirmAge] = useState(false);
   const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoValid, setPromoValid] = useState<null | boolean>(null);
+
+  useEffect(() => {
+    const c = promoCode.trim();
+    if (!c) { setPromoValid(null); return; }
+    let alive = true;
+    const id = setTimeout(async () => {
+      const ok = await validatePromoCode(c);
+      if (alive) setPromoValid(ok);
+    }, 350);
+    return () => { alive = false; clearTimeout(id); };
+  }, [promoCode]);
 
   const validate = () => {
     if (!displayName.trim() || displayName.trim().length < 2) {
