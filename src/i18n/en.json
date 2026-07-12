@@ -289,6 +289,8 @@
     "danglingReconnected": "Reconnected to live",
     "danglingEndAll": "End all",
     "danglingEnded": "Previous lives ended",
+    "homeOpenTitle": "Your live is still open",
+    "homeOpenBody": "“{{title}}” — resume before it closes (~{{minutes}} min).",
     "viewers_one": "viewer",
     "viewers_other": "viewers",
     "onAir": "LIVE",

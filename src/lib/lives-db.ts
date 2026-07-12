@@ -251,6 +251,20 @@ export async function expireAbandonedLivesInDb(
   return stale.length;
 }
 
+/** Warn hosts absent ~2 min via push (with remaining minutes before 5 min close). */
+export async function notifyAbsentHostLivesInDb(
+  warnAfterMinutes = 2,
+  maxAgeMinutes = 5,
+): Promise<number> {
+  const { data, error } = await supabase.rpc("notify_absent_host_lives", {
+    _warn_after_minutes: warnAfterMinutes,
+    _max_age_minutes: maxAgeMinutes,
+  } as never);
+  if (error) return 0;
+  const r = (data ?? {}) as { notified?: number };
+  return Number(r.notified ?? 0);
+}
+
 /** @deprecated prefer findOpenLives — kept for older call sites. */
 export async function findDanglingLives(
   sellerId: string,
@@ -328,8 +342,16 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
 
 export async function fetchActiveLives(limit = 60): Promise<LiveStream[]> {
   // Opportunistic cleanup: end lives whose host vanished for 5+ minutes
-  // so the feed doesn't show ghost rooms.
+  // so the feed doesn't show ghost rooms. Also warn absent hosts (~2 min).
   void (async () => {
+    try {
+      await supabase.rpc("notify_absent_host_lives", {
+        _warn_after_minutes: 2,
+        _max_age_minutes: 5,
+      } as never);
+    } catch {
+      /* ignore */
+    }
     try {
       await supabase.rpc("expire_abandoned_lives", {
         _seller_id: null,

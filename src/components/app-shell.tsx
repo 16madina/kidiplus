@@ -183,6 +183,19 @@ function AppShellInner() {
       const p = (e as CustomEvent<PushOpenPayload>).detail;
       if (!p) return;
       const kind = String(p.kind ?? "notif");
+      if (kind === "resume_host_live") {
+        setActive("live");
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("kidi:resume-host-live", {
+                detail: { live_id: p.live_id ?? null },
+              }),
+            );
+          } catch {}
+        }, 80);
+        return;
+      }
       if (kind === "live" || kind === "chat") {
         if (p.live_id) {
           const stream = await fetchLiveById(p.live_id).catch(() => null);

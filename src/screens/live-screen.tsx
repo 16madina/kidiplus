@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Store } from "lucide-react";
 import { toast } from "sonner";
@@ -12,9 +12,9 @@ import { GoLiveEntryScreen } from "@/screens/golive-entry-screen";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
-import { useState } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { GuestEmptyState } from "@/components/guest-empty-state";
+import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 
 
 
@@ -131,6 +131,7 @@ function BroadcastFlow() {
   }>>([]);
   const [endingAll, setEndingAll] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+  const reconnectRef = useRef<(preferredId?: string) => Promise<void>>(async () => {});
 
   useEffect(() => {
     if (user && profile) {
@@ -138,34 +139,6 @@ function BroadcastFlow() {
       if (profile.currency) setCurrency(profile.currency);
     }
   }, [user, profile, setHost, setCurrency]);
-
-  useEffect(() => {
-    if (!user || stage !== "entry") return;
-    let alive = true;
-    void (async () => {
-      const {
-        expireAbandonedLivesInDb,
-        findOpenLives,
-      } = await import("@/lib/lives-db");
-      // Auto-close lives whose host vanished for ~5 minutes.
-      await expireAbandonedLivesInDb(user.id, 5).catch(() => 0);
-      if (!alive) return;
-      const rows = await findOpenLives(user.id);
-      if (alive) {
-        setOpenLives(
-          rows.map((r) => ({
-            id: r.id,
-            title: r.title,
-            room_name: r.room_name,
-            cover_url: r.cover_url,
-            category: r.category,
-            currency: r.currency,
-          })),
-        );
-      }
-    })();
-    return () => { alive = false; };
-  }, [user, stage]);
 
   const endAllOpen = async () => {
     setEndingAll(true);
@@ -176,13 +149,27 @@ function BroadcastFlow() {
     toast.success(t("live.danglingEnded", "Lives précédents terminés"));
   };
 
-  const reconnectToLive = async () => {
-    const target = openLives[0];
+  const reconnectToLive = async (preferredId?: string) => {
+    let list = openLives;
+    if (preferredId && list.every((l) => l.id !== preferredId) && user) {
+      const { findOpenLives } = await import("@/lib/lives-db");
+      const rows = await findOpenLives(user.id);
+      list = rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        room_name: r.room_name,
+        cover_url: r.cover_url,
+        category: r.category,
+        currency: r.currency,
+      }));
+      setOpenLives(list);
+    }
+    const target =
+      (preferredId ? list.find((l) => l.id === preferredId) : null) ?? list[0];
     if (!target) return;
     setReconnecting(true);
     try {
-      // If several ghosts exist, keep the newest and end the rest.
-      const extras = openLives.slice(1);
+      const extras = list.filter((l) => l.id !== target.id);
       if (extras.length > 0) {
         const { endLiveInDb } = await import("@/lib/lives-db");
         await Promise.all(extras.map((d) => endLiveInDb(d.id).catch(() => {})));
@@ -217,6 +204,47 @@ function BroadcastFlow() {
       setReconnecting(false);
     }
   };
+  reconnectRef.current = reconnectToLive;
+
+  useEffect(() => {
+    if (!user || stage !== "entry") return;
+    let alive = true;
+    void (async () => {
+      const {
+        expireAbandonedLivesInDb,
+        findOpenLives,
+        notifyAbsentHostLivesInDb,
+      } = await import("@/lib/lives-db");
+      await notifyAbsentHostLivesInDb(2, 5).catch(() => 0);
+      await expireAbandonedLivesInDb(user.id, 5).catch(() => 0);
+      if (!alive) return;
+      const rows = await findOpenLives(user.id);
+      if (alive) {
+        setOpenLives(
+          rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            room_name: r.room_name,
+            cover_url: r.cover_url,
+            category: r.category,
+            currency: r.currency,
+          })),
+        );
+      }
+    })();
+    return () => { alive = false; };
+  }, [user, stage]);
+
+  // Home banner / push deep-link → resume this host live.
+  useEffect(() => {
+    const onResume = (e: Event) => {
+      const liveId = (e as CustomEvent<{ live_id?: string | null }>).detail?.live_id;
+      if (stage === "live") return;
+      void reconnectRef.current(liveId ?? undefined);
+    };
+    window.addEventListener(RESUME_HOST_LIVE_EVENT, onResume as EventListener);
+    return () => window.removeEventListener(RESUME_HOST_LIVE_EVENT, onResume as EventListener);
+  }, [stage]);
 
   const closeToHome = () => {
     reset();

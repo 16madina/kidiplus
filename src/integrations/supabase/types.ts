@@ -623,6 +623,7 @@ export type Database = {
           currency: string
           ended_at: string | null
           host_last_seen_at: string | null
+          abandon_push_sent_at: string | null
           id: string
           room_name: string
           scheduled_at: string | null
@@ -638,6 +639,7 @@ export type Database = {
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
+          abandon_push_sent_at?: string | null
           id?: string
           room_name: string
           scheduled_at?: string | null
@@ -653,6 +655,7 @@ export type Database = {
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
+          abandon_push_sent_at?: string | null
           id?: string
           room_name?: string
           scheduled_at?: string | null
@@ -1678,6 +1681,10 @@ export type Database = {
       }
       expire_abandoned_lives: {
         Args: { _max_age_minutes?: number; _seller_id?: string }
+        Returns: Json
+      }
+      notify_absent_host_lives: {
+        Args: { _max_age_minutes?: number; _warn_after_minutes?: number }
         Returns: Json
       }
       expire_overdue_orders: { Args: never; Returns: Json }
