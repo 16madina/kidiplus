@@ -35,7 +35,7 @@ export function GuestProfileScreen() {
       <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-6 text-center">
         {/* Brand */}
         <div className="mb-5">
-          <Logo size={40} />
+          <Logo size={120} />
         </div>
 
         {/* Headline */}
