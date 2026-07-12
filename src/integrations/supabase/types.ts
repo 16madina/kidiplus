@@ -622,6 +622,7 @@ export type Database = {
           cover_url: string | null
           currency: string
           ended_at: string | null
+          host_last_seen_at: string | null
           id: string
           room_name: string
           scheduled_at: string | null
@@ -636,6 +637,7 @@ export type Database = {
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
+          host_last_seen_at?: string | null
           id?: string
           room_name: string
           scheduled_at?: string | null
@@ -650,6 +652,7 @@ export type Database = {
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
+          host_last_seen_at?: string | null
           id?: string
           room_name?: string
           scheduled_at?: string | null
@@ -1673,6 +1676,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_abandoned_lives: {
+        Args: { _max_age_minutes?: number; _seller_id?: string }
+        Returns: Json
+      }
       expire_overdue_orders: { Args: never; Returns: Json }
       finalize_auction_winner: {
         Args: {
@@ -1798,6 +1805,7 @@ export type Database = {
         Returns: Json
       }
       sync_my_wallet_currency: { Args: never; Returns: Json }
+      touch_live_host: { Args: { _live_id: string }; Returns: Json }
       unblock_user: { Args: { _blocked_id: string }; Returns: Json }
       verification_eligibility: { Args: { _user: string }; Returns: Json }
     }
