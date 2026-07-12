@@ -146,9 +146,6 @@ export function SignUpScreen({
         <p className="mb-3 text-[14px] text-muted-foreground">
           {t("auth.signUp.subtitle")}
         </p>
-
-        <SocialLoginButtons mode="signup" />
-        <OrDivider />
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-3">
