@@ -1,8 +1,13 @@
-// Admin: manage influencer promo codes (assigned or unassigned).
+// Admin: manage influencer promo codes.
+// Default flow = create an UNASSIGNED code and hand the activation token to the
+// influencer. Direct assignment is available behind an "advanced" toggle.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2, Plus, RefreshCw, Search, Power, Users, Package, Eye, EyeOff, Copy, UserPlus, KeyRound } from "lucide-react";
+import {
+  Loader2, Plus, RefreshCw, Search, Power, Users, Package, Eye, EyeOff,
+  Copy, UserPlus, KeyRound, MessageCircle, CheckCircle2, Clock, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
@@ -10,6 +15,7 @@ import { haptic } from "@/lib/haptics";
 import {
   fetchAdminPromoCodes, adminCreatePromoCode, adminSetPromoActive,
   adminRenewPromoCredits, adminSearchUsersByHandle, adminAssignPromoCode,
+  buildInfluencerOnboardingMessage,
   type AdminPromoCodeRow, type UserSearchRow,
 } from "@/lib/referrals-db";
 
@@ -58,15 +64,20 @@ export function AdminReferralPanel() {
         />
       )}
       {createdToken && (
-        <TokenRevealSheet
+        <OnboardingSheet
           code={createdToken.code}
           token={createdToken.token}
+          lang={lang}
           onClose={() => setCreatedToken(null)}
         />
       )}
     </div>
   );
 }
+
+// ============================================================================
+// Row
+// ============================================================================
 
 function CodeRow({
   row, lang, onChange,
@@ -75,6 +86,7 @@ function CodeRow({
   const [busy, setBusy] = useState<null | "toggle" | "renew" | "assign">(null);
   const [showToken, setShowToken] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const claimed = row.owner_id != null;
 
   const toggle = async () => {
@@ -112,13 +124,21 @@ function CodeRow({
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${row.active ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
               {row.active ? t("common.active", "Actif") : t("common.inactive", "Inactif")}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${claimed ? "bg-blue-500/15 text-blue-700 dark:text-blue-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
-              {claimed ? t("referral.admin.claimed", "Réclamé") : t("referral.admin.unclaimed", "Non réclamé")}
-            </span>
+            {claimed ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-700 dark:text-green-400">
+                <CheckCircle2 size={11} />
+                {t("referral.admin.statusClaimed", "Réclamé par @{{h}}", { h: row.owner_handle ?? "—" })}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                <Clock size={11} />
+                {t("referral.admin.statusPending", "En attente de réclamation")}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {claimed
-              ? `@${row.owner_handle ?? "—"} · ${row.owner_name ?? ""}`
+              ? (row.owner_name ?? "")
               : t("referral.admin.awaiting", "En attente de réclamation par l'influenceur")}
           </div>
         </div>
@@ -127,7 +147,7 @@ function CodeRow({
         </div>
       </div>
 
-      {/* Claim token row */}
+      {/* Activation token — only meaningful when unclaimed, but kept visible after claim for audit */}
       {row.claim_token && (
         <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
           <KeyRound size={12} className="text-muted-foreground shrink-0" />
@@ -146,6 +166,17 @@ function CodeRow({
             <Copy size={14} />
           </button>
         </div>
+      )}
+
+      {/* Onboarding message CTA — only for unclaimed codes */}
+      {!claimed && row.claim_token && (
+        <Press
+          onClick={() => { haptic.light(); setShowOnboarding(true); }}
+          className="!min-h-9 mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-500/50 bg-amber-500/5 py-2 text-[12px] font-semibold text-amber-700 dark:text-amber-400"
+        >
+          <MessageCircle size={12} />
+          {t("referral.admin.sendOnboarding", "Envoyer les infos à l'influenceur")}
+        </Press>
       )}
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
@@ -190,35 +221,100 @@ function CodeRow({
           submit={async (uid) => { await adminAssignPromoCode(row.id, uid); }}
         />
       )}
+
+      {showOnboarding && row.claim_token && (
+        <OnboardingSheet
+          code={row.code}
+          token={row.claim_token}
+          lang={lang}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
     </div>
   );
 }
 
-function TokenRevealSheet({ code, token, onClose }: { code: string; token: string; onClose: () => void }) {
+// ============================================================================
+// Onboarding sheet — shown after creation and re-openable from unclaimed rows.
+// Displays BOTH values (public code + activation token) with per-value copy
+// plus a one-tap "Copy the message" that copies a WhatsApp-ready blurb.
+// ============================================================================
+
+function OnboardingSheet({
+  code, token, lang, onClose,
+}: { code: string; token: string; lang: "fr" | "en"; onClose: () => void }) {
   const { t } = useTranslation();
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(token); haptic.success(); toast.success(t("common.copied", "Copié")); }
+
+  const copy = async (text: string, label: string) => {
+    try { await navigator.clipboard.writeText(text); haptic.success(); toast.success(label); }
     catch { toast.error("Copy failed"); }
   };
+
+  const copyMsg = () => copy(
+    buildInfluencerOnboardingMessage(code, token, lang),
+    t("referral.admin.msgCopied", "Message copié — colle-le dans WhatsApp"),
+  );
+
   return (
     <div className="fixed inset-0 z-[85] flex items-end bg-black/60" onClick={onClose}>
-      <div className="w-full rounded-t-3xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-muted" />
-        <h3 className="text-[16px] font-bold">{t("referral.admin.tokenTitle", "Code d'activation — {{code}}", { code })}</h3>
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          {t("referral.admin.tokenWarning", "⚠️ Copie-le maintenant et transmets-le à l'influenceur. Il pourra le voir de nouveau ici, mais évite de le partager publiquement.")}
+        <h3 className="text-[17px] font-bold">
+          {t("referral.admin.onboardingTitle", "Code créé ✅")}
+        </h3>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {t("referral.admin.onboardingIntro", "Envoie ces informations à ton influenceur :")}
         </p>
-        <div className="my-4 rounded-2xl border border-border bg-muted/40 px-4 py-4 text-center font-mono text-[22px] font-black tracking-[0.3em]">
-          {token}
+
+        {/* Public code */}
+        <div className="mt-4 rounded-2xl border border-border p-4">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {t("referral.admin.publicLabel", "Code public à partager")}
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <span className="font-mono text-[24px] font-black tracking-wide">{code}</span>
+            <Press onClick={() => copy(code, t("common.copied", "Copié"))}
+              className="!min-h-9 inline-flex items-center gap-1 rounded-xl bg-muted px-3 py-2 text-[12px] font-semibold">
+              <Copy size={12} /> {t("common.copy", "Copier")}
+            </Press>
+          </div>
         </div>
-        <Press onClick={copy}
-          className="!min-h-11 mt-1 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-foreground py-3 text-[14px] font-bold text-background">
-          <Copy size={14} /> {t("common.copy", "Copier")}
+
+        {/* Activation token */}
+        <div className="mt-3 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
+          <div className="text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            {t("referral.admin.secretLabel", "Code d'activation (secret)")}
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <span className="font-mono text-[22px] font-black tracking-[0.25em]">{token}</span>
+            <Press onClick={() => copy(token, t("common.copied", "Copié"))}
+              className="!min-h-9 inline-flex items-center gap-1 rounded-xl bg-amber-500/15 px-3 py-2 text-[12px] font-semibold text-amber-700 dark:text-amber-400">
+              <Copy size={12} /> {t("common.copy", "Copier")}
+            </Press>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {t("referral.admin.secretHint", "L'influenceur en aura besoin une fois pour activer son compte partenaire.")}
+          </p>
+        </div>
+
+        {/* One-tap WhatsApp-ready message */}
+        <Press onClick={copyMsg}
+          className="!min-h-11 mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-foreground py-3 text-[14px] font-bold text-background">
+          <MessageCircle size={14} /> {t("referral.admin.copyMessage", "Copier le message (WhatsApp)")}
+        </Press>
+
+        <Press onClick={onClose}
+          className="!min-h-10 mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-muted py-2 text-[13px] font-semibold">
+          {t("common.close", "Fermer")}
         </Press>
       </div>
     </div>
   );
 }
+
+// ============================================================================
+// Create sheet — DEFAULT is unassigned. Direct-assign is a collapsed advanced toggle.
+// ============================================================================
 
 function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (code: string, token: string) => void }) {
   const { t } = useTranslation();
@@ -228,6 +324,7 @@ function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [results, setResults] = useState<UserSearchRow[]>([]);
   const [owner, setOwner] = useState<UserSearchRow | null>(null);
   const [assignNow, setAssignNow] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -237,7 +334,7 @@ function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (
   }, [q, assignNow]);
 
   const submit = async () => {
-    if (!/^[A-Za-z0-9_-]{4,20}$/.test(code.trim())) { toast.error(t("referral.admin.badFormat", "Code: 4–20 caractères A-Z, 0-9, _ ou -")); return; }
+    if (!/^[A-Za-z0-9_-]{4,20}$/.test(code.trim())) { toast.error(t("referral.admin.badFormat", "Code : 4–20 caractères A-Z, 0-9, _ ou -")); return; }
     if (assignNow && !owner) { toast.error(t("referral.admin.pickOwner", "Choisis l'influenceur")); return; }
     setBusy(true);
     const res = await adminCreatePromoCode(code.trim().toUpperCase(), assignNow ? owner!.id : null, quota);
@@ -249,17 +346,20 @@ function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end bg-black/60" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-muted" />
         <h3 className="text-[16px] font-bold">{t("referral.admin.create", "Nouveau code")}</h3>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {t("referral.admin.createIntro", "Par défaut, le code est « à réclamer » : l'influenceur active son compte avec un code d'activation secret.")}
+        </p>
 
-        <label className="mt-3 block text-[12px] font-semibold text-muted-foreground">
-          {t("referral.admin.codeLabel", "Code (4–20 caractères)")}
+        <label className="mt-4 block text-[12px] font-semibold text-muted-foreground">
+          {t("referral.admin.codeLabel", "Code public (4–20 caractères)")}
         </label>
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="INFLU2026"
+          placeholder="AMINATA"
           className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[15px] font-bold tracking-wide"
         />
 
@@ -273,42 +373,70 @@ function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (
           className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[15px]"
         />
 
-        <div className="mt-4 rounded-2xl border border-border p-3">
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold">
-            <input type="checkbox" checked={assignNow} onChange={(e) => setAssignNow(e.target.checked)} />
-            {t("referral.admin.assignNow", "Assigner un influenceur maintenant")}
-          </label>
-          {!assignNow ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {t("referral.admin.assignLater", "Assigner plus tard — l'influenceur réclamera avec le code d'activation.")}
+        {/* Default mode banner */}
+        {!assignNow && (
+          <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="flex items-center gap-1.5 text-[12px] font-bold text-amber-700 dark:text-amber-400">
+              <KeyRound size={12} /> {t("referral.admin.claimModeTitle", "Mode « Code à réclamer » (recommandé)")}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t("referral.admin.claimModeHint", "Après création, tu recevras un code d'activation secret à transmettre à l'influenceur.")}
             </p>
-          ) : (
-            <>
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-border px-3">
-                <Search size={14} className="text-muted-foreground" />
-                <input
-                  value={q}
-                  onChange={(e) => { setQ(e.target.value); setOwner(null); }}
-                  placeholder="@handle"
-                  className="w-full bg-transparent py-2 text-[14px] outline-none"
-                />
-              </div>
-              {owner ? (
-                <div className="mt-2 rounded-xl bg-muted px-3 py-2 text-[12px]">
-                  {t("referral.admin.selected", "Sélectionné")}: <b>@{owner.handle}</b>
-                </div>
-              ) : results.length > 0 ? (
-                <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-border">
-                  {results.map((r) => (
-                    <button key={r.id} type="button" onClick={() => { setOwner(r); setQ(r.handle ?? ""); }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted">
-                      <span className="text-[13px] font-semibold">@{r.handle ?? "—"}</span>
-                      <span className="text-[11px] text-muted-foreground">{r.display_name}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </>
+          </div>
+        )}
+
+        {/* Advanced: direct-assign toggle */}
+        <div className="mt-3 rounded-2xl border border-border">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((o) => !o)}
+            className="flex w-full items-center justify-between px-3 py-2.5 text-left text-[12px] font-semibold"
+          >
+            <span className="text-muted-foreground">
+              {t("referral.admin.advanced", "Options avancées")}
+            </span>
+            {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {advancedOpen && (
+            <div className="border-t border-border p-3">
+              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold">
+                <input type="checkbox" checked={assignNow} onChange={(e) => setAssignNow(e.target.checked)} />
+                {t("referral.admin.assignDirect", "Assigner directement à un compte existant (avancé)")}
+              </label>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("referral.admin.assignDirectHint", "L'influenceur n'aura pas besoin du code d'activation. À utiliser uniquement si tu es sûre du compte destinataire.")}
+              </p>
+
+              {assignNow && (
+                <>
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-border px-3">
+                    <Search size={14} className="text-muted-foreground" />
+                    <input
+                      value={q}
+                      onChange={(e) => { setQ(e.target.value); setOwner(null); }}
+                      placeholder="@handle"
+                      className="w-full bg-transparent py-2 text-[14px] outline-none"
+                    />
+                  </div>
+                  {owner ? (
+                    <div className="mt-2 rounded-xl bg-muted px-3 py-2 text-[12px]">
+                      {t("referral.admin.selected", "Sélectionné")}: <b>@{owner.handle}</b>
+                    </div>
+                  ) : results.length > 0 ? (
+                    <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-border">
+                      {results.map((r) => (
+                        <button key={r.id} type="button" onClick={() => { setOwner(r); setQ(r.handle ?? ""); }}
+                          className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted">
+                          <span className="text-[13px] font-semibold">@{r.handle ?? "—"}</span>
+                          <span className="text-[11px] text-muted-foreground">{r.display_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -323,6 +451,10 @@ function CreateSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (
     </div>
   );
 }
+
+// ============================================================================
+// Assign sheet (from list row)
+// ============================================================================
 
 function AssignSheet({
   codeLabel, onClose, onDone, submit,
