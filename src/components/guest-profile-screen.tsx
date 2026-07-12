@@ -24,7 +24,7 @@ export function GuestProfileScreen() {
       className="relative flex h-full flex-col overflow-y-auto pt-safe"
       style={{
         WebkitOverflowScrolling: "touch",
-        paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))",
         backgroundImage: `linear-gradient(rgba(251,246,236,0.78), rgba(251,246,236,0.88)), url(${background})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
