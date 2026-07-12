@@ -43,6 +43,7 @@ export type PayoutRow = {
   processed_by: string | null;
   requested_at: string;
   processed_at: string | null;
+  source?: PayoutSource;
 };
 
 
