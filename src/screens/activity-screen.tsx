@@ -61,6 +61,8 @@ function ActivityScreenAuthed() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
   const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
+  const [reviewOrder, setReviewOrder] = useState<OrderRow | null>(null);
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   // Real DB-backed notifications.
   useEffect(() => {
