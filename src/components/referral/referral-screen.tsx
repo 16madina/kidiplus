@@ -158,17 +158,12 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
             )}
 
             <p className="mt-6 text-center text-[11px] text-muted-foreground">
-              {t("referral.balanceHint", "Tes gains de parrainage sont ajoutés à ta balance et retirables via « Retirer mes gains ».")}
-            </p>
-          </>
-        )}
-      </div>
-            <p className="mt-6 text-center text-[11px] text-muted-foreground">
               {t("referral.walletHint", "Tes gains de parrainage sont retirables ici, indépendamment de tes gains vendeur.")}
             </p>
           </>
         )}
       </div>
+
 
       <WithdrawSheet
         open={withdrawOpen}
