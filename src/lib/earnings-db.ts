@@ -96,17 +96,46 @@ export async function requestPayout(
   amount: number,
   method: PayoutMethod,
   destination: Record<string, string>,
+  source: PayoutSource = "seller",
 ): Promise<RequestPayoutResult> {
   const { data, error } = await sb.rpc("request_payout", {
     _amount: amount,
     _method: method,
     _destination: destination,
+    _source: source,
   });
   if (error) return { ok: false, error: error.message };
   const r = (data ?? {}) as any;
   if (r.ok) return { ok: true, payoutId: r.payout_id as string };
   return { ok: false, error: r.error as string, min: r.min, available: r.available };
 }
+
+// ---- Referral wallet ----
+
+export type ReferralBalance = {
+  owner_id: string;
+  available: number;
+  currency: string;
+  updated_at: string;
+};
+
+export async function fetchMyReferralBalance(userId: string): Promise<ReferralBalance | null> {
+  const { data } = await sb.from("referral_balances").select("*").eq("owner_id", userId).maybeSingle();
+  return (data ?? null) as ReferralBalance | null;
+}
+
+export function subscribeMyReferralBalance(userId: string, onChange: () => void): () => void {
+  const ch = sb
+    .channel(`referral_balance:${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "referral_balances", filter: `owner_id=eq.${userId}` },
+      () => onChange(),
+    )
+    .subscribe();
+  return () => sb.removeChannel(ch);
+}
+
 
 // ---- Admin ----
 
