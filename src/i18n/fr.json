@@ -72,7 +72,9 @@
     "commentPlaceholder": "Un commentaire (optionnel)…",
     "submit": "Envoyer",
     "thanks": "Merci pour ton avis !",
-    "empty": "Aucun avis pour le moment."
+    "empty": "Aucun avis pour le moment.",
+    "rateOrder": "Noter cette commande",
+    "left": "Avis laissé"
   },
   "sellerProfile": {
     "shopEmpty": "Boutique vide pour le moment.",
