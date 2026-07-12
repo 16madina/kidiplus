@@ -303,7 +303,7 @@ export function RealLiveViewerScreen() {
   // If the current user is the winner, open the payment sheet to pay for the item.
   const [confettiKey, setConfettiKey] = useState(0);
   const [winnerReveal, setWinnerReveal] = useState<{
-    key: number;
+    key: string;
     name: string | null;
     winnerId: string | null;
     avatar: string | null;
@@ -311,16 +311,18 @@ export function RealLiveViewerScreen() {
     variant: "winner" | "unsold";
     productName: string | null;
   } | null>(null);
-  const seenEndRef = useRef<string | null>(null);
+  const seenEndIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
-    // Include round/order/ts so a second win of the same product still reveals.
-    const key =
-      evt.orderId ??
-      `${evt.productId}:${evt.auctionRound ?? "?"}:${evt.ts ?? evt.finalPrice}:${evt.winnerId ?? "none"}`;
-    if (seenEndRef.current === key) return;
-    seenEndRef.current = key;
+    // Only dedupe by unique endId — same buyer may win the same item many times.
+    const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
+    if (seenEndIdsRef.current.has(endId)) return;
+    seenEndIdsRef.current.add(endId);
+    if (seenEndIdsRef.current.size > 200) {
+      const first = seenEndIdsRef.current.values().next().value;
+      if (first) seenEndIdsRef.current.delete(first);
+    }
     const prod = room.products.find((p) => p.id === evt.productId);
 
     if (!evt.winnerName || !evt.winnerId) {
@@ -330,7 +332,7 @@ export function RealLiveViewerScreen() {
         systemMessage(t("live.unsoldFlash", { name: prod?.name ?? "produit" })),
       ]);
       setWinnerReveal({
-        key: Date.now(),
+        key: endId,
         name: null,
         winnerId: null,
         avatar: null,
@@ -349,7 +351,7 @@ export function RealLiveViewerScreen() {
     ]);
     const isMe = !!user && evt.winnerId === user.id;
     setWinnerReveal({
-      key: Date.now(),
+      key: endId,
       name: evt.winnerName,
       winnerId: evt.winnerId,
       avatar: evt.winnerAvatarUrl ?? null,
@@ -367,7 +369,7 @@ export function RealLiveViewerScreen() {
       const url = data?.avatar_url ? await resolveAvatarUrl(data.avatar_url) : null;
       if (url) {
         setWinnerReveal((prev) =>
-          prev && prev.winnerId === evt.winnerId ? { ...prev, avatar: url } : prev,
+          prev && prev.key === endId ? { ...prev, avatar: url } : prev,
         );
       }
     })();
@@ -1016,6 +1018,7 @@ export function RealLiveViewerScreen() {
         isMe={!!winnerReveal?.isMe}
         variant={winnerReveal?.variant ?? "winner"}
         productName={winnerReveal?.productName ?? null}
+        revealKey={winnerReveal?.key ?? null}
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />

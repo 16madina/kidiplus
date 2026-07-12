@@ -64,9 +64,10 @@ export type AuctionEndEvt = {
   finalPrice: number;
   orderId?: string | null;
   autoPaid?: boolean;
-  /** Current live_products.auction_round — required to re-show reveal on re-wins. */
+  /** Current live_products.auction_round when the auction ended. */
   auctionRound?: number;
-  /** Client timestamp so duplicate product/winner/price rounds still dedupe uniquely. */
+  /** Unique id per end event — required so every win can show a reveal. */
+  endId?: string;
   ts?: number;
 };
 
@@ -349,8 +350,13 @@ export function useLiveRoom(params: {
     });
     ch.on("broadcast", { event: "auction:end" }, ({ payload }) => {
       const evt = payload as AuctionEndEvt;
-      setLastAuctionEnd(evt);
-      setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
+      const full: AuctionEndEvt = {
+        ...evt,
+        endId: evt.endId || uid(),
+        ts: evt.ts ?? Date.now(),
+      };
+      setLastAuctionEnd(full);
+      setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
     });
     ch.on("broadcast", { event: "auction:extend" }, ({ payload }) => {
       const evt = payload as AuctionExtendEvt;
@@ -457,9 +463,16 @@ export function useLiveRoom(params: {
         void channelRef.current?.send({ type: "broadcast", event: "auction:start", payload: evt });
       },
       broadcastAuctionEnd: (evt) => {
-        setLastAuctionEnd(evt);
-        setAuctionStart((cur) => (cur && cur.productId === evt.productId ? null : cur));
-        void channelRef.current?.send({ type: "broadcast", event: "auction:end", payload: evt });
+        // Always stamp a unique endId so host echo + every re-win can be
+        // distinguished (orderId / price / winner alone are NOT unique enough).
+        const full: AuctionEndEvt = {
+          ...evt,
+          endId: evt.endId || uid(),
+          ts: evt.ts ?? Date.now(),
+        };
+        setLastAuctionEnd(full);
+        setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
+        void channelRef.current?.send({ type: "broadcast", event: "auction:end", payload: full });
       },
       broadcastAuctionExtend: (evt) => {
         const full: AuctionExtendEvt = { ...evt, ts: Date.now() };
