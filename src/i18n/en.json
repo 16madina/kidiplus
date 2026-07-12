@@ -835,7 +835,8 @@
       "payments": "Payments",
       "lives": "Lives",
       "reports": "Reports",
-      "verify": "Verify"
+      "verify": "Verify",
+      "referral": "Referrals"
     },
     "toDo": {
       "title": "To handle",

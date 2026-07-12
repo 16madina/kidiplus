@@ -1040,6 +1040,54 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          owner_id: string
+          reward_quota: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id: string
+          reward_quota?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id?: string
+          reward_quota?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_codes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_debug_logs: {
         Row: {
           created_at: string
@@ -1069,6 +1117,113 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          order_id: string
+          owner_id: string
+          referred_user_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          order_id: string
+          owner_id: string
+          referred_user_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id?: string
+          owner_id?: string
+          referred_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          credits_remaining: number
+          id: string
+          owner_id: string
+          promo_code_id: string
+          referred_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits_remaining?: number
+          id?: string
+          owner_id: string
+          promo_code_id: string
+          referred_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits_remaining?: number
+          id?: string
+          owner_id?: string
+          promo_code_id?: string
+          referred_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -1554,6 +1709,22 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _ensure_seller_balance: {
+        Args: { _currency: string; _user_id: string }
+        Returns: {
+          available: number
+          currency: string
+          pending: number
+          seller_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "seller_balances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _gift_price: {
         Args: { _currency: string; _key: string }
         Returns: number
@@ -1583,6 +1754,10 @@ export type Database = {
         Returns: Json
       }
       account_deletion_check: { Args: never; Returns: Json }
+      admin_create_promo_code: {
+        Args: { _code: string; _owner_id: string; _reward_quota?: number }
+        Returns: Json
+      }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
       admin_issue_sanction: {
         Args: {
@@ -1606,6 +1781,7 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_promo_codes: { Args: never; Returns: Json }
       admin_list_reports: {
         Args: { _limit?: number; _status?: string }
         Returns: Json
@@ -1634,6 +1810,10 @@ export type Database = {
         Args: { _note?: string; _order_id: string }
         Returns: Json
       }
+      admin_renew_promo_credits: {
+        Args: { _amount?: number; _promo_code_id: string }
+        Returns: Json
+      }
       admin_resolve_report: {
         Args: { _note?: string; _report_id: string; _status: string }
         Returns: Json
@@ -1643,8 +1823,16 @@ export type Database = {
         Returns: Json
       }
       admin_revoke_sanction: { Args: { _sanction_id: string }; Returns: Json }
+      admin_search_users_by_handle: {
+        Args: { _limit?: number; _q: string }
+        Returns: Json
+      }
       admin_send_message: {
         Args: { _body: string; _title: string; _user_id: string }
+        Returns: Json
+      }
+      admin_set_promo_code_active: {
+        Args: { _active: boolean; _id: string }
         Returns: Json
       }
       admin_set_verified: {
@@ -1653,6 +1841,7 @@ export type Database = {
       }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       anonymize_my_account: { Args: never; Returns: Json }
+      apply_promo_code: { Args: { _code: string }; Returns: Json }
       assert_user_active: { Args: never; Returns: undefined }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
       confirm_order_delivered: { Args: { _order_id: string }; Returns: Json }
@@ -1660,6 +1849,7 @@ export type Database = {
         Args: { _amount: number; _from: string; _to: string }
         Returns: number
       }
+      credit_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
         Args: { _amount: number; _payment_intent_id: string; _user_id: string }
@@ -1738,6 +1928,8 @@ export type Database = {
         Returns: number
       }
       my_moderation_state: { Args: never; Returns: Json }
+      my_promo_codes: { Args: never; Returns: Json }
+      my_referral_earnings: { Args: { _limit?: number }; Returns: Json }
       notify_absent_host_lives: {
         Args: { _max_age_minutes?: number; _warn_after_minutes?: number }
         Returns: Json
@@ -1797,6 +1989,7 @@ export type Database = {
         Returns: Json
       }
       request_verification: { Args: { _message?: string }; Returns: Json }
+      reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
         Returns: Json
@@ -1814,6 +2007,7 @@ export type Database = {
       sync_my_wallet_currency: { Args: never; Returns: Json }
       touch_live_host: { Args: { _live_id: string }; Returns: Json }
       unblock_user: { Args: { _blocked_id: string }; Returns: Json }
+      validate_promo_code: { Args: { _code: string }; Returns: Json }
       verification_eligibility: { Args: { _user: string }; Returns: Json }
     }
     Enums: {

@@ -28,6 +28,7 @@ import {
   Fingerprint,
   ScanFace,
   Play,
+  HeartHandshake,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -59,6 +60,8 @@ import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
+import { ReferralScreen } from "@/components/referral/referral-screen";
+import { fetchMyPromoCodes } from "@/lib/referrals-db";
 
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,6 +124,16 @@ function ProfileScreenAuthed() {
   const [certOpen, setCertOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState<null | "privacy" | "terms" | "community">(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [referralOpen, setReferralOpen] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.id) { setIsInfluencer(false); return; }
+    let alive = true;
+    void fetchMyPromoCodes().then((rows) => { if (alive) setIsInfluencer(rows.length > 0); });
+    return () => { alive = false; };
+  }, [profile?.id]);
+
 
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -412,6 +425,26 @@ function ProfileScreenAuthed() {
           ]}
         />
 
+        {/* ============ PARRAINAGE (influencers only) ============ */}
+        {isInfluencer && (
+          <>
+            <SectionHeader label={t("referral.title", "Parrainage 🤝")} />
+            <MenuGroup
+              index={0}
+              items={[
+                {
+                  icon: <HeartHandshake size={16} />,
+                  label: t("referral.menu", "Mes codes & gains de parrainage"),
+                  tint: "oklch(0.65 0.18 40)",
+                  onClick: () => { haptic.light(); setReferralOpen(true); },
+                },
+              ]}
+            />
+          </>
+        )}
+
+
+
         {/* ============ GÉNÉRAL ============ */}
 
         <SectionHeader label={t("profile.sections.general")} />
@@ -510,6 +543,7 @@ function ProfileScreenAuthed() {
       <DeleteAccountScreen open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
       <CertificationSheet open={certOpen} onClose={() => setCertOpen(false)} />
+      <ReferralScreen open={referralOpen} onClose={() => setReferralOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
       <DiscoverScreen open={discoverOpen} onClose={() => setDiscoverOpen(false)} />
     </div>

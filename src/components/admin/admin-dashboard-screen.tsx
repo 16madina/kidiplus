@@ -10,8 +10,10 @@ import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
   Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
+  HeartHandshake,
 } from "lucide-react";
 import { AdminPushPanel } from "./admin-push-panel";
+import { AdminReferralPanel } from "./admin-referral-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
@@ -36,7 +38,7 @@ import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -59,6 +61,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
             {tab === "verify" && open && <VerificationsTab />}
+            {tab === "referral" && open && <AdminReferralPanel />}
           </div>
         </>
       )}
@@ -81,6 +84,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
+    { id: "referral", icon: <HeartHandshake size={14} />,  label: t("admin.tabs.referral", "Parrainage") },
   ];
   return (
     <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-border bg-background/90 px-2 py-2 backdrop-blur">

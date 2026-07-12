@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Loader2, Mail, Check, X as XIcon } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
@@ -8,6 +8,7 @@ import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { TERMS_VERSION } from "@/lib/legal-content";
+import { validatePromoCode, applyPromoCode } from "@/lib/referrals-db";
 
 export function SignUpScreen({
   onBack,
@@ -28,6 +29,19 @@ export function SignUpScreen({
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [confirmAge, setConfirmAge] = useState(false);
   const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoValid, setPromoValid] = useState<null | boolean>(null);
+
+  useEffect(() => {
+    const c = promoCode.trim();
+    if (!c) { setPromoValid(null); return; }
+    let alive = true;
+    const id = setTimeout(async () => {
+      const ok = await validatePromoCode(c);
+      if (alive) setPromoValid(ok);
+    }, 350);
+    return () => { alive = false; clearTimeout(id); };
+  }, [promoCode]);
 
   const validate = () => {
     if (!displayName.trim() || displayName.trim().length < 2) {
@@ -74,6 +88,10 @@ export function SignUpScreen({
           }).eq("id", user.id);
         } catch { /* ignore */ }
       })();
+      // Apply promo code if provided and valid (best-effort, non-blocking).
+      if (promoCode.trim() && promoValid) {
+        void applyPromoCode(promoCode).catch(() => { /* ignore */ });
+      }
       if (needsEmailConfirmation) {
         setNeedsConfirm(email.trim());
       }
@@ -166,6 +184,29 @@ export function SignUpScreen({
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+
+        <div className="relative">
+          <AuthInput
+            label={t("auth.signUp.promoCode", "Code promo (optionnel)")}
+            type="text"
+            autoCapitalize="characters"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+            placeholder="KIDIPLUS"
+            maxLength={20}
+          />
+          {promoCode.trim() && promoValid !== null && (
+            <span
+              className={`absolute right-3 top-[34px] grid h-10 w-10 place-items-center rounded-full ${
+                promoValid ? "text-green-600" : "text-red-500"
+              }`}
+            >
+              {promoValid ? <Check size={18} /> : <XIcon size={18} />}
+            </span>
+          )}
+        </div>
+
+
 
         <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
           <input
