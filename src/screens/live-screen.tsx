@@ -15,8 +15,8 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
+import { Logo } from "@/components/brand/logo";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
-import kidiLogo from "@/assets/kidi-logo-white.webp.asset.json";
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
