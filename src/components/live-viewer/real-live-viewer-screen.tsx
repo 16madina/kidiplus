@@ -38,6 +38,7 @@ import { Confetti } from "./confetti";
 import { WinnerReveal } from "./winner-reveal";
 import { SuddenDeathFlash } from "./sudden-death-flash";
 import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
+import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
@@ -102,7 +103,7 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
 
 export function RealLiveViewerScreen() {
   const { t, i18n } = useTranslation();
-  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev } = useLiveViewer();
+  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
   const { requireAuth, openAuth } = useAuthPrompt();
@@ -643,6 +644,17 @@ export function RealLiveViewerScreen() {
   const dragY = useMotionValue(0);
   const handleVideoStatus = useCallback((s: ViewerStatus) => setViewerVideoStatus(s), []);
 
+  // Prefetch neighbour posters so swipe commit never flashes black.
+  useEffect(() => {
+    prefetchLivePeek([peekNext, peekPrev]);
+  }, [peekNext, peekPrev]);
+
+  // Reset connection chrome when the playlist cursor moves.
+  useEffect(() => {
+    setViewerVideoStatus("connecting");
+    setHostDisconnectEnded(false);
+  }, [active?.id]);
+
   // Moderation
   const [reportOpen, setReportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -663,14 +675,18 @@ export function RealLiveViewerScreen() {
 
   return (
     <motion.div
-      key={active.id}
-      initial={{ y: "100%", opacity: 0.6 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: "100%", opacity: 0.4 }}
-      transition={{ duration: 0.3, ease: EASE_IOS }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18, ease: EASE_IOS }}
       className="fixed inset-y-0 left-1/2 z-[60] w-full max-w-xl -translate-x-1/2 overflow-hidden bg-black"
-      style={{ y: dragY }}
     >
+      {/* Current live — slides with the finger; remounts on active.id only. */}
+      <motion.div
+        key={active.id}
+        className="absolute inset-0"
+        style={{ y: dragY }}
+      >
       {active.roomName ? (
         <ViewerLiveVideo
           room={active.roomName}
@@ -683,86 +699,7 @@ export function RealLiveViewerScreen() {
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
-      {/* PAGER DRAG LAYER — TikTok-style vertical pan.
-          CRITICAL: touch-action MUST be "none" on iOS Safari/WebView, or the
-          browser handles the vertical pan itself and framer-motion never
-          receives pointermove for touch input. Sits above the video but
-          below every interactive control (which live at z-30+) so taps on
-          buttons / auction card / chat composer keep working. */}
-      <motion.div
-        className="absolute inset-0 z-[25]"
-        aria-hidden
-        style={{
-          touchAction: "none",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-        }}
-        drag="y"
-        dragElastic={{ top: hasNext ? 0.55 : 0.15, bottom: hasPrev ? 0.55 : 0.2 }}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragMomentum={false}
-        onDragStart={(_, info) => {
-          console.debug("[pager] dragStart", { hasNext, hasPrev, y: info.point.y });
-        }}
-        onDrag={(_, info) => dragY.set(info.offset.y)}
-        onTap={onVideoTap}
-        onDragEnd={(_, info) => {
-          const strong = Math.abs(info.offset.y) > 90 || Math.abs(info.velocity.y) > 500;
-          const up = info.offset.y < 0;
-          const h = typeof window !== "undefined" ? window.innerHeight : 800;
-          console.debug("[pager] dragEnd", { offsetY: info.offset.y, velY: info.velocity.y, strong, up, hasNext, hasPrev });
-          if (up && strong && hasNext) {
-            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
-            void animate(dragY, -h, { duration: 0.25, ease: EASE_IOS }).then(() => {
-              dragY.set(0);
-              nextLive();
-            });
-            return;
-          }
-          if (!up && strong && hasPrev) {
-            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
-            void animate(dragY, h, { duration: 0.25, ease: EASE_IOS }).then(() => {
-              dragY.set(0);
-              prevLive();
-            });
-            return;
-          }
-          if (!up && info.offset.y > 160) {
-            close();
-            return;
-          }
-          animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
-        }}
-      />
-
-      {/* Desktop-only chevron fallback. */}
-      <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
-        {hasNext && (
-          <Press
-            aria-label="Next live"
-            onClick={() => nextLive()}
-            className="pointer-events-auto h-10 w-10 rounded-full text-white"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
-          >
-            ↑
-          </Press>
-        )}
-        {hasPrev && (
-          <Press
-            aria-label="Previous live"
-            onClick={() => prevLive()}
-            className="pointer-events-auto h-10 w-10 rounded-full text-white"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
-          >
-            ↓
-          </Press>
-        )}
-      </div>
-
-      <SwipeHint hasNext={hasNext} />
-
-
-
+      {/* Overlays + chrome stay on the current slide so they slide with the finger. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
         style={{ backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))" }} />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
@@ -1095,6 +1032,83 @@ export function RealLiveViewerScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+      </motion.div>
+
+      {peekNext && (
+        <LivePeekSlide stream={peekNext} position="next" dragY={dragY} />
+      )}
+      {peekPrev && (
+        <LivePeekSlide stream={peekPrev} position="prev" dragY={dragY} />
+      )}
+
+      {/* PAGER DRAG LAYER — TikTok-style vertical pan.
+          touch-action MUST be "none" on iOS or the browser steals the gesture. */}
+      <motion.div
+        className="absolute inset-0 z-[25]"
+        aria-hidden
+        style={{
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
+        drag="y"
+        dragElastic={{ top: hasNext ? 0.55 : 0.15, bottom: hasPrev ? 0.55 : 0.2 }}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragMomentum={false}
+        onDrag={(_, info) => dragY.set(info.offset.y)}
+        onTap={onVideoTap}
+        onDragEnd={(_, info) => {
+          const strong = Math.abs(info.offset.y) > 90 || Math.abs(info.velocity.y) > 500;
+          const up = info.offset.y < 0;
+          const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          if (up && strong && hasNext) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
+            void animate(dragY, -h, { duration: 0.22, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              nextLive();
+            });
+            return;
+          }
+          if (!up && strong && hasPrev) {
+            try { localStorage.setItem("hint.liveSwipe.v1", "1"); } catch { /* ignore */ }
+            void animate(dragY, h, { duration: 0.22, ease: EASE_IOS }).then(() => {
+              dragY.set(0);
+              prevLive();
+            });
+            return;
+          }
+          if (!up && info.offset.y > 160) {
+            close();
+            return;
+          }
+          animate(dragY, 0, { duration: 0.22, ease: EASE_IOS });
+        }}
+      />
+
+      <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
+        {hasNext && (
+          <Press
+            aria-label="Next live"
+            onClick={() => nextLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↑
+          </Press>
+        )}
+        {hasPrev && (
+          <Press
+            aria-label="Previous live"
+            onClick={() => prevLive()}
+            className="pointer-events-auto h-10 w-10 rounded-full text-white"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)" }}
+          >
+            ↓
+          </Press>
+        )}
+      </div>
+
+      <SwipeHint hasNext={hasNext} />
     </motion.div>
   );
 }

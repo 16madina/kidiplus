@@ -44,7 +44,8 @@ const GOLD_SOFT = "oklch(0.82 0.14 85 / 0.35)";
 export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const { t } = useTranslation();
   const b = useBroadcast();
-  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const facing = b.cameraFacing;
+  const setFacing = b.setCameraFacing;
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
@@ -328,7 +329,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         <Press
           onClick={() => {
             haptic.selection();
-            setFacing((f) => (f === "user" ? "environment" : "user"));
+            setFacing(facing === "user" ? "environment" : "user");
+            // Remount preview only if the facing-driven effect fails to swap.
             setPreviewRetryKey((k) => k + 1);
           }}
           aria-label={t("broadcast.live.flipCam")}

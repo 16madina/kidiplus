@@ -197,7 +197,7 @@ export function ViewerLiveVideo({
           style={{
             // Poster matches the PeekSlide look so the swap on swipe-commit
             // is visually continuous — no blur/brightness jump.
-            opacity: showPoster ? 0.9 : 0,
+            opacity: showPoster ? 1 : 0,
             transition: "none",
           }}
           draggable={false}

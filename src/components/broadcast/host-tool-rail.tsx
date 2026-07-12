@@ -9,6 +9,7 @@ export type HostToolRailProps = {
   micOn?: boolean;
   camOn?: boolean;
   canFlip?: boolean;
+  flipBusy?: boolean;
   moderatorsOpen?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
@@ -32,6 +33,7 @@ export function HostToolRail({
   micOn = true,
   camOn = true,
   canFlip = true,
+  flipBusy = false,
   moderatorsOpen = false,
   onToggleMic,
   onToggleCam,
@@ -75,7 +77,7 @@ export function HostToolRail({
         </Press>
       )}
       {!hideAV && canFlip && onFlip && (
-        <FlipButton onFlip={onFlip} />
+        <FlipButton onFlip={onFlip} busy={flipBusy} />
       )}
       {onOpenModerators && (
         <Press
@@ -109,16 +111,21 @@ export function HostToolRail({
   );
 }
 
-function FlipButton({ onFlip }: { onFlip: () => void }) {
+function FlipButton({ onFlip, busy }: { onFlip: () => void; busy?: boolean }) {
   return (
-    <motion.div whileTap={{ rotate: 180 }} transition={{ duration: 0.4 }}>
+    <motion.div whileTap={busy ? undefined : { rotate: 180 }} transition={{ duration: 0.4 }}>
       <Press
-        onClick={() => { haptic.selection(); onFlip(); }}
+        onClick={() => {
+          if (busy) return;
+          haptic.selection();
+          onFlip();
+        }}
         aria-label="Retourner la caméra"
+        disabled={busy}
         className={`${btn} pointer-events-auto`}
-        style={btnStyle}
+        style={{ ...btnStyle, opacity: busy ? 0.55 : 1 }}
       >
-        <RefreshCw size={16} />
+        <RefreshCw size={16} className={busy ? "animate-spin" : undefined} />
       </Press>
     </motion.div>
   );
