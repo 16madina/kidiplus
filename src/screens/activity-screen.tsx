@@ -87,7 +87,11 @@ function ActivityScreenAuthed() {
       await expireOverdueOrders().catch(() => 0);
       await releaseOverdueEscrow().catch(() => null);
       const rows = await fetchMyOrders(user.id);
-      if (alive) setOrders(rows);
+      if (!alive) return;
+      setOrders(rows);
+      const deliveredIds = rows.filter((r) => r.fulfillment_status === "delivered").map((r) => r.id);
+      const set = await fetchMyReviewedOrderIds(deliveredIds).catch(() => new Set<string>());
+      if (alive) setReviewedIds(set);
     };
     void load();
     const unsub = subscribeOrders({ buyerId: user.id }, () => { void load(); });
