@@ -1040,6 +1040,7 @@
   },
   "report": {
     "action": "Report",
+    "confirm": "Report this live? Our team will review your report.",
     "title": "Report",
     "subtitle": "Pick a reason. Our team reviews every report.",
     "submit": "Send report",
