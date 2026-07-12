@@ -56,11 +56,13 @@ export function WithdrawSheet({
   onClose,
   available,
   currency,
+  source = "seller",
 }: {
   open: boolean;
   onClose: () => void;
   available: number;
   currency: string;
+  source?: PayoutSource;
 }) {
   const { t, i18n } = useTranslation();
   const min = payoutMinimumFor(currency);
