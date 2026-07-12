@@ -901,7 +901,9 @@
       "confirmPaidTitle": "Confirmer le paiement",
       "confirmRejectTitle": "Refuser la demande",
       "confirmPaidCta": "Confirmer le paiement",
-      "confirmRejectCta": "Confirmer le refus"
+      "confirmRejectCta": "Confirmer le refus",
+      "sourceSeller": "Ventes",
+      "sourceReferral": "Parrainage"
     },
     "lives": {
 
