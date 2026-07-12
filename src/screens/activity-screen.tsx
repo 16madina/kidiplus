@@ -602,6 +602,26 @@ function OrderCard({
             )}
           </div>
         )}
+        {isPaid && order.fulfillment_status === "delivered" && (
+          <div className="border-t border-border p-2">
+            {hasReview ? (
+              <div
+                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold"
+                style={{ backgroundColor: "oklch(0.96 0.03 155)", color: "oklch(0.4 0.12 155)" }}
+              >
+                <Check size={14} /> {t("reviews.left", { defaultValue: "Avis laissé" })}
+              </div>
+            ) : (
+              <Press
+                onClick={onReview}
+                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-bold text-white"
+                style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
+              >
+                ⭐ {t("reviews.rateOrder", { defaultValue: "Noter cette commande" })}
+              </Press>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
