@@ -29,6 +29,7 @@ import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sh
 import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/lives-db";
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 
 type SellerProfile = {
   id: string;
