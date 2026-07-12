@@ -29,6 +29,8 @@ import {
 } from "@/lib/shop-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { FollowButton } from "@/components/follow-button";
+import { VerifiedBadge } from "@/components/verified-badge";
+import { ReferredBadge } from "@/components/referred-badge";
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
