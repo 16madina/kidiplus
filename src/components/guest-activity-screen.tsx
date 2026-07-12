@@ -23,7 +23,7 @@ export function GuestActivityScreen() {
       className="relative flex h-full flex-col overflow-y-auto pt-safe"
       style={{
         WebkitOverflowScrolling: "touch",
-        paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))",
         backgroundImage: `linear-gradient(rgba(251,246,236,0.78), rgba(251,246,236,0.88)), url(${background})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -33,8 +33,8 @@ export function GuestActivityScreen() {
     >
       <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-6 text-center">
         {/* Brand */}
-        <div className="mb-5">
-          <Logo size={120} />
+        <div className="mb-3">
+          <Logo size={160} />
         </div>
 
         {/* Headline */}

@@ -24,7 +24,7 @@ export function GuestProfileScreen() {
       className="relative flex h-full flex-col overflow-y-auto pt-safe"
       style={{
         WebkitOverflowScrolling: "touch",
-        paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
+        paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))",
         backgroundImage: `linear-gradient(rgba(251,246,236,0.78), rgba(251,246,236,0.88)), url(${background})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -34,8 +34,8 @@ export function GuestProfileScreen() {
     >
       <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-6 text-center">
         {/* Brand */}
-        <div className="mb-5">
-          <Logo size={120} />
+        <div className="mb-3">
+          <Logo size={160} />
         </div>
 
         {/* Headline */}
@@ -46,17 +46,17 @@ export function GuestProfileScreen() {
             {t("guestProfile.title2", { defaultValue: "débloquer ton profil" })}
           </span>
         </h1>
-        <p className="mt-2.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
+        <p className="mt-1.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
           {t("guestProfile.subtitle", {
             defaultValue: "Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap.",
           })}
         </p>
 
         {/* CTAs — pinned near the top */}
-        <div className="mt-6 flex w-full flex-col gap-3">
+        <div className="mt-4 flex w-full flex-col gap-2">
           <Press
             onClick={go}
-            className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full text-[16px] font-bold text-white"
+            className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[16px] font-bold text-white"
             style={{ background: GOLD, boxShadow: "0 10px 24px -8px rgba(232,185,59,0.55)" }}
           >
             <UserPlus size={18} />
@@ -64,7 +64,7 @@ export function GuestProfileScreen() {
           </Press>
           <Press
             onClick={go}
-            className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[16px] font-bold text-[#10162B] backdrop-blur"
+            className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[16px] font-bold text-[#10162B] backdrop-blur"
           >
             <LogIn size={18} />
             {t("auth.prompt.signIn", { defaultValue: "Se connecter" })}
@@ -79,24 +79,24 @@ export function GuestProfileScreen() {
           height={1024}
           loading="lazy"
           draggable={false}
-          className="mt-3 -mb-2 h-auto w-[200px] select-none"
+          className="mt-0 -mb-4 h-auto w-[120px] select-none"
         />
 
         {/* Feature grid */}
-        <div className="mt-1 grid w-full grid-cols-4 gap-2">
-          <Feature icon={<Wallet size={20} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
-          <Feature icon={<Package size={20} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
-          <Feature icon={<MapPin size={20} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
-          <Feature icon={<Settings size={20} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
+        <div className="mt-0 grid w-full grid-cols-4 gap-1">
+          <Feature icon={<Wallet size={18} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
+          <Feature icon={<Package size={18} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
+          <Feature icon={<MapPin size={18} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
+          <Feature icon={<Settings size={18} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
         </div>
 
         {/* Trust footer */}
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
+        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-2 text-left backdrop-blur">
           <div
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
             style={{ background: "rgba(232,185,59,0.2)", color: GOLD }}
           >
-            <ShieldCheck size={20} />
+            <ShieldCheck size={18} />
           </div>
           <div>
             <p className="text-[13px] font-bold text-[#10162B]">
@@ -114,9 +114,9 @@ export function GuestProfileScreen() {
 
 function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1">
       <div
-        className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
+        className="grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
         style={{ boxShadow: "0 2px 8px rgba(16,22,43,0.06)" }}
       >
         {icon}
