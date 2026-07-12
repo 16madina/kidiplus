@@ -1,7 +1,6 @@
 package com.kidiplus.app;
 
 import android.app.PictureInPictureParams;
-import android.content.res.Configuration;
 import android.os.Build;
 import android.util.Rational;
 import com.getcapacitor.JSObject;
@@ -84,11 +83,15 @@ public class PipPlugin extends Plugin {
         return null;
     }
 
-    /** Used by MainActivity to build PiP params consistently. */
+    /** Used by MainActivity / tests — prefer MainActivity.buildParams. */
     public static PictureInPictureParams buildParams() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null;
-        return new PictureInPictureParams.Builder()
-            .setAspectRatio(new Rational(9, 16))
-            .build();
+        PictureInPictureParams.Builder b = new PictureInPictureParams.Builder()
+            .setAspectRatio(new Rational(9, 16));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            b.setAutoEnterEnabled(true);
+            b.setSeamlessResizeEnabled(true);
+        }
+        return b.build();
     }
 }
