@@ -10,8 +10,10 @@ import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
   Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
+  HeartHandshake,
 } from "lucide-react";
 import { AdminPushPanel } from "./admin-push-panel";
+import { AdminReferralPanel } from "./admin-referral-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
