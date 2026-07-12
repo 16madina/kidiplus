@@ -27,6 +27,14 @@ export function ReportSheet({
   const [note, setNote] = useState(defaultNote ?? "");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setReason(defaultReason ?? null);
+      setNote(defaultNote ?? "");
+      setBusy(false);
+    }
+  }, [open, defaultReason, defaultNote]);
+
   const submit = async () => {
     if (!reason) return;
     setBusy(true);
@@ -35,7 +43,8 @@ export function ReportSheet({
     if (r.ok) {
       haptic.success();
       toast.success(t("report.sent"));
-      setReason(null); setNote("");
+      setReason(defaultReason ?? null);
+      setNote(defaultNote ?? "");
       onClose();
     } else {
       haptic.warning();
