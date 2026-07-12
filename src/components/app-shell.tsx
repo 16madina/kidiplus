@@ -147,7 +147,15 @@ function AuthGate() {
 
 function AppShellInner() {
   const [active, setActive] = useState<TabKey>("home");
-  const { active: liveStream, close: closeLive, open: openLive } = useLiveViewer();
+  const {
+    active: liveStream,
+    close: closeLive,
+    open: openLive,
+    presentation,
+    minimize: minimizeLive,
+  } = useLiveViewer();
+  const liveFullScreen = !!liveStream && presentation === "full";
+  const liveMinimized = !!liveStream && presentation === "minimized";
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
   const keyboardOpen = useKeyboardOpen();
@@ -233,7 +241,7 @@ function AppShellInner() {
   }, [openLive, openSeller]);
 
 
-  // Android hardware back button: close sheets/live viewer first, then minimize.
+  // Android hardware back: full live → mini player; mini → close; else tabs/minimize app.
   useEffect(() => {
     let native = false;
     try {
@@ -242,7 +250,11 @@ function AppShellInner() {
     if (!native) return;
     let handle: { remove: () => void } | null = null;
     App.addListener("backButton", () => {
-      if (liveStream) {
+      if (liveFullScreen) {
+        minimizeLive();
+        return;
+      }
+      if (liveMinimized) {
         closeLive();
         return;
       }
@@ -259,7 +271,7 @@ function AppShellInner() {
       handle = h;
     });
     return () => handle?.remove();
-  }, [liveStream, activeSeller, active, closeLive, closeSeller]);
+  }, [liveFullScreen, liveMinimized, activeSeller, active, closeLive, closeSeller, minimizeLive]);
 
   return (
     <div
@@ -282,7 +294,7 @@ function AppShellInner() {
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
 
-      {!immersive && !liveStream && !keyboardOpen && (
+      {!immersive && !liveFullScreen && !keyboardOpen && (
         <BottomTabBar active={active} onChange={setActive} />
       )}
 

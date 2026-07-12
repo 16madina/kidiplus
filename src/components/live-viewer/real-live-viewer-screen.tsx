@@ -39,6 +39,7 @@ import { WinnerReveal } from "./winner-reveal";
 import { SuddenDeathFlash } from "./sudden-death-flash";
 import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
+import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
@@ -103,7 +104,19 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
 
 export function RealLiveViewerScreen() {
   const { t, i18n } = useTranslation();
-  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
+  const {
+    active,
+    close,
+    minimize,
+    expand,
+    next: nextLive,
+    prev: prevLive,
+    hasNext,
+    hasPrev,
+    peekNext,
+    peekPrev,
+  } = useLiveViewer();
+  const { minimized } = useLivePip();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
   const { requireAuth, openAuth } = useAuthPrompt();
@@ -114,10 +127,11 @@ export function RealLiveViewerScreen() {
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
   useEffect(() => {
+    if (minimized) return;
     let restore: (() => void) | null = null;
     void pushStatusBarLight().then((fn) => { restore = fn; });
     return () => { restore?.(); };
-  }, []);
+  }, [minimized]);
 
   // For guests, use a `guest_xxxxxxxx` identity that the LiveKit token
   // endpoint's anonymous branch accepts as-is (view-only token). Signed-in
@@ -223,6 +237,11 @@ export function RealLiveViewerScreen() {
     const t = setTimeout(() => close(), 10_000);
     return () => clearTimeout(t);
   }, [liveEnded, close]);
+
+  // If the live ends while pip'd, expand so the ended overlay is readable.
+  useEffect(() => {
+    if (liveEnded && minimized) expand();
+  }, [liveEnded, minimized, expand]);
 
   // Featured product: server auction pick, else the next 'upcoming' product
   // by position. Never loops back to earlier items — matches host behavior.
@@ -659,6 +678,19 @@ export function RealLiveViewerScreen() {
   const [reportOpen, setReportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const blockedIds = useBlockedIds();
+
+  // Drop open sheets when shrinking to mini — they would block the tabs.
+  useEffect(() => {
+    if (!minimized) return;
+    setShowProducts(false);
+    setMoreOpen(false);
+    setGiftTrayOpen(false);
+    setTopupOpen(false);
+    setReportOpen(false);
+    setCustomOpen(false);
+    setPendingOrder(null);
+  }, [minimized]);
+
   const doBlockSeller = async () => {
     if (!active?.sellerId) return;
     const r = await blockUser(active.sellerId);
@@ -678,18 +710,12 @@ export function RealLiveViewerScreen() {
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18, ease: EASE_IOS }}
-      className="fixed inset-y-0 left-1/2 z-[60] w-full max-w-xl -translate-x-1/2 overflow-hidden bg-black"
-    >
+    <LivePipShell>
       {/* Current live — slides with the finger; remounts on active.id only. */}
       <motion.div
         key={active.id}
         className="absolute inset-0"
-        style={{ y: dragY }}
+        style={{ y: minimized ? 0 : dragY }}
       >
       {active.roomName ? (
         <ViewerLiveVideo
@@ -703,6 +729,8 @@ export function RealLiveViewerScreen() {
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
+      {!minimized && (
+      <>
       {/* Overlays + chrome stay on the current slide so they slide with the finger. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
         style={{ backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))" }} />
@@ -767,7 +795,9 @@ export function RealLiveViewerScreen() {
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <MoreVertical size={16} />
             </Press>
-            <Press aria-label={t("live.leave")} onClick={close}
+            <Press
+              aria-label={t("live.minimize", "Réduire")}
+              onClick={() => { haptic.light(); minimize(); }}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <X size={18} />
@@ -1042,17 +1072,20 @@ export function RealLiveViewerScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+      </>
+      )}
       </motion.div>
 
-      {peekNext && (
+      {!minimized && peekNext && (
         <LivePeekSlide stream={peekNext} position="next" dragY={dragY} />
       )}
-      {peekPrev && (
+      {!minimized && peekPrev && (
         <LivePeekSlide stream={peekPrev} position="prev" dragY={dragY} />
       )}
 
       {/* PAGER DRAG LAYER — TikTok-style vertical pan.
           touch-action MUST be "none" on iOS or the browser steals the gesture. */}
+      {!minimized && (
       <motion.div
         className="absolute inset-0 z-[25]"
         aria-hidden
@@ -1087,14 +1120,19 @@ export function RealLiveViewerScreen() {
             });
             return;
           }
+          // Swipe down → shrink to floating mini player (keep audio/video alive).
           if (!up && info.offset.y > 160) {
-            close();
+            dragY.set(0);
+            haptic.light();
+            minimize();
             return;
           }
           animate(dragY, 0, { duration: 0.22, ease: EASE_IOS });
         }}
       />
-
+      )}
+      {!minimized && (
+      <>
       <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
         {hasNext && (
           <Press
@@ -1119,7 +1157,9 @@ export function RealLiveViewerScreen() {
       </div>
 
       <SwipeHint hasNext={hasNext} />
-    </motion.div>
+      </>
+      )}
+    </LivePipShell>
   );
 }
 

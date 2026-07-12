@@ -3,6 +3,9 @@ import type { LiveStream } from "@/lib/live-mock";
 import { fetchActiveLives } from "@/lib/lives-db";
 import { logLiveInteraction } from "@/lib/interactions-db";
 
+/** Full-screen live vs in-app floating mini player (keeps session alive). */
+export type LiveViewerPresentation = "full" | "minimized";
+
 type Ctx = {
   active: LiveStream | null;
   playlist: LiveStream[];
@@ -10,9 +13,13 @@ type Ctx = {
   hasPrev: boolean;
   peekNext: LiveStream | null;
   peekPrev: LiveStream | null;
+  /** full = immersive overlay; minimized = floating mini player over tabs */
+  presentation: LiveViewerPresentation;
   open: (s: LiveStream) => void;
   openList: (list: LiveStream[], index: number) => void;
   close: () => void;
+  minimize: () => void;
+  expand: () => void;
   next: () => void;
   prev: () => void;
 };
@@ -22,6 +29,7 @@ const LiveViewerContext = createContext<Ctx | null>(null);
 export function LiveViewerProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<LiveStream | null>(null);
   const [playlist, setPlaylist] = useState<LiveStream[]>([]);
+  const [presentation, setPresentation] = useState<LiveViewerPresentation>("full");
   const cursorRef = useRef<number>(-1);
 
   const setPlaylistFromList = useCallback((list: LiveStream[], target: LiveStream) => {
@@ -48,6 +56,7 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback((s: LiveStream) => {
     setActive(s);
+    setPresentation("full");
     void logLiveInteraction(s, "click");
     // Seed a single-item playlist so downstream code has a stable cursor;
     // then top up with the ambient list of currently-live streams so the
@@ -67,6 +76,7 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
     const target = list[index] ?? null;
     if (!target) return;
     setActive(target);
+    setPresentation("full");
     void logLiveInteraction(target, "click");
     setPlaylistFromList(list, target);
     // Refresh with fresh DB data so the swipe list stays accurate even if
@@ -77,7 +87,16 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     setActive(null);
     setPlaylist([]);
+    setPresentation("full");
     cursorRef.current = -1;
+  }, []);
+
+  const minimize = useCallback(() => {
+    setPresentation("minimized");
+  }, []);
+
+  const expand = useCallback(() => {
+    setPresentation("full");
   }, []);
 
   const step = useCallback((delta: number) => {
@@ -88,6 +107,7 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
     if (nextIdx < 0 || nextIdx >= list.length) return;
     cursorRef.current = nextIdx;
     setActive(list[nextIdx]);
+    setPresentation("full");
   }, [playlist]);
 
   const next = useCallback(() => step(1), [step]);
@@ -98,18 +118,48 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
   const peekNext = hasNext ? playlist[cursorRef.current + 1] : null;
   const peekPrev = hasPrev ? playlist[cursorRef.current - 1] : null;
 
-  // While a live is mounted, disable body overscroll so iOS Safari doesn't
-  // eat vertical pan gestures at the pager level.
+  // While a live is mounted full-screen, disable body overscroll so iOS
+  // Safari doesn't eat vertical pan gestures at the pager level.
   useEffect(() => {
-    if (!active) return;
+    if (!active || presentation !== "full") return;
     const prev = document.body.style.overscrollBehavior;
     document.body.style.overscrollBehavior = "none";
     return () => { document.body.style.overscrollBehavior = prev; };
-  }, [active]);
+  }, [active, presentation]);
 
   const value = useMemo<Ctx>(
-    () => ({ active, playlist, hasNext, hasPrev, peekNext, peekPrev, open, openList, close, next, prev }),
-    [active, playlist, hasNext, hasPrev, peekNext, peekPrev, open, openList, close, next, prev],
+    () => ({
+      active,
+      playlist,
+      hasNext,
+      hasPrev,
+      peekNext,
+      peekPrev,
+      presentation,
+      open,
+      openList,
+      close,
+      minimize,
+      expand,
+      next,
+      prev,
+    }),
+    [
+      active,
+      playlist,
+      hasNext,
+      hasPrev,
+      peekNext,
+      peekPrev,
+      presentation,
+      open,
+      openList,
+      close,
+      minimize,
+      expand,
+      next,
+      prev,
+    ],
   );
 
   return <LiveViewerContext.Provider value={value}>{children}</LiveViewerContext.Provider>;
