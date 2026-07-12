@@ -73,21 +73,24 @@ export function SellerProfileScreen() {
   const { activeSeller, close } = useSellerProfile();
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [salesCount, setSalesCount] = useState<number>(0);
+  const [productsCount, setProductsCount] = useState<number>(0);
+  const [activeProductsCount, setActiveProductsCount] = useState<number>(0);
+  const [livesCount, setLivesCount] = useState<number>(0);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
   const dragX = useMotionValue(0);
 
-  const refreshProfile = async () => {
-    if (!activeSeller) return;
-    const p = await resolveSellerRef(activeSeller);
-    setProfile((prev) => (p ? { ...(prev ?? {} as SellerProfile), ...p } : prev));
-    if (p) {
-      const { count } = await supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("seller_id", p.id)
-        .eq("status", "paid");
-      setSalesCount(count ?? 0);
-    }
+  const loadCounts = async (sellerId: string) => {
+    const [sales, products, activeProducts, lives] = await Promise.all([
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("status", "paid"),
+      supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+      supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("active", true),
+      supabase.from("lives").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+    ]);
+    setSalesCount(sales.count ?? 0);
+    setProductsCount(products.count ?? 0);
+    setActiveProductsCount(activeProducts.count ?? 0);
+    setLivesCount(lives.count ?? 0);
   };
 
   useEffect(() => {
@@ -99,18 +102,14 @@ export function SellerProfileScreen() {
       setProfile(p);
       if (p) {
         void resolveAvatarUrl(p.avatar_url).then((url) => alive && setAvatar(url));
-        const { count } = await supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("seller_id", p.id)
-          .eq("status", "paid");
-        if (alive) setSalesCount(count ?? 0);
+        void resolveAvatarUrl(p.banner_url).then((url) => alive && setBanner(url));
+        void loadCounts(p.id);
       }
     })();
     return () => { alive = false; };
   }, [activeSeller]);
 
-  // Realtime: profile row (followers_count, rating_avg via triggers) + paid orders count.
+  // Realtime: profile row + counts.
   useEffect(() => {
     const sellerId = profile?.id;
     if (!sellerId) return;
@@ -119,18 +118,12 @@ export function SellerProfileScreen() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${sellerId}` }, (payload) => {
         const row = payload.new as Partial<SellerProfile>;
         setProfile((prev) => (prev ? { ...prev, ...row } : prev));
-        if (row.avatar_url !== undefined) {
-          void resolveAvatarUrl(row.avatar_url ?? null).then(setAvatar);
-        }
+        if (row.avatar_url !== undefined) void resolveAvatarUrl(row.avatar_url ?? null).then(setAvatar);
+        if (row.banner_url !== undefined) void resolveAvatarUrl(row.banner_url ?? null).then(setBanner);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${sellerId}` }, () => {
-        void (async () => {
-          const { count } = await supabase
-            .from("orders").select("id", { count: "exact", head: true })
-            .eq("seller_id", sellerId).eq("status", "paid");
-          setSalesCount(count ?? 0);
-        })();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lives", filter: `seller_id=eq.${sellerId}` }, () => { void loadCounts(sellerId); })
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [profile?.id]);
@@ -155,7 +148,17 @@ export function SellerProfileScreen() {
           </Press>
         </div>
       ) : (
-        <SellerProfileInner profile={profile} avatar={avatar} salesCount={salesCount} onBack={close} dragX={dragX} />
+        <SellerProfileInner
+          profile={profile}
+          avatar={avatar}
+          banner={banner}
+          salesCount={salesCount}
+          productsCount={productsCount}
+          activeProductsCount={activeProductsCount}
+          livesCount={livesCount}
+          onBack={close}
+          dragX={dragX}
+        />
       )}
     </motion.div>
   );
