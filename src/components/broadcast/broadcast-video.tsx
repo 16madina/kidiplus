@@ -10,6 +10,7 @@ import {
   RoomEvent,
   Track,
   createLocalVideoTrack,
+  facingModeFromLocalTrack,
   connectRoom,
   getToken,
   disconnectRoom,
@@ -75,8 +76,11 @@ export type BroadcastStatus =
   | "error";
 
 export type BroadcastVideoHandle = {
-  /** Switch front/back camera during live. Returns the facing actually applied. */
-  switchCamera: (facing: CameraFacing) => Promise<CameraFacing>;
+  /**
+   * Switch front/back during live. Pass a target, or omit to flip opposite
+   * of the *actual* hardware camera (recommended after leave/return).
+   */
+  switchCamera: (facing?: CameraFacing) => Promise<CameraFacing>;
 };
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
@@ -131,12 +135,37 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // Camera flip bookkeeping — must be declared before useImperativeHandle.
     const flipInFlightRef = useRef(false);
     const lastAppliedFacingRef = useRef<CameraFacing | null>(null);
+    const facingRef = useRef(facing);
+    facingRef.current = facing;
+    const onFacingAppliedRef = useRef(onFacingApplied);
+    onFacingAppliedRef.current = onFacingApplied;
+
+    const syncFacingFromTrack = (track: LocalVideoTrack, fallback: CameraFacing) => {
+      const detected =
+        facingModeFromLocalTrack(track, { defaultFacingMode: fallback }).facingMode;
+      const applied: CameraFacing =
+        detected === "environment" || detected === "user" ? detected : fallback;
+      lastAppliedFacingRef.current = applied;
+      onFacingAppliedRef.current?.(applied);
+      return applied;
+    };
 
     useImperativeHandle(ref, () => ({
-      switchCamera: async (target: CameraFacing) => {
+      switchCamera: async (target?: CameraFacing) => {
         const room = roomRef.current;
-        const track = localVideoTrackRef.current;
-        if (!livekit || !room || !track) {
+        let track = localVideoTrackRef.current;
+        if (!livekit || !room) {
+          throw new Error("camera_not_ready");
+        }
+        // After leave/return, the publication may have a newer track instance.
+        if (!track) {
+          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          if (pub?.track) {
+            track = pub.track as LocalVideoTrack;
+            localVideoTrackRef.current = track;
+          }
+        }
+        if (!track) {
           throw new Error("camera_not_ready");
         }
         if (!enabled) {
@@ -151,6 +180,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         const previous = lastAppliedFacingRef.current ?? facing;
         try {
           const applied = await switchHostCameraFacing({ room, track, target });
+          // Publication may replace the track object — refresh the ref.
+          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          if (pub?.track) {
+            localVideoTrackRef.current = pub.track as LocalVideoTrack;
+            track = pub.track as LocalVideoTrack;
+          }
           const videoEl = videoRef.current;
           if (videoEl) {
             try {
@@ -167,7 +202,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         } catch (err) {
           console.warn("[flip] failed", err);
           const videoEl = videoRef.current;
-          if (videoEl) {
+          if (videoEl && track) {
             try { track.attach(videoEl); videoEl.play().catch(() => {}); } catch {}
           }
           toast.error(t("live.flipFailed", "Impossible de changer de caméra"));
@@ -276,7 +311,20 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             if (!cancelled) setState("reconnecting");
           });
           room.on(RoomEvent.Reconnected, () => {
-            if (!cancelled) setState("granted");
+            if (cancelled) return;
+            setState("granted");
+            // After network reconnect LiveKit may replace the camera track —
+            // refresh the ref and resync facing so flip stays accurate.
+            const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+            const t = pub?.track as LocalVideoTrack | undefined;
+            if (t) {
+              localVideoTrackRef.current = t;
+              syncFacingFromTrack(t, facingRef.current);
+              if (videoRef.current) {
+                t.attach(videoRef.current);
+                videoRef.current.play().catch(() => {});
+              }
+            }
           });
           room.on(RoomEvent.Disconnected, () => {
             if (!cancelled) setState("connect_failed");
@@ -284,8 +332,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           phase = "camera";
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
+          // Prefer remembered facing after leave/return (not a stale closure).
+          const desiredFacing = facingRef.current;
           const track = await createLocalVideoTrack({
-            facingMode: livekit ? facing : "user",
+            facingMode: desiredFacing,
             resolution: { width: 1280, height: 720, frameRate: 30 },
           });
           if (cancelled) {
@@ -298,7 +348,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
           });
           localVideoTrackRef.current = track;
-          lastAppliedFacingRef.current = facing;
+          // Hardware may ignore facingMode (esp. after background) — sync UI
+          // to what actually opened so the first flip works.
+          syncFacingFromTrack(track, desiredFacing);
           if (videoRef.current) {
             track.attach(videoRef.current);
             videoRef.current.play().catch(() => {});
@@ -343,13 +395,55 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       };
     }, [livekit?.room, livekit?.identity, shouldRun, retryKey]);
 
-    // Toggle camera (published track) without reconnecting.
+    // Toggle camera without reconnecting. When turning back ON, re-apply the
+    // remembered facingMode — otherwise LiveKit defaults to front camera and
+    // the flip button appears "broken" until the user flips twice.
+    // Only run on real cam toggles — never right after the initial publish
+    // (that path already created the track with the correct facing).
+    const camToggleReadyRef = useRef(false);
+    const prevEnabledRef = useRef(enabled);
     useEffect(() => {
-      if (!livekit) return;
+      // Mark ready once host video is live; clear when we leave that state.
+      if (state === "granted") camToggleReadyRef.current = true;
+      else if (state === "connecting" || state === "idle") camToggleReadyRef.current = false;
+    }, [state]);
+    useEffect(() => {
+      if (!livekit || !shouldRun || !camToggleReadyRef.current) {
+        prevEnabledRef.current = enabled;
+        return;
+      }
       const room = roomRef.current;
-      if (!room) return;
-      void room.localParticipant.setCameraEnabled(enabled);
-    }, [enabled, livekit]);
+      if (!room) {
+        prevEnabledRef.current = enabled;
+        return;
+      }
+      if (prevEnabledRef.current === enabled) return;
+      prevEnabledRef.current = enabled;
+      void (async () => {
+        try {
+          if (!enabled) {
+            await room.localParticipant.setCameraEnabled(false);
+            return;
+          }
+          await room.localParticipant.setCameraEnabled(true, {
+            facingMode: facingRef.current,
+            resolution: { width: 1280, height: 720, frameRate: 30 },
+          });
+          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          const track = pub?.track as LocalVideoTrack | undefined;
+          if (track) {
+            localVideoTrackRef.current = track;
+            syncFacingFromTrack(track, facingRef.current);
+            if (videoRef.current) {
+              track.attach(videoRef.current);
+              videoRef.current.play().catch(() => {});
+            }
+          }
+        } catch (e) {
+          console.warn("[camera] setCameraEnabled failed", e);
+        }
+      })();
+    }, [enabled, livekit, shouldRun]);
 
     // Toggle mic without reconnecting.
     useEffect(() => {

@@ -908,12 +908,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => {
           if (flipBusy || !cameraOn) return;
-          const next = facing === "user" ? "environment" : "user";
-          // Optimistic UI (mirror) — hardware switch runs via LiveKit.
-          setFacing(next);
-          void videoHandleRef.current?.switchCamera(next).catch(() => {
-            // onFlipRevert restores facing on failure.
-          });
+          // Flip opposite of the *actual* camera — don't trust React facing
+          // state after leave/return (it can say "back" while hardware is front).
+          void videoHandleRef.current
+            ?.switchCamera()
+            .then((applied) => setFacing(applied))
+            .catch(() => {
+              /* toast + revert handled inside BroadcastVideo */
+            });
         }}
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
