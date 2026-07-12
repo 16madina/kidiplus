@@ -668,8 +668,12 @@ export function RealLiveViewerScreen() {
   };
 
   if (!active) return null;
-  // If viewer already blocked this seller, close automatically.
-  if (active.sellerId && blockedIds.has(active.sellerId)) { close(); return null; }
+  // If viewer already blocked this seller, close automatically with an explanation.
+  if (active.sellerId && blockedIds.has(active.sellerId)) {
+    toast.info(t("block.autoClosedLive", "Ce live est masqué car tu as bloqué l'hôte."));
+    close();
+    return null;
+  }
   const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
 
@@ -994,7 +998,7 @@ export function RealLiveViewerScreen() {
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
-            <Press onClick={() => { setMoreOpen(false); requireAuth(() => setReportOpen(true)); }}
+            <Press onClick={() => { setMoreOpen(false); requireAuth(() => { if (confirm(t("report.confirm", { defaultValue: "Signaler ce live ? Notre équipe examinera ton signalement." }))) setReportOpen(true); }); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
               <Flag size={18} /> {t("report.action")}
             </Press>

@@ -1040,6 +1040,7 @@
   },
   "report": {
     "action": "Report",
+    "confirm": "Report this live? Our team will review your report.",
     "title": "Report",
     "subtitle": "Pick a reason. Our team reviews every report.",
     "submit": "Send report",
@@ -1059,6 +1060,7 @@
     "unblock": "Unblock",
     "confirm": "Block this user? Their lives and messages will be hidden.",
     "blocked": "User blocked.",
+    "autoClosedLive": "This live is hidden because you blocked the host.",
     "unblocked": "User unblocked.",
     "failed": "Action failed.",
     "listTitle": "Blocked users",
