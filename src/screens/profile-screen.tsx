@@ -333,6 +333,7 @@ function ProfileScreenAuthed() {
               <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
                 {profile?.display_name ?? "…"}
                 <VerifiedBadge verified={profile?.is_verified} size={16} />
+                <ReferredBadge referred={profile?.is_referred} size={13} />
                 {profile?.is_seller && (
                   <span
                     aria-hidden
