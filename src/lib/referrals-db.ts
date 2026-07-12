@@ -18,10 +18,13 @@ export type PromoCodeStats = {
 };
 
 export type AdminPromoCodeRow = PromoCodeStats & {
-  owner_id: string;
+  owner_id: string | null;
   owner_handle: string | null;
   owner_name: string | null;
   owner_avatar: string | null;
+  claim_token: string | null;
+  claimed_at: string | null;
+  held_totals: Record<string, number>;
 };
 
 export type ReferralEarningRow = {
