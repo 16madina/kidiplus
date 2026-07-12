@@ -61,6 +61,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
             {tab === "verify" && open && <VerificationsTab />}
+            {tab === "referral" && open && <AdminReferralPanel />}
           </div>
         </>
       )}
