@@ -82,6 +82,33 @@ export async function bootstrapNative(): Promise<void> {
       attributeFilter: ["class"],
     });
   }
+
+  // Deep-link listener for OAuth return.
+  // Google (and Apple) refuse to sign in from inside a WebView, so the
+  // OAuth flow opens in the system browser (Safari View Controller / Chrome
+  // Custom Tabs). The provider then redirects to our custom scheme
+  // (kidiplus://auth-callback?code=...), which fires `appUrlOpen` here.
+  // We route to /auth-callback so the standard flow finishes the session,
+  // then close the in-app browser.
+  try {
+    const { App } = await import("@capacitor/app");
+    App.addListener("appUrlOpen", (event: { url: string }) => {
+      try {
+        const url = new URL(event.url);
+        // Only handle our own auth-callback deep link.
+        if (!/auth-callback/i.test(url.pathname) && !/auth-callback/i.test(url.host)) return;
+        const path = "/auth-callback" + (url.search || "") + (url.hash || "");
+        // Close the system browser if it's still on top.
+        void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
+        // Navigate the WebView to the callback route.
+        window.location.replace(path);
+      } catch {
+        /* ignore malformed URL */
+      }
+    });
+  } catch {
+    /* @capacitor/app not installed — skip */
+  }
 }
 
 /** Set status bar icons to match current theme (dark class → light icons). */

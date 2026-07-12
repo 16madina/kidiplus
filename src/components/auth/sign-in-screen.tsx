@@ -3,6 +3,7 @@ import { Eye, EyeOff, Fingerprint, Loader2, ScanFace } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import {
@@ -105,13 +106,20 @@ export function SignInScreen({
 
   return (
     <AuthScreenShell title={t("auth.welcome.signIn")} onBack={onBack}>
-      <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
+      <div className="mt-2 flex flex-col">
         <h2 className="text-[26px] font-bold leading-tight">
           {t("auth.signIn.title")}
         </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
           {t("auth.signIn.subtitle")}
         </p>
+
+        <SocialLoginButtons mode="signin" />
+        <OrDivider />
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-3">
+
 
         <AuthInput
           label={t("auth.signIn.email")}

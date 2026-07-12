@@ -221,7 +221,6 @@
       "live": "Live now"
     },
     "emptyResults": "No results for “{{query}}”",
-
     "cats": {
       "beauty": "Beauty",
       "womenFashion": "Women's fashion",
@@ -464,7 +463,6 @@
       "hint": "You can edit your live before it goes on air."
     }
   },
-
   "profile": {
     "mySales": "My sales",
     "editProfile": "Edit profile",
@@ -599,6 +597,12 @@
       "invalidEmail": "Invalid email address.",
       "network": "Unstable connection. Try again.",
       "generic": "Something went wrong."
+    },
+    "social": {
+      "continueWith": "Continue with {{provider}}",
+      "signUpWith": "Sign up with {{provider}}",
+      "notConfigured": "This sign-in method will be available soon.",
+      "failed": "Sign-in failed. Please try again."
     }
   },
   "settings": {
@@ -797,7 +801,6 @@
     "successBody": "Processed within 48h.",
     "emptyHistory": "No withdrawals yet.",
     "rejectionReason": "Rejection reason",
-
     "method": {
       "label": "Method",
       "wave": "Wave",
@@ -908,7 +911,6 @@
       "sourceReferral": "Referral"
     },
     "lives": {
-
       "empty": "No lives.",
       "live": "LIVE",
       "ended": "Ended",
@@ -932,7 +934,11 @@
       "suspension": "Suspension",
       "ban": "Ban"
     },
-    "durations": { "h24": "24 h", "d7": "7 days", "d30": "30 days" },
+    "durations": {
+      "h24": "24 h",
+      "d7": "7 days",
+      "d30": "30 days"
+    },
     "sanction": {
       "title": "User sanction",
       "for": "Sanction for",
@@ -969,10 +975,24 @@
       "dismissConfirm": "Confirm dismiss",
       "dismissed": "Report dismissed",
       "resolution": "Resolution",
-      "filter": { "open": "Open", "actioned": "Actioned", "dismissed": "Dismissed", "all": "All" },
-      "status": { "open": "Open", "reviewed": "Seen", "actioned": "Actioned", "dismissed": "Dismissed" }
+      "filter": {
+        "open": "Open",
+        "actioned": "Actioned",
+        "dismissed": "Dismissed",
+        "all": "All"
+      },
+      "status": {
+        "open": "Open",
+        "reviewed": "Seen",
+        "actioned": "Actioned",
+        "dismissed": "Dismissed"
+      }
     },
-    "targetType": { "user": "user", "live": "live", "message": "message" },
+    "targetType": {
+      "user": "user",
+      "live": "live",
+      "message": "message"
+    },
     "lives": {
       "endBtn": "End this live",
       "endConfirm": "Confirm",

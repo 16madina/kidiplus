@@ -3,6 +3,7 @@ import { Eye, EyeOff, Loader2, Mail, Check, X as XIcon } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
@@ -139,13 +140,20 @@ export function SignUpScreen({
 
   return (
     <AuthScreenShell title={t("auth.welcome.signUp")} onBack={onBack}>
-      <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
+      <div className="mt-2 flex flex-col">
         <h2 className="text-[26px] font-bold leading-tight">
           {t("auth.signUp.title")}
         </h2>
         <p className="mb-3 text-[14px] text-muted-foreground">
           {t("auth.signUp.subtitle")}
         </p>
+
+        <SocialLoginButtons mode="signup" />
+        <OrDivider />
+      </div>
+
+      <form onSubmit={submit} className="flex flex-col gap-3">
+
 
         <AuthInput
           label={t("auth.signUp.displayName")}
