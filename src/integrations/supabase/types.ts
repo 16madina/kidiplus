@@ -1043,31 +1043,37 @@ export type Database = {
       promo_codes: {
         Row: {
           active: boolean
+          claim_token: string | null
+          claimed_at: string | null
           code: string
           created_at: string
           created_by: string | null
           id: string
-          owner_id: string
+          owner_id: string | null
           reward_quota: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          claim_token?: string | null
+          claimed_at?: string | null
           code: string
           created_at?: string
           created_by?: string | null
           id?: string
-          owner_id: string
+          owner_id?: string | null
           reward_quota?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          claim_token?: string | null
+          claimed_at?: string | null
           code?: string
           created_at?: string
           created_by?: string | null
           id?: string
-          owner_id?: string
+          owner_id?: string | null
           reward_quota?: number
           updated_at?: string
         }
@@ -1125,7 +1131,7 @@ export type Database = {
           currency: string
           id: string
           order_id: string
-          owner_id: string
+          owner_id: string | null
           referred_user_id: string
           status: string
         }
@@ -1135,7 +1141,7 @@ export type Database = {
           currency: string
           id?: string
           order_id: string
-          owner_id: string
+          owner_id?: string | null
           referred_user_id: string
           status?: string
         }
@@ -1145,7 +1151,7 @@ export type Database = {
           currency?: string
           id?: string
           order_id?: string
-          owner_id?: string
+          owner_id?: string | null
           referred_user_id?: string
           status?: string
         }
@@ -1178,7 +1184,7 @@ export type Database = {
           created_at: string
           credits_remaining: number
           id: string
-          owner_id: string
+          owner_id: string | null
           promo_code_id: string
           referred_user_id: string
           updated_at: string
@@ -1187,7 +1193,7 @@ export type Database = {
           created_at?: string
           credits_remaining?: number
           id?: string
-          owner_id: string
+          owner_id?: string | null
           promo_code_id: string
           referred_user_id: string
           updated_at?: string
@@ -1196,7 +1202,7 @@ export type Database = {
           created_at?: string
           credits_remaining?: number
           id?: string
-          owner_id?: string
+          owner_id?: string | null
           promo_code_id?: string
           referred_user_id?: string
           updated_at?: string
@@ -1709,6 +1715,10 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _claim_and_backfill: {
+        Args: { _owner: string; _promo_id: string }
+        Returns: Json
+      }
       _ensure_seller_balance: {
         Args: { _currency: string; _user_id: string }
         Returns: {
@@ -1725,6 +1735,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _gen_claim_token: { Args: never; Returns: string }
       _gift_price: {
         Args: { _currency: string; _key: string }
         Returns: number
@@ -1754,8 +1765,12 @@ export type Database = {
         Returns: Json
       }
       account_deletion_check: { Args: never; Returns: Json }
+      admin_assign_promo_code: {
+        Args: { _id: string; _owner_id: string }
+        Returns: Json
+      }
       admin_create_promo_code: {
-        Args: { _code: string; _owner_id: string; _reward_quota?: number }
+        Args: { _code: string; _owner_id?: string; _reward_quota?: number }
         Returns: Json
       }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
@@ -1844,6 +1859,7 @@ export type Database = {
       apply_promo_code: { Args: { _code: string }; Returns: Json }
       assert_user_active: { Args: never; Returns: undefined }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
+      claim_promo_code: { Args: { _token: string }; Returns: Json }
       confirm_order_delivered: { Args: { _order_id: string }; Returns: Json }
       convert_money: {
         Args: { _amount: number; _from: string; _to: string }
