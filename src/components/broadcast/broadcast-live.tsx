@@ -48,7 +48,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const cur = b.currency;
   const fmt = (n: number) => formatMoney(n, cur, i18n.language);
 
-  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const facing = b.cameraFacing;
+  const setFacing = b.setCameraFacing;
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(true);
   const [duration, setDuration] = useState(0);
@@ -64,6 +65,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [shopPickerOpen, setShopPickerOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
   const [canFlip, setCanFlip] = useState(false);
+  const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
@@ -559,6 +561,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         retryKey={retryKey}
         onStatus={setVideoStatus}
         onCanFlipChange={setCanFlip}
+        onFlipBusyChange={setFlipBusy}
         onFlipRevert={(prev) => setFacing(prev)}
         livekit={
           b.roomName && b.hostIdentity
@@ -898,10 +901,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         micOn={micOn}
         camOn={cameraOn}
         canFlip={canFlip}
+        flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
-        onFlip={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+        onFlip={() => {
+          if (flipBusy) return;
+          setFacing(facing === "user" ? "environment" : "user");
+        }}
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
       />

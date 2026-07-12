@@ -97,6 +97,10 @@ type Ctx = {
   currency: "XOF" | "EUR" | "CAD";
   setCurrency: (c: "XOF" | "EUR" | "CAD") => void;
 
+  /** Host camera facing — shared from setup → live so flip choice persists. */
+  cameraFacing: "user" | "environment";
+  setCameraFacing: (f: "user" | "environment") => void;
+
   reset: () => void;
 };
 
@@ -130,6 +134,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [hostIdentity, setHostIdentity] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string>("Host");
   const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
@@ -165,6 +170,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setSession(emptySession());
     setRoomName(null);
     setLiveId(null);
+    setCameraFacing("user");
   }, []);
 
   const value = useMemo<Ctx>(
@@ -187,9 +193,10 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       liveId, setLiveId,
       hostIdentity, hostName, setHost,
       currency, setCurrency,
+      cameraFacing, setCameraFacing,
       reset,
     }),
-    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
   );
 
 

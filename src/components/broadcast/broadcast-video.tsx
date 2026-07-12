@@ -54,6 +54,8 @@ export type BroadcastVideoProps = {
   onRequestRetry?: () => void;
   /** Reports back if a flip attempt failed and facing had to revert. */
   onFlipRevert?: (facing: "user" | "environment") => void;
+  /** True while a camera flip is in progress (disable the flip button). */
+  onFlipBusyChange?: (busy: boolean) => void;
 };
 
 export type BroadcastStatus =
@@ -75,7 +77,7 @@ export type BroadcastVideoHandle = {
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry, onFlipRevert },
+    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry, onFlipRevert, onFlipBusyChange },
     ref,
   ) {
     const { t } = useTranslation();
@@ -306,15 +308,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
     }, [micEnabled, livekit]);
 
-    // --- Camera flip (robust, iOS-Safari safe) ---------------------------
-    // Sequence:
-    //   1) create a new LocalVideoTrack with facingMode: { exact: target }
-    //   2) publish the new track (keeps old one alive)
-    //   3) attach to <video>, await play()
-    //   4) wait for first frame ('loadeddata' / videoDimensionsChanged) or 3s
-    //   5) unpublish + stop the old track
-    // On any error OR if no frame arrives within 3s, revert to the previous
-    // track and toast "Impossible de changer de caméra".
+    // --- Camera flip (prefer in-place restartTrack; fallback to replace) ---
     const flipInFlightRef = useRef(false);
     const lastAppliedFacingRef = useRef<"user" | "environment" | null>(null);
     useEffect(() => {
@@ -324,7 +318,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       const oldTrack = localVideoTrackRef.current;
       if (!oldTrack) return;
 
-      // Skip the initial mount (facing already matches the published track).
       if (lastAppliedFacingRef.current === null) {
         lastAppliedFacingRef.current = facing;
         return;
@@ -332,127 +325,105 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (lastAppliedFacingRef.current === facing) return;
       if (flipInFlightRef.current) return;
 
+      // Wait until the camera is on before swapping hardware.
+      if (!enabled) return;
+
       const target = facing;
       const previous = lastAppliedFacingRef.current;
       flipInFlightRef.current = true;
+      onFlipBusyChange?.(true);
       let cancelled = false;
 
       (async () => {
-        const flipStart = performance.now();
         console.log("[flip] start", { from: previous, to: target });
-        let newTrack: LocalVideoTrack | null = null;
         try {
-          // 1) Create new track pinned to the requested facing, capped at 720p/30fps
-          //    so the back camera doesn't request 4K and starve the encoder.
-          console.log("[flip] create newTrack facingMode.exact =", target);
-          const t0 = performance.now();
+          const restart = (oldTrack as LocalVideoTrack & {
+            restartTrack?: (opts?: Record<string, unknown>) => Promise<void>;
+          }).restartTrack;
+          if (typeof restart === "function") {
+            try {
+              await restart.call(oldTrack, {
+                facingMode: { exact: target },
+                resolution: { width: 1280, height: 720, frameRate: 30 },
+              });
+            } catch {
+              await restart.call(oldTrack, {
+                facingMode: target,
+                resolution: { width: 1280, height: 720, frameRate: 30 },
+              });
+            }
+            const videoEl = videoRef.current;
+            if (videoEl) {
+              try {
+                oldTrack.attach(videoEl);
+                videoEl.muted = true;
+                videoEl.playsInline = true;
+                await videoEl.play().catch(() => {});
+              } catch { /* ignore */ }
+            }
+            lastAppliedFacingRef.current = target;
+            console.log("[flip] restartTrack ok", target);
+            return;
+          }
+
+          let newTrack: LocalVideoTrack | null = null;
           const captureOpts = {
             resolution: { width: 1280, height: 720, frameRate: 30 },
           };
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             newTrack = await createLocalVideoTrack({ facingMode: { exact: target } as any, ...captureOpts });
-          } catch (e) {
-            console.warn("[flip] exact facingMode failed, retry loose", e);
+          } catch {
             newTrack = await createLocalVideoTrack({ facingMode: target, ...captureOpts });
           }
-          console.log(`[flip] createLocalVideoTrack took ${(performance.now() - t0).toFixed(0)}ms`);
           if (cancelled) { try { newTrack.stop(); } catch {} return; }
 
-          // 2) Publish with the same simulcast + capped encoding as the initial track
-          //    so viewers keep the same bitrate profile after the swap.
-          const t1 = performance.now();
           await room.localParticipant.publishTrack(newTrack, {
             simulcast: true,
             videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
           });
-          console.log(`[flip] publishTrack took ${(performance.now() - t1).toFixed(0)}ms`);
 
-          // 3) Attach to <video> preview + play().
           const videoEl = videoRef.current;
           if (videoEl) {
             try { oldTrack.detach(videoEl); } catch {}
             newTrack.attach(videoEl);
             videoEl.muted = true;
             videoEl.playsInline = true;
-            try {
-              await videoEl.play();
-              console.log("[flip] videoEl.play() ok");
-            } catch (e) {
-              console.warn("[flip] videoEl.play() rejected", e);
-            }
+            await videoEl.play().catch(() => {});
           }
 
-          // 4) Wait for first frame — loadeddata OR videoDimensionsChanged OR timeout.
-          const gotFrame = await new Promise<boolean>((resolve) => {
-            let done = false;
-            const finish = (ok: boolean, why: string) => {
-              if (done) return;
-              done = true;
-              console.log("[flip] first-frame result", { ok, why });
-              cleanup();
-              resolve(ok);
-            };
-            const onLoaded = () => finish(true, "loadeddata");
-            const onDim = () => finish(true, "videoDimensionsChanged");
-            const timer = setTimeout(() => finish(false, "timeout"), 3000);
-            const videoEl2 = videoRef.current;
-            videoEl2?.addEventListener("loadeddata", onLoaded, { once: true });
-            // livekit-client emits VideoDimensionsChanged on the track once decoded.
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (newTrack as any).on?.("videoDimensionsChanged", onDim);
-            } catch {}
-            // If the <video> is already playing (readyState >= 2), resolve now.
-            if (videoEl2 && videoEl2.readyState >= 2) {
-              queueMicrotask(() => finish(true, "readyState"));
-            }
-            function cleanup() {
-              clearTimeout(timer);
-              videoEl2?.removeEventListener("loadeddata", onLoaded);
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (newTrack as any).off?.("videoDimensionsChanged", onDim);
-              } catch {}
-            }
+          await new Promise<void>((resolve) => {
+            const t = setTimeout(() => resolve(), 1200);
+            const el = videoRef.current;
+            el?.addEventListener("loadeddata", () => { clearTimeout(t); resolve(); }, { once: true });
+            if (el && el.readyState >= 2) { clearTimeout(t); resolve(); }
           });
 
           if (cancelled) { try { newTrack.stop(); } catch {} return; }
 
-          if (!gotFrame) throw new Error("no_first_frame");
-
-          // 5) Success — unpublish + stop the old track.
           try {
             await room.localParticipant.unpublishTrack(oldTrack, false);
             oldTrack.stop();
-          } catch (e) {
-            console.warn("[flip] old track cleanup warn", e);
-          }
+          } catch { /* ignore */ }
           localVideoTrackRef.current = newTrack;
           lastAppliedFacingRef.current = target;
-          console.log(`[flip] done facing=${target} total=${(performance.now() - flipStart).toFixed(0)}ms`);
+          console.log("[flip] replace ok", target);
         } catch (err) {
           console.warn("[flip] failed, reverting", err);
-          // Unpublish + stop the new track, keep old one publishing.
-          if (newTrack) {
-            try { await room.localParticipant.unpublishTrack(newTrack, true); } catch {}
-            try { newTrack.stop(); } catch {}
-          }
-          // Reattach old preview so nothing goes black.
           const videoEl = videoRef.current;
           if (videoEl) {
             try { oldTrack.attach(videoEl); videoEl.play().catch(() => {}); } catch {}
           }
           toast.error(t("live.flipFailed", "Impossible de changer de caméra"));
-          // Tell the parent to reset its facing state so the button reflects reality.
           onFlipRevert?.(previous);
         } finally {
           flipInFlightRef.current = false;
+          onFlipBusyChange?.(false);
         }
       })();
 
       return () => { cancelled = true; };
-    }, [facing, livekit, t, onFlipRevert]);
+    }, [facing, livekit, enabled, t, onFlipRevert, onFlipBusyChange]);
 
     const showVideo = shouldRun && state === "granted";
     const mirrored = facing === "user";
