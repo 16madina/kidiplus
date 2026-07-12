@@ -75,15 +75,35 @@ export async function fetchAdminPromoCodes(): Promise<AdminPromoCodeRow[]> {
 
 export async function adminCreatePromoCode(
   code: string,
-  ownerId: string,
+  ownerId: string | null,
   rewardQuota = 14,
-): Promise<{ ok: true; id: string; code: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; id: string; code: string; claim_token: string } | { ok: false; error: string }> {
   const { data, error } = await sb.rpc("admin_create_promo_code", {
     _code: code, _owner_id: ownerId, _reward_quota: rewardQuota,
   });
   if (error) return { ok: false, error: error.message };
   const r = (data ?? {}) as any;
-  return r.ok ? { ok: true, id: r.id, code: r.code } : { ok: false, error: r.error };
+  return r.ok ? { ok: true, id: r.id, code: r.code, claim_token: r.claim_token } : { ok: false, error: r.error };
+}
+
+export async function adminAssignPromoCode(id: string, ownerId: string) {
+  const { data, error } = await sb.rpc("admin_assign_promo_code", { _id: id, _owner_id: ownerId });
+  if (error) throw new Error(error.message);
+  const r = (data ?? {}) as any;
+  if (!r.ok) throw new Error(r.error ?? "assign_failed");
+}
+
+export type ClaimResult =
+  | { ok: true; code: string; promo_code_id: string; backfilled_totals: Record<string, number> }
+  | { ok: false; error: string };
+
+export async function claimPromoCode(token: string): Promise<ClaimResult> {
+  const { data, error } = await sb.rpc("claim_promo_code", { _token: token.trim().toUpperCase() });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as any;
+  return r.ok
+    ? { ok: true, code: r.code, promo_code_id: r.promo_code_id, backfilled_totals: r.backfilled_totals ?? {} }
+    : { ok: false, error: r.error };
 }
 
 export async function adminSetPromoActive(id: string, active: boolean) {
