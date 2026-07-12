@@ -59,6 +59,8 @@ import { CertificationSheet } from "@/components/verify/certification-sheet";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
+import { ReferralScreen } from "@/components/referral/referral-screen";
+import { fetchMyPromoCodes } from "@/lib/referrals-db";
 
 import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
