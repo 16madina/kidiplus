@@ -901,7 +901,9 @@
       "confirmPaidTitle": "Confirm payment",
       "confirmRejectTitle": "Reject request",
       "confirmPaidCta": "Confirm payment",
-      "confirmRejectCta": "Confirm rejection"
+      "confirmRejectCta": "Confirm rejection",
+      "sourceSeller": "Sales",
+      "sourceReferral": "Referral"
     },
     "lives": {
 
