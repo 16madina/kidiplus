@@ -303,6 +303,7 @@
     "relaunch": "Relaunch",
     "relaunched": "Product relaunched",
     "flipFailed": "Couldn't switch camera",
+    "minimize": "Minimize",
     "viewerConnecting": "Connecting to live…",
     "viewerReconnecting": "Reconnecting…",
     "viewerWaitingStart": "The live is about to start…",

@@ -30,6 +30,7 @@ import { BuySheet } from "./buy-sheet";
 import { Confetti } from "./confetti";
 import { ViewerLiveVideo } from "./viewer-live-video";
 import { RealLiveViewerScreen } from "./real-live-viewer-screen";
+import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
@@ -51,13 +52,15 @@ export function LiveViewerScreen() {
 }
 
 function MockLiveViewerScreen() {
-  const { active, close, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
+  const { active, close, minimize, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
+  const { minimized } = useLivePip();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
 
   // Force light status-bar content while the viewer is mounted (dark background).
   useEffect(() => {
+    if (minimized) return;
     let restore: (() => void) | null = null;
     void pushStatusBarLight().then((fn) => {
       restore = fn;
@@ -65,7 +68,7 @@ function MockLiveViewerScreen() {
     return () => {
       restore?.();
     };
-  }, []);
+  }, [minimized]);
 
 
   // === Chat === (paused when app is backgrounded)
@@ -340,19 +343,13 @@ function MockLiveViewerScreen() {
   const followerCount = 1000 + ((active.viewers * 7) % 24000);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2, ease: EASE_IOS }}
-      className="fixed inset-0 z-[60] overflow-hidden bg-black"
-    >
+    <LivePipShell>
       {/* Current slide media — translates with the finger so the incoming
           slide feels glued to it. UI overlays stay put on the fixed shell. */}
       <motion.div
         key={active.id}
         className="absolute inset-0"
-        style={{ y: dragY }}
+        style={{ y: minimized ? 0 : dragY }}
       >
         {active.roomName ? (
           <ViewerLiveVideo
@@ -380,6 +377,8 @@ function MockLiveViewerScreen() {
         )}
       </motion.div>
 
+      {!minimized && (
+      <>
       {/* Adjacent slide previews — glued to the current slide via the same
           dragY motion value. Rendered as TikTok-style posters so the user
           sees what's coming while dragging. */}
@@ -425,9 +424,11 @@ function MockLiveViewerScreen() {
             });
             return;
           }
-          // Strong swipe down with no previous live → close (keeps existing UX).
+          // Strong swipe down → floating mini player.
           if (!up && strong && !hasPrev) {
-            close();
+            dragY.set(0);
+            haptic.light();
+            minimize();
             return;
           }
           animate(dragY, 0, { duration: 0.25, ease: EASE_IOS });
@@ -568,8 +569,8 @@ function MockLiveViewerScreen() {
               <Share2 size={16} />
             </Press>
             <Press
-              aria-label="Fermer"
-              onClick={close}
+              aria-label={t("live.minimize", "Réduire")}
+              onClick={() => { haptic.light(); minimize(); }}
               className="h-9 w-9 rounded-full text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
@@ -715,9 +716,12 @@ function MockLiveViewerScreen() {
           setTopupOpen(true);
         }}
       />
+      </>
+      )}
+
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
 
-    </motion.div>
+    </LivePipShell>
   );
 }
 
