@@ -320,6 +320,7 @@ function SellerProfileInner({
               <div className="mt-2 flex items-center gap-1">
                 <h1 className="text-[20px] font-bold tracking-tight">{profile.display_name}</h1>
                 <VerifiedBadge verified={profile.is_verified} size={17} />
+                <ReferredBadge referred={profile.is_referred} size={14} />
               </div>
               <p className="text-[12px] text-muted-foreground">@{profile.handle}</p>
               {profile.bio && (
