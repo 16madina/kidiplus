@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Store } from "lucide-react";
+import { Loader2, LogIn, Store, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -10,24 +10,81 @@ import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
 import { GoLiveEntryScreen } from "@/screens/golive-entry-screen";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { GuestEmptyState } from "@/components/guest-empty-state";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
+import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 
-
+const GOLD = "#D4AF37";
+const NAVY = "#10162B";
 
 export function LiveScreen() {
   const { t } = useTranslation();
   const { guestMode } = useAuth();
+  const { openAuth } = useAuthPrompt();
   if (guestMode) {
     return (
-      <GuestEmptyState
-        icon={<Store size={40} className="text-accent" />}
-        title={t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
-        subtitle={t("guest.live.subtitle", { defaultValue: "Lance ton live shopping en quelques secondes et vends à ta communauté." })}
-      />
+      <div className="relative flex h-full flex-col overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${guestLiveHero.url})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(251,246,236,0.96) 0%, rgba(251,246,236,0.45) 35%, rgba(251,246,236,0.35) 60%, rgba(251,246,236,0.92) 100%)",
+          }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE_IOS }}
+          className="relative z-10 flex flex-1 flex-col px-6 pt-safe text-center"
+          style={{ paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="mt-6">
+            <div
+              className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl"
+              style={{ background: "linear-gradient(135deg, #E8C547, #C8A03F)" }}
+            >
+              <Store size={24} color="white" />
+            </div>
+            <h2 className="text-[22px] font-black leading-tight" style={{ color: NAVY }}>
+              {t("guest.live.title", { defaultValue: "Crée un compte pour vendre en live" })}
+            </h2>
+            <p className="mx-auto mt-2 max-w-xs text-[14px] leading-snug" style={{ color: `${NAVY}B3` }}>
+              {t("guest.live.subtitle", { defaultValue: "Lance ton live shopping en quelques secondes et vends à ta communauté." })}
+            </p>
+          </div>
+
+          <div className="mt-auto flex w-full flex-col gap-2.5">
+            <Press
+              onClick={() => { haptic.light(); openAuth(); }}
+              className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-bold text-white"
+              style={{ background: GOLD, boxShadow: "0 10px 24px -8px rgba(212,175,55,0.55)" }}
+            >
+              <UserPlus size={16} />
+              {t("auth.prompt.signUp", { defaultValue: "Créer un compte" })}
+            </Press>
+            <Press
+              onClick={() => { haptic.light(); openAuth(); }}
+              className="!min-h-12 flex h-12 items-center justify-center gap-2 rounded-full border border-[#10162B]/10 bg-white/80 text-[15px] font-bold backdrop-blur"
+              style={{ color: NAVY }}
+            >
+              <LogIn size={16} />
+              {t("auth.prompt.signIn", { defaultValue: "Se connecter" })}
+            </Press>
+          </div>
+        </motion.div>
+      </div>
     );
   }
   return <LiveScreenAuthed />;
