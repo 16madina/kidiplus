@@ -89,7 +89,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
             transition={{ duration: 0.22, ease: EASE_IOS }}
             className="fixed inset-0 z-[95]"
           >
-            <AuthFlow allowGuest={false} />
+            <AuthFlow allowGuest={false} onClose={() => setFlowOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>
