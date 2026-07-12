@@ -117,7 +117,28 @@ npx cap open android
 
 Then in Android Studio: pick your device (or emulator) → press ▶ Run.
 
+### Android system Picture-in-Picture (live viewer)
+
+While watching a live on Android, pressing **Home** (or leaving the app)
+enters system PiP so the live keeps playing over other apps. Tap the PiP
+window to return to KiDi+ full screen.
+
+Requires a native rebuild after pulling:
+
+```bat
+npx cap sync android
+```
+
+Then Run in Android Studio. Key pieces:
+
+- `AndroidManifest` — `supportsPictureInPicture="true"`
+- `PipPlugin` + `MainActivity.onUserLeaveHint` — auto-enter PiP
+- JS `LivePipController` — keeps LiveKit connected during PiP
+
+iOS is intentionally out of scope for this feature (in-app mini player only).
+
 ### Splash video sound (“qui dit plus ?”)
+
 
 The React splash tries **unmuted** autoplay first, then falls back to muted if the
 OS blocks audible media — so the intro never gets stuck.

@@ -29,6 +29,7 @@ import { WalletProvider } from "@/lib/wallet-context";
 
 import { bootstrapNative } from "@/lib/native";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
+import { LivePipController } from "./live-viewer/live-pip-controller";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
 import { AuthFlow } from "./auth/auth-flow";
 import { SplashScreen } from "./splash-screen";
@@ -305,6 +306,8 @@ function AppShellInner() {
           </ErrorBoundary>
         )}
       </AnimatePresence>
+
+      <LivePipController />
 
       <AnimatePresence>
         {activeSeller && (
