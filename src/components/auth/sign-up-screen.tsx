@@ -88,6 +88,10 @@ export function SignUpScreen({
           }).eq("id", user.id);
         } catch { /* ignore */ }
       })();
+      // Apply promo code if provided and valid (best-effort, non-blocking).
+      if (promoCode.trim() && promoValid) {
+        void applyPromoCode(promoCode).catch(() => { /* ignore */ });
+      }
       if (needsEmailConfirmation) {
         setNeedsConfirm(email.trim());
       }
