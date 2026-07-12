@@ -1,15 +1,16 @@
 // Influencer referral dashboard — their codes, stats, earnings, share.
+// If the user owns no code, shows the claim flow (activation token).
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Copy, Share2, Users, Package, Coins, Loader2 } from "lucide-react";
+import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { useLanguage } from "@/i18n/language-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import {
-  fetchMyPromoCodes, fetchMyReferralEarnings, buildShareMessage,
+  fetchMyPromoCodes, fetchMyReferralEarnings, buildShareMessage, claimPromoCode,
   type PromoCodeStats, type ReferralEarningRow,
 } from "@/lib/referrals-db";
 
@@ -22,11 +23,12 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
   const [codes, setCodes] = useState<PromoCodeStats[] | null>(null);
   const [earnings, setEarnings] = useState<ReferralEarningRow[]>([]);
 
-  useEffect(() => {
-    if (!open) return;
-    void fetchMyPromoCodes().then(setCodes);
-    void fetchMyReferralEarnings(50).then(setEarnings);
-  }, [open]);
+  const reload = async () => {
+    const [c, e] = await Promise.all([fetchMyPromoCodes(), fetchMyReferralEarnings(50)]);
+    setCodes(c); setEarnings(e);
+  };
+
+  useEffect(() => { if (open) { setCodes(null); void reload(); } }, [open]);
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); haptic.success(); toast.success(t("common.copied")); }
@@ -50,9 +52,7 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
             <Loader2 size={18} className="animate-spin" />
           </div>
         ) : codes.length === 0 ? (
-          <p className="mt-8 text-center text-[13px] text-muted-foreground">
-            {t("referral.empty", "Aucun code promo n'est encore attribué à ton compte.")}
-          </p>
+          <ClaimBlock onClaimed={reload} />
         ) : (
           <>
             <p className="mb-4 text-[13px] text-muted-foreground">
@@ -138,6 +138,98 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
         )}
       </div>
     </PushScreen>
+  );
+}
+
+function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
+  const { t } = useTranslation();
+  const { lang } = useLanguage();
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const onChange = (v: string) => {
+    // Accept typing without dash and re-format XXXX-XXXX
+    const raw = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    setToken(raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw);
+  };
+
+  const submit = async () => {
+    if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(token)) {
+      toast.error(t("referral.claim.badFormat", "Format attendu : XXXX-XXXX"));
+      return;
+    }
+    setBusy(true);
+    const res = await claimPromoCode(token);
+    setBusy(false);
+    if (!res.ok) {
+      const map: Record<string, string> = {
+        invalid_token: t("referral.claim.errInvalid", "Code d'activation invalide."),
+        already_claimed: t("referral.claim.errClaimed", "Ce code a déjà été réclamé."),
+        unauthorized: t("referral.claim.errAuth", "Connecte-toi pour réclamer."),
+      };
+      toast.error(map[res.error] ?? res.error);
+      return;
+    }
+    haptic.success();
+    const totals = res.backfilled_totals ?? {};
+    const totalStr = Object.entries(totals)
+      .map(([cur, amt]) => formatMoney(Number(amt), normalizeCurrency(cur), lang))
+      .join(" · ");
+    toast.success(
+      totalStr
+        ? t("referral.claim.okWithBackfill", "Code {{code}} réclamé — {{amount}} crédités", { code: res.code, amount: totalStr })
+        : t("referral.claim.ok", "Code {{code}} réclamé 🎉", { code: res.code })
+    );
+    await onClaimed();
+  };
+
+  return (
+    <div>
+      <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
+        style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
+          <Sparkles size={12} style={{ color: GOLD }} /> KiDi+ Influenceurs
+        </div>
+        <h2 className="text-[20px] font-black leading-tight">
+          {t("referral.claim.title", "Deviens influenceur KiDi+")}
+        </h2>
+        <p className="mt-2 text-[13px] opacity-80">
+          {t("referral.claim.intro", "Reçois la commission KiDi+ sur les premières commandes de chaque personne qui s'inscrit avec ton code.")}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border p-4">
+        <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
+          <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
+        </label>
+        <input
+          value={token}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="XXXX-XXXX"
+          inputMode="text"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          maxLength={9}
+          className="mt-2 w-full rounded-xl border border-border bg-transparent px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+        />
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {t("referral.claim.hint", "Ce code t'a été communiqué par l'équipe KiDi+. Il est différent du code public que tu partageras.")}
+        </p>
+        <Press
+          disabled={busy}
+          onClick={submit}
+          className="!min-h-11 mt-4 inline-flex w-full items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50"
+          style={{ background: GOLD, color: NAVY }}
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : t("referral.claim.cta", "Réclamer mon code")}
+        </Press>
+      </div>
+
+      <p className="mt-6 text-center text-[11px] text-muted-foreground">
+        {t("referral.claim.notInfluencer", "Pas encore de code ? Contacte l'équipe KiDi+ pour rejoindre le programme.")}
+      </p>
+    </div>
   );
 }
 
