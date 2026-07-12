@@ -299,13 +299,19 @@ function SellerProfileInner({
             className="relative"
             style={{ opacity: heroOpacity, scale: heroScale, y: heroTranslate, transformOrigin: "50% 0%" }}
           >
-            {/* Banner backdrop */}
-            <div className="relative h-40 w-full overflow-hidden" style={{ background: banner ? undefined : "linear-gradient(140deg, #F6ECD9 0%, #EEDDBF 45%, #E4CCA6 100%)" }}>
+            {/* Hero: banner as background, avatar centered overlapping */}
+            <div
+              className="relative overflow-hidden"
+              style={{
+                background: banner ? undefined : "linear-gradient(140deg, #F6ECD9 0%, #EEDDBF 45%, #E4CCA6 100%)",
+                paddingBottom: 28,
+              }}
+            >
               {banner && (
                 <img
                   src={banner}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                   onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
                   draggable={false}
                 />
@@ -315,55 +321,63 @@ function SellerProfileInner({
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background: banner
-                    ? "linear-gradient(180deg, rgba(16,22,43,0.10) 0%, rgba(0,0,0,0) 40%, color-mix(in oklch, var(--background) 90%, transparent) 100%)"
-                    : "linear-gradient(180deg, transparent 60%, color-mix(in oklch, var(--background) 90%, transparent) 100%)",
+                    ? "linear-gradient(180deg, rgba(16,22,43,0.05) 0%, rgba(246,236,217,0.55) 78%, rgba(228,204,166,0.85) 100%)"
+                    : "radial-gradient(120% 60% at 20% 10%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(80% 50% at 90% 30%, rgba(200,162,75,0.25), transparent 70%)",
+                  mixBlendMode: banner ? "normal" : "screen",
                 }}
               />
+
+              {/* Avatar disc */}
+              <div className="relative flex flex-col items-center pt-8">
+                <div
+                  className="relative grid place-items-center rounded-full"
+                  style={{
+                    height: 132,
+                    width: 132,
+                    background: "rgba(255,255,255,0.92)",
+                    boxShadow: "0 12px 34px rgba(60,40,10,0.18)",
+                    border: "1.5px solid rgba(200,162,75,0.55)",
+                  }}
+                >
+                  {avatar ? (
+                    <img
+                      src={avatar}
+                      alt=""
+                      className="h-[118px] w-[118px] rounded-full object-cover"
+                      onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                      draggable={false}
+                    />
+                  ) : (
+                    <div
+                      className="grid h-[118px] w-[118px] place-items-center rounded-full font-serif text-[26px] font-bold"
+                      style={{ color: "#10162B", letterSpacing: "0.06em" }}
+                    >
+                      {(profile.display_name || "?").slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                <h1
+                  className="mt-5 flex items-center gap-1.5 font-serif text-[28px] font-bold leading-tight"
+                  style={{ color: "#10162B", letterSpacing: "-0.01em" }}
+                >
+                  <span className="truncate">{profile.display_name} Boutique</span>
+                  <VerifiedBadge verified={profile.is_verified} size={18} />
+                  <ReferredBadge referred={profile.is_referred} size={15} />
+                </h1>
+                <p className="mt-0.5 text-[12px]" style={{ color: "#6B6046" }}>@{profile.handle}</p>
+                {profile.bio ? (
+                  <p className="mt-1.5 max-w-[26ch] px-6 text-center text-[13.5px]" style={{ color: "#4A4132" }}>
+                    {profile.bio} <span aria-hidden>🤎</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
 
-            <div className="-mt-14 flex flex-col items-center px-5 text-center">
+            {/* Stats card overlapping */}
+            <div className="relative -mt-4 px-4">
               <div
-                className="grid place-items-center rounded-full"
-                style={{
-                  background: "#E8B93B",
-                  padding: 3,
-                  height: 112,
-                  width: 112,
-                  boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
-                }}
-              >
-                {avatar ? (
-                  <img
-                    src={avatar}
-                    alt=""
-                    className="h-full w-full rounded-full object-cover"
-                    style={{ background: "#10162B" }}
-                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                    draggable={false}
-                  />
-                ) : (
-                  <div
-                    className="grid h-full w-full place-items-center rounded-full text-[28px] font-bold text-white"
-                    style={{ background: "#10162B" }}
-                  >
-                    {(profile.display_name || "?").slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-2 flex items-center gap-1">
-                <h1 className="text-[20px] font-bold tracking-tight">{profile.display_name}</h1>
-                <VerifiedBadge verified={profile.is_verified} size={17} />
-                <ReferredBadge referred={profile.is_referred} size={14} />
-              </div>
-              <p className="text-[12px] text-muted-foreground">@{profile.handle}</p>
-              {profile.bio && (
-                <p className="mt-1 max-w-xs text-[13px] leading-snug text-muted-foreground">{profile.bio}</p>
-              )}
-
-              {/* Stats card — matches Ma boutique */}
-              <div
-                className="mt-4 grid w-full grid-cols-4 items-center rounded-2xl bg-card px-2 py-3"
+                className="grid grid-cols-4 items-center rounded-2xl bg-card px-2 py-3"
                 style={{ boxShadow: "0 12px 30px rgba(20,15,5,0.08)", border: "1px solid rgba(200,162,75,0.18)" }}
               >
                 <StatCol icon={<ShoppingBag size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.products", { defaultValue: "Produits" })} value={String(productsCount)} />
@@ -377,9 +391,11 @@ function SellerProfileInner({
                   </span>
                 </div>
               </div>
+            </div>
 
-              {/* Secondary row: sales + rating */}
-              <div className="mt-3 flex items-center gap-6">
+            {/* Secondary row: sales + rating + follow */}
+            <div className="mt-4 flex flex-col items-center px-5">
+              <div className="flex items-center gap-6">
                 <Stat label={t("seller.stats.sales")} value={formatCompact(salesCount)} />
                 <Divider />
                 <Stat
@@ -396,13 +412,13 @@ function SellerProfileInner({
                   }
                 />
               </div>
-
               <div className="mt-4">
                 <FollowButton sellerId={profile.id} size="md" />
               </div>
             </div>
           </motion.div>
         </div>
+
 
 
 
