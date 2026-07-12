@@ -23,6 +23,7 @@ import { useSettings } from "@/lib/settings-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
+import { HostOpenLiveBanner } from "@/components/home/host-open-live-banner";
 
 
 const PAGE = 12;
@@ -269,6 +270,8 @@ export function HomeScreen() {
           style={{ height: "calc(env(safe-area-inset-top) + 56px)" }}
         />
         <h1 className="sr-only">KiDi+ — Live Shopping & Enchères en direct</h1>
+
+        <HostOpenLiveBanner className="mx-4 mt-2" />
 
         {/* ROW 2 — Large category tiles */}
         <div className="pt-2">

@@ -67,6 +67,7 @@ export function payloadFromNotificationRow(row: {
   if (!kind) {
     if (/^order_|^dispute_/.test(row.kind)) kind = "order";
     else if (row.kind === "live_started") kind = "live";
+    else if (row.kind === "live_host_absent") kind = "resume_host_live";
     else if (row.kind === "new_follower") kind = "seller";
     else if (/^chat_/.test(row.kind)) kind = "chat";
     else kind = "notif";
