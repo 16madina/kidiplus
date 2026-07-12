@@ -425,6 +425,26 @@ function ProfileScreenAuthed() {
           ]}
         />
 
+        {/* ============ PARRAINAGE (influencers only) ============ */}
+        {isInfluencer && (
+          <>
+            <SectionHeader label={t("referral.title", "Parrainage 🤝")} />
+            <MenuGroup
+              index={0}
+              items={[
+                {
+                  icon: <HeartHandshake size={16} />,
+                  label: t("referral.menu", "Mes codes & gains de parrainage"),
+                  tint: "oklch(0.65 0.18 40)",
+                  onClick: () => { haptic.light(); setReferralOpen(true); },
+                },
+              ]}
+            />
+          </>
+        )}
+
+
+
         {/* ============ GÉNÉRAL ============ */}
 
         <SectionHeader label={t("profile.sections.general")} />
