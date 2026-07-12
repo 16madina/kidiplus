@@ -8,7 +8,7 @@ import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
-import background from "@/assets/guest-activity-bg.jpg";
+import activityBg from "@/assets/guest-activity-bg.png.asset.json";
 
 const GOLD = "#E8B93B";
 
