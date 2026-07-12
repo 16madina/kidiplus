@@ -46,14 +46,14 @@ export function GuestProfileScreen() {
             {t("guestProfile.title2", { defaultValue: "débloquer ton profil" })}
           </span>
         </h1>
-        <p className="mt-2.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
+        <p className="mt-1.5 max-w-xs text-[13.5px] leading-snug text-[#10162B]/60">
           {t("guestProfile.subtitle", {
             defaultValue: "Ton portefeuille, tes commandes, tes adresses et tes réglages — tout est à un tap.",
           })}
         </p>
 
         {/* CTAs — pinned near the top */}
-        <div className="mt-6 flex w-full flex-col gap-3">
+        <div className="mt-4 flex w-full flex-col gap-3">
           <Press
             onClick={go}
             className="!min-h-14 flex h-14 items-center justify-center gap-2 rounded-full text-[16px] font-bold text-white"
@@ -79,19 +79,19 @@ export function GuestProfileScreen() {
           height={1024}
           loading="lazy"
           draggable={false}
-          className="mt-3 -mb-2 h-auto w-[200px] select-none"
+          className="mt-1 -mb-4 h-auto w-[160px] select-none"
         />
 
         {/* Feature grid */}
-        <div className="mt-1 grid w-full grid-cols-4 gap-2">
-          <Feature icon={<Wallet size={20} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
-          <Feature icon={<Package size={20} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
-          <Feature icon={<MapPin size={20} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
-          <Feature icon={<Settings size={20} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
+        <div className="mt-0 grid w-full grid-cols-4 gap-2">
+          <Feature icon={<Wallet size={18} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
+          <Feature icon={<Package size={18} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
+          <Feature icon={<MapPin size={18} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
+          <Feature icon={<Settings size={18} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
         </div>
 
         {/* Trust footer */}
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
+        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
           <div
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
             style={{ background: "rgba(232,185,59,0.2)", color: GOLD }}
