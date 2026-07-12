@@ -9,7 +9,7 @@ import { Logo } from "@/components/brand/logo";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
 import illustration from "@/assets/guest-profile-illustration.png";
-import background from "@/assets/guest-profile-bg.jpg";
+import background from "@/assets/guest-profile-bg-v2.png.asset.json";
 
 const GOLD = "#E8B93B";
 
