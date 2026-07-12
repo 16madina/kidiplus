@@ -72,9 +72,18 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
           <ClaimBlock onClaimed={reload} />
         ) : (
           <>
+            {/* Referral wallet card — separate from seller earnings */}
+            <ReferralWalletCard
+              balance={balance}
+              fallbackCurrency={profile?.currency ?? "EUR"}
+              onWithdraw={() => setWithdrawOpen(true)}
+            />
+
             <p className="mb-4 text-[13px] text-muted-foreground">
               {t("referral.intro", "Partage ton code. Pour chaque inscrit, tu gagnes la commission KiDi+ sur ses premières commandes.")}
             </p>
+
+
 
             {codes.map((c) => (
               <div key={c.id} className="mb-4 overflow-hidden rounded-3xl"
