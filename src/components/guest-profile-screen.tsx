@@ -79,11 +79,11 @@ export function GuestProfileScreen() {
           height={1024}
           loading="lazy"
           draggable={false}
-          className="mt-6 h-auto w-[240px] select-none"
+          className="mt-3 -mb-2 h-auto w-[200px] select-none"
         />
 
         {/* Feature grid */}
-        <div className="mt-3 grid w-full grid-cols-4 gap-2">
+        <div className="mt-1 grid w-full grid-cols-4 gap-2">
           <Feature icon={<Wallet size={20} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
           <Feature icon={<Package size={20} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
           <Feature icon={<MapPin size={20} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
@@ -91,7 +91,7 @@ export function GuestProfileScreen() {
         </div>
 
         {/* Trust footer */}
-        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-left backdrop-blur">
           <div
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
             style={{ background: "rgba(232,185,59,0.2)", color: GOLD }}
