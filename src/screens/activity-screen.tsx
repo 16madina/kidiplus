@@ -33,21 +33,13 @@ import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchOrderById } from "@/lib/orders-db";
 import { fetchMyReviewedOrderIds } from "@/lib/reviews-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
-import { GuestEmptyState } from "@/components/guest-empty-state";
+import { GuestActivityScreen } from "@/components/guest-activity-screen";
 
 type Tab = "notifs" | "orders";
 
 export function ActivityScreen() {
   const { guestMode } = useAuth();
-  if (guestMode) {
-    return (
-      <GuestEmptyState
-        icon={<Bell size={40} className="text-accent" />}
-        title="Crée un compte pour voir ton activité"
-        subtitle="Notifications, commandes, escrow, litiges — tout est ici une fois connecté."
-      />
-    );
-  }
+  if (guestMode) return <GuestActivityScreen />;
   return <ActivityScreenAuthed />;
 }
 
