@@ -668,8 +668,12 @@ export function RealLiveViewerScreen() {
   };
 
   if (!active) return null;
-  // If viewer already blocked this seller, close automatically.
-  if (active.sellerId && blockedIds.has(active.sellerId)) { close(); return null; }
+  // If viewer already blocked this seller, close automatically with an explanation.
+  if (active.sellerId && blockedIds.has(active.sellerId)) {
+    toast.info(t("block.autoClosedLive", "Ce live est masqué car tu as bloqué l'hôte."));
+    close();
+    return null;
+  }
   const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
 
