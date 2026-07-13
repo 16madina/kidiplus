@@ -47,7 +47,9 @@ export function GuestShell() {
       className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
       style={{ isolation: "isolate" }}
     >
-      <AuthFlow />
+      <div data-kp-shell-chrome>
+        <AuthFlow />
+      </div>
       <AnimatePresence>
         {liveStream && (
           <ErrorBoundary boundary="live_viewer_guest" onReset={closeLive}>

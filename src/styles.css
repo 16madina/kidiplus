@@ -232,3 +232,41 @@ html {
   -webkit-appearance: none !important;
   opacity: 0 !important;
 }
+
+/* Android system PiP: hide app chrome so the bubble is video-only.
+   Native injects .kp-in-system-pip BEFORE enterPictureInPictureMode — do not
+   rely on React alone or the first PiP frames show Accueil/tabs under the live. */
+html.kp-in-system-pip {
+  background: #000 !important;
+}
+html.kp-in-system-pip body {
+  background: #000 !important;
+}
+html.kp-in-system-pip [data-kp-shell-chrome] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -1 !important;
+}
+/* Force live shell edge-to-edge even if still in floating-mini layout. */
+html.kp-in-system-pip [data-kp-live-pip] {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  z-index: 2147483000 !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
