@@ -27,6 +27,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kidiplus" />
             </intent-filter>
+
+            <!-- Android App Links: open https://kidiplus.com URLs in the app.
+                 Requires /.well-known/assetlinks.json to list the signing cert
+                 SHA-256. Only the paths declared here are captured; other
+                 kidiplus.com URLs stay in the browser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="kidiplus.com" />
+                <data android:host="www.kidiplus.com" />
+                <data android:pathPrefix="/join/" />
+                <data android:pathPrefix="/live/" />
+                <data android:pathPrefix="/open" />
+                <data android:pathPrefix="/auth-callback" />
+                <data android:pathPrefix="/reset-password" />
+            </intent-filter>
         </activity>
 
         <provider

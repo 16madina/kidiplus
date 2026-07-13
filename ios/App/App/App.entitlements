@@ -4,5 +4,11 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:kidiplus.com</string>
+		<string>applinks:www.kidiplus.com</string>
+		<string>webcredentials:kidiplus.com</string>
+	</array>
 </dict>
 </plist>
