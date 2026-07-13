@@ -196,48 +196,101 @@ function LiveScreenAuthed() {
 
 
   if (!profile.is_seller) {
+    const NAVY_LOCAL = "#10162B";
+    const GOLD_LOCAL = "#D4AF37";
     return (
       <motion.div
         key="become-seller"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: EASE_IOS }}
-        className="flex h-full flex-col items-center justify-center px-6 pt-safe text-center"
-        style={{
-          paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
-        }}
+        transition={{ duration: 0.35, ease: EASE_IOS }}
+        className="relative flex h-full flex-col overflow-y-auto bg-white"
+        style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
       >
+        {/* Hero image — navy bg with product */}
         <div
-          className="mb-4 grid h-16 w-16 place-items-center rounded-2xl"
+          className="relative w-full overflow-hidden"
           style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
+            aspectRatio: "9 / 11",
+            backgroundColor: NAVY_LOCAL,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
           }}
         >
-          <Store size={30} color="white" />
+          <img
+            src={sellerHero.url}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 100%)" }}
+          />
         </div>
-        <h1 className="text-[24px] font-bold">{t("broadcast.becomeSellerTitle")}</h1>
-        <p className="mt-2 max-w-xs text-[14px] leading-snug text-muted-foreground">
-          {t("broadcast.becomeSellerBody")}
-        </p>
-        <Press
-          onClick={() => { haptic.light(); setConfirmOpen(true); }}
-          disabled={flipping}
-          className="!min-h-12 mt-8 h-12 w-full max-w-xs rounded-2xl text-[15px] font-bold text-white"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            opacity: flipping ? 0.7 : 1,
-          }}
-        >
-          {flipping ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> {t("common.loading")}
+
+        {/* Content */}
+        <div className="relative -mt-4 flex flex-col items-center px-6 text-center">
+          <h1 className="text-[26px] font-black leading-tight" style={{ color: NAVY_LOCAL, fontFamily: "'Inter', system-ui, sans-serif" }}>
+            {t("broadcast.seller.title", { defaultValue: "Vends en direct sur KiDi+" })}
+          </h1>
+          <p className="mt-3 max-w-xs text-[14px] leading-snug" style={{ color: `${NAVY_LOCAL}99` }}>
+            {t("broadcast.seller.subtitle", { defaultValue: "Crée tes lives, présente tes articles et laisse les acheteurs enchérir en temps réel." })}
+          </p>
+
+          {/* 3 features */}
+          <div className="mt-6 flex w-full max-w-sm items-start justify-between">
+            <FeatureItem
+              icon={<Radio size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f1", { defaultValue: "Lance ton live" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+            <div className="mx-1 h-12 w-px self-center" style={{ backgroundColor: `${NAVY_LOCAL}22` }} />
+            <FeatureItem
+              icon={<Gavel size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f2", { defaultValue: "Reçois des enchères" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+            <div className="mx-1 h-12 w-px self-center" style={{ backgroundColor: `${NAVY_LOCAL}22` }} />
+            <FeatureItem
+              icon={<TrendingUp size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f3", { defaultValue: "Développe tes ventes" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+          </div>
+
+          {/* Gold CTA */}
+          <Press
+            onClick={() => { haptic.light(); setConfirmOpen(true); }}
+            disabled={flipping}
+            className="!min-h-14 mt-7 flex h-14 w-full max-w-sm items-center justify-between rounded-full px-6 text-[16px] font-black"
+            style={{
+              background: `linear-gradient(180deg, #E8C86A 0%, ${GOLD_LOCAL} 55%, #B8912C 100%)`,
+              color: NAVY_LOCAL,
+              boxShadow: "0 12px 28px -10px rgba(212,175,55,0.7), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,90,10,0.35)",
+              border: "1px solid rgba(184,145,44,0.6)",
+              opacity: flipping ? 0.75 : 1,
+            }}
+          >
+            <span className="flex-1 text-center">
+              {flipping ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" /> {t("common.loading")}
+                </span>
+              ) : (
+                t("broadcast.seller.cta", { defaultValue: "Activer mon espace vendeur" })
+              )}
             </span>
-          ) : (
-            t("broadcast.becomeSellerCta")
-          )}
-        </Press>
+            {!flipping && <ArrowRight size={20} strokeWidth={2.4} />}
+          </Press>
+
+          <p className="mt-3 text-[12px]" style={{ color: `${NAVY_LOCAL}80` }}>
+            {t("broadcast.seller.free", { defaultValue: "Activation rapide et gratuite." })}
+          </p>
+        </div>
 
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
@@ -262,6 +315,7 @@ function LiveScreenAuthed() {
       </motion.div>
     );
   }
+
 
 
   return (
