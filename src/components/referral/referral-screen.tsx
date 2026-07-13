@@ -397,18 +397,26 @@ function ClaimBlock({
               <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
                 <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
               </label>
-              <input
-                value={token}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="XXXX-XXXX"
-                inputMode="text"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={9}
-                className="mt-2 w-full rounded-xl border border-border bg-white/70 px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
-                style={{ color: "#1A130A" }}
-              />
+              <div className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-border bg-white/70">
+                <span
+                  className="flex items-center justify-center px-3 text-[16px] font-black tracking-[0.2em] text-[#8A6A1F]"
+                  style={{ backgroundColor: "rgba(212,175,55,0.18)" }}
+                >
+                  KIDI-
+                </span>
+                <input
+                  value={token}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="XXXX-XXXX"
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={9}
+                  className="min-w-0 flex-1 bg-transparent px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+                  style={{ color: "#1A130A" }}
+                />
+              </div>
               <Press
                 disabled={busy}
                 onClick={submit}
