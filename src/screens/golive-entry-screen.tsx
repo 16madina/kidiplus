@@ -257,9 +257,8 @@ export function GoLiveEntryScreen({
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
             haptic.medium();
+            b.reset();
             b.setMode("now");
-            b.setEditingLiveId(null);
-            b.setScheduledAt(null);
             onStartNow();
           }}
         />
@@ -269,9 +268,8 @@ export function GoLiveEntryScreen({
           subtitle={t("golive.entry.scheduleSub", "Annonce ton live à l'avance et prépare tes articles")}
           onPress={() => {
             haptic.medium();
+            b.reset();
             b.setMode("schedule");
-            b.setEditingLiveId(null);
-            b.setScheduledAt(null);
             onSchedule();
           }}
         />
