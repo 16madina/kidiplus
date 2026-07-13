@@ -95,7 +95,9 @@ export function GoLiveEntryScreen({
       b.setTitle(full.title);
       b.setCategory(full.category ?? "Fashion");
       b.setScheduledAt(full.scheduled_at);
+      b.setAllowGifts(full.allow_gifts !== false);
       b.setCoverFile(null);
+
       const resolvedCover = full.cover_url
         ? (await resolveLiveImage("live-covers", full.cover_url)) ?? null
         : null;
