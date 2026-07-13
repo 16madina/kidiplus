@@ -182,7 +182,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       })
     : "--:--";
 
-  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
+  
   const scheduleValid =
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
