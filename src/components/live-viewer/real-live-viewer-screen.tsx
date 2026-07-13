@@ -14,6 +14,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
+import { liveShareUrl } from "@/lib/deep-links";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
@@ -778,7 +779,7 @@ export function RealLiveViewerScreen() {
               onClick={async () => {
                 haptic.light();
                 const shareUrl = active?.liveId
-                  ? `https://kidiplus.com/live/${active.liveId}`
+                  ? liveShareUrl(active.liveId)
                   : "https://kidiplus.com";
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
