@@ -95,6 +95,9 @@ export type CreateLiveInput = {
   roomName: string;
   /** Live currency — inherited from the seller's profile; a DB trigger enforces it. */
   currency?: string;
+  /** Whether viewers can send virtual gifts during the live. */
+  allowGifts?: boolean;
+
   products: Array<{
     name: string;
     imagePath: string | null; // storage path OR absolute URL
