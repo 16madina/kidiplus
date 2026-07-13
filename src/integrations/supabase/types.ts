@@ -655,6 +655,11 @@ export type Database = {
           ended_at: string | null
           host_last_seen_at: string | null
           id: string
+          reminder_buyer_15m_sent: boolean
+          reminder_buyer_1h_sent: boolean
+          reminder_buyer_24h_sent: boolean
+          reminder_seller_1h_sent: boolean
+          reminder_seller_24h_sent: boolean
           room_name: string
           scheduled_at: string | null
           seller_id: string
@@ -672,6 +677,11 @@ export type Database = {
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
+          reminder_buyer_15m_sent?: boolean
+          reminder_buyer_1h_sent?: boolean
+          reminder_buyer_24h_sent?: boolean
+          reminder_seller_1h_sent?: boolean
+          reminder_seller_24h_sent?: boolean
           room_name: string
           scheduled_at?: string | null
           seller_id: string
@@ -689,6 +699,11 @@ export type Database = {
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
+          reminder_buyer_15m_sent?: boolean
+          reminder_buyer_1h_sent?: boolean
+          reminder_buyer_24h_sent?: boolean
+          reminder_seller_1h_sent?: boolean
+          reminder_seller_24h_sent?: boolean
           room_name?: string
           scheduled_at?: string | null
           seller_id?: string
@@ -2176,6 +2191,7 @@ export type Database = {
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
+      send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
         Returns: Json

@@ -303,7 +303,8 @@ export function GoLiveEntryScreen({
         )}
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
-            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 60_000;
+            // The seller can start their live from 15 minutes before the scheduled time.
+            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 15 * 60_000;
             return (
               <motion.li
                 key={row.id}
@@ -348,15 +349,6 @@ export function GoLiveEntryScreen({
                     </Press>
                   ) : (
                     <>
-                      <Press
-                        onClick={() => startNow(row)}
-                        disabled={busyId === row.id}
-                        aria-label={t("golive.entry.startNowShort", "Démarrer")}
-                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-black"
-                        style={{ backgroundColor: GOLD }}
-                      >
-                        <Play size={14} fill="currentColor" />
-                      </Press>
                       <Press
                         onClick={() => loadIntoForm(row)}
                         disabled={busyId === row.id}
