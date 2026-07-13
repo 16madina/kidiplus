@@ -248,6 +248,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           category: b.category,
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          allowGifts,
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -261,11 +262,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          allowGifts,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
         toast.success(t("schedule.savedToast", "Live programmé 📅"));
       }
+
       onExit();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
