@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles, ArrowDownToLine, Wallet as WalletIcon, Cpu } from "lucide-react";
+import { ScratchCard } from "@/components/referral/scratch-card";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
@@ -378,7 +379,21 @@ function ClaimBlock({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border p-4">
+      {/* PROMINENT: request-a-code block moved up */}
+      <RequestCodeBlock />
+
+      <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
+        <div className="h-px flex-1 bg-border" />
+        <span>{t("common.or", "ou")}</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      {/* Scratch card containing the activation-code input */}
+      <ScratchCard
+        brandLabel={t("referral.claim.partnerLabel", "KiDi+ Partenaire")}
+        scratchLabel={t("referral.claim.scratchHint", "Gratte pour entrer ton code 🪙")}
+        skipLabel={t("referral.claim.scratchSkip", "Entrer le code manuellement")}
+      >
         <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
           <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
         </label>
@@ -391,28 +406,18 @@ function ClaimBlock({
           autoCorrect="off"
           spellCheck={false}
           maxLength={9}
-          className="mt-2 w-full rounded-xl border border-border bg-transparent px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+          className="mt-2 w-full rounded-xl border border-border bg-white/70 px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+          style={{ color: "#1A130A" }}
         />
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          {t("referral.claim.hint", "As-tu déjà reçu un code d'activation ? Entre-le ci-dessous. Sinon, tu peux demander un code de parrainage plus bas.")}
-        </p>
         <Press
           disabled={busy}
           onClick={submit}
-          className="!min-h-11 mt-4 inline-flex w-full items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50"
-          style={{ background: GOLD, color: NAVY }}
+          className="!min-h-11 mt-3 inline-flex w-full items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50"
+          style={{ background: NAVY, color: GOLD }}
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : t("referral.claim.cta", "Réclamer mon code")}
         </Press>
-      </div>
-
-      <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-        <div className="h-px flex-1 bg-border" />
-        <span>{t("common.or", "ou")}</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <RequestCodeBlock />
+      </ScratchCard>
 
       <p className="mt-6 text-center text-[11px] text-muted-foreground">
         {t("referral.claim.notInfluencer", "Pas de code ? Fais une demande — l'équipe KiDi+ répond sous quelques jours.")}
@@ -420,6 +425,7 @@ function ClaimBlock({
     </div>
   );
 }
+
 
 function RequestCodeBlock() {
   const { t } = useTranslation();
