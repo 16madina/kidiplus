@@ -936,7 +936,8 @@ export async function fetchScheduledLiveWithProducts(
 ): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
   const { data } = await supabase
     .from("lives")
-    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status")
+    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts")
+
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;
