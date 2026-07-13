@@ -246,12 +246,6 @@ html.kp-in-system-pip [data-kp-shell-chrome] {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  z-index: -1 !important;
 }
 /* Force live shell edge-to-edge even if still in floating-mini layout. */
 html.kp-in-system-pip [data-kp-live-pip] {
