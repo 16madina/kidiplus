@@ -271,7 +271,15 @@ function ReferralWalletCard({
 
 
 
-function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
+function ClaimBlock({
+  onClaimed,
+  balance,
+  fallbackCurrency,
+}: {
+  onClaimed: () => void | Promise<void>;
+  balance: ReferralBalance | null;
+  fallbackCurrency: string;
+}) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
   const [token, setToken] = useState("");
