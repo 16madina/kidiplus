@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles, ArrowDownToLine, Wallet as WalletIcon } from "lucide-react";
+import { Copy, Share2, Users, Package, Coins, Loader2, KeyRound, Sparkles, ArrowDownToLine, Wallet as WalletIcon, Cpu } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
@@ -70,7 +70,7 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
             <Loader2 size={18} className="animate-spin" />
           </div>
         ) : codes.length === 0 ? (
-          <ClaimBlock onClaimed={reload} />
+          <ClaimBlock onClaimed={reload} balance={balance} fallbackCurrency={profile?.currency ?? "EUR"} />
         ) : (
           <>
             {/* Referral wallet card — separate from seller earnings */}
@@ -184,40 +184,102 @@ function ReferralWalletCard({
 }: {
   balance: ReferralBalance | null;
   fallbackCurrency: string;
-  onWithdraw: () => void;
+  onWithdraw?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const cur = balance?.currency ?? fallbackCurrency;
   const available = balance?.available ?? 0;
+  const canWithdraw = !!onWithdraw && available > 0;
+
   return (
-    <div
-      className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
-      style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}
-    >
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest opacity-70">
-        <WalletIcon size={12} />
-        {t("referral.wallet.title", "Portefeuille parrainage")} 💼
+    <div className="mb-4">
+      <div
+        className="relative overflow-hidden rounded-3xl p-5 text-white shadow-xl"
+        style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, #1C2440 55%, #2A1A4A 100%)`,
+          aspectRatio: "1.586 / 1",
+          maxHeight: 230,
+        }}
+      >
+        {/* Decorative gold rings */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full"
+          style={{ background: `radial-gradient(circle, ${GOLD}55, transparent 60%)` }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full"
+          style={{ background: `radial-gradient(circle, ${GOLD}22, transparent 65%)` }}
+        />
+
+        <div className="relative flex h-full flex-col justify-between">
+          {/* Top row: brand + chip */}
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-[15px] font-black leading-none tracking-tight" style={{ color: GOLD }}>
+                KiDi<span className="text-white">+</span>
+              </div>
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] opacity-70">
+                {t("referral.wallet.tagline", "Qui dit plus ?")}
+              </div>
+            </div>
+            <div
+              className="grid h-8 w-11 place-items-center rounded-md"
+              style={{ background: `linear-gradient(135deg, ${GOLD}, #B8891F)` }}
+            >
+              <Cpu size={14} className="text-black/60" />
+            </div>
+          </div>
+
+          {/* Balance */}
+          <div>
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest opacity-70">
+              <WalletIcon size={11} />
+              {t("referral.wallet.title", "Portefeuille parrainage")}
+            </div>
+            <div className="mt-1 text-[26px] font-black tabular-nums leading-none" style={{ color: GOLD }}>
+              {formatMoney(available, normalizeCurrency(cur), i18n.language)}
+            </div>
+          </div>
+
+          {/* Bottom row */}
+          <div className="flex items-end justify-between">
+            <div className="text-[10px] uppercase tracking-[0.25em] opacity-70">
+              {t("referral.wallet.holder", "Partenaire")}
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+              {normalizeCurrency(cur)}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="mt-1 text-[30px] font-black tabular-nums" style={{ color: GOLD }}>
-        {formatMoney(available, normalizeCurrency(cur), i18n.language)}
-      </div>
-      <div className="mt-3">
+
+      {onWithdraw && (
         <Press
           onClick={onWithdraw}
-          disabled={available <= 0}
-          className="!min-h-11 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-[14px] font-bold disabled:opacity-50"
+          disabled={!canWithdraw}
+          className="!min-h-11 mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-[14px] font-bold disabled:opacity-50"
           style={{ background: GOLD, color: NAVY }}
         >
           <ArrowDownToLine size={15} /> {t("referral.wallet.withdraw", "Retirer")}
         </Press>
-      </div>
+      )}
     </div>
   );
 }
 
 
 
-function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
+function ClaimBlock({
+  onClaimed,
+  balance,
+  fallbackCurrency,
+}: {
+  onClaimed: () => void | Promise<void>;
+  balance: ReferralBalance | null;
+  fallbackCurrency: string;
+}) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
   const [token, setToken] = useState("");
@@ -261,6 +323,8 @@ function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
 
   return (
     <div>
+      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} />
+
       <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
         style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
