@@ -353,10 +353,6 @@ export function GoLiveEntryScreen({
                         onClick={() => loadIntoForm(row)}
                         disabled={busyId === row.id}
                         aria-label={t("common.edit")}
-                      <Press
-                        onClick={() => loadIntoForm(row)}
-                        disabled={busyId === row.id}
-                        aria-label={t("common.edit")}
                         className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-white"
                         style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
                       >
