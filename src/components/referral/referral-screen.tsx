@@ -70,7 +70,7 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
             <Loader2 size={18} className="animate-spin" />
           </div>
         ) : codes.length === 0 ? (
-          <ClaimBlock onClaimed={reload} balance={balance} fallbackCurrency={profile?.currency ?? "EUR"} />
+          <ClaimBlock onClaimed={reload} balance={balance} fallbackCurrency={profile?.currency ?? "EUR"} onWithdraw={() => setWithdrawOpen(true)} />
         ) : (
           <>
             {/* Referral wallet card — separate from seller earnings */}
@@ -191,80 +191,116 @@ function ReferralWalletCard({
   const available = balance?.available ?? 0;
   const canWithdraw = !!onWithdraw && available > 0;
 
+  // Gold palette
+  const GOLD_DEEP = "#8A6511";
+  const GOLD_MID = "#C8992E";
+  const GOLD_LIGHT = "#F5D273";
+  const GOLD_HIGHLIGHT = "#FFF1B8";
+  const INK = "#1A130A";
+
   return (
     <div className="mb-4">
       <div
-        className="relative overflow-hidden rounded-3xl p-5 text-white shadow-xl"
+        className="relative overflow-hidden rounded-[22px] p-5 shadow-2xl"
         style={{
-          background: `linear-gradient(135deg, ${NAVY} 0%, #1C2440 55%, #2A1A4A 100%)`,
+          background: `
+            radial-gradient(120% 90% at 15% 0%, ${GOLD_HIGHLIGHT} 0%, transparent 45%),
+            radial-gradient(140% 100% at 100% 100%, ${GOLD_DEEP} 0%, transparent 55%),
+            linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${GOLD_MID} 45%, ${GOLD_DEEP} 100%)
+          `,
+          color: INK,
           aspectRatio: "1.586 / 1",
-          maxHeight: 230,
+          maxHeight: 240,
+          boxShadow:
+            "0 20px 40px -20px rgba(138,101,17,0.55), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15)",
         }}
       >
-        {/* Decorative gold rings */}
+        {/* Subtle brushed-metal streaks */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full"
-          style={{ background: `radial-gradient(circle, ${GOLD}55, transparent 60%)` }}
+          className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
+          style={{
+            background:
+              "repeating-linear-gradient(115deg, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 6px)",
+          }}
         />
+        {/* Soft glow */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full"
-          style={{ background: `radial-gradient(circle, ${GOLD}22, transparent 65%)` }}
+          className="pointer-events-none absolute -right-20 -bottom-20 h-56 w-56 rounded-full"
+          style={{ background: `radial-gradient(circle, ${GOLD_HIGHLIGHT}88, transparent 65%)` }}
         />
 
-        <div className="relative flex h-full flex-col justify-between">
+        <div className="relative flex h-full flex-col">
           {/* Top row: brand + chip */}
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-[15px] font-black leading-none tracking-tight" style={{ color: GOLD }}>
-                KiDi<span className="text-white">+</span>
-              </div>
-              <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] opacity-70">
+              <div className="text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: INK, opacity: 0.75 }}>
                 {t("referral.wallet.tagline", "Qui dit plus ?")}
+              </div>
+              <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: INK, opacity: 0.6 }}>
+                Gold · Partenaire
               </div>
             </div>
             <div
-              className="grid h-8 w-11 place-items-center rounded-md"
-              style={{ background: `linear-gradient(135deg, ${GOLD}, #B8891F)` }}
+              className="grid h-9 w-12 shrink-0 place-items-center rounded-md"
+              style={{
+                background: `linear-gradient(135deg, #FFE7A8 0%, #C9971F 55%, #7A5A10 100%)`,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.35)",
+              }}
             >
-              <Cpu size={14} className="text-black/60" />
+              <Cpu size={16} style={{ color: "rgba(0,0,0,0.55)" }} />
             </div>
           </div>
 
-          {/* Balance */}
-          <div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest opacity-70">
-              <WalletIcon size={11} />
-              {t("referral.wallet.title", "Portefeuille parrainage")}
-            </div>
-            <div className="mt-1 text-[26px] font-black tabular-nums leading-none" style={{ color: GOLD }}>
-              {formatMoney(available, normalizeCurrency(cur), i18n.language)}
+          {/* Centered KiDi+ wordmark */}
+          <div className="flex flex-1 items-center justify-center">
+            <div
+              className="text-[38px] font-black leading-none tracking-tight"
+              style={{
+                color: INK,
+                textShadow: "0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(0,0,0,0.15)",
+              }}
+            >
+              KiDi<span style={{ color: "#3a0f0f" }}>+</span>
             </div>
           </div>
 
-          {/* Bottom row */}
-          <div className="flex items-end justify-between">
-            <div className="text-[10px] uppercase tracking-[0.25em] opacity-70">
-              {t("referral.wallet.holder", "Partenaire")}
+          {/* Bottom row: wallet label + balance + currency */}
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em]" style={{ color: INK, opacity: 0.7 }}>
+                <WalletIcon size={10} />
+                {t("referral.wallet.title", "Portefeuille parrainage")}
+              </div>
+              <div
+                className="mt-0.5 truncate text-[22px] font-black tabular-nums leading-none"
+                style={{ color: INK }}
+              >
+                {formatMoney(available, normalizeCurrency(cur), i18n.language)}
+              </div>
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+            <div
+              className="rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-widest"
+              style={{ background: "rgba(0,0,0,0.12)", color: INK }}
+            >
               {normalizeCurrency(cur)}
             </div>
           </div>
         </div>
       </div>
 
-      {onWithdraw && (
-        <Press
-          onClick={onWithdraw}
-          disabled={!canWithdraw}
-          className="!min-h-11 mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-[14px] font-bold disabled:opacity-50"
-          style={{ background: GOLD, color: NAVY }}
-        >
-          <ArrowDownToLine size={15} /> {t("referral.wallet.withdraw", "Retirer")}
-        </Press>
-      )}
+      <Press
+        onClick={onWithdraw ?? (() => {})}
+        disabled={!canWithdraw}
+        className="!min-h-11 mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl py-2.5 text-[14px] font-bold disabled:opacity-50"
+        style={{ background: GOLD, color: NAVY }}
+      >
+        <ArrowDownToLine size={15} />{" "}
+        {available > 0
+          ? t("referral.wallet.withdraw", "Retirer")
+          : t("referral.wallet.withdrawEmpty", "Retirer (aucun gain)")}
+      </Press>
     </div>
   );
 }
@@ -275,10 +311,12 @@ function ClaimBlock({
   onClaimed,
   balance,
   fallbackCurrency,
+  onWithdraw,
 }: {
   onClaimed: () => void | Promise<void>;
   balance: ReferralBalance | null;
   fallbackCurrency: string;
+  onWithdraw?: () => void;
 }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
@@ -323,7 +361,7 @@ function ClaimBlock({
 
   return (
     <div>
-      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} />
+      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} onWithdraw={onWithdraw} />
 
       <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
         style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
