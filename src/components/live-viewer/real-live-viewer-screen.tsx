@@ -232,16 +232,17 @@ export function RealLiveViewerScreen() {
     return () => clearTimeout(t);
   }, [viewerVideoStatus, room.liveStatus, active?.liveId]);
 
+  // Host ended: close mini / system PiP immediately. Full-screen keeps the
+  // "Live terminé" overlay briefly, then closes.
   useEffect(() => {
     if (!liveEnded) return;
+    if (chromeHidden) {
+      close();
+      return;
+    }
     const t = setTimeout(() => close(), 10_000);
     return () => clearTimeout(t);
-  }, [liveEnded, close]);
-
-  // If the live ends while pip'd / mini, expand so the ended overlay is readable.
-  useEffect(() => {
-    if (liveEnded && chromeHidden) expand();
-  }, [liveEnded, chromeHidden, expand]);
+  }, [liveEnded, chromeHidden, close]);
 
   // Featured product: server auction pick, else the next 'upcoming' product
   // by position. Never loops back to earlier items — matches host behavior.
