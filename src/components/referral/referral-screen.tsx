@@ -328,17 +328,22 @@ function ClaimBlock({
   const [flipped, setFlipped] = useState(false);
 
   const onChange = (v: string) => {
-    const raw = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    // Accept "KIDI-XXXX-XXXX" or just "XXXX-XXXX" (paste tolerant).
+    const cleaned = v.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const body = cleaned.startsWith("KIDI") ? cleaned.slice(4) : cleaned;
+    const raw = body.slice(0, 8);
     setToken(raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw);
   };
 
+  const fullToken = token ? `KIDI-${token}` : "";
+
   const submit = async () => {
     if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(token)) {
-      toast.error(t("referral.claim.badFormat", "Format attendu : XXXX-XXXX"));
+      toast.error(t("referral.claim.badFormat", "Format attendu : KIDI-XXXX-XXXX"));
       return;
     }
     setBusy(true);
-    const res = await claimPromoCode(token);
+    const res = await claimPromoCode(fullToken);
     setBusy(false);
     if (!res.ok) {
       const map: Record<string, string> = {
@@ -392,18 +397,26 @@ function ClaimBlock({
               <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
                 <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
               </label>
-              <input
-                value={token}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="XXXX-XXXX"
-                inputMode="text"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={9}
-                className="mt-2 w-full rounded-xl border border-border bg-white/70 px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
-                style={{ color: "#1A130A" }}
-              />
+              <div className="mt-2 flex items-stretch overflow-hidden rounded-xl border border-border bg-white/70">
+                <span
+                  className="flex items-center justify-center px-3 text-[16px] font-black tracking-[0.2em] text-[#8A6A1F]"
+                  style={{ backgroundColor: "rgba(212,175,55,0.18)" }}
+                >
+                  KIDI-
+                </span>
+                <input
+                  value={token}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="XXXX-XXXX"
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={9}
+                  className="min-w-0 flex-1 bg-transparent px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+                  style={{ color: "#1A130A" }}
+                />
+              </div>
               <Press
                 disabled={busy}
                 onClick={submit}
