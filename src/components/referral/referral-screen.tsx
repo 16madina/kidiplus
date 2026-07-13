@@ -323,6 +323,8 @@ function ClaimBlock({
 
   return (
     <div>
+      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} />
+
       <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
         style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
