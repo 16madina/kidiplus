@@ -211,7 +211,7 @@ function ReconRow({ row, onOpen }: { row: AdminReconRow; onOpen: () => void }) {
           Aucun gain calculé
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
