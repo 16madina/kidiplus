@@ -388,20 +388,6 @@ export type Database = {
             referencedRelation: "lives"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "live_chat_mutes_muted_by_fkey"
-            columns: ["muted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "live_chat_mutes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       live_gifts: {
