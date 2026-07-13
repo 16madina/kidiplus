@@ -111,6 +111,15 @@ export async function adminSetPromoActive(id: string, active: boolean) {
   if (error) throw new Error(error.message);
 }
 
+export async function adminDeletePromoCode(
+  id: string,
+): Promise<{ ok: true; mode: "hard_deleted" | "soft_deleted"; code: string } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc("admin_delete_promo_code", { _id: id });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as any;
+  return r.ok ? { ok: true, mode: r.mode, code: r.code } : { ok: false, error: r.error };
+}
+
 export async function adminRenewPromoCredits(promoCodeId: string, amount = 14) {
   const { data, error } = await sb.rpc("admin_renew_promo_credits", {
     _promo_code_id: promoCodeId, _amount: amount,
