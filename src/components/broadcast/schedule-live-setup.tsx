@@ -269,6 +269,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         toast.success(t("schedule.savedToast", "Live programmé 📅"));
       }
 
+      window.dispatchEvent(new CustomEvent("kidi:scheduled-lives-changed"));
       onExit();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
