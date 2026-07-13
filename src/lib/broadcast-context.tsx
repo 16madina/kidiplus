@@ -178,7 +178,9 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setRoomName(null);
     setLiveId(null);
     setCameraFacing("user");
+    setAllowGifts(true);
   }, []);
+
 
   const value = useMemo<Ctx>(
     () => ({
