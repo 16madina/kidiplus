@@ -21,6 +21,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
@@ -95,6 +96,11 @@ const IndexRoute = IndexRouteImport.update({
 const LiveIdRoute = LiveIdRouteImport.update({
   id: '/live/$id',
   path: '/live/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
@@ -195,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -373,6 +385,7 @@ export interface RootRouteChildren {
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   LiveIdRoute: typeof LiveIdRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
@@ -467,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/live/$id'
       fullPath: '/live/$id'
       preLoaderRoute: typeof LiveIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guide/what-is-live-shopping': {
@@ -619,6 +639,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
+  JoinCodeRoute: JoinCodeRoute,
   LiveIdRoute: LiveIdRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
@@ -631,13 +652,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
