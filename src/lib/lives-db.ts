@@ -800,10 +800,12 @@ export async function createScheduledLiveInDb(
       status: "scheduled",
       scheduled_at: input.scheduledAt,
       ...(input.currency ? { currency: input.currency } : {}),
+      ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
     })
     .select("id")
     .single();
   if (error || !live) throw error ?? new Error("Failed to schedule live");
+
 
   const productIds: string[] = [];
   if (input.products.length > 0) {
