@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, RefreshCw, Search, Power, Users, Package, Eye, EyeOff,
   Copy, UserPlus, KeyRound, MessageCircle, CheckCircle2, Clock, ChevronDown, ChevronUp,
+  Trash2,
 } from "lucide-react";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
@@ -15,6 +16,7 @@ import { haptic } from "@/lib/haptics";
 import {
   fetchAdminPromoCodes, adminCreatePromoCode, adminSetPromoActive,
   adminRenewPromoCredits, adminSearchUsersByHandle, adminAssignPromoCode,
+  adminDeletePromoCode,
   buildInfluencerOnboardingMessage,
   fetchAdminPromoCodeRequests, adminReviewPromoCodeRequest,
   type AdminPromoCodeRow, type UserSearchRow, type AdminPromoCodeRequestRow,
