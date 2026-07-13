@@ -412,12 +412,31 @@ private final class LivePipSampleView: UIView {
         layer as! AVSampleBufferDisplayLayer
     }
 
+    private var lastRotation: VideoRotation = ._0
+
     func enqueue(_ sampleBuffer: CMSampleBuffer) {
         if #available(iOS 17.0, *) {
             sampleBufferDisplayLayer.sampleBufferRenderer.enqueue(sampleBuffer)
         } else {
             sampleBufferDisplayLayer.enqueue(sampleBuffer)
         }
+    }
+
+    /// Match LiveKit's SampleBufferVideoRenderer: CATransform3D rotation,
+    /// never mirrored for a remote viewer (mirroring caused the "selfie" look).
+    func applyRotationIfNeeded(_ rotation: VideoRotation) {
+        guard rotation != lastRotation else { return }
+        lastRotation = rotation
+        sampleBufferDisplayLayer.transform = CATransform3D.from(rotation: rotation)
+        sampleBufferDisplayLayer.frame = bounds
+        sampleBufferDisplayLayer.removeAllAnimations()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        sampleBufferDisplayLayer.transform = CATransform3D.from(rotation: lastRotation)
+        sampleBufferDisplayLayer.frame = bounds
+        sampleBufferDisplayLayer.removeAllAnimations()
     }
 }
 
@@ -438,10 +457,8 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer {
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
         Task { @MainActor in
+            renderingView.applyRotationIfNeeded(frame.rotation)
             renderingView.enqueue(sampleBuffer)
-            renderingView.sampleBufferDisplayLayer.setAffineTransform(
-                CGAffineTransform(rotationAngle: frame.rotation.rotationAngle)
-            )
             LivePipSession.shared.noteFrameRendered()
         }
     }
@@ -465,24 +482,28 @@ private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewC
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
         Task { @MainActor in
+            renderingView.applyRotationIfNeeded(frame.rotation)
             renderingView.enqueue(sampleBuffer)
-            renderingView.sampleBufferDisplayLayer.setAffineTransform(
-                CGAffineTransform(rotationAngle: frame.rotation.rotationAngle)
-            )
             preferredContentSize = frame.rotatedSize
             LivePipSession.shared.noteFrameRendered()
         }
     }
 }
 
-private extension VideoRotation {
-    var rotationAngle: CGFloat {
-        switch self {
-        case ._0: return 0
-        case ._90: return .pi / 2
-        case ._180: return .pi
-        case ._270: return 3 * .pi / 2
-        @unknown default: return 0
+private extension CATransform3D {
+    /// Same mapping as LiveKit `SampleBufferVideoRenderer` (no mirroring).
+    static func from(rotation: VideoRotation) -> CATransform3D {
+        switch rotation {
+        case ._0:
+            return CATransform3DIdentity
+        case ._90:
+            return CATransform3DMakeRotation(.pi / 2.0, 0, 0, 1)
+        case ._180:
+            return CATransform3DMakeRotation(.pi, 0, 0, 1)
+        case ._270:
+            return CATransform3DMakeRotation(-.pi / 2.0, 0, 0, 1)
+        @unknown default:
+            return CATransform3DIdentity
         }
     }
 }

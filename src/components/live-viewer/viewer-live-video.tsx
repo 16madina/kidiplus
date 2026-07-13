@@ -14,7 +14,7 @@ import {
   type RemoteParticipant,
 } from "@/lib/livekit";
 import { useAppActive } from "@/lib/app-state";
-import { useMediaSessionActive } from "@/lib/pip-session";
+import { getInSystemPip, getPipHold, useMediaSessionActive } from "@/lib/pip-session";
 import { Room } from "livekit-client";
 
 export type ViewerLiveVideoProps = {
@@ -134,6 +134,9 @@ export function ViewerLiveVideo({
             // component is remounting (e.g. after appActive flip / Stripe
             // iframe momentarily hiding the tab).
             if (cancelled) return;
+            // While system PiP / background hold is active, WKWebView often
+            // briefly drops tracks — treat that as noise, not host leave.
+            if (getPipHold() || getInSystemPip()) return;
             if (track.kind === Track.Kind.Video) {
               scheduleEnd("TrackUnsubscribed(video)");
             }
@@ -192,6 +195,39 @@ export function ViewerLiveVideo({
     };
   }, [room, identity, name, sessionActive]);
 
+  // After returning from system PiP / background, WKWebView media is often
+  // frozen on the last frame (or stuck on the poster). Re-attach + play.
+  useEffect(() => {
+    if (!appActive) return;
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    const r = roomRef.current;
+    if (!r) return;
+
+    let recovered = false;
+    r.remoteParticipants.forEach((p) => {
+      p.trackPublications.forEach((pub) => {
+        const track = pub.track;
+        if (!track) return;
+        try {
+          if (track.kind === Track.Kind.Video && video) {
+            track.attach(video);
+            recovered = true;
+          } else if (track.kind === Track.Kind.Audio && audio) {
+            track.attach(audio);
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+    });
+
+    if (recovered) {
+      setStatus("live");
+    }
+    void video?.play()?.catch(() => {});
+    void audio?.play()?.catch(() => {});
+  }, [appActive]);
 
   const showPoster = status !== "live";
 
