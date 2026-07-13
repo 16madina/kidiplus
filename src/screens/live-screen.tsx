@@ -211,7 +211,7 @@ function LiveScreenAuthed() {
         <div
           className="relative w-full overflow-hidden"
           style={{
-            aspectRatio: "3 / 4",
+            height: "min(58vh, 460px)",
             backgroundColor: NAVY_LOCAL,
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
@@ -221,9 +221,10 @@ function LiveScreenAuthed() {
             src={sellerHero.url}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectPosition: "center 65%" }}
+            style={{ objectPosition: "center center" }}
             draggable={false}
           />
+
 
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
