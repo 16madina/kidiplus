@@ -203,9 +203,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       hostIdentity, hostName, setHost,
       currency, setCurrency,
       cameraFacing, setCameraFacing,
+      allowGifts, setAllowGifts,
       reset,
     }),
-    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+
   );
 
 
