@@ -216,11 +216,29 @@ html {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Tablets (iPad + landscape phones ≥768px): give every pt-safe surface a
+/* Tablets (iPad + landscape phones): give every pt-safe surface a
  * comfortable top breathing room. Mobile phones keep the exact safe area. */
-@media (min-width: 768px) {
+@media (min-width: 700px) {
   .pt-safe {
     padding-top: max(env(safe-area-inset-top), 1.75rem);
+  }
+
+  .seller-entry-screen {
+    justify-content: center;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .seller-entry-hero {
+    height: min(34vh, 320px) !important;
+    max-width: min(38rem, calc(100vw - 4rem)) !important;
+    border-radius: 28px !important;
+    background-size: contain !important;
+    background-position: center !important;
+  }
+
+  .seller-entry-content {
+    margin-top: 1.25rem !important;
   }
 }
 

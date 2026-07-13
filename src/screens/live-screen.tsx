@@ -204,12 +204,12 @@ function LiveScreenAuthed() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: EASE_IOS }}
-        className="relative flex h-full flex-col overflow-y-auto bg-white pt-safe md:px-8 md:pt-10"
+        className="seller-entry-screen relative flex h-full flex-col overflow-y-auto bg-white pt-safe md:px-8 md:pt-10"
         style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
       >
         {/* Hero image — navy bg with product */}
         <div
-          className="relative w-full overflow-hidden md:mx-auto md:max-w-2xl md:rounded-3xl"
+          className="seller-entry-hero relative w-full overflow-hidden md:mx-auto md:max-w-2xl md:rounded-3xl"
           style={{
             height: "clamp(290px, 46vh, 390px)",
             backgroundColor: NAVY_LOCAL,
@@ -228,7 +228,7 @@ function LiveScreenAuthed() {
         </div>
 
         {/* Content */}
-        <div className="relative -mt-4 flex flex-col items-center px-6 text-center">
+        <div className="seller-entry-content relative -mt-4 flex flex-col items-center px-6 text-center">
           <h1 className="text-[26px] font-black leading-tight" style={{ color: NAVY_LOCAL, fontFamily: "'Inter', system-ui, sans-serif" }}>
             {t("broadcast.seller.title", { defaultValue: "Vends en direct sur KiDi+" })}
           </h1>
