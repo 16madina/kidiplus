@@ -298,7 +298,22 @@ const ChatBubble = memo(function ChatBubble({
       <div className="min-w-0 text-[13px] leading-snug">
         <span className="font-semibold" style={{ color: msg.color }}>
           {msg.user}
-        </span>{" "}
+        </span>
+        {msg.isHost ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-black"
+            style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
+          >
+            HOST
+          </span>
+        ) : msg.isModerator ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center gap-0.5 rounded px-1 py-px text-[9px] font-black tracking-wide text-black"
+            style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
+          >
+            MOD
+          </span>
+        ) : null}{" "}
         <span className={alreadyMuted ? "text-white/50 line-through" : "text-white"}>
           {msg.text}
         </span>

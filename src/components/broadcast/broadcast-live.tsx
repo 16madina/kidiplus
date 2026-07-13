@@ -558,6 +558,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       text: c.text,
       system: c.system,
       userId: c.userId,
+      isModerator:
+        !!c.isModerator ||
+        (!!c.userId && moderators.some((m) => m.userId === c.userId)),
+      isHost: !!c.isHost || (!!c.userId && c.userId === user?.id),
     }));
 
   return (

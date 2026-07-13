@@ -148,18 +148,19 @@ export function RealLiveViewerScreen() {
   const isGuest = !user;
   const displayName = profile?.display_name || profile?.handle || (isGuest ? "invité" : "invité");
 
+  const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const chatMutes = useLiveChatMutes(active?.liveId ?? null);
 
   const room = useLiveRoom({
     liveId: active?.liveId ?? null,
     identity,
     displayName,
     isHost: false,
+    isModerator,
   });
   const [viewerVideoStatus, setViewerVideoStatus] = useState<ViewerStatus>("connecting");
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
-  const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
-  const chatMutes = useLiveChatMutes(active?.liveId ?? null);
   const wasModeratorRef = useRef(false);
   const [modHydrated, setModHydrated] = useState(false);
 
@@ -314,9 +315,11 @@ export function RealLiveViewerScreen() {
           text: c.text,
           system: c.system,
           userId: c.userId,
+          isModerator: !!c.isModerator,
+          isHost: !!c.isHost || (!!c.userId && c.userId === active?.sellerId),
         })),
     ],
-    [localMessages, room.chat, chatMutes],
+    [localMessages, room.chat, chatMutes, active?.sellerId],
   );
 
   // ---------- Payment sheet state ----------
@@ -1068,11 +1071,12 @@ export function RealLiveViewerScreen() {
       </div>
 
 
-      {isModerator && user && active?.liveId && !liveEnded && (
+      {isModerator && user && active?.liveId && active.sellerId && !liveEnded && (
         <ErrorBoundary boundary="moderator_dock">
           <ModeratorDock
             liveId={active.liveId}
             userId={user.id}
+            sellerId={active.sellerId}
             products={room.products}
             activeAuction={room.auctionStart}
             currency={liveCurrency}

@@ -53,6 +53,10 @@ export type ChatEvt = {
   system?: boolean;
   /** Profile UUID when identity is a signed-in user. */
   userId?: string;
+  /** True when the sender is a live moderator (TikTok-style chat badge). */
+  isModerator?: boolean;
+  /** True when the sender is the live host. */
+  isHost?: boolean;
 };
 
 export type AuctionStartEvt = {
@@ -151,8 +155,10 @@ export function useLiveRoom(params: {
   identity: string; // stable id (user.id or anon)
   displayName: string;
   isHost: boolean;
+  /** Stamp chat messages with a moderator badge when true. */
+  isModerator?: boolean;
 }): LiveRoomState {
-  const { liveId, identity, displayName, isHost } = params;
+  const { liveId, identity, displayName, isHost, isModerator = false } = params;
   const [ready, setReady] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
   const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
@@ -487,6 +493,8 @@ export function useLiveRoom(params: {
           color: colorFor(identity),
           text: trimmed,
           ...(UUID_RE.test(identity) ? { userId: identity } : {}),
+          ...(isModerator && !isHost ? { isModerator: true } : {}),
+          ...(isHost ? { isHost: true } : {}),
         };
         // Optimistic local echo + broadcast to others.
         setChat((prev) => [...prev, evt].slice(-60));
@@ -541,7 +549,10 @@ export function useLiveRoom(params: {
       lastExtension,
       lastBid,
       lastGift,
-      identity, displayName,
+      identity,
+      displayName,
+      isHost,
+      isModerator,
     ],
   );
 }

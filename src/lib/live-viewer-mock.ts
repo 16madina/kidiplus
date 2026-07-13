@@ -40,6 +40,8 @@ export type ChatMsg = {
   system?: boolean;
   /** Profile UUID when the sender is signed in — needed for mute/block. */
   userId?: string;
+  isModerator?: boolean;
+  isHost?: boolean;
 };
 
 let msgId = 0;

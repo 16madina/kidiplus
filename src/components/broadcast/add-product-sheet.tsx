@@ -28,6 +28,7 @@ export function AddProductSheet({
   onAdd,
   onPickFromShop,
   currency: currencyProp,
+  pickFromShopLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,7 @@ export function AddProductSheet({
   onPickFromShop?: () => void;
   /** Required when used outside BroadcastProvider (moderator dock). */
   currency?: string;
+  pickFromShopLabel?: string;
 }) {
   const broadcast = useOptionalBroadcast();
   const currency: Currency = normalizeCurrency(
@@ -153,7 +155,7 @@ export function AddProductSheet({
             className="!min-h-14 mb-4 h-14 w-full rounded-2xl text-[14px] font-bold text-white"
             style={{ background: "linear-gradient(135deg, oklch(0.5 0.18 260), oklch(0.42 0.14 265))" }}
           >
-            📦 Choisir depuis ma boutique
+            {pickFromShopLabel ?? "📦 Choisir depuis ma boutique"}
           </Press>
         )}
 
