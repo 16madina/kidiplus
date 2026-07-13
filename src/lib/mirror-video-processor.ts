@@ -51,12 +51,16 @@ export class MirrorVideoProcessor implements TrackProcessor<Track.Kind.Video, Vi
     video.playsInline = true;
     video.setAttribute("playsinline", "true");
     video.srcObject = new MediaStream([source]);
-    await video.play().catch(() => undefined);
+    // Don't hang forever if autoplay is blocked — canvas can still draw later.
+    await Promise.race([
+      video.play().catch(() => undefined),
+      new Promise<void>((r) => setTimeout(r, 400)),
+    ]);
 
     const canvas = document.createElement("canvas");
     const settings = source.getSettings();
-    canvas.width = Math.max(2, settings.width ?? 720);
-    canvas.height = Math.max(2, settings.height ?? 1280);
+    canvas.width = Math.max(2, settings.width ?? (video.videoWidth || 720));
+    canvas.height = Math.max(2, settings.height ?? (video.videoHeight || 1280));
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("mirror processor: 2d context unavailable");
 

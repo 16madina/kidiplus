@@ -128,6 +128,13 @@ export async function switchHostCameraFacing(args: {
   target?: CameraFacing;
 }): Promise<CameraFacing> {
   const { room, track } = args;
+  // Processors block clean device switches on iOS — drop mirror first.
+  try {
+    await track.stopProcessor();
+  } catch {
+    /* none */
+  }
+
   const settings = track.mediaStreamTrack?.getSettings?.() ?? {};
   const currentId =
     typeof settings.deviceId === "string" ? settings.deviceId : null;
@@ -144,29 +151,34 @@ export async function switchHostCameraFacing(args: {
   // Always pick a different device than the one currently open when possible.
   const deviceId = await findCameraDeviceId(target, currentId);
 
+  let switched = false;
   if (deviceId && deviceId !== currentId) {
     try {
       await room.switchActiveDevice("videoinput", deviceId, true);
+      switched = true;
     } catch (e) {
       console.warn("[flip] switchActiveDevice failed, try restartTrack(deviceId)", e);
-      await track.restartTrack({
-        deviceId,
-        resolution: { width: 1280, height: 720, frameRate: 30 },
-      });
     }
-  } else if (deviceId) {
-    // Same deviceId reported — still force a restart toward target facing.
-    await track.restartTrack({
-      deviceId,
-      facingMode: target,
-      resolution: { width: 1280, height: 720, frameRate: 30 },
-    });
-  } else {
-    await track.restartTrack({
-      facingMode: target,
-      resolution: { width: 1280, height: 720, frameRate: 30 },
-    });
   }
+
+  if (!switched) {
+    // restartTrack is the most reliable path on Capacitor WKWebView / Chrome.
+    await track.restartTrack(
+      deviceId
+        ? {
+            deviceId,
+            facingMode: target,
+            resolution: { width: 1280, height: 720, frameRate: 30 },
+          }
+        : {
+            facingMode: target,
+            resolution: { width: 1280, height: 720, frameRate: 30 },
+          },
+    );
+  }
+
+  // Give the hardware a beat to settle before reading facingMode.
+  await new Promise((r) => setTimeout(r, 80));
 
   const detected = asFacing(
     facingModeFromLocalTrack(track, { defaultFacingMode: target }).facingMode,
@@ -187,7 +199,13 @@ export async function syncFrontCameraMirror(
   if (facing !== "user") return;
   try {
     const { MirrorVideoProcessor } = await import("@/lib/mirror-video-processor");
-    await track.setProcessor(new MirrorVideoProcessor(), true);
+    // Don't block the host UI for more than a couple seconds if canvas init stalls.
+    await Promise.race([
+      track.setProcessor(new MirrorVideoProcessor(), true),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("mirror_timeout")), 2500),
+      ),
+    ]);
   } catch (e) {
     console.warn("[camera] mirror processor failed", e);
   }

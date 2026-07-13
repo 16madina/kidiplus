@@ -95,7 +95,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const [state, setState] = useState<BroadcastStatus>("idle");
     const appActive = useAppActive();
 
-    const shouldRun = enabled && appActive;
+    // Preview: pause capture when cam off / backgrounded.
+    // LiveKit room must stay connected when the host only toggles the camera —
+    // tying room lifecycle to `enabled` caused a full reconnect (30–40s).
+    const previewShouldRun = enabled && appActive;
+    const roomShouldRun = appActive;
 
     // Report status upward.
     useEffect(() => {
@@ -221,7 +225,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       let cancelled = false;
 
       async function acquire() {
-        if (!shouldRun) return teardown();
+        if (!previewShouldRun) return teardown();
         teardown();
         const res = await ensureCameraMicAccess({
           video: { facingMode: facing },
@@ -261,7 +265,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         cancelled = true;
         teardown();
       };
-    }, [facing, shouldRun, livekit]);
+    }, [facing, previewShouldRun, livekit]);
 
     // --- LiveKit host mode ------------------------------------------------
     useEffect(() => {
@@ -269,11 +273,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       let cancelled = false;
 
       async function start() {
-        if (!shouldRun) return teardown();
+        if (!roomShouldRun) return teardown();
         setState("connecting");
 
         const preflight = await ensureCameraMicAccess({
-          video: { facingMode: facing },
+          video: { facingMode: facingRef.current },
           audio: micEnabled,
         });
         if (cancelled) {
@@ -319,11 +323,14 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const t = pub?.track as LocalVideoTrack | undefined;
             if (t) {
               localVideoTrackRef.current = t;
-              syncFacingFromTrack(t, facingRef.current);
-              if (videoRef.current) {
-                t.attach(videoRef.current);
-                videoRef.current.play().catch(() => {});
-              }
+              void (async () => {
+                const applied = syncFacingFromTrack(t, facingRef.current);
+                await syncFrontCameraMirror(t, applied ?? facingRef.current);
+                if (videoRef.current) {
+                  t.attach(videoRef.current);
+                  videoRef.current.play().catch(() => {});
+                }
+              })();
             }
           });
           room.on(RoomEvent.Disconnected, () => {
@@ -334,6 +341,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
           // Prefer remembered facing after leave/return (not a stale closure).
           const desiredFacing = facingRef.current;
+          // If the host already toggled cam off before connect finished, stay muted.
+          if (!enabled) {
+            await room.localParticipant.setCameraEnabled(false);
+            localVideoTrackRef.current = null;
+            setState("granted");
+            return;
+          }
           const track = await createLocalVideoTrack({
             facingMode: desiredFacing,
             resolution: { width: 1280, height: 720, frameRate: 30 },
@@ -394,7 +408,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         cancelled = true;
         void teardown();
       };
-    }, [livekit?.room, livekit?.identity, shouldRun, retryKey]);
+    }, [livekit?.room, livekit?.identity, roomShouldRun, retryKey]);
 
     // Toggle camera without reconnecting. When turning back ON, re-apply the
     // remembered facingMode — otherwise LiveKit defaults to front camera and
@@ -409,7 +423,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       else if (state === "connecting" || state === "idle") camToggleReadyRef.current = false;
     }, [state]);
     useEffect(() => {
-      if (!livekit || !shouldRun || !camToggleReadyRef.current) {
+      if (!livekit || !roomShouldRun || !camToggleReadyRef.current) {
         prevEnabledRef.current = enabled;
         return;
       }
@@ -423,29 +437,68 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       void (async () => {
         try {
           if (!enabled) {
+            try {
+              await localVideoTrackRef.current?.stopProcessor();
+            } catch {
+              /* ignore */
+            }
             await room.localParticipant.setCameraEnabled(false);
             return;
           }
-          await room.localParticipant.setCameraEnabled(true, {
-            facingMode: facingRef.current,
-            resolution: { width: 1280, height: 720, frameRate: 30 },
-          });
-          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
-          const track = pub?.track as LocalVideoTrack | undefined;
-          if (track) {
-            localVideoTrackRef.current = track;
-            const appliedFacing = syncFacingFromTrack(track, facingRef.current);
-            await syncFrontCameraMirror(track, appliedFacing ?? facingRef.current);
-            if (videoRef.current) {
-              track.attach(videoRef.current);
-              videoRef.current.play().catch(() => {});
+          // Re-enable: prefer setCameraEnabled, fall back to a fresh publish
+          // if it stalls (common on iOS after mute).
+          const desiredFacing = facingRef.current;
+          let track: LocalVideoTrack | undefined;
+          try {
+            const pub = await Promise.race([
+              room.localParticipant.setCameraEnabled(true, {
+                facingMode: desiredFacing,
+                resolution: { width: 1280, height: 720, frameRate: 30 },
+              }),
+              new Promise<undefined>((resolve) =>
+                setTimeout(() => resolve(undefined), 6000),
+              ),
+            ]);
+            track =
+              (pub?.track as LocalVideoTrack | undefined) ??
+              (room.localParticipant.getTrackPublication(Track.Source.Camera)
+                ?.track as LocalVideoTrack | undefined);
+          } catch (e) {
+            console.warn("[camera] setCameraEnabled(true) failed, republish", e);
+          }
+          if (!track || track.isMuted) {
+            if (track) {
+              try {
+                await room.localParticipant.unpublishTrack(track, true);
+              } catch {
+                /* ignore */
+              }
             }
+            track = await createLocalVideoTrack({
+              facingMode: desiredFacing,
+              resolution: { width: 1280, height: 720, frameRate: 30 },
+            });
+            await room.localParticipant.publishTrack(track, {
+              simulcast: true,
+              videoEncoding: { maxBitrate: 1_800_000, maxFramerate: 30 },
+              source: Track.Source.Camera,
+            });
+          }
+          localVideoTrackRef.current = track;
+          const appliedFacing = syncFacingFromTrack(track, desiredFacing);
+          await syncFrontCameraMirror(track, appliedFacing ?? desiredFacing);
+          if (videoRef.current) {
+            track.attach(videoRef.current);
+            videoRef.current.muted = true;
+            videoRef.current.playsInline = true;
+            await videoRef.current.play().catch(() => {});
           }
         } catch (e) {
           console.warn("[camera] setCameraEnabled failed", e);
+          toast.error(t("live.cameraOnFailed", "Impossible de réactiver la caméra"));
         }
       })();
-    }, [enabled, livekit, shouldRun]);
+    }, [enabled, livekit, roomShouldRun, t]);
 
     // Toggle mic without reconnecting.
     useEffect(() => {
@@ -455,7 +508,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
     }, [micEnabled, livekit]);
 
-    const showVideo = shouldRun && state === "granted";
+    const showVideo = roomShouldRun && state === "granted" && enabled;
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
     const mirrored = !livekit && facing === "user";
