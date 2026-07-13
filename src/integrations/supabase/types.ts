@@ -648,6 +648,7 @@ export type Database = {
       lives: {
         Row: {
           abandon_push_sent_at: string | null
+          allow_gifts: boolean
           category: string | null
           cover_url: string | null
           currency: string
@@ -664,6 +665,7 @@ export type Database = {
         }
         Insert: {
           abandon_push_sent_at?: string | null
+          allow_gifts?: boolean
           category?: string | null
           cover_url?: string | null
           currency?: string
@@ -680,6 +682,7 @@ export type Database = {
         }
         Update: {
           abandon_push_sent_at?: string | null
+          allow_gifts?: boolean
           category?: string | null
           cover_url?: string | null
           currency?: string
