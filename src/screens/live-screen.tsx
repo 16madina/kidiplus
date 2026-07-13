@@ -204,12 +204,12 @@ function LiveScreenAuthed() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: EASE_IOS }}
-        className="relative flex h-full flex-col overflow-y-auto bg-white"
+        className="relative flex h-full flex-col overflow-y-auto bg-white pt-safe md:px-8 md:pt-10"
         style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
       >
         {/* Hero image — navy bg with product */}
         <div
-          className="relative w-full overflow-hidden"
+          className="relative w-full overflow-hidden md:mx-auto md:max-w-2xl md:rounded-3xl"
           style={{
             height: "clamp(290px, 46vh, 390px)",
             backgroundColor: NAVY_LOCAL,
