@@ -19,7 +19,9 @@ import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { AddProductSheet } from "./add-product-sheet";
+import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
+
 import {
   BROADCAST_CATEGORY_KEYS,
   BROADCAST_CATEGORY_LABEL_KEY,
@@ -155,10 +157,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [allowBids, setAllowBids] = useState(true);
   const [allowBuyNow, setAllowBuyNow] = useState(true);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
-  const [allowGifts, setAllowGifts] = useState(false);
+  const allowGifts = b.allowGifts;
+  const setAllowGifts = b.setAllowGifts;
   const [showAdd, setShowAdd] = useState(false);
+  const [showShopPicker, setShowShopPicker] = useState(false);
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [launching, setLaunching] = useState(false);
+
 
   const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
   const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
@@ -183,7 +188,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
 
-  const pickCover = () => coverInputRef.current?.click();
+  
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -243,6 +248,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           category: b.category,
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          allowGifts,
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -256,11 +262,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          allowGifts,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
         toast.success(t("schedule.savedToast", "Live programmé 📅"));
       }
+
       onExit();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -369,9 +377,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
 
         {/* 1 — Cover */}
         <Card step={1} title={t("schedule.form.coverTitle", "Image de couverture")}>
-          <Press
-            onClick={pickCover}
-            className="!min-h-40 relative flex h-40 w-full items-center justify-center overflow-hidden rounded-xl"
+          <label
+            htmlFor="schedule-cover-input"
+            className="relative flex h-40 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: `1.5px dashed ${GOLD_DIM}`,
@@ -381,7 +389,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
             {b.cover ? (
               <img src={b.cover} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center gap-3">
+              <div className="pointer-events-none flex flex-col items-center gap-3">
                 <ImageIcon size={36} color="rgba(255,255,255,0.35)" />
                 <span
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold"
@@ -396,15 +404,17 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
                 </span>
               </div>
             )}
-          </Press>
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onCoverFile}
-          />
+            <input
+              id="schedule-cover-input"
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={onCoverFile}
+            />
+          </label>
         </Card>
+
 
         {/* 2 — Info */}
         <Card step={2} title={t("schedule.form.infoTitle", "Informations du live")}>
@@ -714,7 +724,31 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={(p) => b.addProduct(p)}
+        onPickFromShop={() => {
+          setShowAdd(false);
+          setShowShopPicker(true);
+        }}
+      />
+      <ShopPickerSheet
+        open={showShopPicker}
+        onClose={() => setShowShopPicker(false)}
+        currency={b.currency}
+        onConfirm={(items) => {
+          for (const it of items) {
+            b.addProduct({
+              name: it.name,
+              image: it.image,
+              mode: it.mode,
+              startPrice: it.startPrice,
+              price: it.price,
+              stock: it.stock,
+              timerSec: it.timerSec,
+            });
+          }
+          setShowShopPicker(false);
+        }}
       />
     </motion.div>
   );
 }
+

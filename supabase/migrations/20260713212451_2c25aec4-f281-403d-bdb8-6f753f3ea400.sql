@@ -1,0 +1,3 @@
+
+ALTER TABLE public.lives
+ADD COLUMN IF NOT EXISTS allow_gifts BOOLEAN NOT NULL DEFAULT true;

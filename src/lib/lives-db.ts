@@ -95,6 +95,9 @@ export type CreateLiveInput = {
   roomName: string;
   /** Live currency — inherited from the seller's profile; a DB trigger enforces it. */
   currency?: string;
+  /** Whether viewers can send virtual gifts during the live. */
+  allowGifts?: boolean;
+
   products: Array<{
     name: string;
     imagePath: string | null; // storage path OR absolute URL
@@ -768,8 +771,10 @@ export type ScheduledLiveRow = {
   scheduled_at: string | null;
   currency: string | null;
   status: string;
+  allow_gifts?: boolean | null;
   products?: LiveProductRow[];
 };
+
 
 export type ScheduledLiveWithSeller = ScheduledLiveRow & {
   seller: {
@@ -795,10 +800,12 @@ export async function createScheduledLiveInDb(
       status: "scheduled",
       scheduled_at: input.scheduledAt,
       ...(input.currency ? { currency: input.currency } : {}),
+      ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
     })
     .select("id")
     .single();
   if (error || !live) throw error ?? new Error("Failed to schedule live");
+
 
   const productIds: string[] = [];
   if (input.products.length > 0) {
@@ -837,6 +844,7 @@ export async function updateScheduledLiveInDb(
     category: string;
     coverPath: string | null;
     scheduledAt: string;
+    allowGifts?: boolean;
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -847,10 +855,12 @@ export async function updateScheduledLiveInDb(
       category: patch.category,
       cover_url: patch.coverPath,
       scheduled_at: patch.scheduledAt,
+      ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
     })
     .eq("id", liveId)
     .eq("status", "scheduled");
   if (error) throw error;
+
 
   // Replace products wholesale.
   await supabase.from("live_products").delete().eq("live_id", liveId);
@@ -926,7 +936,8 @@ export async function fetchScheduledLiveWithProducts(
 ): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
   const { data } = await supabase
     .from("lives")
-    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status")
+    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts")
+
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;

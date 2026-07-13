@@ -101,8 +101,13 @@ type Ctx = {
   cameraFacing: "user" | "environment";
   setCameraFacing: (f: "user" | "environment") => void;
 
+  /** Allow viewers to send virtual gifts during the live. */
+  allowGifts: boolean;
+  setAllowGifts: (v: boolean) => void;
+
   reset: () => void;
 };
+
 
 
 
@@ -135,6 +140,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [hostName, setHostName] = useState<string>("Host");
   const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
+  const [allowGifts, setAllowGifts] = useState<boolean>(true);
+
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
@@ -171,7 +178,9 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setRoomName(null);
     setLiveId(null);
     setCameraFacing("user");
+    setAllowGifts(true);
   }, []);
+
 
   const value = useMemo<Ctx>(
     () => ({
@@ -194,9 +203,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       hostIdentity, hostName, setHost,
       currency, setCurrency,
       cameraFacing, setCameraFacing,
+      allowGifts, setAllowGifts,
       reset,
     }),
-    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+
   );
 
 
