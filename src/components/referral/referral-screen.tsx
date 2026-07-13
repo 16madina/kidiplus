@@ -311,10 +311,12 @@ function ClaimBlock({
   onClaimed,
   balance,
   fallbackCurrency,
+  onWithdraw,
 }: {
   onClaimed: () => void | Promise<void>;
   balance: ReferralBalance | null;
   fallbackCurrency: string;
+  onWithdraw?: () => void;
 }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
