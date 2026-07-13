@@ -221,3 +221,29 @@ export async function adminReviewPromoCodeRequest(
   const r = (data ?? {}) as any;
   return r.ok ? { ok: true, code: r.code, promo_code_id: r.promo_code_id } : { ok: false, error: r.error };
 }
+
+// ============================================================================
+// Admin — Reconciliation report
+// ============================================================================
+
+export type AdminReconRow = {
+  promo_code_id: string;
+  code: string;
+  active: boolean;
+  owner_id: string | null;
+  owner_handle: string | null;
+  owner_name: string | null;
+  owner_avatar: string | null;
+  claimed_at: string | null;
+  referred_count: number;
+  paid_orders: number;
+  earning_rows: number;
+  credits_by_status: Partial<Record<"held" | "credited" | "reversed", Record<string, number>>>;
+  wallet_available: number | null;
+  wallet_currency: string | null;
+};
+
+export async function fetchAdminReferralReconciliation(): Promise<AdminReconRow[]> {
+  const { data } = await sb.rpc("admin_referral_reconciliation", {});
+  return ((data as any)?.rows ?? []) as AdminReconRow[];
+}
