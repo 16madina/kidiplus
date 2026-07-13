@@ -19,6 +19,7 @@ import {
   fetchAdminPromoCodeRequests, adminReviewPromoCodeRequest,
   type AdminPromoCodeRow, type UserSearchRow, type AdminPromoCodeRequestRow,
 } from "@/lib/referrals-db";
+import { AdminReferralReconciliation } from "./admin-referral-reconciliation";
 
 export function AdminReferralPanel() {
   const { t } = useTranslation();
