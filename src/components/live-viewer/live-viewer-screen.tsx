@@ -306,6 +306,11 @@ function MockLiveViewerScreen() {
   // work when there are no real lives running.
   const dragY = useMotionValue(0);
 
+  // Mini player: clear vertical pager offset so expand isn't clipped on iOS.
+  useEffect(() => {
+    if (chromeHidden) dragY.set(0);
+  }, [chromeHidden, dragY]);
+
   // Prefetch the neighbour lives so a swipe swap is instantaneous: decode the
   // hi-res cover image and warm the avatar. For real lives, prime the LiveKit
   // token endpoint so the WS handshake starts before the user commits the swipe.
