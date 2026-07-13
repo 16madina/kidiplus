@@ -361,6 +361,35 @@ export type Database = {
           },
         ]
       }
+      live_chat_mutes: {
+        Row: {
+          created_at: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          live_id?: string
+          muted_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_mutes_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_gifts: {
         Row: {
           amount: number
