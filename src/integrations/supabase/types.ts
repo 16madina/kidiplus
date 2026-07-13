@@ -498,6 +498,49 @@ export type Database = {
           },
         ]
       }
+      live_chat_mutes: {
+        Row: {
+          created_at: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          live_id?: string
+          muted_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_mutes_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_chat_mutes_muted_by_fkey"
+            columns: ["muted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_chat_mutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_moderators: {
         Row: {
           added_by: string

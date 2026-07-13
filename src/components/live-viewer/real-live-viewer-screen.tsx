@@ -45,7 +45,11 @@ import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsModerator } from "@/lib/moderators-db";
+import {
+  muteLiveChatUser,
+  useIsModerator,
+  useLiveChatMutes,
+} from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
 import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
@@ -153,6 +157,7 @@ export function RealLiveViewerScreen() {
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
   const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const chatMutes = useLiveChatMutes(active?.liveId ?? null);
   const wasModeratorRef = useRef(false);
   const [modHydrated, setModHydrated] = useState(false);
 
@@ -296,10 +301,20 @@ export function RealLiveViewerScreen() {
     ]);
   }, [active, t]);
   const messages: ChatMsg[] = useMemo(
-    () => [...localMessages, ...room.chat.map((c) => ({
-      id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
-    }))],
-    [localMessages, room.chat],
+    () => [
+      ...localMessages,
+      ...room.chat
+        .filter((c) => !c.userId || !chatMutes.has(c.userId))
+        .map((c) => ({
+          id: c.id,
+          user: c.user,
+          color: c.color,
+          text: c.text,
+          system: c.system,
+          userId: c.userId,
+        })),
+    ],
+    [localMessages, room.chat, chatMutes],
   );
 
   // ---------- Payment sheet state ----------
@@ -677,6 +692,10 @@ export function RealLiveViewerScreen() {
   const send = () => {
     if (liveEnded) return;
     if (isGuest) { openAuth(); return; }
+    if (user?.id && chatMutes.has(user.id)) {
+      toast.error(t("moderator.youAreMuted", "Tu ne peux plus commenter dans ce live"));
+      return;
+    }
     const txt = draft.trim();
     if (!txt) return;
     room.sendChat(txt);
@@ -837,7 +856,37 @@ export function RealLiveViewerScreen() {
 
 
       <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
-        <LiveChat messages={messages} />
+        <LiveChat
+          messages={messages}
+          moderation={{
+            canModerate: isModerator,
+            selfUserId: user?.id ?? null,
+            hostUserId: active.sellerId ?? null,
+            mutedIds: chatMutes,
+            onMuteUser: async (userId, displayName) => {
+              if (!active.liveId || !user) return;
+              const res = await muteLiveChatUser(active.liveId, userId, user.id);
+              if (!res.ok) {
+                toast.error(res.error ?? t("moderator.muteFailed"));
+                return;
+              }
+              haptic.selection();
+              toast.success(t("moderator.muted", { name: displayName }));
+            },
+            onBlockUser: async (userId, displayName) => {
+              if (!active.liveId || !user) return;
+              await muteLiveChatUser(active.liveId, userId, user.id);
+              const r = await blockUser(userId);
+              if (r.ok) {
+                await refreshBlockedIds();
+                haptic.selection();
+                toast.success(t("moderator.blocked", { name: displayName }));
+              } else {
+                toast.error(r.error ?? t("moderator.blockFailed"));
+              }
+            },
+          }}
+        />
       </div>
 
       {currentAsProduct ? (

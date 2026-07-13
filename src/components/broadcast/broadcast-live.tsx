@@ -5,7 +5,13 @@ import {
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
-import { useModerators, removeModerator } from "@/lib/moderators-db";
+import {
+  muteLiveChatUser,
+  removeModerator,
+  useLiveChatMutes,
+  useModerators,
+} from "@/lib/moderators-db";
+import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
 import { useAuth } from "@/lib/auth-context";
 import type { BroadcastVideoHandle } from "./broadcast-video";
 import { useTranslation } from "react-i18next";
@@ -71,6 +77,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
   const { moderators } = useModerators(b.liveId);
+  const chatMutes = useLiveChatMutes(b.liveId);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
@@ -540,9 +547,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.success();
     toast.success(t("live.productAdded", "Produit ajouté"));
   };
-  const chatMessages: ChatMsg[] = room.chat.map((c) => ({
-    id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
-  }));
+  const chatMessages: ChatMsg[] = room.chat
+    .filter((c) => !c.userId || !chatMutes.has(c.userId))
+    .map((c) => ({
+      id: c.id,
+      user: c.user,
+      color: c.color,
+      text: c.text,
+      system: c.system,
+      userId: c.userId,
+    }));
 
   return (
     <motion.div
@@ -739,7 +753,48 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
-      <LiveChat messages={chatMessages} />
+      <LiveChat
+        messages={chatMessages}
+        moderation={{
+          canModerate: true,
+          selfUserId: user?.id ?? null,
+          hostUserId: user?.id ?? null,
+          mutedIds: chatMutes,
+          onMuteUser: async (userId, displayName) => {
+            if (!b.liveId || !user) return;
+            const res = await muteLiveChatUser(b.liveId, userId, user.id);
+            if (!res.ok) {
+              toast.error(res.error ?? t("moderator.muteFailed", "Impossible de couper les commentaires"));
+              return;
+            }
+            haptic.selection();
+            toast.success(
+              t("moderator.muted", {
+                name: displayName,
+                defaultValue: "{{name}} ne peut plus commenter",
+              }),
+            );
+          },
+          onBlockUser: async (userId, displayName) => {
+            if (!b.liveId || !user) return;
+            // Mute for this live + personal block.
+            await muteLiveChatUser(b.liveId, userId, user.id);
+            const r = await blockUser(userId);
+            if (r.ok) {
+              await refreshBlockedIds();
+              haptic.selection();
+              toast.success(
+                t("moderator.blocked", {
+                  name: displayName,
+                  defaultValue: "{{name}} a été bloqué",
+                }),
+              );
+            } else {
+              toast.error(r.error ?? t("moderator.blockFailed", "Impossible de bloquer"));
+            }
+          },
+        }}
+      />
 
       {/* Sale flash */}
       <AnimatePresence>
@@ -984,6 +1039,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               {b.liveId && user && (
                 <ModeratorPromoteForm
                   liveId={b.liveId}
+                  hostId={user.id}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
                   presentIds={room.presentViewers.map((p) => ({
@@ -1166,6 +1222,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               {b.liveId && user && (
                 <ModeratorPromoteForm
                   liveId={b.liveId}
+                  hostId={user.id}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
                   presentIds={room.presentViewers.map((p) => ({

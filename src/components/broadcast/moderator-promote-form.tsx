@@ -1,5 +1,5 @@
-// Host typeahead to promote a KiDi+ user as live moderator.
-// Search matches handle + display_name; quick picks = present viewers + follows.
+// Host typeahead to promote a follower as live moderator (max 3).
+// Search matches handle + display_name among people who follow the host.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -9,8 +9,9 @@ import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import {
   addModerator,
-  fetchFollowModeratorCandidates,
+  fetchFollowerModeratorCandidates,
   fetchModeratorCandidatesByIds,
+  MAX_LIVE_MODERATORS,
   resolveModeratorCandidateId,
   searchModeratorCandidates,
   type ModeratorCandidate,
@@ -18,6 +19,8 @@ import {
 
 export type ModeratorPromoteFormProps = {
   liveId: string;
+  /** Host profile id (must match lives.seller_id). */
+  hostId: string;
   addedBy: string;
   existingIds: Set<string>;
   /** Signed-in viewers currently in the live (from Supabase presence). */
@@ -41,7 +44,6 @@ function CandidateAvatar({
     setUrl(candidate.avatarUrl);
     const raw = candidate.avatarPath || candidate.avatarUrl;
     if (!raw) return;
-    // Always re-resolve so expired / path values still paint.
     void resolveAvatarUrl(raw).then((signed) => {
       if (!alive) return;
       if (signed) setUrl(signed);
@@ -122,6 +124,7 @@ function CandidateRow({
 
 export function ModeratorPromoteForm({
   liveId,
+  hostId,
   addedBy,
   existingIds,
   presentIds = [],
@@ -132,45 +135,46 @@ export function ModeratorPromoteForm({
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<ModeratorCandidate[]>([]);
   const [present, setPresent] = useState<ModeratorCandidate[]>([]);
-  const [follows, setFollows] = useState<ModeratorCandidate[]>([]);
+  const [followers, setFollowers] = useState<ModeratorCandidate[]>([]);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const reqId = useRef(0);
 
+  const atLimit = existingIds.size >= MAX_LIVE_MODERATORS;
+
   const excludeIds = useMemo(() => {
     const s = new Set(existingIds);
     s.add(addedBy);
+    s.add(hostId);
     return s;
-  }, [existingIds, addedBy]);
+  }, [existingIds, addedBy, hostId]);
 
   const presentKey = presentIds.map((p) => p.id).join(",");
 
-  // Quick picks: viewers in the live + follow graph
+  // Quick picks: followers currently in the live + other followers
   useEffect(() => {
     let alive = true;
     const ids = presentIds.map((p) => p.id);
     void (async () => {
       const [inLive, graph] = await Promise.all([
-        fetchModeratorCandidatesByIds(ids, { excludeIds, limit: 16 }),
-        fetchFollowModeratorCandidates(addedBy, { excludeIds, limit: 16 }),
+        fetchModeratorCandidatesByIds(ids, { hostId, excludeIds, limit: 16 }),
+        fetchFollowerModeratorCandidates(hostId, { excludeIds, limit: 16 }),
       ]);
       if (!alive) return;
       setPresent(inLive);
-      // Don't duplicate people already shown in "present"
       const presentSet = new Set(inLive.map((c) => c.id));
-      setFollows(graph.filter((c) => !presentSet.has(c.id)));
+      setFollowers(graph.filter((c) => !presentSet.has(c.id)));
     })();
     return () => {
       alive = false;
     };
-    // presentKey captures presentIds content without identity churn
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presentKey, addedBy, excludeIds]);
+  }, [presentKey, hostId, excludeIds]);
 
-  // Debounced autocomplete
+  // Debounced autocomplete (followers only)
   useEffect(() => {
     const q = value.trim().replace(/^@+/, "");
-    if (q.length < 1) {
+    if (q.length < 1 || atLimit) {
       setSuggestions([]);
       setSearching(false);
       return;
@@ -178,7 +182,7 @@ export function ModeratorPromoteForm({
     const id = ++reqId.current;
     setSearching(true);
     const timer = window.setTimeout(() => {
-      void searchModeratorCandidates(q, { excludeIds, limit: 8 }).then((rows) => {
+      void searchModeratorCandidates(q, { hostId, excludeIds, limit: 8 }).then((rows) => {
         if (reqId.current !== id) return;
         setSuggestions(rows);
         setSearching(false);
@@ -186,7 +190,7 @@ export function ModeratorPromoteForm({
       });
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [value, excludeIds]);
+  }, [value, excludeIds, hostId, atLimit]);
 
   useEffect(() => {
     const onPointer = (e: PointerEvent) => {
@@ -196,13 +200,35 @@ export function ModeratorPromoteForm({
     return () => document.removeEventListener("pointerdown", onPointer);
   }, []);
 
+  const errorToast = (code?: string, fallback?: string) => {
+    if (code === "moderator_limit_reached") {
+      toast.error(
+        t("moderator.limitReached", {
+          count: MAX_LIVE_MODERATORS,
+          defaultValue: `Maximum {{count}} modérateurs`,
+        }),
+      );
+      return;
+    }
+    if (code === "moderator_not_follower") {
+      toast.error(
+        t(
+          "moderator.mustFollow",
+          "Seuls tes abonnés peuvent être modérateurs",
+        ),
+      );
+      return;
+    }
+    toast.error(fallback ?? t("moderator.addFailed", "Ajout impossible"));
+  };
+
   const promote = async (userId: string) => {
-    if (busy) return;
+    if (busy || atLimit) return;
     if (existingIds.has(userId)) {
       toast(t("moderator.alreadyMod", "Déjà modérateur"));
       return;
     }
-    if (userId === addedBy) {
+    if (userId === addedBy || userId === hostId) {
       toast.error(t("moderator.cannotSelf", "Tu ne peux pas te promouvoir"));
       return;
     }
@@ -210,7 +236,7 @@ export function ModeratorPromoteForm({
     try {
       const res = await addModerator(liveId, userId, addedBy);
       if (!res.ok) {
-        toast.error(res.error ?? t("moderator.addFailed", "Ajout impossible"));
+        errorToast(res.code, res.error);
         return;
       }
       haptic.selection();
@@ -219,7 +245,7 @@ export function ModeratorPromoteForm({
       setSuggestions([]);
       setOpen(false);
       setPresent((prev) => prev.filter((c) => c.id !== userId));
-      setFollows((prev) => prev.filter((c) => c.id !== userId));
+      setFollowers((prev) => prev.filter((c) => c.id !== userId));
     } finally {
       setBusy(false);
     }
@@ -227,11 +253,11 @@ export function ModeratorPromoteForm({
 
   const submitTyped = async () => {
     const raw = value.trim();
-    if (!raw || busy) return;
+    if (!raw || busy || atLimit) return;
     setBusy(true);
     try {
       const q = raw.replace(/^@+/, "").toLowerCase();
-      const pool = [...suggestions, ...present, ...follows];
+      const pool = [...suggestions, ...present, ...followers];
       const fromList =
         pool.find(
           (s) =>
@@ -247,12 +273,15 @@ export function ModeratorPromoteForm({
         return;
       }
 
-      const userId = await resolveModeratorCandidateId(raw);
+      const userId = await resolveModeratorCandidateId(raw, hostId);
       if (!userId) {
         toast.error(
           suggestions.length > 1
             ? t("moderator.pickSuggestion", "Choisis un profil dans la liste")
-            : t("moderator.notFound", "Profil introuvable"),
+            : t(
+                "moderator.notFoundOrNotFollower",
+                "Profil introuvable ou pas abonné à toi",
+              ),
         );
         setOpen(suggestions.length > 0);
         return;
@@ -265,55 +294,76 @@ export function ModeratorPromoteForm({
   };
 
   const showSearchPanel =
-    open && (suggestions.length > 0 || (value.trim().length > 0 && !searching));
-  const showQuickPicks = !value.trim() && (present.length > 0 || follows.length > 0);
+    !atLimit &&
+    open &&
+    (suggestions.length > 0 || (value.trim().length > 0 && !searching));
+  const showQuickPicks =
+    !atLimit && !value.trim() && (present.length > 0 || followers.length > 0);
 
   return (
     <div ref={wrapRef} className="relative mt-3">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submitTyped();
-        }}
-        className="flex items-center gap-2"
-      >
-        <div className="relative min-w-0 flex-1">
-          <input
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
-            placeholder={t(
-              "moderator.promotePlaceholder",
-              "@handle ou nom du spectateur",
-            )}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            className="w-full rounded-full border px-3 py-2 text-[13px] outline-none"
-            style={{ borderColor: "var(--border)", background: "var(--card)" }}
-          />
-          {searching && (
-            <Loader2
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground"
-            />
-          )}
-        </div>
-        <Press
-          onClick={busy ? undefined : () => void submitTyped()}
-          disabled={busy || !value.trim()}
-          className="!min-h-9 h-9 shrink-0 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        {t("moderator.followersOnlyHint", {
+          count: MAX_LIVE_MODERATORS,
+          used: existingIds.size,
+          defaultValue:
+            "Uniquement tes abonnés · {{used}}/{{count}} modérateurs",
+        })}
+      </p>
+
+      {atLimit ? (
+        <p className="rounded-2xl border px-3 py-2.5 text-[12px] text-muted-foreground" style={{ borderColor: "var(--border)" }}>
+          {t("moderator.limitReached", {
+            count: MAX_LIVE_MODERATORS,
+            defaultValue: `Maximum {{count}} modérateurs`,
+          })}
+        </p>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitTyped();
+          }}
+          className="flex items-center gap-2"
         >
-          {busy ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            t("moderator.promote", "Promouvoir 🛡️")
-          )}
-        </Press>
-      </form>
+          <div className="relative min-w-0 flex-1">
+            <input
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              placeholder={t(
+                "moderator.promotePlaceholder",
+                "@handle ou nom d'un abonné",
+              )}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full rounded-full border px-3 py-2 text-[13px] outline-none"
+              style={{ borderColor: "var(--border)", background: "var(--card)" }}
+            />
+            {searching && (
+              <Loader2
+                size={14}
+                className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground"
+              />
+            )}
+          </div>
+          <Press
+            onClick={busy ? undefined : () => void submitTyped()}
+            disabled={busy || !value.trim()}
+            className="!min-h-9 h-9 shrink-0 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
+          >
+            {busy ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              t("moderator.promote", "Promouvoir 🛡️")
+            )}
+          </Press>
+        </form>
+      )}
 
       {showSearchPanel && (
         <ul
@@ -322,7 +372,10 @@ export function ModeratorPromoteForm({
         >
           {suggestions.length === 0 ? (
             <li className="px-3 py-2.5 text-[12px] text-muted-foreground">
-              {t("moderator.noMatches", "Aucun profil trouvé")}
+              {t(
+                "moderator.noFollowerMatches",
+                "Aucun abonné trouvé",
+              )}
             </li>
           ) : (
             suggestions.map((s) => (
@@ -365,17 +418,17 @@ export function ModeratorPromoteForm({
               </ul>
             </section>
           )}
-          {follows.length > 0 && (
+          {followers.length > 0 && (
             <section>
               <div className="mb-1 flex items-center gap-1.5 px-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 <Users size={12} />
-                {t("moderator.fromFollows", "Abonnés / abonnements")}
+                {t("moderator.fromFollowers", "Tes abonnés")}
               </div>
               <ul
                 className="max-h-48 overflow-y-auto rounded-2xl border"
                 style={{ borderColor: "var(--border)", background: "var(--card)" }}
               >
-                {follows.map((s) => (
+                {followers.map((s) => (
                   <li key={s.id} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
                     <CandidateRow
                       candidate={s}

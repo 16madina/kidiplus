@@ -1,12 +1,14 @@
 // Live moderators — CRUD helpers + realtime hooks.
 //
-// A moderator is a viewer promoted by the host during a live. They get
-// product-management privileges (add / feature / start auction / put on sale)
+// A moderator must follow the host. Max 3 moderators per live.
+// They get product-management privileges + live chat mute rights,
 // but cannot end the live or finalize auctions.
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+
+export const MAX_LIVE_MODERATORS = 3;
 
 export type ModeratorRow = {
   liveId: string;
@@ -48,15 +50,51 @@ export async function fetchModerators(liveId: string): Promise<ModeratorRow[]> {
   return rows;
 }
 
+/** True when `userId` follows `hostId`. */
+export async function isFollowerOf(
+  hostId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("follows")
+    .select("follower_id")
+    .eq("followed_id", hostId)
+    .eq("follower_id", userId)
+    .maybeSingle();
+  return !!data;
+}
+
 export async function addModerator(
   liveId: string,
   userId: string,
   addedBy: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; code?: string }> {
+  // Client-side guards (server trigger is the source of truth).
+  const existing = await fetchModerators(liveId);
+  if (existing.length >= MAX_LIVE_MODERATORS) {
+    return { ok: false, code: "moderator_limit_reached", error: "limit" };
+  }
+  if (existing.some((m) => m.userId === userId)) {
+    return { ok: false, code: "already_mod", error: "already" };
+  }
+  const follows = await isFollowerOf(addedBy, userId);
+  if (!follows) {
+    return { ok: false, code: "moderator_not_follower", error: "not_follower" };
+  }
+
   const { error } = await supabase
     .from("live_moderators")
     .insert({ live_id: liveId, user_id: userId, added_by: addedBy });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const msg = error.message || "";
+    if (/moderator_limit_reached/i.test(msg)) {
+      return { ok: false, code: "moderator_limit_reached", error: msg };
+    }
+    if (/moderator_not_follower/i.test(msg)) {
+      return { ok: false, code: "moderator_not_follower", error: msg };
+    }
+    return { ok: false, error: msg };
+  }
   return { ok: true };
 }
 
@@ -92,36 +130,6 @@ function sanitizeIlikeQuery(raw: string): string {
     .replace(/[%_]/g, (c) => `\\${c}`);
 }
 
-/**
- * Typeahead for promoting moderators — matches handle OR display_name (ilike).
- * Not limited to sellers. Host can promote any KiDi+ account.
- */
-export async function searchModeratorCandidates(
-  query: string,
-  opts?: { excludeIds?: Iterable<string>; limit?: number },
-): Promise<ModeratorCandidate[]> {
-  const cleaned = sanitizeIlikeQuery(query);
-  if (cleaned.length < 1) return [];
-  const limit = opts?.limit ?? 8;
-  const exclude = new Set(opts?.excludeIds ?? []);
-  const pattern = `%${cleaned}%`;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, display_name, handle, avatar_url")
-    .or(`display_name.ilike."${pattern}",handle.ilike."${pattern}"`)
-    .order("handle", { ascending: true })
-    .limit(Math.max(limit + exclude.size, limit));
-
-  if (error) {
-    console.error("[searchModeratorCandidates]", error);
-    return [];
-  }
-
-  const filtered = (data ?? []).filter((p) => !exclude.has(p.id)).slice(0, limit);
-  return hydrateCandidates(filtered);
-}
-
 async function hydrateCandidates(
   rows: Array<{
     id: string;
@@ -141,16 +149,70 @@ async function hydrateCandidates(
   );
 }
 
-/** Load profiles by ids (presence / follow quick-picks). */
+/** Follower ids of a host (people subscribed to them). */
+export async function fetchFollowerIds(
+  hostId: string,
+  limit = 200,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("follows")
+    .select("follower_id")
+    .eq("followed_id", hostId)
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map((r) => r.follower_id as string).filter(Boolean);
+}
+
+/**
+ * Typeahead among the host's followers only (handle OR display_name).
+ */
+export async function searchModeratorCandidates(
+  query: string,
+  opts: { hostId: string; excludeIds?: Iterable<string>; limit?: number },
+): Promise<ModeratorCandidate[]> {
+  const cleaned = sanitizeIlikeQuery(query);
+  if (cleaned.length < 1) return [];
+  const limit = opts.limit ?? 8;
+  const exclude = new Set(opts.excludeIds ?? []);
+  exclude.add(opts.hostId);
+  const pattern = `%${cleaned}%`;
+
+  const followerIds = await fetchFollowerIds(opts.hostId);
+  const allowed = followerIds.filter((id) => !exclude.has(id));
+  if (allowed.length === 0) return [];
+
+  // PostgREST `.in` has practical size limits — chunk if needed.
+  const chunk = allowed.slice(0, 150);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, handle, avatar_url")
+    .in("id", chunk)
+    .or(`display_name.ilike."${pattern}",handle.ilike."${pattern}"`)
+    .order("handle", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("[searchModeratorCandidates]", error);
+    return [];
+  }
+  return hydrateCandidates(data ?? []);
+}
+
+/** Load profiles by ids, restricted to host followers. */
 export async function fetchModeratorCandidatesByIds(
   ids: string[],
-  opts?: { excludeIds?: Iterable<string>; limit?: number },
+  opts: { hostId: string; excludeIds?: Iterable<string>; limit?: number },
 ): Promise<ModeratorCandidate[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return [];
-  const exclude = new Set(opts?.excludeIds ?? []);
-  const limit = opts?.limit ?? 20;
-  const wanted = unique.filter((id) => !exclude.has(id)).slice(0, limit);
+  const exclude = new Set(opts.excludeIds ?? []);
+  exclude.add(opts.hostId);
+  const limit = opts.limit ?? 20;
+
+  const followerIds = new Set(await fetchFollowerIds(opts.hostId));
+  const wanted = unique
+    .filter((id) => followerIds.has(id) && !exclude.has(id))
+    .slice(0, limit);
   if (wanted.length === 0) return [];
 
   const { data, error } = await supabase
@@ -161,7 +223,6 @@ export async function fetchModeratorCandidatesByIds(
     console.error("[fetchModeratorCandidatesByIds]", error);
     return [];
   }
-  // Preserve input order when possible
   const byId = new Map((data ?? []).map((p) => [p.id, p]));
   const ordered = wanted.map((id) => byId.get(id)).filter(Boolean) as Array<{
     id: string;
@@ -172,83 +233,59 @@ export async function fetchModeratorCandidatesByIds(
   return hydrateCandidates(ordered);
 }
 
-/**
- * Follow graph around the host: people who follow them + people they follow.
- */
-export async function fetchFollowModeratorCandidates(
+/** Quick-pick list: host's followers (people subscribed to them). */
+export async function fetchFollowerModeratorCandidates(
   hostId: string,
   opts?: { excludeIds?: Iterable<string>; limit?: number },
 ): Promise<ModeratorCandidate[]> {
   const exclude = new Set(opts?.excludeIds ?? []);
   exclude.add(hostId);
   const limit = opts?.limit ?? 24;
-
-  const [followersRes, followingRes] = await Promise.all([
-    supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("followed_id", hostId)
-      .limit(40),
-    supabase
-      .from("follows")
-      .select("followed_id")
-      .eq("follower_id", hostId)
-      .limit(40),
-  ]);
-
-  const ids: string[] = [];
-  const seen = new Set<string>();
-  for (const row of followersRes.data ?? []) {
-    const id = row.follower_id as string;
-    if (!id || exclude.has(id) || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-  }
-  for (const row of followingRes.data ?? []) {
-    const id = row.followed_id as string;
-    if (!id || exclude.has(id) || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
-  }
-  return fetchModeratorCandidatesByIds(ids, { excludeIds: exclude, limit });
+  const ids = (await fetchFollowerIds(hostId)).filter((id) => !exclude.has(id));
+  return fetchModeratorCandidatesByIds(ids, { hostId, excludeIds: exclude, limit });
 }
 
-/** Resolve a typed value to a single profile id (handle / display_name / uuid). */
+/** Resolve a typed value to a follower profile id only. */
 export async function resolveModeratorCandidateId(
   rawInput: string,
+  hostId: string,
 ): Promise<string | null> {
   const raw = rawInput.trim().replace(/^@+/, "");
   if (!raw) return null;
 
-  // UUID paste
+  let userId: string | null = null;
+
   if (/^[0-9a-f-]{36}$/i.test(raw)) {
     const { data } = await supabase
       .from("profiles")
       .select("id")
       .eq("id", raw)
       .maybeSingle();
-    if (data?.id) return data.id;
+    if (data?.id) userId = data.id;
   }
 
-  const lower = raw.toLowerCase();
-  // Exact handle (case-insensitive)
-  const byHandle = await supabase
-    .from("profiles")
-    .select("id")
-    .ilike("handle", lower)
-    .limit(2);
-  if (byHandle.data?.length === 1) return byHandle.data[0]!.id;
+  if (!userId) {
+    const lower = raw.toLowerCase();
+    const byHandle = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("handle", lower)
+      .limit(2);
+    if (byHandle.data?.length === 1) userId = byHandle.data[0]!.id;
+  }
 
-  // Exact display_name (case-insensitive) — only if unique
-  const byName = await supabase
-    .from("profiles")
-    .select("id")
-    .ilike("display_name", raw)
-    .limit(2);
-  if (byName.data?.length === 1) return byName.data[0]!.id;
+  if (!userId) {
+    const byName = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("display_name", raw)
+      .limit(2);
+    if (byName.data?.length === 1) userId = byName.data[0]!.id;
+  }
 
-  // Ambiguous / not found — let the host pick from suggestions
-  return null;
+  if (!userId) return null;
+  if (!(await isFollowerOf(hostId, userId))) return null;
+  return userId;
 }
 
 /** Realtime hook — is `userId` currently a moderator of `liveId`? */
@@ -330,4 +367,66 @@ export function useModerators(liveId: string | null | undefined): {
   }, [liveId, tick]);
 
   return { moderators, reload: () => setTick((n) => n + 1) };
+}
+
+// ─── Live chat mutes ───────────────────────────────────────────────────────
+
+export async function fetchLiveChatMutes(liveId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("live_chat_mutes")
+    .select("user_id")
+    .eq("live_id", liveId);
+  if (error || !data) return new Set();
+  return new Set(data.map((r) => r.user_id as string));
+}
+
+export async function muteLiveChatUser(
+  liveId: string,
+  userId: string,
+  mutedBy: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from("live_chat_mutes").insert({
+    live_id: liveId,
+    user_id: userId,
+    muted_by: mutedBy,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function unmuteLiveChatUser(
+  liveId: string,
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("live_chat_mutes")
+    .delete()
+    .eq("live_id", liveId)
+    .eq("user_id", userId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export function useLiveChatMutes(liveId: string | null | undefined): Set<string> {
+  const [muted, setMuted] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!liveId) { setMuted(new Set()); return; }
+    let alive = true;
+    void fetchLiveChatMutes(liveId).then((s) => { if (alive) setMuted(s); });
+    const ch = supabase
+      .channel(`chat-mutes:${liveId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "live_chat_mutes", filter: `live_id=eq.${liveId}` },
+        () => {
+          void fetchLiveChatMutes(liveId).then((s) => { if (alive) setMuted(s); });
+        },
+      )
+      .subscribe();
+    return () => {
+      alive = false;
+      supabase.removeChannel(ch);
+    };
+  }, [liveId]);
+  return muted;
 }

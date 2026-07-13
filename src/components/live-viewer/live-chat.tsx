@@ -1,26 +1,37 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Ban, VolumeX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
 
 // Windowing cap — kept low: 40 lignes suffisent visuellement et évitent
 // que Framer Motion `layout` déclenche un reflow O(n) sur chaque burst.
-// Au-delà, le navigateur mesure plus vite qu'il n'affiche → fps 0.
 const VISIBLE_MSGS = 40;
-// Sous cette fréquence d'arrivée on garde l'anim d'entrée jolie.
-// Au-dessus (burst), on la coupe pour ne pas geler la page.
 const BURST_THRESHOLD_PER_SEC = 30;
 
+export type LiveChatModeration = {
+  canModerate: boolean;
+  selfUserId?: string | null;
+  /** Host / seller — never muteable from chat. */
+  hostUserId?: string | null;
+  mutedIds?: Set<string>;
+  onMuteUser?: (userId: string, displayName: string) => void;
+  onBlockUser?: (userId: string, displayName: string) => void;
+};
 
-export function LiveChat({ messages }: { messages: ChatMsg[] }) {
+export function LiveChat({
+  messages,
+  moderation,
+}: {
+  messages: ChatMsg[];
+  moderation?: LiveChatModeration;
+}) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
+  const [menuMsg, setMenuMsg] = useState<ChatMsg | null>(null);
 
-  // Détecte un "burst" : si beaucoup de nouveaux messages en peu de temps,
-  // on désactive les animations d'entrée / layout (elles causent le reflow
-  // qui fait tomber le fps à 0 sur un Burst 1k+).
   const lastCountRef = useRef(messages.length);
   const lastTsRef = useRef(performance.now());
   const [burstMode, setBurstMode] = useState(false);
@@ -38,13 +49,11 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
     }
   }, [messages]);
 
-  // Only render the last VISIBLE_MSGS messages
   const visible = useMemo(
     () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
     [messages],
   );
 
-  // Track if user scrolled away from bottom
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -59,9 +68,6 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Auto-scroll when new message arrives and user is pinned.
-  // En burst on utilise scroll instantané (pas "smooth") pour ne pas empiler
-  // 60 animations de scroll par seconde.
   useEffect(() => {
     if (!pinned) return;
     const el = scrollerRef.current;
@@ -89,6 +95,15 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
     [],
   );
 
+  const canActOn = (m: ChatMsg) => {
+    if (!moderation?.canModerate || !m.userId || m.system) return false;
+    if (m.userId === moderation.selfUserId) return false;
+    if (m.userId === moderation.hostUserId) return false;
+    return true;
+  };
+
+  const { t } = useTranslation();
+
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-start px-3">
       <div
@@ -106,10 +121,14 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
         >
           <div className="flex flex-col justify-end gap-1.5 pt-8">
             {burstMode ? (
-              // Chemin rapide : pas de Framer, pas de layout, pas de reflow.
               visible.map((m) => (
                 <div key={m.id}>
-                  <ChatBubble msg={m} />
+                  <ChatBubble
+                    msg={m}
+                    canModerate={canActOn(m)}
+                    alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
+                    onOpenMenu={() => setMenuMsg(m)}
+                  />
                 </div>
               ))
             ) : (
@@ -122,14 +141,18 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
                   >
-                    <ChatBubble msg={m} />
+                    <ChatBubble
+                      msg={m}
+                      canModerate={canActOn(m)}
+                      alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
+                      onOpenMenu={() => setMenuMsg(m)}
+                    />
                   </motion.div>
                 ))}
               </AnimatePresence>
             )}
           </div>
         </div>
-
 
         <AnimatePresence>
           {showJump && (
@@ -156,11 +179,83 @@ export function LiveChat({ messages }: { messages: ChatMsg[] }) {
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {menuMsg && menuMsg.userId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-auto fixed inset-0 z-[80] flex items-end justify-center bg-black/40 px-4 pb-8"
+            onClick={() => setMenuMsg(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 16, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-black shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b px-4 py-3 text-[13px] text-muted-foreground">
+                <span className="font-semibold text-foreground">{menuMsg.user}</span>
+                {" · "}
+                <span className="line-clamp-1">{menuMsg.text}</span>
+              </div>
+              {!(menuMsg.userId && moderation?.mutedIds?.has(menuMsg.userId)) && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
+                  onClick={() => {
+                    const id = menuMsg.userId!;
+                    const name = menuMsg.user;
+                    setMenuMsg(null);
+                    moderation?.onMuteUser?.(id, name);
+                  }}
+                >
+                  <VolumeX size={18} />
+                  {t("moderator.muteInLive", "Couper les commentaires")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-black/5"
+                onClick={() => {
+                  const id = menuMsg.userId!;
+                  const name = menuMsg.user;
+                  setMenuMsg(null);
+                  moderation?.onBlockUser?.(id, name);
+                }}
+              >
+                <Ban size={18} />
+                {t("moderator.blockUser", "Bloquer")}
+              </button>
+              <button
+                type="button"
+                className="w-full border-t px-4 py-3.5 text-[15px] font-semibold text-muted-foreground active:bg-black/5"
+                onClick={() => setMenuMsg(null)}
+              >
+                {t("common.cancel", "Annuler")}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
+const ChatBubble = memo(function ChatBubble({
+  msg,
+  canModerate,
+  alreadyMuted,
+  onOpenMenu,
+}: {
+  msg: ChatMsg;
+  canModerate?: boolean;
+  alreadyMuted?: boolean;
+  onOpenMenu?: () => void;
+}) {
   if (msg.system) {
     return (
       <div
@@ -176,9 +271,22 @@ const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
       </div>
     );
   }
+
+  const open = () => {
+    if (canModerate) onOpenMenu?.();
+  };
+
   return (
-    <div
-      className="flex max-w-full items-start gap-1.5"
+    <button
+      type="button"
+      disabled={!canModerate}
+      onClick={open}
+      onContextMenu={(e) => {
+        if (!canModerate) return;
+        e.preventDefault();
+        open();
+      }}
+      className="flex max-w-full items-start gap-1.5 text-left disabled:pointer-events-none"
       style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
     >
       <div
@@ -191,9 +299,10 @@ const ChatBubble = memo(function ChatBubble({ msg }: { msg: ChatMsg }) {
         <span className="font-semibold" style={{ color: msg.color }}>
           {msg.user}
         </span>{" "}
-        <span className="text-white">{msg.text}</span>
+        <span className={alreadyMuted ? "text-white/50 line-through" : "text-white"}>
+          {msg.text}
+        </span>
       </div>
-    </div>
+    </button>
   );
 });
-

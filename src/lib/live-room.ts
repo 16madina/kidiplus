@@ -42,12 +42,17 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   return row;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export type ChatEvt = {
   id: string;
   user: string;
   color: string;
   text: string;
   system?: boolean;
+  /** Profile UUID when identity is a signed-in user. */
+  userId?: string;
 };
 
 export type AuctionStartEvt = {
@@ -481,6 +486,7 @@ export function useLiveRoom(params: {
           user: displayName,
           color: colorFor(identity),
           text: trimmed,
+          ...(UUID_RE.test(identity) ? { userId: identity } : {}),
         };
         // Optimistic local echo + broadcast to others.
         setChat((prev) => [...prev, evt].slice(-60));
