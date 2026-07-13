@@ -771,8 +771,10 @@ export type ScheduledLiveRow = {
   scheduled_at: string | null;
   currency: string | null;
   status: string;
+  allow_gifts?: boolean | null;
   products?: LiveProductRow[];
 };
+
 
 export type ScheduledLiveWithSeller = ScheduledLiveRow & {
   seller: {
