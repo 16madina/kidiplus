@@ -32,7 +32,9 @@ export function AdminReferralPanel() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <RequestsSection />
+
+      <div className="mb-4 mt-6 flex items-center justify-between">
         <h2 className="text-[16px] font-bold">{t("referral.admin.title", "Parrainage")}</h2>
         <Press
           onClick={() => { haptic.light(); setCreating(true); }}
