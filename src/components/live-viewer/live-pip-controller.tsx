@@ -93,9 +93,12 @@ export function LivePipController() {
       let session: { url: string; token: string } | undefined;
       if (isIosPipPlatform() && roomName) {
         try {
+          // Guests must match /^guest_[a-zA-Z0-9_-]+$/ on the LiveKit token API.
+          // Signed-in users get a pip_* identity so the native viewer doesn't
+          // collide with the WebView participant (viewer_*).
           const identity = user?.id
-            ? `pip_${user.id.slice(0, 10)}`
-            : `pip_guest_${Math.random().toString(36).slice(2, 10)}`;
+            ? `pip_${user.id.replace(/-/g, "").slice(0, 10)}`
+            : `guest_pip_${Math.random().toString(36).slice(2, 10)}`;
           const name = profile?.display_name || profile?.handle || "viewer";
           session = await getToken(roomName, identity, name, "viewer");
           console.info("[pip] iOS native session ready", { roomName, identity });
@@ -146,8 +149,22 @@ export function LivePipController() {
           prepareSystemPipUi(() => expandRef.current());
         } else if (isIosPipPlatform()) {
           setInSystemPip(true);
-          // Explicitly ask native to start PiP (willResignActive can race).
-          void pipEnter();
+          // Explicitly ask native to start PiP. Native may still be connecting
+          // the second LiveKit room — retry a few times while backgrounded.
+          void (async () => {
+            for (const delay of [0, 500, 1200, 2500]) {
+              if (delay) await new Promise((r) => setTimeout(r, delay));
+              if (!getPipHold() || !activeRef.current) return;
+              try {
+                const st = await App.getState();
+                if (st.isActive) return;
+              } catch {
+                /* ignore */
+              }
+              await pipEnter();
+              if (await pipIsActive()) return;
+            }
+          })();
         }
         return;
       }
