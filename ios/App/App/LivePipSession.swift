@@ -1,3 +1,4 @@
+import AVFoundation
 import AVKit
 import Capacitor
 import LiveKit
@@ -76,7 +77,6 @@ final class LivePipSession: NSObject {
             guard self.eligible else {
                 print("[KiDi+] startPip skipped — not eligible")
                 self.cancelPipRetries()
-                // Make sure no empty auto-PiP controller is lingering.
                 self.destroyPipController()
                 return
             }
@@ -99,6 +99,7 @@ final class LivePipSession: NSObject {
                 self.schedulePipRetries()
                 return
             }
+            self.ensureSourceViewsAttached()
             self.ensurePipController(forceRebuild: false)
             guard let pip = self.pipController else {
                 print("[KiDi+] startPip skipped — no pipController")
@@ -109,13 +110,19 @@ final class LivePipSession: NSObject {
                 self.cancelPipRetries()
                 return
             }
-            if #available(iOS 15.0, *), !pip.isPictureInPicturePossible {
-                print("[KiDi+] startPip deferred — isPictureInPicturePossible=false")
-                self.schedulePipRetries()
-                return
+            // Prefer auto-inline once frames exist (iOS handles Home gesture).
+            pip.canStartPictureInPictureAutomaticallyFromInline = true
+            // Still try an explicit start — do not bail solely on
+            // isPictureInPicturePossible (it flickers false during resign).
+            let possible: Bool
+            if #available(iOS 15.0, *) {
+                possible = pip.isPictureInPicturePossible
+            } else {
+                possible = true
             }
-            print("[KiDi+] starting Picture in Picture…")
+            print("[KiDi+] starting Picture in Picture… possible=\(possible)")
             pip.startPictureInPicture()
+            self.schedulePipRetries()
         }
     }
 
@@ -236,11 +243,14 @@ final class LivePipSession: NSObject {
         guard let hostView else { return }
         let preview = previewController.view!
         _ = videoCallController.view
+        // Keep the source view opaque and in-hierarchy (behind the WebView).
+        // Near-zero alpha makes iOS report isPictureInPicturePossible=false.
+        preview.isHidden = false
+        preview.alpha = 1
+        preview.isUserInteractionEnabled = false
+        preview.backgroundColor = .black
         if preview.superview !== hostView {
             preview.translatesAutoresizingMaskIntoConstraints = false
-            preview.isUserInteractionEnabled = false
-            preview.alpha = 0.01
-            preview.backgroundColor = .black
             hostView.insertSubview(preview, at: 0)
             previewConstraints = [
                 preview.widthAnchor.constraint(equalToConstant: 118),
@@ -250,6 +260,7 @@ final class LivePipSession: NSObject {
             ]
             NSLayoutConstraint.activate(previewConstraints)
         }
+        hostView.layoutIfNeeded()
     }
 
     private func detachSourceViews() {
@@ -269,12 +280,13 @@ final class LivePipSession: NSObject {
             contentViewController: videoCallController
         )
         let controller = AVPictureInPictureController(contentSource: source)
-        // Manual start only — automatic inline PiP was starting an empty bubble
-        // whenever the user left the app, even with no live open.
-        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        // When a live is ready, let iOS auto-start PiP on Home (TikTok-style).
+        // Controller is only created while eligible, so this won't fire empty bubbles.
+        controller.canStartPictureInPictureAutomaticallyFromInline = hasRenderedFrame
         controller.delegate = self
         controller.setValue(1, forKey: "controlsStyle")
         pipController = controller
+        print("[KiDi+] pipController created, autoInline=\(hasRenderedFrame)")
     }
 
     private func destroyPipController() {
@@ -289,9 +301,17 @@ final class LivePipSession: NSObject {
     }
 
     fileprivate func noteFrameRendered() {
-        if hasRenderedFrame { return }
+        let first = !hasRenderedFrame
         hasRenderedFrame = true
-        print("[KiDi+] LivePipSession first video frame received")
+        if first {
+            print("[KiDi+] LivePipSession first video frame received")
+            // Enable automatic Home→PiP now that real frames exist.
+            pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+            if pipController == nil {
+                ensurePipController(forceRebuild: false)
+                pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+            }
+        }
         if UIApplication.shared.applicationState != .active {
             startPipIfPossible()
         }
@@ -304,8 +324,19 @@ final class LivePipSession: NSObject {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                // Only starts when eligible + connected + frames are ready.
-                self?.startPipIfPossible()
+                guard let self else { return }
+                // Reactivate audio so background PiP is allowed.
+                do {
+                    try AVAudioSession.sharedInstance().setCategory(
+                        .playback,
+                        mode: .moviePlayback,
+                        options: []
+                    )
+                    try AVAudioSession.sharedInstance().setActive(true)
+                } catch {
+                    print("[KiDi+] AVAudioSession reactivate failed: \(error)")
+                }
+                self.startPipIfPossible()
             }
         }
         if backgroundObserver == nil {
@@ -350,6 +381,7 @@ extension LivePipSession: RoomDelegate {
 extension LivePipSession: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         print("[KiDi+] PiP did start")
+        cancelPipRetries()
         emitMode(true)
     }
 
@@ -362,8 +394,9 @@ extension LivePipSession: AVPictureInPictureControllerDelegate {
         _ pictureInPictureController: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        // Do NOT emitMode(false): JS treats that as "user closed PiP" and kills the live.
         print("[KiDi+] PiP failed to start: \(error)")
-        emitMode(false)
+        schedulePipRetries()
     }
 }
 

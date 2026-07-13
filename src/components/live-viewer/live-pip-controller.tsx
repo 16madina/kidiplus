@@ -7,6 +7,7 @@
 // - Viewer closes live → dismiss PiP.
 // - User closes the system PiP window → close the live session.
 // - User taps the PiP bubble → restore app + expand live.
+// - PiP *fails* to start → keep the live open (do NOT treat as user dismiss).
 import { useEffect, useRef } from "react";
 import { App } from "@capacitor/app";
 import { useLiveViewer } from "@/lib/live-viewer-context";
@@ -60,7 +61,8 @@ function clearSystemPipUi() {
 export function LivePipController() {
   const { active, expand, close } = useLiveViewer();
   const { user, profile } = useAuth();
-  const wasInPipRef = useRef(false);
+  /** True only after native confirmed system PiP actually started. */
+  const pipActuallyStartedRef = useRef(false);
   const expandRef = useRef(expand);
   const closeRef = useRef(close);
   const activeRef = useRef(active);
@@ -84,6 +86,7 @@ export function LivePipController() {
       const on = supported && liveOpen && !!roomName;
       setPipHold(on);
       if (!on) {
+        pipActuallyStartedRef.current = false;
         await pipSetEnabled(false);
         clearSystemPipUi();
         await pipDismiss();
@@ -114,6 +117,7 @@ export function LivePipController() {
     })();
     return () => {
       cancelled = true;
+      pipActuallyStartedRef.current = false;
       setPipHold(false);
       void pipSetEnabled(false);
       clearSystemPipUi();
@@ -125,7 +129,6 @@ export function LivePipController() {
     if (!isAndroidPipPlatform()) return;
     const onPrepare = () => {
       if (!getPipHold() || !activeRef.current) return;
-      wasInPipRef.current = true;
       prepareSystemPipUi(() => expandRef.current());
     };
     const onClear = () => {
@@ -144,15 +147,15 @@ export function LivePipController() {
     let handle: { remove: () => void } | null = null;
     void App.addListener("appStateChange", (s) => {
       if (!s.isActive && getPipHold() && activeRef.current) {
-        wasInPipRef.current = true;
         if (isAndroidPipPlatform()) {
           prepareSystemPipUi(() => expandRef.current());
         } else if (isIosPipPlatform()) {
+          // Keep media session alive while we try to enter system PiP.
+          // Do NOT mark pip as "started" yet — that caused failed starts to
+          // close the live session.
           setInSystemPip(true);
-          // Explicitly ask native to start PiP. Native may still be connecting
-          // the second LiveKit room — retry a few times while backgrounded.
           void (async () => {
-            for (const delay of [0, 500, 1200, 2500]) {
+            for (const delay of [0, 300, 800, 1600, 3000]) {
               if (delay) await new Promise((r) => setTimeout(r, delay));
               if (!getPipHold() || !activeRef.current) return;
               try {
@@ -161,8 +164,11 @@ export function LivePipController() {
               } catch {
                 /* ignore */
               }
+              if (pipActuallyStartedRef.current || (await pipIsActive())) {
+                pipActuallyStartedRef.current = true;
+                return;
+              }
               await pipEnter();
-              if (await pipIsActive()) return;
             }
           })();
         }
@@ -172,9 +178,9 @@ export function LivePipController() {
         void (async () => {
           const stillPip = await pipIsActive();
           if (stillPip) return;
-          if (getInSystemPip() || wasInPipRef.current) {
+          if (getInSystemPip() || pipActuallyStartedRef.current) {
             clearSystemPipUi();
-            wasInPipRef.current = false;
+            pipActuallyStartedRef.current = false;
             if (activeRef.current) expandRef.current();
           }
         })();
@@ -194,7 +200,7 @@ export function LivePipController() {
     void addPipModeListener((activePip) => {
       if (cancelled) return;
       if (activePip) {
-        wasInPipRef.current = true;
+        pipActuallyStartedRef.current = true;
         if (isAndroidPipPlatform()) {
           prepareSystemPipUi(() => expandRef.current());
         } else {
@@ -202,9 +208,17 @@ export function LivePipController() {
         }
         return;
       }
+
+      // PiP stopped. Only close the live if system PiP had actually started
+      // (user dismissed the bubble). A failed start must NOT kill the session.
+      const hadRealPip = pipActuallyStartedRef.current;
+      pipActuallyStartedRef.current = false;
       clearSystemPipUi();
-      if (!wasInPipRef.current) return;
-      wasInPipRef.current = false;
+      if (!hadRealPip) {
+        console.info("[pip] stop ignored — PiP never actually started");
+        return;
+      }
+
       void (async () => {
         await new Promise((r) => setTimeout(r, 80));
         if (cancelled) return;
