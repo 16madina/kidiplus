@@ -53,14 +53,14 @@ export function LiveViewerScreen() {
 
 function MockLiveViewerScreen() {
   const { active, close, minimize, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
-  const { minimized } = useLivePip();
+  const { chromeHidden } = useLivePip();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
 
   // Force light status-bar content while the viewer is mounted (dark background).
   useEffect(() => {
-    if (minimized) return;
+    if (chromeHidden) return;
     let restore: (() => void) | null = null;
     void pushStatusBarLight().then((fn) => {
       restore = fn;
@@ -68,7 +68,7 @@ function MockLiveViewerScreen() {
     return () => {
       restore?.();
     };
-  }, [minimized]);
+  }, [chromeHidden]);
 
 
   // === Chat === (paused when app is backgrounded)
@@ -349,7 +349,7 @@ function MockLiveViewerScreen() {
       <motion.div
         key={active.id}
         className="absolute inset-0"
-        style={{ y: minimized ? 0 : dragY }}
+        style={{ y: chromeHidden ? 0 : dragY }}
       >
         {active.roomName ? (
           <ViewerLiveVideo
@@ -377,7 +377,7 @@ function MockLiveViewerScreen() {
         )}
       </motion.div>
 
-      {!minimized && (
+      {!chromeHidden && (
       <>
       {/* Adjacent slide previews — glued to the current slide via the same
           dragY motion value. Rendered as TikTok-style posters so the user

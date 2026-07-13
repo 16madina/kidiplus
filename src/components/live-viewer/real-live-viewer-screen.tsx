@@ -116,7 +116,7 @@ export function RealLiveViewerScreen() {
     peekNext,
     peekPrev,
   } = useLiveViewer();
-  const { minimized } = useLivePip();
+  const { chromeHidden } = useLivePip();
   const { open: openSeller } = useSellerProfile();
   const { user, profile } = useAuth();
   const { requireAuth, openAuth } = useAuthPrompt();
@@ -127,11 +127,11 @@ export function RealLiveViewerScreen() {
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
   useEffect(() => {
-    if (minimized) return;
+    if (chromeHidden) return;
     let restore: (() => void) | null = null;
     void pushStatusBarLight().then((fn) => { restore = fn; });
     return () => { restore?.(); };
-  }, [minimized]);
+  }, [chromeHidden]);
 
   // For guests, use a `guest_xxxxxxxx` identity that the LiveKit token
   // endpoint's anonymous branch accepts as-is (view-only token). Signed-in
@@ -238,10 +238,10 @@ export function RealLiveViewerScreen() {
     return () => clearTimeout(t);
   }, [liveEnded, close]);
 
-  // If the live ends while pip'd, expand so the ended overlay is readable.
+  // If the live ends while pip'd / mini, expand so the ended overlay is readable.
   useEffect(() => {
-    if (liveEnded && minimized) expand();
-  }, [liveEnded, minimized, expand]);
+    if (liveEnded && chromeHidden) expand();
+  }, [liveEnded, chromeHidden, expand]);
 
   // Featured product: server auction pick, else the next 'upcoming' product
   // by position. Never loops back to earlier items — matches host behavior.
@@ -679,9 +679,9 @@ export function RealLiveViewerScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const blockedIds = useBlockedIds();
 
-  // Drop open sheets when shrinking to mini — they would block the tabs.
+  // Drop open sheets when shrinking to mini / system PiP — they would block the tabs / bubble.
   useEffect(() => {
-    if (!minimized) return;
+    if (!chromeHidden) return;
     setShowProducts(false);
     setMoreOpen(false);
     setGiftTrayOpen(false);
@@ -689,7 +689,7 @@ export function RealLiveViewerScreen() {
     setReportOpen(false);
     setCustomOpen(false);
     setPendingOrder(null);
-  }, [minimized]);
+  }, [chromeHidden]);
 
   const doBlockSeller = async () => {
     if (!active?.sellerId) return;
@@ -715,7 +715,7 @@ export function RealLiveViewerScreen() {
       <motion.div
         key={active.id}
         className="absolute inset-0"
-        style={{ y: minimized ? 0 : dragY }}
+        style={{ y: chromeHidden ? 0 : dragY }}
       >
       {active.roomName ? (
         <ViewerLiveVideo
@@ -729,7 +729,7 @@ export function RealLiveViewerScreen() {
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
-      {!minimized && (
+      {!chromeHidden && (
       <>
       {/* Overlays + chrome stay on the current slide so they slide with the finger. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32"
@@ -1076,16 +1076,16 @@ export function RealLiveViewerScreen() {
       )}
       </motion.div>
 
-      {!minimized && peekNext && (
+      {!chromeHidden && peekNext && (
         <LivePeekSlide stream={peekNext} position="next" dragY={dragY} />
       )}
-      {!minimized && peekPrev && (
+      {!chromeHidden && peekPrev && (
         <LivePeekSlide stream={peekPrev} position="prev" dragY={dragY} />
       )}
 
       {/* PAGER DRAG LAYER — TikTok-style vertical pan.
           touch-action MUST be "none" on iOS or the browser steals the gesture. */}
-      {!minimized && (
+      {!chromeHidden && (
       <motion.div
         className="absolute inset-0 z-[25]"
         aria-hidden
@@ -1131,7 +1131,7 @@ export function RealLiveViewerScreen() {
         }}
       />
       )}
-      {!minimized && (
+      {!chromeHidden && (
       <>
       <div className="pointer-events-none absolute right-2 top-1/2 z-[26] hidden -translate-y-1/2 flex-col gap-2 md:flex">
         {hasNext && (
