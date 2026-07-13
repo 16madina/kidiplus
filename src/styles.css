@@ -222,6 +222,22 @@ html {
   .pt-safe {
     padding-top: max(env(safe-area-inset-top), 1.75rem);
   }
+
+  .seller-entry-screen {
+    justify-content: center;
+  }
+
+  .seller-entry-hero {
+    height: min(34vh, 320px) !important;
+    max-width: min(38rem, calc(100vw - 4rem)) !important;
+    border-radius: 28px !important;
+    background-size: contain !important;
+    background-position: center !important;
+  }
+
+  .seller-entry-content {
+    margin-top: 1.25rem !important;
+  }
 }
 
 /* Ensure buttons meet 44x44 by default (unless overridden) */
