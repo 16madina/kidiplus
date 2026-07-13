@@ -1280,11 +1280,11 @@
     "intro": "Share your code. For every signup, you earn the KiDi+ commission on their first orders.",
     "quota": "Quota",
     "claim": {
-      "entry": "Claim my influencer code 🤝",
-      "title": "Become a KiDi+ influencer",
+      "entry": "Claim my referral code 🤝",
+      "title": "Become a KiDi+ partner",
       "intro": "Earn the KiDi+ commission on the first orders of every person who signs up with your code.",
       "tokenLabel": "Activation code",
-      "hint": "This code was given to you by the KiDi+ team. It is different from the public code you'll share.",
+      "hint": "Already got an activation code? Enter it below. Otherwise, request a referral code further down.",
       "cta": "Claim my code",
       "badFormat": "Expected format: XXXX-XXXX",
       "errInvalid": "Invalid activation code.",
@@ -1292,7 +1292,21 @@
       "errAuth": "Sign in to claim.",
       "ok": "Code {{code}} claimed 🎉",
       "okWithBackfill": "Code {{code}} claimed — {{amount}} credited",
-      "notInfluencer": "No code yet? Contact the KiDi+ team to join the program."
+      "notInfluencer": "No code? Send a request — the KiDi+ team replies within a few days.",
+      "request": {
+        "title": "Request a referral code",
+        "intro": "Tell us in a few words why you'd like to become a partner (audience, socials, motivation…). The KiDi+ team will review your request.",
+        "placeholder": "Tell us about yourself, your audience, your socials…",
+        "cta": "Send my request",
+        "sent": "Request sent ✨",
+        "errPending": "You already have a pending request.",
+        "errHasCode": "You already have a referral code.",
+        "pendingBadge": "Request pending",
+        "pendingHint": "We're reviewing your request. You'll get a notification as soon as it's processed.",
+        "rejectedBadge": "Request rejected",
+        "rejectedHint": "Your last request was rejected. You can submit a new one.",
+        "reason": "Reason:"
+      }
     },
     "admin": {
       "title": "Referrals",
