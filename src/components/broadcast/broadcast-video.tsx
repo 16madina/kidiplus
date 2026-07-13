@@ -15,6 +15,7 @@ import {
   getToken,
   disconnectRoom,
   switchHostCameraFacing,
+  syncFrontCameraMirror,
   type LocalVideoTrack,
   type CameraFacing,
 } from "@/lib/livekit";
@@ -28,10 +29,8 @@ import {
  *   - LiveKit host mode (`livekit` prop given): connects to the LiveKit
  *     room, publishes camera + mic, and shows the local video track.
  *
- * The published track is always the RAW camera track (no canvas / WebGL
- * pipeline). Front/back flip uses LiveKit `switchActiveDevice` /
- * `restartTrack({ deviceId })` so the room stays connected and viewers
- * keep receiving video without a reconnect.
+ * Front-camera publishes are horizontally mirrored (selfie-style) so viewers
+ * see the same left/right as the host preview. Rear camera stays unmirrored.
  */
 
 export type BroadcastVideoLK = {
@@ -186,6 +185,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             localVideoTrackRef.current = pub.track as LocalVideoTrack;
             track = pub.track as LocalVideoTrack;
           }
+          await syncFrontCameraMirror(track, applied);
           const videoEl = videoRef.current;
           if (videoEl) {
             try {
@@ -350,7 +350,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           localVideoTrackRef.current = track;
           // Hardware may ignore facingMode (esp. after background) — sync UI
           // to what actually opened so the first flip works.
-          syncFacingFromTrack(track, desiredFacing);
+          const appliedFacing = syncFacingFromTrack(track, desiredFacing);
+          await syncFrontCameraMirror(track, appliedFacing ?? desiredFacing);
           if (videoRef.current) {
             track.attach(videoRef.current);
             videoRef.current.play().catch(() => {});
@@ -433,7 +434,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           const track = pub?.track as LocalVideoTrack | undefined;
           if (track) {
             localVideoTrackRef.current = track;
-            syncFacingFromTrack(track, facingRef.current);
+            const appliedFacing = syncFacingFromTrack(track, facingRef.current);
+            await syncFrontCameraMirror(track, appliedFacing ?? facingRef.current);
             if (videoRef.current) {
               track.attach(videoRef.current);
               videoRef.current.play().catch(() => {});
@@ -454,7 +456,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     }, [micEnabled, livekit]);
 
     const showVideo = shouldRun && state === "granted";
-    const mirrored = facing === "user";
+    // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
+    // published track (and shows it locally) so we must not double-flip.
+    const mirrored = !livekit && facing === "user";
 
     return (
       <div className="absolute inset-0 overflow-hidden bg-neutral-900">

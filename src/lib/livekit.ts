@@ -170,6 +170,25 @@ export async function switchHostCameraFacing(args: {
   return detected ?? target;
 }
 
+/** Front camera: mirror the published track so viewers match the host selfie preview. */
+export async function syncFrontCameraMirror(
+  track: LocalVideoTrack,
+  facing: CameraFacing,
+): Promise<void> {
+  try {
+    await track.stopProcessor();
+  } catch {
+    /* no processor yet */
+  }
+  if (facing !== "user") return;
+  try {
+    const { MirrorVideoProcessor } = await import("@/lib/mirror-video-processor");
+    await track.setProcessor(new MirrorVideoProcessor(), true);
+  } catch (e) {
+    console.warn("[camera] mirror processor failed", e);
+  }
+}
+
 export {
   Room,
   RoomEvent,

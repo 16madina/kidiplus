@@ -802,8 +802,8 @@ export function RealLiveViewerScreen() {
               <MoreVertical size={16} />
             </Press>
             <Press
-              aria-label={t("live.minimize", "Réduire")}
-              onClick={() => { haptic.light(); minimize(); }}
+              aria-label={t("live.leave")}
+              onClick={() => { haptic.light(); close(); }}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <X size={18} />
