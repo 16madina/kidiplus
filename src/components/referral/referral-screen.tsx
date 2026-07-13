@@ -209,8 +209,8 @@ function ReferralWalletCard({
             linear-gradient(135deg, ${GOLD_LIGHT} 0%, ${GOLD_MID} 45%, ${GOLD_DEEP} 100%)
           `,
           color: INK,
-          aspectRatio: "1.586 / 1",
-          maxHeight: 240,
+          minHeight: 200,
+
           boxShadow:
             "0 20px 40px -20px rgba(138,101,17,0.55), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15)",
         }}
