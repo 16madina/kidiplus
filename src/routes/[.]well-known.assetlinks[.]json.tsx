@@ -29,9 +29,8 @@ const ASSETLINKS = [
       namespace: 'android_app',
       package_name: 'com.kidiplus.app',
       sha256_cert_fingerprints: [
-        // TODO — replace with the Play App Signing SHA-256 from
-        // Play Console → App integrity → App signing.
-        'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
+        // Play App Signing SHA-256 (Play Console → App integrity → App signing).
+        '2D:75:59:2A:FC:48:91:07:9C:64:1B:6B:50:47:C5:1A:0F:BC:ED:81:CB:E3:ED:07:CF:18:E9:3D:0E:84:D3:F8',
       ],
     },
   },
