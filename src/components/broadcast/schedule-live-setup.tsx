@@ -724,7 +724,31 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={(p) => b.addProduct(p)}
+        onPickFromShop={() => {
+          setShowAdd(false);
+          setShowShopPicker(true);
+        }}
+      />
+      <ShopPickerSheet
+        open={showShopPicker}
+        onClose={() => setShowShopPicker(false)}
+        currency={b.currency}
+        onConfirm={(items) => {
+          for (const it of items) {
+            b.addProduct({
+              name: it.name,
+              image: it.image,
+              mode: it.mode,
+              startPrice: it.startPrice,
+              price: it.price,
+              stock: it.stock,
+              timerSec: it.timerSec,
+            });
+          }
+          setShowShopPicker(false);
+        }}
       />
     </motion.div>
   );
 }
+
