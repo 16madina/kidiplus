@@ -1,6 +1,6 @@
-import { motion } from "framer-motion";
+import { motion, useMotionValue } from "framer-motion";
 import { X } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useInSystemPip } from "@/lib/pip-session";
@@ -9,20 +9,24 @@ import { haptic } from "@/lib/haptics";
 /**
  * Full-screen ↔ floating mini-player shell.
  *
- * Android system PiP shows the whole WebView in the bubble — so in that mode
- * we render a plain fixed inset-0 black layer (no framer size animation).
- *
- * Mini player: tap body → expand; tap X → close; drag to reposition.
- * Remount on mini↔full (key) so iOS WebKit does not keep a leftover drag
- * transform that clips / offsets the restored full live.
+ * Keep a SINGLE motion node for mini↔full so LiveKit <video> never remounts
+ * (remount caused a splash/poster flash on iOS when expanding the mini).
+ * Drag offsets are reset via motion values when leaving mini — no key swap.
  */
 export function LivePipShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { presentation, expand, close } = useLiveViewer();
   const inSystemPip = useInSystemPip();
   const floatingMini = presentation === "minimized" && !inSystemPip;
-  // Ignore the click that iOS synthesizes at the end of a drag.
   const draggedRef = useRef(false);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  useLayoutEffect(() => {
+    if (floatingMini) return;
+    x.set(0);
+    y.set(0);
+  }, [floatingMini, x, y]);
 
   if (inSystemPip) {
     return (
@@ -49,47 +53,60 @@ export function LivePipShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (floatingMini) {
-    return (
-      <motion.div
-        key="mini"
-        data-kp-live-pip="mini"
-        initial={false}
-        className="fixed z-[55] max-w-none overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
-        style={{
-          width: 118,
-          height: 210,
-          borderRadius: 18,
-          right: 12,
-          bottom: 72,
-          marginBottom: "env(safe-area-inset-bottom, 0px)",
-          touchAction: "none",
-        }}
-        drag
-        dragMomentum={false}
-        dragElastic={0.12}
-        dragConstraints={
-          typeof window !== "undefined"
-            ? {
-                left: -(window.innerWidth - 140),
-                right: 8,
-                top: -(window.innerHeight - 280),
-                bottom: 8,
-              }
-            : undefined
-        }
-        onDragStart={() => {
-          draggedRef.current = true;
-        }}
-        onDragEnd={() => {
-          // Keep the flag through the trailing click on iOS Safari/WebView.
-          window.setTimeout(() => {
-            draggedRef.current = false;
-          }, 120);
-        }}
-      >
-        {children}
+  return (
+    <motion.div
+      data-kp-live-pip={floatingMini ? "mini" : "full"}
+      initial={false}
+      drag={floatingMini}
+      dragMomentum={false}
+      dragElastic={0.12}
+      dragConstraints={
+        floatingMini && typeof window !== "undefined"
+          ? {
+              left: -(window.innerWidth - 140),
+              right: 8,
+              top: -(window.innerHeight - 280),
+              bottom: 8,
+            }
+          : { left: 0, right: 0, top: 0, bottom: 0 }
+      }
+      onDragStart={() => {
+        draggedRef.current = true;
+      }}
+      onDragEnd={() => {
+        window.setTimeout(() => {
+          draggedRef.current = false;
+        }, 120);
+      }}
+      className={
+        floatingMini
+          ? "fixed z-[55] max-w-none overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+          : "fixed inset-0 z-[60] mx-auto w-full max-w-xl overflow-hidden bg-black"
+      }
+      style={
+        floatingMini
+          ? {
+              x,
+              y,
+              width: 118,
+              height: 210,
+              borderRadius: 18,
+              right: 12,
+              bottom: 72,
+              marginBottom: "env(safe-area-inset-bottom, 0px)",
+              touchAction: "none",
+            }
+          : {
+              x: 0,
+              y: 0,
+              borderRadius: 0,
+              transform: "none",
+            }
+      }
+    >
+      {children}
 
+      {floatingMini && (
         <div className="absolute inset-0 z-40">
           <button
             type="button"
@@ -97,6 +114,8 @@ export function LivePipShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 cursor-pointer"
             onClick={() => {
               if (draggedRef.current) return;
+              x.set(0);
+              y.set(0);
               haptic.light();
               expand();
             }}
@@ -125,22 +144,7 @@ export function LivePipShell({ children }: { children: ReactNode }) {
             <X size={14} />
           </button>
         </div>
-      </motion.div>
-    );
-  }
-
-  // Fresh mount for full screen — no drag transform inheritance from mini.
-  return (
-    <motion.div
-      key="full"
-      data-kp-live-pip="full"
-      initial={false}
-      className="fixed inset-0 z-[60] mx-auto w-full max-w-xl overflow-hidden bg-black"
-      style={{
-        transform: "none",
-      }}
-    >
-      {children}
+      )}
     </motion.div>
   );
 }
