@@ -559,15 +559,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <CalendarIcon size={16} color={GOLD} />
               <span className="truncate text-[14px] text-white">{dateStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="date"
+                min={minDateOnly}
+                max={maxDateOnly}
+                value={dateInputValue}
+                onChange={(e) => onDateChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
@@ -585,15 +581,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <Clock size={16} color={GOLD} />
               <span className="text-[14px] text-white">{timeStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="time"
+                value={timeInputValue}
+                onChange={(e) => onTimeChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
