@@ -38,6 +38,7 @@ export function AdminReferralReconciliation() {
   const [rows, setRows] = useState<AdminReconRow[] | null>(null);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openRow, setOpenRow] = useState<{ id: string; code: string } | null>(null);
 
   const reload = async () => {
     setLoading(true);
