@@ -27,12 +27,30 @@ export function AdminReferralPanel() {
   const [rows, setRows] = useState<AdminPromoCodeRow[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [createdToken, setCreatedToken] = useState<{ code: string; token: string } | null>(null);
+  const [subTab, setSubTab] = useState<"manage" | "recon">("manage");
 
   const reload = async () => setRows(await fetchAdminPromoCodes());
   useEffect(() => { void reload(); }, []);
 
   return (
     <div>
+      <div className="mb-4 flex gap-1 rounded-full border border-border bg-muted/40 p-1">
+        <button
+          onClick={() => { haptic.light(); setSubTab("manage"); }}
+          className={`flex-1 rounded-full px-3 py-1.5 text-[12px] font-semibold ${subTab === "manage" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+        >
+          {t("referral.admin.subtab.manage", "Gestion")}
+        </button>
+        <button
+          onClick={() => { haptic.light(); setSubTab("recon"); }}
+          className={`flex-1 rounded-full px-3 py-1.5 text-[12px] font-semibold ${subTab === "recon" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+        >
+          {t("referral.admin.subtab.recon", "Réconciliation")}
+        </button>
+      </div>
+
+      {subTab === "recon" ? <AdminReferralReconciliation /> : (
+      <>
       <RequestsSection />
 
       <div className="mb-4 mt-6 flex items-center justify-between">
