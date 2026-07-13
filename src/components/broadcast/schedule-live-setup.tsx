@@ -165,8 +165,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [launching, setLaunching] = useState(false);
 
 
-  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
-  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  // Kept for the datetime min/max clamps used by the split date/time inputs.
 
   const currentDate = b.scheduledAt ? new Date(b.scheduledAt) : null;
   const dateStr = currentDate
@@ -183,7 +182,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       })
     : "--:--";
 
-  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
+  
   const scheduleValid =
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
@@ -192,12 +191,51 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = urlTrackerRef.current.track(URL.createObjectURL(file));
     if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
-    b.setCover(url);
+    // Use a data URL for the preview — it works everywhere (mobile Safari,
+    // WebViews, HEIC-converted images) whereas blob URLs can silently fail
+    // to render inside <img> in some sandboxed previews.
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      if (dataUrl) b.setCover(dataUrl);
+    };
+    reader.readAsDataURL(file);
     b.setCoverFile(file);
     e.target.value = "";
     haptic.selection();
+  };
+
+  // Split date/time controls: separate <input type="date"> and <input type="time">
+  // so tapping "Heure" opens a time-only picker, not a full datetime calendar.
+  const dateInputValue = currentDate
+    ? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`
+    : "";
+  const timeInputValue = currentDate
+    ? `${String(currentDate.getHours()).padStart(2, "0")}:${String(currentDate.getMinutes()).padStart(2, "0")}`
+    : "";
+  const minDateOnly = toLocalInput(new Date(Date.now() + 15 * 60 * 1000)).slice(0, 10);
+  const maxDateOnly = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).slice(0, 10);
+
+  const onDateChange = (value: string) => {
+    if (!value) {
+      b.setScheduledAt(null);
+      return;
+    }
+    const [y, m, d] = value.split("-").map(Number);
+    const base = currentDate ?? new Date(Date.now() + 60 * 60 * 1000);
+    const next = new Date(base);
+    next.setFullYear(y, (m ?? 1) - 1, d ?? 1);
+    b.setScheduledAt(next.toISOString());
+  };
+
+  const onTimeChange = (value: string) => {
+    if (!value) return;
+    const [h, min] = value.split(":").map(Number);
+    const base = currentDate ?? new Date(Date.now() + 60 * 60 * 1000);
+    const next = new Date(base);
+    next.setHours(h ?? 0, min ?? 0, 0, 0);
+    b.setScheduledAt(next.toISOString());
   };
 
   const uploadProducts = async () =>
@@ -520,15 +558,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <CalendarIcon size={16} color={GOLD} />
               <span className="truncate text-[14px] text-white">{dateStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="date"
+                min={minDateOnly}
+                max={maxDateOnly}
+                value={dateInputValue}
+                onChange={(e) => onDateChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
@@ -546,15 +580,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <Clock size={16} color={GOLD} />
               <span className="text-[14px] text-white">{timeStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="time"
+                value={timeInputValue}
+                onChange={(e) => onTimeChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
