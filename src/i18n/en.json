@@ -1324,6 +1324,8 @@
       "partnerLabel": "KiDi+ Partner",
       "scratchHint": "Scratch to enter your code 🪙",
       "scratchSkip": "Enter the code manually",
+      "scratchTitle": "Scratch the card and enter your code",
+      "scratchSubtitle": "Your partner activation code was sent to you by the KiDi+ team.",
       "cta": "Claim my code",
       "badFormat": "Expected format: XXXX-XXXX",
       "errInvalid": "Invalid activation code.",
