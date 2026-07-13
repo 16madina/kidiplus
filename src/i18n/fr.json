@@ -1280,11 +1280,11 @@
     "intro": "Partage ton code. Pour chaque inscrit, tu gagnes la commission KiDi+ sur ses premières commandes.",
     "quota": "Quota",
     "claim": {
-      "entry": "Réclamer mon code influenceur 🤝",
-      "title": "Deviens influenceur KiDi+",
+      "entry": "Réclamer mon code parrainage 🤝",
+      "title": "Deviens partenaire KiDi+",
       "intro": "Reçois la commission KiDi+ sur les premières commandes de chaque personne qui s'inscrit avec ton code.",
       "tokenLabel": "Code d'activation",
-      "hint": "Ce code t'a été communiqué par l'équipe KiDi+. Il est différent du code public que tu partageras.",
+      "hint": "As-tu déjà reçu un code d'activation ? Entre-le ci-dessous. Sinon, tu peux demander un code de parrainage plus bas.",
       "cta": "Réclamer mon code",
       "badFormat": "Format attendu : XXXX-XXXX",
       "errInvalid": "Code d'activation invalide.",
@@ -1292,7 +1292,21 @@
       "errAuth": "Connecte-toi pour réclamer.",
       "ok": "Code {{code}} réclamé 🎉",
       "okWithBackfill": "Code {{code}} réclamé — {{amount}} crédités",
-      "notInfluencer": "Pas encore de code ? Contacte l'équipe KiDi+ pour rejoindre le programme."
+      "notInfluencer": "Pas de code ? Fais une demande — l'équipe KiDi+ répond sous quelques jours.",
+      "request": {
+        "title": "Demander un code de parrainage",
+        "intro": "Explique en quelques mots pourquoi tu veux devenir partenaire (audience, réseaux, motivation…). L'équipe KiDi+ étudiera ta demande.",
+        "placeholder": "Parle-nous de toi, ton audience, tes réseaux…",
+        "cta": "Envoyer ma demande",
+        "sent": "Demande envoyée ✨",
+        "errPending": "Tu as déjà une demande en attente.",
+        "errHasCode": "Tu as déjà un code de parrainage.",
+        "pendingBadge": "Demande en attente",
+        "pendingHint": "Nous étudions ta demande. Tu recevras une notification dès qu'elle sera traitée.",
+        "rejectedBadge": "Demande refusée",
+        "rejectedHint": "Ta dernière demande a été refusée. Tu peux en soumettre une nouvelle.",
+        "reason": "Motif :"
+      }
     },
     "admin": {
       "title": "Parrainage",
