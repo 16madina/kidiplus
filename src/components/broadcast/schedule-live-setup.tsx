@@ -165,8 +165,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [launching, setLaunching] = useState(false);
 
 
-  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
-  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  // Kept for the datetime min/max clamps used by the split date/time inputs.
 
   const currentDate = b.scheduledAt ? new Date(b.scheduledAt) : null;
   const dateStr = currentDate
