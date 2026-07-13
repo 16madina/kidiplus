@@ -18,6 +18,7 @@ import {
   isIosPipPlatform,
   isNativePipPlatform,
   pipDismiss,
+  pipEnter,
   pipIsActive,
   pipIsSupported,
   pipSetEnabled,
@@ -97,8 +98,9 @@ export function LivePipController() {
             : `pip_guest_${Math.random().toString(36).slice(2, 10)}`;
           const name = profile?.display_name || profile?.handle || "viewer";
           session = await getToken(roomName, identity, name, "viewer");
+          console.info("[pip] iOS native session ready", { roomName, identity });
         } catch (e) {
-          console.debug("[pip] iOS token failed", e);
+          console.warn("[pip] iOS token failed", e);
           setPipHold(false);
           await pipSetEnabled(false);
           return;
@@ -142,8 +144,10 @@ export function LivePipController() {
         wasInPipRef.current = true;
         if (isAndroidPipPlatform()) {
           prepareSystemPipUi(() => expandRef.current());
-        } else {
+        } else if (isIosPipPlatform()) {
           setInSystemPip(true);
+          // Explicitly ask native to start PiP (willResignActive can race).
+          void pipEnter();
         }
         return;
       }
