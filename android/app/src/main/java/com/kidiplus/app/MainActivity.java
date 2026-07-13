@@ -21,10 +21,11 @@ public class MainActivity extends BridgeActivity {
 
     /**
      * Injected into the WebView BEFORE entering system PiP.
-     * Android shows the entire WebView in the bubble — if we wait for React,
-     * the first frames still show Accueil/tabs under a mini live. Force the
-     * live shell edge-to-edge + a black mask immediately (works even before
-     * the next web deploy by walking up from &lt;video&gt; to a fixed ancestor).
+     *
+     * Important: do NOT append a full-screen mask to document.body — the app
+     * shell uses isolation:isolate, so a body-level mask paints ABOVE the live
+     * and the PiP bubble goes fully black. Only toggle the class + expand the
+     * fixed live ancestor; CSS inside the shell hides Accueil/tabs.
      */
     private static final String PREPARE_PIP_JS =
         "(function(){try{"
@@ -37,8 +38,7 @@ public class MainActivity extends BridgeActivity {
             + "h.appendChild(st);}"
             + "st.textContent="
             + "'html.kp-in-system-pip,html.kp-in-system-pip body{background:#000!important}"
-            + "html.kp-in-system-pip [data-kp-shell-chrome],"
-            + "html.kp-in-system-pip .kp-pip-hide{"
+            + "html.kp-in-system-pip [data-kp-shell-chrome]{"
             + "visibility:hidden!important;opacity:0!important;pointer-events:none!important}"
             + "html.kp-in-system-pip [data-kp-live-pip],"
             + "html.kp-in-system-pip .kp-pip-live-target{"
@@ -48,18 +48,12 @@ public class MainActivity extends BridgeActivity {
             + "border-radius:0!important;z-index:2147483000!important;overflow:hidden!important;"
             + "background:#000!important}'"
             + ";"
-            + "var shells=document.querySelectorAll('[data-kp-live-pip]');"
-            + "if(!shells.length){"
+            + "if(!document.querySelector('[data-kp-live-pip]')){"
             + "var v=document.querySelector('video');"
             + "if(v){var n=v.parentElement;while(n&&n!==document.body){"
             + "var cs=window.getComputedStyle(n);"
             + "if(cs.position==='fixed'){n.classList.add('kp-pip-live-target');break;}"
             + "n=n.parentElement;}}}"
-            + "var mask=document.getElementById('kp-pip-mask');"
-            + "if(!mask&&document.body){mask=document.createElement('div');mask.id='kp-pip-mask';"
-            + "mask.setAttribute('aria-hidden','true');"
-            + "mask.style.cssText='position:fixed;inset:0;background:#000;z-index:2147482990;pointer-events:none';"
-            + "document.body.appendChild(mask);}"
             + "window.dispatchEvent(new CustomEvent('kidi:pip-prepare'));"
             + "}catch(e){}})();";
 
@@ -73,6 +67,7 @@ public class MainActivity extends BridgeActivity {
             + "var mask=document.getElementById('kp-pip-mask');if(mask)mask.remove();"
             + "document.querySelectorAll('.kp-pip-live-target').forEach(function(el){"
             + "el.classList.remove('kp-pip-live-target');});"
+            + "window.dispatchEvent(new CustomEvent('kidi:pip-clear'));"
             + "}catch(e){}})();";
 
     @Override
@@ -160,8 +155,7 @@ public class MainActivity extends BridgeActivity {
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         if (!pipEligible) return;
-        // Always prepare UI before the system (or we) enter PiP — including
-        // Android 12+ auto-enter, which otherwise captures home/tabs first.
+        // Prepare only when the user is leaving the app (Home / recents).
         preparePipUi();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
@@ -170,14 +164,29 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // Always clear PiP chrome lock when back in the foreground and not
+        // actually in system PiP — otherwise Accueil stays hidden / X dead
+        // until the host ends the live (JS flag can stick without a web deploy).
+        if (!isInPictureInPictureMode()) {
+            clearPipUi();
+            notifyPipPlugin(false);
+        }
+    }
+
+    @Override
     public void onPause() {
-        if (pipEligible && !isInPictureInPictureMode()) {
-            preparePipUi();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                && Build.VERSION.SDK_INT < Build.VERSION_CODES.S
-                && !isChangingConfigurations()) {
-                enterPipMode();
-            }
+        // Pre-Android 12 only: enter PiP from onPause as a fallback.
+        // Do NOT call preparePipUi on every pause on Android 12+ — notification
+        // shade / brief pauses would lock the UI in "system PiP" mode (black
+        // screen, no close button) without ever entering real PiP.
+        if (pipEligible
+            && !isInPictureInPictureMode()
+            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            && Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+            && !isChangingConfigurations()) {
+            enterPipMode();
         }
         super.onPause();
     }

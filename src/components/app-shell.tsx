@@ -306,11 +306,10 @@ function AppShellInner() {
         </div>
       )}
 
-      {/* Solid mask under the live while Android system PiP shows the WebView. */}
+      {/* Under the live only — must stay inside this stacking context (never on body). */}
       {inSystemPip && (
         <div
-          className="pointer-events-none fixed inset-0 bg-black"
-          style={{ zIndex: 2147482990 }}
+          className="pointer-events-none absolute inset-0 z-[50] bg-black"
           aria-hidden
         />
       )}
