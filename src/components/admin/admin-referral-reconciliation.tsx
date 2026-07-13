@@ -114,9 +114,21 @@ export function AdminReferralReconciliation() {
         </p>
       ) : (
         <div className="space-y-3">
-          {filtered!.map((r) => <ReconRow key={r.promo_code_id} row={r} />)}
+          {filtered!.map((r) => (
+            <ReconRow
+              key={r.promo_code_id}
+              row={r}
+              onOpen={() => { haptic.light(); setOpenRow({ id: r.promo_code_id, code: r.code }); }}
+            />
+          ))}
         </div>
       )}
+
+      <AdminReferralCodeDetailsSheet
+        promoCodeId={openRow?.id ?? null}
+        code={openRow?.code ?? null}
+        onClose={() => setOpenRow(null)}
+      />
     </div>
   );
 }
