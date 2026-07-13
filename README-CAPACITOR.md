@@ -121,7 +121,8 @@ Then in Android Studio: pick your device (or emulator) → press ▶ Run.
 
 While watching a live on Android, pressing **Home** (or leaving the app)
 enters system PiP so the live keeps playing over other apps. Tap the PiP
-window to return to KiDi+ full screen.
+window to return to KiDi+ full screen. Closing the system PiP window (or
+the host ending the live) ends the viewer session.
 
 Requires a native rebuild after pulling:
 
@@ -132,10 +133,36 @@ npx cap sync android
 Then Run in Android Studio. Key pieces:
 
 - `AndroidManifest` — `supportsPictureInPicture="true"`
-- `PipPlugin` + `MainActivity.onUserLeaveHint` — auto-enter PiP
+- `PipPlugin` + `MainActivity` — auto-enter / dismiss PiP
 - JS `LivePipController` — keeps LiveKit connected during PiP
 
-iOS is intentionally out of scope for this feature (in-app mini player only).
+### iOS system Picture-in-Picture (roadmap)
+
+The **in-app mini player** already works on iPhone (same JS as Android).
+
+**True iOS system PiP** (floating bubble over the Home Screen / other apps)
+cannot be copied from the Android WebView approach:
+
+| Layer | Android | iOS |
+| --- | --- | --- |
+| Live video today | LiveKit JS → `<video>` in WebView | Same |
+| System PiP API | Activity `enterPictureInPictureMode` shows the **whole WebView** | `AVPictureInPictureController` needs **AVPlayer** / `AVSampleBufferDisplayLayer` frames |
+| WebRTC in WKWebView | Works in the Activity PiP bubble | **Not accepted** as a PiP source; HTML `requestPictureInPicture` / `webkitSetPresentationMode` will not give FaceTime-style PiP for LiveKit |
+
+**Phase done (this repo):**
+
+- Capacitor `ios/` project added (`npx cap add ios`)
+- `UIBackgroundModes: audio` + `AVAudioSession` playback category (prep for live audio)
+- Portrait lock for iPhone
+
+**Phase next (needs a Mac + Xcode):**
+
+1. Add **LiveKit Swift SDK** for a native viewer surface (or a hybrid: WebView UI + native video layer).
+2. Feed remote frames into `AVSampleBufferDisplayLayer` and attach `AVPictureInPictureController` (`canStartPictureInPictureAutomaticallyFromInline` where applicable).
+3. Mirror the Android JS contract in `src/lib/pip-native.ts` (`setEnabled` / `dismiss` / `pipModeChange`) so `LivePipController` stays shared.
+4. Reuse the same UX rules: Home → PiP, tap → restore, system X / host end → close live.
+
+Until that ships, iPhone viewers keep the **in-app mini** when browsing tabs; leaving the app may pause/stop the live (OS limitation), unlike Android.
 
 ### Splash video sound (“qui dit plus ?”)
 

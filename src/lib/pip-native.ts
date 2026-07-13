@@ -1,5 +1,9 @@
-// Android system Picture-in-Picture bridge for live viewing.
-// No-op on iOS / web — in-app mini player remains the cross-platform UX.
+// Native Picture-in-Picture bridge for live viewing.
+//
+// Android: full system PiP via LivePip plugin + MainActivity (WebView bubble).
+// iOS: same JS API is reserved for a future LiveKit-native PiP pipeline —
+// WKWebView + LiveKit JS cannot drive AVPictureInPictureController. Until
+// then these helpers no-op on iOS and the in-app mini player remains the UX.
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
 export type PipModeChangeEvent = { active: boolean };
