@@ -21,6 +21,7 @@ import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { LiveChat } from "@/components/live-viewer/live-chat";
+import { LiveViewersSheet } from "@/components/live-viewer/live-viewers-sheet";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -74,6 +75,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [canFlip, setCanFlip] = useState(false);
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
   const { moderators } = useModerators(b.liveId);
@@ -609,9 +611,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           />
           <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
         </div>
-        {/* Viewer count */}
-        <div
-          className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+        {/* Viewer count — tap to see who's watching */}
+        <Press
+          onClick={() => {
+            haptic.selection();
+            setViewersSheetOpen(true);
+          }}
+          aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+          className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(10px)",
@@ -620,7 +627,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         >
           <Eye size={12} />
           {room.viewerCount}
-        </div>
+        </Press>
         {/* Spacer */}
         <div className="min-w-0" />
         {/* Products icon-only pill with count badge */}
@@ -975,6 +982,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }}
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
+      />
+
+      <LiveViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        presentViewers={room.presentViewers}
+        viewerCount={room.viewerCount}
       />
 
       {/* Moderators quick-access bottom sheet (opened from the rail). Same

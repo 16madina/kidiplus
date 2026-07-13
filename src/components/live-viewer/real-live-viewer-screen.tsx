@@ -28,6 +28,7 @@ import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-moc
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
+import { LiveViewersSheet } from "./live-viewers-sheet";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { CustomBidStepper } from "./custom-bid-stepper";
@@ -725,6 +726,7 @@ export function RealLiveViewerScreen() {
   // Moderation
   const [reportOpen, setReportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const blockedIds = useBlockedIds();
 
   // Drop open sheets when shrinking to mini / system PiP — they would block the tabs / bubble.
@@ -737,6 +739,7 @@ export function RealLiveViewerScreen() {
     setReportOpen(false);
     setCustomOpen(false);
     setPendingOrder(null);
+    setViewersSheetOpen(false);
   }, [chromeHidden]);
 
   const doBlockSeller = async () => {
@@ -791,29 +794,50 @@ export function RealLiveViewerScreen() {
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir le profil de ${active.seller}`}
-              className="!block flex min-w-0 items-center gap-2 p-0 text-left"
+              className="!block shrink-0 p-0"
             >
               <SellerAvatar src={active.avatar} name={active.seller} size="md" />
-              <div className="min-w-0">
+            </Press>
+            <div className="min-w-0">
+              <Press
+                onClick={() => openSeller(active.sellerId ?? active.seller)}
+                className="!block !min-h-0 max-w-full p-0 text-left"
+              >
                 <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   <span className="truncate">{active.seller}</span>
                   <VerifiedBadge verified={sellerVerified} size={13} />
                 </p>
+              </Press>
+              <Press
+                onClick={() => {
+                  haptic.selection();
+                  setViewersSheetOpen(true);
+                }}
+                aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+                className="!block !min-h-0 p-0 text-left"
+              >
                 <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   {displayViewers} {t("live.viewers", { count: displayViewers })}
                 </p>
-              </div>
-            </Press>
+              </Press>
+            </div>
             <FollowButton sellerId={active.sellerId ?? null} size="sm" variant="solid" />
           </div>
 
           <div className="flex items-center gap-1.5">
             <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
-            <div className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+            <Press
+              onClick={() => {
+                haptic.selection();
+                setViewersSheetOpen(true);
+              }}
+              aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
+            >
               <Eye size={13} />{displayViewers}
-            </div>
+            </Press>
 
             <Press
               aria-label={t("live.share")}
@@ -1071,6 +1095,14 @@ export function RealLiveViewerScreen() {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+
+      <LiveViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        presentViewers={room.presentViewers}
+        viewerCount={room.viewerCount}
+        onOpenProfile={(userId) => openSeller(userId)}
+      />
 
       <ProductsSheet
         open={showProducts}
