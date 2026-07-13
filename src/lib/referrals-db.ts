@@ -142,7 +142,16 @@ export async function adminSearchUsersByHandle(q: string, limit = 10): Promise<U
 }
 
 export function buildShareMessage(code: string, lang: "fr" | "en" = "fr"): string {
-  const url = typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
+  // Always use the production domain so the link is stable across web / native
+  // shares. `/join/CODE` auto-detects the device: it tries to open the native
+  // app, and falls back to the download page (App Store / Play Store) when
+  // the app isn't installed.
+  const origin =
+    typeof window !== "undefined" && window.location.origin.startsWith("http")
+      ? window.location.origin
+      : "https://kidiplus.com";
+  const base = origin.includes("localhost") ? "https://kidiplus.com" : origin;
+  const url = `${base}/join/${encodeURIComponent(code)}`;
   if (lang === "en")
     return `Join me on KiDi+ 🎁 Use my code ${code} at signup: ${url}`;
   return `Rejoins-moi sur KiDi+ 🎁 Utilise mon code ${code} à l'inscription : ${url}`;
