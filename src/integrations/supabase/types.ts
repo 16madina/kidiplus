@@ -1884,6 +1884,7 @@ export type Database = {
         Args: { _code: string; _owner_id?: string; _reward_quota?: number }
         Returns: Json
       }
+      admin_delete_promo_code: { Args: { _id: string }; Returns: Json }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
       admin_issue_sanction: {
         Args: {
