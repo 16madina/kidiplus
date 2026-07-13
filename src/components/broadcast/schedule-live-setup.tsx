@@ -157,10 +157,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [allowBids, setAllowBids] = useState(true);
   const [allowBuyNow, setAllowBuyNow] = useState(true);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
-  const [allowGifts, setAllowGifts] = useState(false);
+  const allowGifts = b.allowGifts;
+  const setAllowGifts = b.setAllowGifts;
   const [showAdd, setShowAdd] = useState(false);
+  const [showShopPicker, setShowShopPicker] = useState(false);
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [launching, setLaunching] = useState(false);
+
 
   const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
   const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
