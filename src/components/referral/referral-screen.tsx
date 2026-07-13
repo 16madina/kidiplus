@@ -361,7 +361,7 @@ function ClaimBlock({
 
   return (
     <div>
-      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} />
+      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} onWithdraw={onWithdraw} />
 
       <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
         style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
