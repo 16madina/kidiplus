@@ -337,7 +337,7 @@ function CodeRow({
   row, lang, onChange,
 }: { row: AdminPromoCodeRow; lang: "fr" | "en"; onChange: () => void }) {
   const { t } = useTranslation();
-  const [busy, setBusy] = useState<null | "toggle" | "renew" | "assign">(null);
+  const [busy, setBusy] = useState<null | "toggle" | "renew" | "assign" | "delete">(null);
   const [showToken, setShowToken] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -360,6 +360,30 @@ function CodeRow({
       toast.success(t("referral.admin.renewed", "{{n}} parrainage(s) crédité(s)", { n }));
       onChange();
     } catch (e) { toast.error(String(e)); }
+    finally { setBusy(null); }
+  };
+
+  const remove = async () => {
+    const ok = window.confirm(
+      t(
+        "referral.admin.deleteConfirm",
+        "Supprimer le code {{c}} ?\n\nSi des filleuls existent, il sera désactivé et rendu inutilisable pour toute nouvelle inscription. Sinon il sera supprimé définitivement.",
+        { c: row.code },
+      ),
+    );
+    if (!ok) return;
+    setBusy("delete");
+    try {
+      const r = await adminDeletePromoCode(row.id);
+      if (!r.ok) throw new Error(r.error);
+      haptic.success();
+      toast.success(
+        r.mode === "hard_deleted"
+          ? t("referral.admin.deleted", "Code {{c}} supprimé", { c: r.code })
+          : t("referral.admin.softDeleted", "Code {{c}} désactivé (des filleuls existent)", { c: r.code }),
+      );
+      onChange();
+    } catch (e) { toast.error(String((e as Error).message ?? e)); }
     finally { setBusy(null); }
   };
 
