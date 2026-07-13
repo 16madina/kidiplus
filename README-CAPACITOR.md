@@ -121,7 +121,8 @@ Then in Android Studio: pick your device (or emulator) → press ▶ Run.
 
 While watching a live on Android, pressing **Home** (or leaving the app)
 enters system PiP so the live keeps playing over other apps. Tap the PiP
-window to return to KiDi+ full screen.
+window to return to KiDi+ full screen. Closing the system PiP window (or
+the host ending the live) ends the viewer session.
 
 Requires a native rebuild after pulling:
 
@@ -132,10 +133,40 @@ npx cap sync android
 Then Run in Android Studio. Key pieces:
 
 - `AndroidManifest` — `supportsPictureInPicture="true"`
-- `PipPlugin` + `MainActivity.onUserLeaveHint` — auto-enter PiP
+- `PipPlugin` + `MainActivity` — auto-enter / dismiss PiP
 - JS `LivePipController` — keeps LiveKit connected during PiP
 
-iOS is intentionally out of scope for this feature (in-app mini player only).
+### iOS system Picture-in-Picture (native LiveKit)
+
+iOS cannot PiP the Capacitor WebView. Instead, while a live is open the app
+opens a **second native LiveKit viewer** and feeds frames into
+`AVPictureInPictureController` (same pattern as LiveKit’s `minimal-pip` sample).
+
+**On your Mac:**
+
+```bash
+git fetch origin
+git checkout feature/ios-native-pip
+git pull origin feature/ios-native-pip
+npm install
+npx cap sync ios
+npx cap open ios
+```
+
+In Xcode:
+
+1. Wait for SPM to resolve **LiveKit** (`client-sdk-swift`) — first open may take a few minutes.
+2. Select your Team under Signing & Capabilities.
+3. Confirm **Background Modes** includes *Audio* and *Voice over IP* (Info.plist already lists them).
+4. Run on a **physical iPhone** (PiP is unreliable / unavailable on many simulators).
+
+**Test:** open a live → Home → system PiP bubble with the host video. Tap to restore; X on the bubble closes the live.
+
+Key files:
+
+- `ios/App/App/LivePipSession.swift` — LiveKit room + PiP controllers
+- `ios/App/App/LivePipPlugin.swift` — Capacitor `LivePip` bridge
+- `src/lib/pip-native.ts` / `LivePipController` — shared JS with Android
 
 ### Splash video sound (“qui dit plus ?”)
 
