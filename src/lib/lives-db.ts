@@ -844,6 +844,7 @@ export async function updateScheduledLiveInDb(
     category: string;
     coverPath: string | null;
     scheduledAt: string;
+    allowGifts?: boolean;
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -854,10 +855,12 @@ export async function updateScheduledLiveInDb(
       category: patch.category,
       cover_url: patch.coverPath,
       scheduled_at: patch.scheduledAt,
+      ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
     })
     .eq("id", liveId)
     .eq("status", "scheduled");
   if (error) throw error;
+
 
   // Replace products wholesale.
   await supabase.from("live_products").delete().eq("live_id", liveId);
