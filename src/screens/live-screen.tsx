@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, LogIn, Store, UserPlus } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, Store, TrendingUp, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
+import sellerHero from "@/assets/seller-hero.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
 import {
   AlertDialog,
@@ -28,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 
 
 const GOLD = "#D4AF37";
