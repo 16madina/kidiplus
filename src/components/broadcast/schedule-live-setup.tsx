@@ -19,7 +19,9 @@ import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { AddProductSheet } from "./add-product-sheet";
+import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
+
 import {
   BROADCAST_CATEGORY_KEYS,
   BROADCAST_CATEGORY_LABEL_KEY,
