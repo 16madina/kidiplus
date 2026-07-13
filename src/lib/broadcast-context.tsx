@@ -140,6 +140,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [hostName, setHostName] = useState<string>("Host");
   const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
+  const [allowGifts, setAllowGifts] = useState<boolean>(true);
+
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
     setProducts((prev) => [
