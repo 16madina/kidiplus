@@ -128,6 +128,13 @@ function ProfileScreenAuthed() {
     return () => { alive = false; };
   }, [profile?.id]);
 
+  useEffect(() => {
+    const openShop = () => setShopOpen(true);
+    window.addEventListener("kidi:open-my-shop", openShop);
+    return () => window.removeEventListener("kidi:open-my-shop", openShop);
+  }, []);
+
+
 
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
