@@ -350,14 +350,9 @@ export function GoLiveEntryScreen({
                   ) : (
                     <>
                       <Press
-                        onClick={() => startNow(row)}
+                        onClick={() => loadIntoForm(row)}
                         disabled={busyId === row.id}
-                        aria-label={t("golive.entry.startNowShort", "Démarrer")}
-                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-black"
-                        style={{ backgroundColor: GOLD }}
-                      >
-                        <Play size={14} fill="currentColor" />
-                      </Press>
+                        aria-label={t("common.edit")}
                       <Press
                         onClick={() => loadIntoForm(row)}
                         disabled={busyId === row.id}
