@@ -5,10 +5,8 @@ import UIKit
 
 /**
  * Native LiveKit viewer used only to feed iOS system Picture-in-Picture.
- * The Capacitor WebView keeps the full live UI (chat / auctions); this session
- * is a second viewer connection whose frames go to AVSampleBufferDisplayLayer.
- *
- * Pattern adapted from livekit-examples/swift-example-collection minimal-pip.
+ * The Capacitor WebView keeps the full live UI; this is a second viewer whose
+ * frames go to AVSampleBufferDisplayLayer (LiveKit minimal-pip pattern).
  */
 final class LivePipSession: NSObject {
     static let shared = LivePipSession()
@@ -22,7 +20,9 @@ final class LivePipSession: NSObject {
     private var connected = false
     private var hostTrack: VideoTrack?
     private var resignObserver: NSObjectProtocol?
+    private var backgroundObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
+    private weak var hostView: UIView?
 
     var isInPip: Bool {
         pipController?.isPictureInPictureActive ?? false
@@ -37,40 +37,72 @@ final class LivePipSession: NSObject {
     }
 
     func attach(to hostView: UIView) {
-        // PiP source view must stay in the hierarchy. Keep it tiny / nearly invisible
-        // under the WebView so it does not affect UX.
+        self.hostView = hostView
+        // Source view must be in the hierarchy with a real size — a 2×2 view
+        // makes system PiP fail silently on many iPhones.
         let preview = previewController.view!
         if preview.superview !== hostView {
             preview.translatesAutoresizingMaskIntoConstraints = false
             preview.isUserInteractionEnabled = false
-            preview.alpha = 0.02
+            preview.alpha = 0.01
+            preview.backgroundColor = .black
             hostView.insertSubview(preview, at: 0)
             NSLayoutConstraint.activate([
-                preview.widthAnchor.constraint(equalToConstant: 2),
-                preview.heightAnchor.constraint(equalToConstant: 2),
-                preview.leadingAnchor.constraint(equalTo: hostView.leadingAnchor),
-                preview.topAnchor.constraint(equalTo: hostView.topAnchor),
+                preview.widthAnchor.constraint(equalToConstant: 118),
+                preview.heightAnchor.constraint(equalToConstant: 210),
+                preview.leadingAnchor.constraint(equalTo: hostView.leadingAnchor, constant: 8),
+                preview.bottomAnchor.constraint(equalTo: hostView.safeAreaLayoutGuide.bottomAnchor, constant: -72),
             ])
         }
-        ensurePipController()
+        // Force loadView so the sample buffer layer exists before first frame.
+        _ = previewController.view
+        _ = videoCallController.view
+        ensurePipController(forceRebuild: true)
         observeAppLifecycle()
+        print("[KiDi+] LivePipSession attached, pipSupported=\(isSupported)")
     }
 
     func setEligible(_ on: Bool, url: String?, token: String?) async {
         eligible = on
+        print("[KiDi+] LivePipSession setEligible=\(on) url=\(url != nil) token=\(token != nil)")
         if !on {
             await teardown()
             return
         }
-        guard let url, let token, !url.isEmpty, !token.isEmpty else { return }
+        guard let url, let token, !url.isEmpty, !token.isEmpty else {
+            print("[KiDi+] LivePipSession enable ignored — missing url/token (publish web JS?)")
+            return
+        }
         await connect(url: url, token: token)
     }
 
     func startPipIfPossible() {
-        guard eligible, connected, isSupported else { return }
-        ensurePipController()
-        guard let pip = pipController, !pip.isPictureInPictureActive else { return }
-        pip.startPictureInPicture()
+        DispatchQueue.main.async {
+            guard self.eligible else {
+                print("[KiDi+] startPip skipped — not eligible")
+                return
+            }
+            guard self.isSupported else {
+                print("[KiDi+] startPip skipped — not supported on device")
+                return
+            }
+            guard self.connected else {
+                print("[KiDi+] startPip skipped — native LiveKit not connected")
+                return
+            }
+            guard self.hostTrack != nil else {
+                print("[KiDi+] startPip skipped — no remote video track yet")
+                return
+            }
+            self.ensurePipController(forceRebuild: false)
+            guard let pip = self.pipController else {
+                print("[KiDi+] startPip skipped — no pipController")
+                return
+            }
+            if pip.isPictureInPictureActive { return }
+            print("[KiDi+] starting Picture in Picture…")
+            pip.startPictureInPicture()
+        }
     }
 
     @discardableResult
@@ -81,7 +113,7 @@ final class LivePipSession: NSObject {
     }
 
     func dismiss() async -> Bool {
-        let wasPip = stopPip()
+        let wasPip = await MainActor.run { self.stopPip() }
         eligible = false
         await teardown()
         return wasPip
@@ -91,11 +123,14 @@ final class LivePipSession: NSObject {
         if connected {
             await teardownRoomOnly()
         }
+        room.add(delegate: self)
         do {
             try await room.connect(url: url, token: token)
             connected = true
-            bindExistingRemoteVideo()
-            room.add(delegate: self)
+            print("[KiDi+] LivePipSession connected, remotes=\(room.remoteParticipants.count)")
+            await MainActor.run {
+                self.bindExistingRemoteVideo()
+            }
         } catch {
             print("[KiDi+] LivePipSession connect failed: \(error)")
             connected = false
@@ -103,7 +138,7 @@ final class LivePipSession: NSObject {
     }
 
     private func teardown() async {
-        stopPip()
+        await MainActor.run { _ = self.stopPip() }
         await teardownRoomOnly()
         hostTrack = nil
     }
@@ -121,9 +156,10 @@ final class LivePipSession: NSObject {
     private func bindExistingRemoteVideo() {
         for participant in room.remoteParticipants.values {
             for publication in participant.trackPublications.values {
-                guard let track = publication.track as? VideoTrack else { continue }
-                setHostTrack(track)
-                return
+                if let track = publication.track as? VideoTrack {
+                    setHostTrack(track)
+                    return
+                }
             }
         }
     }
@@ -136,10 +172,19 @@ final class LivePipSession: NSObject {
         hostTrack = track
         track.add(videoRenderer: previewController)
         track.add(videoRenderer: videoCallController)
-        ensurePipController()
+        ensurePipController(forceRebuild: true)
+        print("[KiDi+] LivePipSession host video track bound")
+        // If user already left the app while we were connecting, start now.
+        if UIApplication.shared.applicationState != .active {
+            startPipIfPossible()
+        }
     }
 
-    private func ensurePipController() {
+    private func ensurePipController(forceRebuild: Bool) {
+        if forceRebuild {
+            pipController?.delegate = nil
+            pipController = nil
+        }
         guard isSupported, pipController == nil else { return }
         let source = AVPictureInPictureController.ContentSource(
             activeVideoCallSourceView: previewController.view,
@@ -148,7 +193,6 @@ final class LivePipSession: NSObject {
         let controller = AVPictureInPictureController(contentSource: source)
         controller.canStartPictureInPictureAutomaticallyFromInline = true
         controller.delegate = self
-        // Show close / restore controls when available.
         controller.setValue(1, forKey: "controlsStyle")
         pipController = controller
     }
@@ -156,6 +200,16 @@ final class LivePipSession: NSObject {
     private func observeAppLifecycle() {
         if resignObserver == nil {
             resignObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.willResignActiveNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                // Must start before fully backgrounded — didEnterBackground is often too late.
+                self?.startPipIfPossible()
+            }
+        }
+        if backgroundObserver == nil {
+            backgroundObserver = NotificationCenter.default.addObserver(
                 forName: UIApplication.didEnterBackgroundNotification,
                 object: nil,
                 queue: .main
@@ -170,6 +224,7 @@ final class LivePipSession: NSObject {
                 queue: .main
             ) { [weak self] _ in
                 guard let self else { return }
+                // Returning to the app (icon or PiP tap) — leave system PiP.
                 if self.isInPip {
                     self.stopPip()
                 }
@@ -193,10 +248,12 @@ extension LivePipSession: RoomDelegate {
 
 extension LivePipSession: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        print("[KiDi+] PiP did start")
         emitMode(true)
     }
 
     func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        print("[KiDi+] PiP did stop")
         emitMode(false)
     }
 
@@ -216,6 +273,14 @@ private final class LivePipSampleView: UIView {
     var sampleBufferDisplayLayer: AVSampleBufferDisplayLayer {
         layer as! AVSampleBufferDisplayLayer
     }
+
+    func enqueue(_ sampleBuffer: CMSampleBuffer) {
+        if #available(iOS 17.0, *) {
+            sampleBufferDisplayLayer.sampleBufferRenderer.enqueue(sampleBuffer)
+        } else {
+            sampleBufferDisplayLayer.enqueue(sampleBuffer)
+        }
+    }
 }
 
 private final class LivePipPreviewController: UIViewController, VideoRenderer {
@@ -227,12 +292,15 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer {
     }
 
     var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize { view.bounds.size }
+    var adaptiveStreamSize: CGSize {
+        let s = view.bounds.size
+        return s.width > 1 && s.height > 1 ? s : CGSize(width: 118, height: 210)
+    }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
         Task { @MainActor in
-            renderingView.sampleBufferDisplayLayer.sampleBufferRenderer.enqueue(sampleBuffer)
+            renderingView.enqueue(sampleBuffer)
             renderingView.sampleBufferDisplayLayer.setAffineTransform(
                 CGAffineTransform(rotationAngle: frame.rotation.rotationAngle)
             )
@@ -246,15 +314,19 @@ private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewC
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
         view = renderingView
+        preferredContentSize = CGSize(width: 9, height: 16)
     }
 
     var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize { view.bounds.size }
+    var adaptiveStreamSize: CGSize {
+        let s = view.bounds.size
+        return s.width > 1 && s.height > 1 ? s : CGSize(width: 270, height: 480)
+    }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
         Task { @MainActor in
-            renderingView.sampleBufferDisplayLayer.sampleBufferRenderer.enqueue(sampleBuffer)
+            renderingView.enqueue(sampleBuffer)
             renderingView.sampleBufferDisplayLayer.setAffineTransform(
                 CGAffineTransform(rotationAngle: frame.rotation.rotationAngle)
             )
