@@ -40,6 +40,7 @@ import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthPromptProvider } from "@/lib/auth-prompt-context";
 import { GuestShell } from "@/components/guest-shell";
+import { useInSystemPip } from "@/lib/pip-session";
 
 
 
@@ -157,6 +158,7 @@ function AppShellInner() {
   } = useLiveViewer();
   const liveFullScreen = !!liveStream && presentation === "full";
   const liveMinimized = !!liveStream && presentation === "minimized";
+  const inSystemPip = useInSystemPip();
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
   const keyboardOpen = useKeyboardOpen();
@@ -295,8 +297,13 @@ function AppShellInner() {
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
 
-      {!immersive && !liveFullScreen && !keyboardOpen && (
+      {!immersive && !liveFullScreen && !inSystemPip && !keyboardOpen && (
         <BottomTabBar active={active} onChange={setActive} />
+      )}
+
+      {/* Hide welcome/tabs behind the live while Android system PiP shows the WebView. */}
+      {inSystemPip && (
+        <div className="pointer-events-none fixed inset-0 z-[99] bg-black" aria-hidden />
       )}
 
       <AnimatePresence>

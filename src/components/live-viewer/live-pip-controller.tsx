@@ -1,7 +1,8 @@
 // Bridges Android system PiP ↔ live viewer session.
 // - Marks native as eligible while a live is open (Home → auto PiP).
 // - Holds LiveKit across the inactive→pip race.
-// - Shrinks to mini chrome in the PiP window; expands when the user taps back.
+// - In system PiP, keep the live edge-to-edge (never the in-app mini card),
+//   otherwise the welcome/home UI shows in the PiP bubble behind the video.
 import { useEffect, useRef } from "react";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import {
@@ -13,14 +14,10 @@ import {
 import { setInSystemPip, setPipHold } from "@/lib/pip-session";
 
 export function LivePipController() {
-  const { active, presentation, minimize, expand } = useLiveViewer();
+  const { active, expand } = useLiveViewer();
   const wasInPipRef = useRef(false);
-  const presentationRef = useRef(presentation);
-  const minimizeRef = useRef(minimize);
   const expandRef = useRef(expand);
   const activeRef = useRef(active);
-  presentationRef.current = presentation;
-  minimizeRef.current = minimize;
   expandRef.current = expand;
   activeRef.current = active;
 
@@ -55,7 +52,8 @@ export function LivePipController() {
       setInSystemPip(activePip);
       if (activePip) {
         wasInPipRef.current = true;
-        if (presentationRef.current !== "minimized") minimizeRef.current();
+        // Fill the system PiP window with video only (not the floating mini card).
+        expandRef.current();
         return;
       }
       setInSystemPip(false);
