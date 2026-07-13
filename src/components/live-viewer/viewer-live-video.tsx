@@ -35,6 +35,34 @@ export type ViewerStatus =
   | "error";
 
 
+/** Re-bind remote tracks and kick playback (WKWebView often needs explicit play). */
+function reattachRemoteMedia(
+  room: Room,
+  video: HTMLVideoElement | null,
+  audio: HTMLAudioElement | null,
+): boolean {
+  let gotVideo = false;
+  room.remoteParticipants.forEach((p) => {
+    p.trackPublications.forEach((pub) => {
+      const track = pub.track;
+      if (!track) return;
+      try {
+        if (track.kind === Track.Kind.Video && video) {
+          track.attach(video);
+          gotVideo = true;
+        } else if (track.kind === Track.Kind.Audio && audio) {
+          track.attach(audio);
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+  void video?.play()?.catch(() => {});
+  void audio?.play()?.catch(() => {});
+  return gotVideo;
+}
+
 export function ViewerLiveVideo({
   room,
   identity,
@@ -109,12 +137,19 @@ export function ViewerLiveVideo({
         const attachTrack = (track: RemoteTrack) => {
           if (cancelled) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
-            track.attach(videoRef.current);
+            const el = videoRef.current;
+            track.attach(el);
+            // Explicit play is required on Capacitor WKWebView / Chrome —
+            // autoPlay alone often leaves the first connection on a frozen
+            // frame until the user re-enters or backgrounds the app.
+            void el.play().catch(() => {});
             hadVideo = true;
             clearEndTimer();
             setStatus("live");
           } else if (track.kind === Track.Kind.Audio && audioRef.current) {
-            track.attach(audioRef.current);
+            const el = audioRef.current;
+            track.attach(el);
+            void el.play().catch(() => {});
           }
         };
 
@@ -165,7 +200,13 @@ export function ViewerLiveVideo({
         r.on(RoomEvent.Reconnected, () => {
           if (cancelled) return;
           clearEndTimer();
-          setStatus(hadVideo ? "live" : "waiting");
+          const gotVideo = reattachRemoteMedia(
+            r,
+            videoRef.current,
+            audioRef.current,
+          );
+          if (gotVideo) hadVideo = true;
+          setStatus(gotVideo || hadVideo ? "live" : "waiting");
         });
 
 
@@ -199,35 +240,34 @@ export function ViewerLiveVideo({
   // frozen on the last frame (or stuck on the poster). Re-attach + play.
   useEffect(() => {
     if (!appActive) return;
-    const video = videoRef.current;
-    const audio = audioRef.current;
     const r = roomRef.current;
     if (!r) return;
-
-    let recovered = false;
-    r.remoteParticipants.forEach((p) => {
-      p.trackPublications.forEach((pub) => {
-        const track = pub.track;
-        if (!track) return;
-        try {
-          if (track.kind === Track.Kind.Video && video) {
-            track.attach(video);
-            recovered = true;
-          } else if (track.kind === Track.Kind.Audio && audio) {
-            track.attach(audio);
-          }
-        } catch {
-          /* ignore */
-        }
-      });
-    });
-
-    if (recovered) {
+    if (reattachRemoteMedia(r, videoRef.current, audioRef.current)) {
       setStatus("live");
     }
-    void video?.play()?.catch(() => {});
-    void audio?.play()?.catch(() => {});
   }, [appActive]);
+
+  // First paint as "live" can still leave WKWebView paused (attach happened
+  // before layout settled). Kick immediately + short retries.
+  useEffect(() => {
+    if (status !== "live") return;
+    const kick = () => {
+      const r = roomRef.current;
+      if (r) {
+        reattachRemoteMedia(r, videoRef.current, audioRef.current);
+        return;
+      }
+      void videoRef.current?.play()?.catch(() => {});
+      void audioRef.current?.play()?.catch(() => {});
+    };
+    kick();
+    const t1 = window.setTimeout(kick, 150);
+    const t2 = window.setTimeout(kick, 600);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [status]);
 
   const showPoster = status !== "live";
 
@@ -246,6 +286,16 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
+      {/* Keep <video> always opaque so decoding / adaptiveStream keep running
+          under the poster; only the poster overlay flips visibility. */}
+      <video
+        ref={videoRef}
+        playsInline
+        autoPlay
+        muted
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <audio ref={audioRef} autoPlay playsInline />
       {posterImage && (
         <img
           src={posterImage}
@@ -256,25 +306,11 @@ export function ViewerLiveVideo({
             // is visually continuous — no blur/brightness jump.
             opacity: showPoster ? 1 : 0,
             transition: "none",
+            pointerEvents: "none",
           }}
           draggable={false}
         />
       )}
-      <video
-        ref={videoRef}
-        playsInline
-        autoPlay
-        className="absolute inset-0 h-full w-full object-cover"
-        // Keep the element mounted; flip visibility via opacity with NO
-        // transition so the first painted frame of the live replaces the
-        // poster in the same frame as the "live" status flip.
-        style={{
-          opacity: status === "live" ? 1 : 0,
-          transition: "none",
-          willChange: "opacity",
-        }}
-      />
-      <audio ref={audioRef} autoPlay />
       {showPoster && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div
