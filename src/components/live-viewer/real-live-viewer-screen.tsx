@@ -153,6 +153,28 @@ export function RealLiveViewerScreen() {
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
   const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const wasModeratorRef = useRef(false);
+  const [modHydrated, setModHydrated] = useState(false);
+
+  // Wait for useIsModerator's initial fetch so we don't toast existing mods on open.
+  useEffect(() => {
+    setModHydrated(false);
+    wasModeratorRef.current = false;
+    const timer = window.setTimeout(() => setModHydrated(true), 900);
+    return () => window.clearTimeout(timer);
+  }, [active?.liveId, user?.id]);
+
+  useEffect(() => {
+    if (!modHydrated) {
+      wasModeratorRef.current = isModerator;
+      return;
+    }
+    if (isModerator && !wasModeratorRef.current) {
+      toast.success(t("moderator.youAreModerator", "Tu es maintenant modérateur 🛡️"));
+      haptic.success();
+    }
+    wasModeratorRef.current = isModerator;
+  }, [isModerator, modHydrated, t]);
 
   // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);

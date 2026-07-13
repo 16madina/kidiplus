@@ -54,16 +54,23 @@ export function ModeratorDock({
   const doStartAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
     haptic.medium();
-    const res = await startAuctionInDb(p.id);
-    const deadlineMs = res.ok && res.deadlineMs
-      ? res.deadlineMs
-      : Date.now() + p.timer_seconds * 1000;
-    broadcastAuctionStart({
-      productId: p.id,
-      deadlineMs,
-      timerSec: p.timer_seconds,
-    });
-    setOpen(false);
+    setBusy(true);
+    try {
+      const res = await startAuctionInDb(p.id);
+      if (!res.ok || !res.deadlineMs) {
+        toast.error(res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère"));
+        return;
+      }
+      broadcastAuctionStart({
+        productId: p.id,
+        deadlineMs: res.deadlineMs,
+        timerSec: res.timerSec ?? p.timer_seconds,
+      });
+      toast.success(t("moderator.auctionStarted", "Enchère démarrée"));
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doToggleFixed = async (p: LiveProductRow) => {
@@ -203,7 +210,8 @@ export function ModeratorDock({
                           ) : (
                             <Press
                               onClick={() => { void doStartAuction(p); }}
-                              className="!min-h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+                              disabled={busy}
+                              className="!min-h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
                             >
                               {t("moderator.startAuction", "Démarrer")}
                             </Press>
