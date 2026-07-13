@@ -165,6 +165,23 @@ function LiveScreenAuthed() {
   const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const activateSeller = async () => {
+    setConfirmOpen(false);
+    setFlipping(true);
+    try {
+      await becomeSeller();
+      haptic.success();
+      toast.success(t("broadcast.becomeSellerCreated", { defaultValue: "Ta boutique KiDi+ est créée 🎉" }));
+    } catch (e) {
+      haptic.error();
+      toast.error(frenchAuthError(e));
+    } finally {
+      setFlipping(false);
+    }
+  };
+
 
   if (loading || !profile) {
     return (
