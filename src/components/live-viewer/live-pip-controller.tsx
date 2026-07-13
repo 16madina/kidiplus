@@ -1,22 +1,22 @@
-// Bridges Android system PiP ↔ live viewer session.
+// Bridges native system PiP ↔ live viewer session (Android WebView PiP + iOS LiveKit PiP).
 //
-// Critical UX: the OS PiP window shows the ENTIRE WebView. If tabs / welcome
-// are visible, they appear in the bubble under the live. Native MainActivity
-// injects .kp-in-system-pip + dispatches kidi:pip-prepare BEFORE entering PiP;
-// we expand the live so the bubble is video-only — and MUST clear that state
-// when the app is foreground again, or chrome/X stay hidden forever.
+// Android: OS shows the entire WebView — JS must expand video-only UI before capture.
+// iOS: native LivePipSession renders LiveKit frames into AVPictureInPictureController.
 //
-// Closing rules:
-// - Viewer closes live (mini X) while in PiP → dismiss the PiP bubble.
-// - User closes the Android PiP window (system X) → close the live session
-//   (do NOT expand on next open).
+// Closing rules (both platforms):
+// - Viewer closes live → dismiss PiP.
+// - User closes the system PiP window → close the live session.
 // - User taps the PiP bubble → restore app + expand live.
 import { useEffect, useRef } from "react";
 import { App } from "@capacitor/app";
 import { useLiveViewer } from "@/lib/live-viewer-context";
+import { getToken } from "@/lib/livekit";
+import { useAuth } from "@/lib/auth-context";
 import {
   addPipModeListener,
   isAndroidPipPlatform,
+  isIosPipPlatform,
+  isNativePipPlatform,
   pipDismiss,
   pipIsActive,
   pipIsSupported,
@@ -43,7 +43,11 @@ function setPipDomClass(on: boolean) {
 
 function prepareSystemPipUi(expand: () => void) {
   setInSystemPip(true);
-  setPipDomClass(true);
+  // Android WebView PiP needs the black / video-only DOM treatment.
+  // iOS PiP is a native surface — keep WebView chrome restoration light.
+  if (isAndroidPipPlatform()) {
+    setPipDomClass(true);
+  }
   expand();
 }
 
@@ -54,6 +58,7 @@ function clearSystemPipUi() {
 
 export function LivePipController() {
   const { active, expand, close } = useLiveViewer();
+  const { user, profile } = useAuth();
   const wasInPipRef = useRef(false);
   const expandRef = useRef(expand);
   const closeRef = useRef(close);
@@ -63,9 +68,10 @@ export function LivePipController() {
   activeRef.current = active;
 
   const liveOpen = !!active;
+  const roomName = active?.roomName ?? null;
 
   useEffect(() => {
-    if (!isAndroidPipPlatform()) {
+    if (!isNativePipPlatform()) {
       setPipHold(false);
       clearSystemPipUi();
       return;
@@ -74,14 +80,32 @@ export function LivePipController() {
     void (async () => {
       const supported = await pipIsSupported();
       if (cancelled) return;
-      const on = supported && liveOpen;
+      const on = supported && liveOpen && !!roomName;
       setPipHold(on);
-      await pipSetEnabled(on);
       if (!on) {
+        await pipSetEnabled(false);
         clearSystemPipUi();
-        // Viewer closed the live (or host ended) — drop the system PiP bubble.
         await pipDismiss();
+        return;
       }
+
+      let session: { url: string; token: string } | undefined;
+      if (isIosPipPlatform() && roomName) {
+        try {
+          const identity = user?.id
+            ? `pip_${user.id.slice(0, 10)}`
+            : `pip_guest_${Math.random().toString(36).slice(2, 10)}`;
+          const name = profile?.display_name || profile?.handle || "viewer";
+          session = await getToken(roomName, identity, name, "viewer");
+        } catch (e) {
+          console.debug("[pip] iOS token failed", e);
+          setPipHold(false);
+          await pipSetEnabled(false);
+          return;
+        }
+      }
+      if (cancelled) return;
+      await pipSetEnabled(true, session);
     })();
     return () => {
       cancelled = true;
@@ -89,9 +113,9 @@ export function LivePipController() {
       void pipSetEnabled(false);
       clearSystemPipUi();
     };
-  }, [liveOpen]);
+  }, [liveOpen, roomName, user?.id, profile?.display_name, profile?.handle]);
 
-  // Native fires this from evaluateJavascript before enterPictureInPictureMode.
+  // Android native injects kidi:pip-prepare before enterPictureInPictureMode.
   useEffect(() => {
     if (!isAndroidPipPlatform()) return;
     const onPrepare = () => {
@@ -110,14 +134,17 @@ export function LivePipController() {
     };
   }, []);
 
-  // Leave app → prepare; return to foreground → always clear unless still in PiP.
   useEffect(() => {
-    if (!isAndroidPipPlatform()) return;
+    if (!isNativePipPlatform()) return;
     let handle: { remove: () => void } | null = null;
     void App.addListener("appStateChange", (s) => {
       if (!s.isActive && getPipHold() && activeRef.current) {
         wasInPipRef.current = true;
-        prepareSystemPipUi(() => expandRef.current());
+        if (isAndroidPipPlatform()) {
+          prepareSystemPipUi(() => expandRef.current());
+        } else {
+          setInSystemPip(true);
+        }
         return;
       }
       if (s.isActive) {
@@ -140,23 +167,24 @@ export function LivePipController() {
   }, []);
 
   useEffect(() => {
-    if (!isAndroidPipPlatform()) return;
+    if (!isNativePipPlatform()) return;
     let handle: { remove: () => void } | null = null;
     let cancelled = false;
     void addPipModeListener((activePip) => {
       if (cancelled) return;
       if (activePip) {
         wasInPipRef.current = true;
-        prepareSystemPipUi(() => expandRef.current());
+        if (isAndroidPipPlatform()) {
+          prepareSystemPipUi(() => expandRef.current());
+        } else {
+          setInSystemPip(true);
+        }
         return;
       }
-      // Left system PiP: tap-to-restore → expand; system-X dismiss → close live
-      // so reopening the app does not bring the live back.
       clearSystemPipUi();
       if (!wasInPipRef.current) return;
       wasInPipRef.current = false;
       void (async () => {
-        // Let activity resume settle, then see if the user is back in the app.
         await new Promise((r) => setTimeout(r, 80));
         if (cancelled) return;
         let appActive = false;

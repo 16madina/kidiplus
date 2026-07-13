@@ -1,11 +1,21 @@
-// Android system Picture-in-Picture bridge for live viewing.
-// No-op on iOS / web — in-app mini player remains the cross-platform UX.
+// Native Picture-in-Picture bridge for live viewing.
+//
+// Android: Activity PiP shows the WebView (JS prepares fullscreen video-only UI).
+// iOS: LivePip plugin connects a native LiveKit viewer and drives
+// AVPictureInPictureController (WebView WebRTC cannot feed system PiP).
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
 export type PipModeChangeEvent = { active: boolean };
 
+export type PipEnableOptions = {
+  enabled: boolean;
+  /** iOS native LiveKit session — required when enabling on iOS. */
+  url?: string;
+  token?: string;
+};
+
 export interface LivePipPlugin {
-  setEnabled(options: { enabled: boolean }): Promise<{ enabled: boolean }>;
+  setEnabled(options: PipEnableOptions): Promise<{ enabled: boolean }>;
   enter(): Promise<{ entered: boolean }>;
   dismiss(): Promise<{ dismissed: boolean }>;
   isInPip(): Promise<{ value: boolean }>;
@@ -26,8 +36,21 @@ export function isAndroidPipPlatform(): boolean {
   }
 }
 
+export function isIosPipPlatform(): boolean {
+  try {
+    return Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/** Android WebView PiP or iOS native LiveKit PiP. */
+export function isNativePipPlatform(): boolean {
+  return isAndroidPipPlatform() || isIosPipPlatform();
+}
+
 export async function pipIsSupported(): Promise<boolean> {
-  if (!isAndroidPipPlatform()) return false;
+  if (!isNativePipPlatform()) return false;
   try {
     const r = await LivePip.isSupported();
     return !!r.value;
@@ -37,17 +60,24 @@ export async function pipIsSupported(): Promise<boolean> {
 }
 
 /** Tell native whether Home should auto-enter system PiP. */
-export async function pipSetEnabled(enabled: boolean): Promise<void> {
-  if (!isAndroidPipPlatform()) return;
+export async function pipSetEnabled(
+  enabled: boolean,
+  session?: { url: string; token: string },
+): Promise<void> {
+  if (!isNativePipPlatform()) return;
   try {
-    await LivePip.setEnabled({ enabled });
+    await LivePip.setEnabled({
+      enabled,
+      url: session?.url,
+      token: session?.token,
+    });
   } catch (e) {
     console.debug("[pip] setEnabled failed", e);
   }
 }
 
 export async function pipEnter(): Promise<boolean> {
-  if (!isAndroidPipPlatform()) return false;
+  if (!isNativePipPlatform()) return false;
   try {
     const r = await LivePip.enter();
     return !!r.entered;
@@ -57,9 +87,9 @@ export async function pipEnter(): Promise<boolean> {
   }
 }
 
-/** Close the Android system PiP bubble if it is showing. */
+/** Close the system PiP bubble if it is showing. */
 export async function pipDismiss(): Promise<boolean> {
-  if (!isAndroidPipPlatform()) return false;
+  if (!isNativePipPlatform()) return false;
   try {
     const r = await LivePip.dismiss();
     return !!r.dismissed;
@@ -70,7 +100,7 @@ export async function pipDismiss(): Promise<boolean> {
 }
 
 export async function pipIsActive(): Promise<boolean> {
-  if (!isAndroidPipPlatform()) return false;
+  if (!isNativePipPlatform()) return false;
   try {
     const r = await LivePip.isInPip();
     return !!r.value;
@@ -82,7 +112,7 @@ export async function pipIsActive(): Promise<boolean> {
 export function addPipModeListener(
   cb: (active: boolean) => void,
 ): Promise<PluginListenerHandle | null> {
-  if (!isAndroidPipPlatform()) return Promise.resolve(null);
+  if (!isNativePipPlatform()) return Promise.resolve(null);
   return LivePip.addListener("pipModeChange", (e) => cb(!!e.active)).catch(() => null);
 }
 
