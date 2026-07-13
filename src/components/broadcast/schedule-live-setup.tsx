@@ -377,9 +377,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
 
         {/* 1 — Cover */}
         <Card step={1} title={t("schedule.form.coverTitle", "Image de couverture")}>
-          <Press
-            onClick={pickCover}
-            className="!min-h-40 relative flex h-40 w-full items-center justify-center overflow-hidden rounded-xl"
+          <label
+            htmlFor="schedule-cover-input"
+            className="relative flex h-40 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: `1.5px dashed ${GOLD_DIM}`,
@@ -389,7 +389,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
             {b.cover ? (
               <img src={b.cover} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center gap-3">
+              <div className="pointer-events-none flex flex-col items-center gap-3">
                 <ImageIcon size={36} color="rgba(255,255,255,0.35)" />
                 <span
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold"
@@ -404,15 +404,17 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
                 </span>
               </div>
             )}
-          </Press>
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onCoverFile}
-          />
+            <input
+              id="schedule-cover-input"
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={onCoverFile}
+            />
+          </label>
         </Card>
+
 
         {/* 2 — Info */}
         <Card step={2} title={t("schedule.form.infoTitle", "Informations du live")}>
