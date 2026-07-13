@@ -247,3 +247,40 @@ export async function fetchAdminReferralReconciliation(): Promise<AdminReconRow[
   const { data } = await sb.rpc("admin_referral_reconciliation", {});
   return ((data as any)?.rows ?? []) as AdminReconRow[];
 }
+
+export type AdminReconEarning = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: "held" | "credited" | "reversed";
+  referred_user_id: string;
+  owner_id: string | null;
+  created_at: string;
+};
+
+export type AdminReconOrderRow = {
+  order_id: string;
+  buyer_id: string;
+  seller_id: string;
+  item_name: string | null;
+  item_image: string | null;
+  amount: number;
+  platform_fee: number | null;
+  total: number;
+  currency: string;
+  status: string;
+  paid_at: string | null;
+  created_at: string;
+  referred_role: "buyer" | "seller" | null;
+  referred_user_id: string | null;
+  buyer_handle: string | null;
+  buyer_name: string | null;
+  seller_handle: string | null;
+  seller_name: string | null;
+  earnings: AdminReconEarning[];
+};
+
+export async function fetchAdminReferralCodeDetails(promoCodeId: string): Promise<AdminReconOrderRow[]> {
+  const { data } = await sb.rpc("admin_referral_code_details", { _promo_code_id: promoCodeId });
+  return ((data as any)?.rows ?? []) as AdminReconOrderRow[];
+}

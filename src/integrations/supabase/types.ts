@@ -1932,6 +1932,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_referral_code_details: {
+        Args: { _promo_code_id: string }
+        Returns: Json
+      }
       admin_referral_reconciliation: { Args: never; Returns: Json }
       admin_refund_order: {
         Args: { _note?: string; _order_id: string }
