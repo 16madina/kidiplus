@@ -325,9 +325,9 @@ function ClaimBlock({
   const { lang } = useLanguage();
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   const onChange = (v: string) => {
-    // Accept typing without dash and re-format XXXX-XXXX
     const raw = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     setToken(raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw);
   };
@@ -359,28 +359,75 @@ function ClaimBlock({
         ? t("referral.claim.okWithBackfill", "Code {{code}} réclamé — {{amount}} crédités", { code: res.code, amount: totalStr })
         : t("referral.claim.ok", "Code {{code}} réclamé 🎉", { code: res.code })
     );
-    await onClaimed();
+    // Flip animation, then let the parent swap to the full dashboard.
+    setFlipped(true);
+    window.setTimeout(() => { void onClaimed(); }, 950);
   };
 
   return (
     <div>
-      <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} onWithdraw={onWithdraw} />
-
-      <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
-        style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
-        <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
-          <Sparkles size={12} style={{ color: GOLD }} /> KiDi+ Partenaires
-        </div>
+      <div className="mb-3 text-center">
         <h2 className="text-[20px] font-black leading-tight">
-          {t("referral.claim.title", "Deviens partenaire KiDi+")}
+          {t("referral.claim.scratchTitle", "Gratte la carte et entre ton code")}
         </h2>
-        <p className="mt-2 text-[13px] opacity-80">
-          {t("referral.claim.intro", "Reçois la commission KiDi+ sur les premières commandes de chaque personne qui s'inscrit avec ton code.")}
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {t("referral.claim.scratchSubtitle", "Ton code d'activation partenaire t'a été envoyé par l'équipe KiDi+.")}
         </p>
       </div>
 
-      {/* PROMINENT: request-a-code block moved up */}
-      <RequestCodeBlock />
+      <div className="mb-4" style={{ perspective: "1400px" }}>
+        <div
+          className="relative transition-transform duration-[900ms]"
+          style={{
+            transformStyle: "preserve-3d",
+            transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+          }}
+        >
+          <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
+            <ScratchCard
+              brandLabel={t("referral.claim.partnerLabel", "KiDi+ Partenaire")}
+              scratchLabel={t("referral.claim.scratchHint", "Gratte pour entrer ton code 🪙")}
+              skipLabel={t("referral.claim.scratchSkip", "Entrer le code manuellement")}
+            >
+              <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
+                <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
+              </label>
+              <input
+                value={token}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="XXXX-XXXX"
+                inputMode="text"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={9}
+                className="mt-2 w-full rounded-xl border border-border bg-white/70 px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
+                style={{ color: "#1A130A" }}
+              />
+              <Press
+                disabled={busy}
+                onClick={submit}
+                className="!min-h-11 mt-3 inline-flex w-full items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50"
+                style={{ background: NAVY, color: GOLD }}
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : t("referral.claim.cta", "Réclamer mon code")}
+              </Press>
+            </ScratchCard>
+          </div>
+
+          <div
+            className="absolute inset-0"
+            style={{
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+              transform: "rotateY(180deg)",
+            }}
+            aria-hidden={!flipped}
+          >
+            <ReferralWalletCard balance={balance} fallbackCurrency={fallbackCurrency} onWithdraw={onWithdraw} />
+          </div>
+        </div>
+      </div>
 
       <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
         <div className="h-px flex-1 bg-border" />
@@ -388,36 +435,7 @@ function ClaimBlock({
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Scratch card containing the activation-code input */}
-      <ScratchCard
-        brandLabel={t("referral.claim.partnerLabel", "KiDi+ Partenaire")}
-        scratchLabel={t("referral.claim.scratchHint", "Gratte pour entrer ton code 🪙")}
-        skipLabel={t("referral.claim.scratchSkip", "Entrer le code manuellement")}
-      >
-        <label className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
-          <KeyRound size={12} /> {t("referral.claim.tokenLabel", "Code d'activation")}
-        </label>
-        <input
-          value={token}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="XXXX-XXXX"
-          inputMode="text"
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          maxLength={9}
-          className="mt-2 w-full rounded-xl border border-border bg-white/70 px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
-          style={{ color: "#1A130A" }}
-        />
-        <Press
-          disabled={busy}
-          onClick={submit}
-          className="!min-h-11 mt-3 inline-flex w-full items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50"
-          style={{ background: NAVY, color: GOLD }}
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : t("referral.claim.cta", "Réclamer mon code")}
-        </Press>
-      </ScratchCard>
+      <RequestCodeBlock />
 
       <p className="mt-6 text-center text-[11px] text-muted-foreground">
         {t("referral.claim.notInfluencer", "Pas de code ? Fais une demande — l'équipe KiDi+ répond sous quelques jours.")}
