@@ -56,9 +56,13 @@ export async function getToken(
 export async function connectRoom(
   url: string,
   token: string,
+  opts?: { adaptiveStream?: boolean },
 ): Promise<Room> {
   const room = new Room({
-    adaptiveStream: true,
+    // Full-screen viewer: adaptiveStream often leaves the first open on a
+    // frozen frame in WKWebView (IntersectionObserver / layer pause). Host
+    // publish can keep the default.
+    adaptiveStream: opts?.adaptiveStream ?? true,
     dynacast: true,
   });
   await room.connect(url, token);

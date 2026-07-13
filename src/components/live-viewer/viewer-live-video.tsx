@@ -35,22 +35,43 @@ export type ViewerStatus =
   | "error";
 
 
-/** Re-bind remote tracks and kick playback (WKWebView often needs explicit play). */
+/** Soft kick — play() only. */
+function kickPlayback(
+  video: HTMLVideoElement | null,
+  audio: HTMLAudioElement | null,
+) {
+  void video?.play()?.catch(() => {});
+  void audio?.play()?.catch(() => {});
+}
+
+/** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
 function reattachRemoteMedia(
   room: Room,
   video: HTMLVideoElement | null,
   audio: HTMLAudioElement | null,
+  hard = true,
 ): boolean {
   let gotVideo = false;
   room.remoteParticipants.forEach((p) => {
     p.trackPublications.forEach((pub) => {
+      try {
+        if (!pub.isSubscribed) pub.setSubscribed(true);
+      } catch {
+        /* ignore */
+      }
       const track = pub.track;
       if (!track) return;
       try {
         if (track.kind === Track.Kind.Video && video) {
+          if (hard) {
+            try { track.detach(video); } catch { /* ignore */ }
+          }
           track.attach(video);
           gotVideo = true;
         } else if (track.kind === Track.Kind.Audio && audio) {
+          if (hard) {
+            try { track.detach(audio); } catch { /* ignore */ }
+          }
           track.attach(audio);
         }
       } catch {
@@ -58,8 +79,12 @@ function reattachRemoteMedia(
       }
     });
   });
-  void video?.play()?.catch(() => {});
-  void audio?.play()?.catch(() => {});
+  if (hard && video?.srcObject) {
+    const stream = video.srcObject;
+    video.srcObject = null;
+    video.srcObject = stream;
+  }
+  kickPlayback(video, audio);
   return gotVideo;
 }
 
@@ -127,7 +152,9 @@ export function ViewerLiveVideo({
       try {
         const { token, url } = await getToken(room, identity, name, "viewer");
         if (cancelled) return;
-        const r = await connectRoom(url, token);
+        // adaptiveStream:false — first open in Capacitor WKWebView otherwise
+        // often sticks on a single frame until background/PiP return.
+        const r = await connectRoom(url, token, { adaptiveStream: false });
         if (cancelled) {
           await disconnectRoom(r);
           return;
@@ -139,10 +166,20 @@ export function ViewerLiveVideo({
           if (track.kind === Track.Kind.Video && videoRef.current) {
             const el = videoRef.current;
             track.attach(el);
-            // Explicit play is required on Capacitor WKWebView / Chrome —
-            // autoPlay alone often leaves the first connection on a frozen
-            // frame until the user re-enters or backgrounds the app.
-            void el.play().catch(() => {});
+            const kick = () => kickPlayback(el, audioRef.current);
+            el.addEventListener("loadedmetadata", kick, { once: true });
+            el.addEventListener("canplay", kick, { once: true });
+            kick();
+            // Soft recover after layout — hard recover only if still stalled.
+            requestAnimationFrame(() => {
+              if (cancelled || !roomRef.current) return;
+              reattachRemoteMedia(
+                roomRef.current,
+                videoRef.current,
+                audioRef.current,
+                false,
+              );
+            });
             hadVideo = true;
             clearEndTimer();
             setStatus("live");
@@ -213,6 +250,11 @@ export function ViewerLiveVideo({
         // Attach any tracks already subscribed at connect time.
         r.remoteParticipants.forEach((p) => {
           p.trackPublications.forEach((pub) => {
+            try {
+              if (!pub.isSubscribed) pub.setSubscribed(true);
+            } catch {
+              /* ignore */
+            }
             if (pub.track) attachTrack(pub.track);
           });
         });
@@ -247,25 +289,53 @@ export function ViewerLiveVideo({
     }
   }, [appActive]);
 
-  // First paint as "live" can still leave WKWebView paused (attach happened
-  // before layout settled). Kick immediately + short retries.
+  // First paint as "live" can still leave WKWebView paused. Soft kicks + stall watchdog.
   useEffect(() => {
     if (status !== "live") return;
-    const kick = () => {
+    const soft = () => {
       const r = roomRef.current;
       if (r) {
-        reattachRemoteMedia(r, videoRef.current, audioRef.current);
+        reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
         return;
       }
-      void videoRef.current?.play()?.catch(() => {});
-      void audioRef.current?.play()?.catch(() => {});
+      kickPlayback(videoRef.current, audioRef.current);
     };
-    kick();
-    const t1 = window.setTimeout(kick, 150);
-    const t2 = window.setTimeout(kick, 600);
+    soft();
+    const t1 = window.setTimeout(soft, 120);
+    const t2 = window.setTimeout(soft, 400);
+    const t3 = window.setTimeout(() => {
+      const r = roomRef.current;
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, true);
+    }, 1000);
+
+    // If currentTime stops advancing while "live", force the same hard recovery
+    // that works after returning from PiP.
+    let lastTime = -1;
+    let stallTicks = 0;
+    const watch = window.setInterval(() => {
+      const v = videoRef.current;
+      const r = roomRef.current;
+      if (!v || !r) return;
+      if (v.paused) void v.play().catch(() => {});
+      const t = v.currentTime;
+      if (t <= lastTime + 0.01) {
+        stallTicks += 1;
+        if (stallTicks >= 2) {
+          console.warn("[livekit viewer] frozen frame watchdog — hard reattach");
+          reattachRemoteMedia(r, v, audioRef.current, true);
+          stallTicks = 0;
+        }
+      } else {
+        stallTicks = 0;
+      }
+      lastTime = t;
+    }, 700);
+
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.clearInterval(watch);
     };
   }, [status]);
 
@@ -286,8 +356,7 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      {/* Keep <video> always opaque so decoding / adaptiveStream keep running
-          under the poster; only the poster overlay flips visibility. */}
+      {/* Keep <video> always opaque so decoding keeps running under the poster. */}
       <video
         ref={videoRef}
         playsInline
