@@ -7,6 +7,7 @@ export type PipModeChangeEvent = { active: boolean };
 export interface LivePipPlugin {
   setEnabled(options: { enabled: boolean }): Promise<{ enabled: boolean }>;
   enter(): Promise<{ entered: boolean }>;
+  dismiss(): Promise<{ dismissed: boolean }>;
   isInPip(): Promise<{ value: boolean }>;
   isSupported(): Promise<{ value: boolean }>;
   addListener(
@@ -52,6 +53,18 @@ export async function pipEnter(): Promise<boolean> {
     return !!r.entered;
   } catch (e) {
     console.debug("[pip] enter failed", e);
+    return false;
+  }
+}
+
+/** Close the Android system PiP bubble if it is showing. */
+export async function pipDismiss(): Promise<boolean> {
+  if (!isAndroidPipPlatform()) return false;
+  try {
+    const r = await LivePip.dismiss();
+    return !!r.dismissed;
+  } catch (e) {
+    console.debug("[pip] dismiss failed", e);
     return false;
   }
 }

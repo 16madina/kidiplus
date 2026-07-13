@@ -5,12 +5,19 @@
 // injects .kp-in-system-pip + dispatches kidi:pip-prepare BEFORE entering PiP;
 // we expand the live so the bubble is video-only — and MUST clear that state
 // when the app is foreground again, or chrome/X stay hidden forever.
+//
+// Closing rules:
+// - Viewer closes live (mini X) while in PiP → dismiss the PiP bubble.
+// - User closes the Android PiP window (system X) → close the live session
+//   (do NOT expand on next open).
+// - User taps the PiP bubble → restore app + expand live.
 import { useEffect, useRef } from "react";
 import { App } from "@capacitor/app";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import {
   addPipModeListener,
   isAndroidPipPlatform,
+  pipDismiss,
   pipIsActive,
   pipIsSupported,
   pipSetEnabled,
@@ -46,11 +53,13 @@ function clearSystemPipUi() {
 }
 
 export function LivePipController() {
-  const { active, expand } = useLiveViewer();
+  const { active, expand, close } = useLiveViewer();
   const wasInPipRef = useRef(false);
   const expandRef = useRef(expand);
+  const closeRef = useRef(close);
   const activeRef = useRef(active);
   expandRef.current = expand;
+  closeRef.current = close;
   activeRef.current = active;
 
   const liveOpen = !!active;
@@ -68,7 +77,11 @@ export function LivePipController() {
       const on = supported && liveOpen;
       setPipHold(on);
       await pipSetEnabled(on);
-      if (!on) clearSystemPipUi();
+      if (!on) {
+        clearSystemPipUi();
+        // Viewer closed the live (or host ended) — drop the system PiP bubble.
+        await pipDismiss();
+      }
     })();
     return () => {
       cancelled = true;
@@ -111,8 +124,6 @@ export function LivePipController() {
         void (async () => {
           const stillPip = await pipIsActive();
           if (stillPip) return;
-          // Returning to the app (or a false prepare from a brief pause):
-          // restore chrome so X / tabs work again.
           if (getInSystemPip() || wasInPipRef.current) {
             clearSystemPipUi();
             wasInPipRef.current = false;
@@ -139,12 +150,29 @@ export function LivePipController() {
         prepareSystemPipUi(() => expandRef.current());
         return;
       }
-      // Left system PiP (tap to restore, or close window).
+      // Left system PiP: tap-to-restore → expand; system-X dismiss → close live
+      // so reopening the app does not bring the live back.
       clearSystemPipUi();
       if (!wasInPipRef.current) return;
       wasInPipRef.current = false;
-      if (!activeRef.current) return;
-      expandRef.current();
+      void (async () => {
+        // Let activity resume settle, then see if the user is back in the app.
+        await new Promise((r) => setTimeout(r, 80));
+        if (cancelled) return;
+        let appActive = false;
+        try {
+          const st = await App.getState();
+          appActive = !!st.isActive;
+        } catch {
+          appActive = false;
+        }
+        if (!activeRef.current) return;
+        if (appActive) {
+          expandRef.current();
+        } else {
+          closeRef.current();
+        }
+      })();
     }).then((h) => {
       handle = h;
     });

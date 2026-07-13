@@ -141,6 +141,25 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    /**
+     * Close the system PiP bubble (host ended live, or viewer closed the live).
+     * Android has no exitPictureInPictureMode(); finishing while in PiP dismisses
+     * the bubble. Next cold start of the app is a normal MainActivity launch.
+     */
+    public boolean dismissPip() {
+        setPipEligible(false);
+        clearPipUi();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
+            try {
+                finish();
+                return true;
+            } catch (RuntimeException ignored) {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private static PictureInPictureParams buildParams(boolean autoEnter) {
         PictureInPictureParams.Builder b = new PictureInPictureParams.Builder()
             .setAspectRatio(new Rational(9, 16));

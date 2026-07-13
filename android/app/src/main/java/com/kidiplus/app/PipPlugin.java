@@ -45,6 +45,16 @@ public class PipPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    /** Dismiss the system PiP window (e.g. host ended, or viewer closed the live). */
+    @PluginMethod
+    public void dismiss(PluginCall call) {
+        MainActivity activity = getMain();
+        JSObject ret = new JSObject();
+        boolean dismissed = activity != null && activity.dismissPip();
+        ret.put("dismissed", dismissed);
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void isInPip(PluginCall call) {
         MainActivity activity = getMain();
