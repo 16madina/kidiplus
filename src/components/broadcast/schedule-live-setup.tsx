@@ -188,7 +188,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
 
-  const pickCover = () => coverInputRef.current?.click();
+  
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
