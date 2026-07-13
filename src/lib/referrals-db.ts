@@ -160,3 +160,64 @@ export function buildInfluencerOnboardingMessage(
     `ouvre KiDi+ → Profil → Parrainage → Réclamer mon code, et entre ce code d'activation : ${token}`
   );
 }
+
+// ============================================================================
+// Promo code requests (users can request a referral code; admins review)
+// ============================================================================
+
+export type MyPromoCodeRequest = {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  message: string | null;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
+export async function fetchMyPromoCodeRequest(): Promise<MyPromoCodeRequest | null> {
+  const { data } = await sb.rpc("my_promo_code_request", {});
+  return (data ?? null) as MyPromoCodeRequest | null;
+}
+
+export async function submitPromoCodeRequest(message: string): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc("request_promo_code", { _message: message });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as any;
+  return r.ok ? { ok: true, id: r.id } : { ok: false, error: r.error };
+}
+
+export type AdminPromoCodeRequestRow = {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  message: string | null;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  user_id: string;
+  user_handle: string | null;
+  user_name: string | null;
+  user_avatar: string | null;
+  created_promo_code_id: string | null;
+};
+
+export async function fetchAdminPromoCodeRequests(status?: "pending" | "approved" | "rejected"): Promise<AdminPromoCodeRequestRow[]> {
+  const { data } = await sb.rpc("admin_list_promo_code_requests", { _status: status ?? null });
+  return ((data as any)?.rows ?? []) as AdminPromoCodeRequestRow[];
+}
+
+export async function adminReviewPromoCodeRequest(
+  id: string,
+  action: "approve" | "reject",
+  opts: { code?: string; reward_quota?: number; note?: string } = {},
+): Promise<{ ok: true; code?: string; promo_code_id?: string } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc("admin_review_promo_code_request", {
+    _id: id,
+    _action: action,
+    _code: opts.code ?? null,
+    _reward_quota: opts.reward_quota ?? 14,
+    _note: opts.note ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as any;
+  return r.ok ? { ok: true, code: r.code, promo_code_id: r.promo_code_id } : { ok: false, error: r.error };
+}
