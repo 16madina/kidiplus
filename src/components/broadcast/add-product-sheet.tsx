@@ -16,9 +16,9 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { PRODUCT_IMG_POOL } from "@/lib/broadcast-mock";
 import { createObjectUrlTracker, isBlobUrl } from "@/lib/object-url";
-import { useBroadcast } from "@/lib/broadcast-context";
+import { useOptionalBroadcast } from "@/lib/broadcast-context";
 import type { BProduct, SellMode } from "@/lib/broadcast-context";
-import { currencySymbol, bidRulesFor } from "@/lib/money";
+import { currencySymbol, bidRulesFor, normalizeCurrency, type Currency } from "@/lib/money";
 
 const GOLD = "oklch(0.82 0.14 85)";
 
@@ -27,13 +27,19 @@ export function AddProductSheet({
   onClose,
   onAdd,
   onPickFromShop,
+  currency: currencyProp,
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (p: Omit<BProduct, "id">) => void;
   onPickFromShop?: () => void;
+  /** Required when used outside BroadcastProvider (moderator dock). */
+  currency?: string;
 }) {
-  const { currency } = useBroadcast();
+  const broadcast = useOptionalBroadcast();
+  const currency: Currency = normalizeCurrency(
+    currencyProp ?? broadcast?.currency ?? "EUR",
+  );
   const symbol = currencySymbol(currency);
   // Sensible defaults per currency (XOF has much larger nominal amounts).
   const defaults = currency === "XOF"

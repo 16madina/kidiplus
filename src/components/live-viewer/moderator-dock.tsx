@@ -245,6 +245,7 @@ export function ModeratorDock({
       <AddProductSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        currency={currency}
         onAdd={(p) => { void onAddProduct(p); }}
       />
     </>

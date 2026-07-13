@@ -214,3 +214,8 @@ export function useBroadcast() {
   if (!ctx) throw new Error("useBroadcast must be used within BroadcastProvider");
   return ctx;
 }
+
+/** Safe outside BroadcastProvider (e.g. moderator dock on the viewer screen). */
+export function useOptionalBroadcast() {
+  return useContext(BroadcastContext);
+}

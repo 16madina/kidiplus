@@ -694,16 +694,63 @@ export async function purchaseFixedPriceRpc(
 // Feed realtime
 // -------------------------------------------------------------------------
 
+/**
+ * Subscribe to `lives` table changes for the home feed.
+ * Android WebViews often drop the Realtime WebSocket without auto-recovery,
+ * so we re-subscribe on error and emit on SUBSCRIBED for a catch-up refetch.
+ */
 export function subscribeToLivesFeed(onChange: () => void): () => void {
+  let dead = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryDelay = 1_000;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emit = () => {
+    if (dead) return;
+    if (debounceTimer != null) clearTimeout(debounceTimer);
+    // Host heartbeats / viewer_count updates fire often — coalesce briefly.
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      if (!dead) onChange();
+    }, 400);
+  };
+
   const channel = supabase
-    .channel("public:lives:feed")
+    .channel(`public:lives:feed:${Date.now()}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "lives" },
-      () => onChange(),
+      () => emit(),
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (dead) return;
+      if (status === "SUBSCRIBED") {
+        retryDelay = 1_000;
+        // Resync after connect / reconnect — covers missed INSERTs while WS was down.
+        emit();
+      } else if (
+        status === "CHANNEL_ERROR" ||
+        status === "TIMED_OUT" ||
+        status === "CLOSED"
+      ) {
+        if (retryTimer != null) return;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          if (dead) return;
+          try {
+            void channel.subscribe();
+          } catch {
+            /* channel already gone */
+          }
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 15_000);
+      }
+    });
+
   return () => {
+    dead = true;
+    if (retryTimer != null) clearTimeout(retryTimer);
+    if (debounceTimer != null) clearTimeout(debounceTimer);
     supabase.removeChannel(channel);
   };
 }

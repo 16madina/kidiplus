@@ -43,6 +43,7 @@ import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
@@ -1068,15 +1069,17 @@ export function RealLiveViewerScreen() {
 
 
       {isModerator && user && active?.liveId && !liveEnded && (
-        <ModeratorDock
-          liveId={active.liveId}
-          userId={user.id}
-          products={room.products}
-          activeAuction={room.auctionStart}
-          currency={liveCurrency}
-          locale={i18n.language}
-          broadcastAuctionStart={room.broadcastAuctionStart}
-        />
+        <ErrorBoundary boundary="moderator_dock">
+          <ModeratorDock
+            liveId={active.liveId}
+            userId={user.id}
+            products={room.products}
+            activeAuction={room.auctionStart}
+            currency={liveCurrency}
+            locale={i18n.language}
+            broadcastAuctionStart={room.broadcastAuctionStart}
+          />
+        </ErrorBoundary>
       )}
 
       <FloatingHearts trigger={room.heartTick} />

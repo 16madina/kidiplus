@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Bell, Moon, Share2, Sun, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,8 @@ import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
+import { useAppActive } from "@/lib/app-state";
+import { TabVisibilityContext } from "@/components/app-shell";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -29,10 +31,14 @@ import { HostOpenLiveBanner } from "@/components/home/host-open-live-banner";
 const PAGE = 12;
 const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
+/** Safety-net poll while Home is visible — Android WebViews often drop Realtime. */
+const FEED_POLL_MS = 12_000;
 
 export function HomeScreen() {
   const { t } = useTranslation();
   const { dark, setDark } = useSettings();
+  const appActive = useAppActive();
+  const tabVisible = useContext(TabVisibilityContext);
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
   const [realLives, setRealLives] = useState<LiveStream[]>([]);
@@ -48,6 +54,7 @@ export function HomeScreen() {
   const pullY = useMotionValue(0);
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
+  const wasForegroundRef = useRef(false);
 
   // Real lives feed + realtime subscription. No mock filler on home per
   // Apple review guidance (no AI/demo lives on the landing screen — only
@@ -57,6 +64,7 @@ export function HomeScreen() {
     setRealLives(rows);
     setLoading(false);
   }, []);
+
   useEffect(() => {
     void refreshRealLives();
     const unsub = subscribeToLivesFeed(() => {
@@ -65,6 +73,29 @@ export function HomeScreen() {
     return unsub;
   }, [refreshRealLives]);
 
+  // Refetch when the app returns to foreground or the Home tab is shown again.
+  // Android often kills Realtime in the background; iOS is more forgiving.
+  useEffect(() => {
+    const foreground = appActive && tabVisible;
+    if (!foreground) {
+      wasForegroundRef.current = false;
+      return;
+    }
+    if (!wasForegroundRef.current) {
+      wasForegroundRef.current = true;
+      void refreshRealLives();
+    }
+  }, [appActive, tabVisible, refreshRealLives]);
+
+  // Backup poll while Home is visible — closes the ~30s gap when Realtime misses
+  // an INSERT and only the host heartbeat UPDATE would have refreshed the feed.
+  useEffect(() => {
+    if (!appActive || !tabVisible) return;
+    const iv = setInterval(() => {
+      void refreshRealLives();
+    }, FEED_POLL_MS);
+    return () => clearInterval(iv);
+  }, [appActive, tabVisible, refreshRealLives]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
