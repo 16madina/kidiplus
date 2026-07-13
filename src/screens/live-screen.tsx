@@ -18,6 +18,17 @@ import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner"
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
