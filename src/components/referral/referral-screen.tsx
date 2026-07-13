@@ -16,7 +16,8 @@ import {
 } from "@/lib/earnings-db";
 import {
   fetchMyPromoCodes, fetchMyReferralEarnings, buildShareMessage, claimPromoCode,
-  type PromoCodeStats, type ReferralEarningRow,
+  fetchMyPromoCodeRequest, submitPromoCodeRequest,
+  type PromoCodeStats, type ReferralEarningRow, type MyPromoCodeRequest,
 } from "@/lib/referrals-db";
 
 const NAVY = "#10162B";
