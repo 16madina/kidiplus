@@ -325,6 +325,28 @@ function LiveScreenAuthed() {
   );
 }
 
+function FeatureItem({
+  icon,
+  label,
+  navy,
+  gold,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  navy: string;
+  gold: string;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1.5">
+      <div style={{ color: gold }}>{icon}</div>
+      <span className="text-[11px] font-bold leading-tight" style={{ color: navy }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+
 function BroadcastFlow() {
   const { t } = useTranslation();
   const {
