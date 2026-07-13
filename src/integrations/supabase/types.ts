@@ -1046,6 +1046,67 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_code_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          created_promo_code_id: string | null
+          id: string
+          message: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          created_promo_code_id?: string | null
+          id?: string
+          message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          created_promo_code_id?: string | null
+          id?: string
+          message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_code_requests_created_promo_code_id_fkey"
+            columns: ["created_promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_code_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_code_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       promo_codes: {
         Row: {
           active: boolean
@@ -1846,6 +1907,10 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_promo_code_requests: {
+        Args: { _status?: string }
+        Returns: Json
+      }
       admin_list_promo_codes: { Args: never; Returns: Json }
       admin_list_reports: {
         Args: { _limit?: number; _status?: string }
@@ -1881,6 +1946,16 @@ export type Database = {
       }
       admin_resolve_report: {
         Args: { _note?: string; _report_id: string; _status: string }
+        Returns: Json
+      }
+      admin_review_promo_code_request: {
+        Args: {
+          _action: string
+          _code?: string
+          _id: string
+          _note?: string
+          _reward_quota?: number
+        }
         Returns: Json
       }
       admin_review_verification: {
@@ -1994,6 +2069,7 @@ export type Database = {
         Returns: number
       }
       my_moderation_state: { Args: never; Returns: Json }
+      my_promo_code_request: { Args: never; Returns: Json }
       my_promo_codes: { Args: never; Returns: Json }
       my_referral_earnings: { Args: { _limit?: number }; Returns: Json }
       notify_absent_host_lives: {
@@ -2059,6 +2135,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       send_gift: {
