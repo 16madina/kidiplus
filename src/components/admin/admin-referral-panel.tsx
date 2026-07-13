@@ -16,7 +16,8 @@ import {
   fetchAdminPromoCodes, adminCreatePromoCode, adminSetPromoActive,
   adminRenewPromoCredits, adminSearchUsersByHandle, adminAssignPromoCode,
   buildInfluencerOnboardingMessage,
-  type AdminPromoCodeRow, type UserSearchRow,
+  fetchAdminPromoCodeRequests, adminReviewPromoCodeRequest,
+  type AdminPromoCodeRow, type UserSearchRow, type AdminPromoCodeRequestRow,
 } from "@/lib/referrals-db";
 
 export function AdminReferralPanel() {
