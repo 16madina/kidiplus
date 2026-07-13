@@ -142,7 +142,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ReconRow({ row }: { row: AdminReconRow }) {
+function ReconRow({ row, onOpen }: { row: AdminReconRow; onOpen: () => void }) {
   const wallet =
     row.wallet_available != null && row.wallet_currency
       ? formatMoney(Number(row.wallet_available), normalizeCurrency(row.wallet_currency))
@@ -151,7 +151,11 @@ function ReconRow({ row }: { row: AdminReconRow }) {
   const hasEarnings = row.earning_rows > 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-background p-3">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-2xl border border-border bg-background p-3 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
