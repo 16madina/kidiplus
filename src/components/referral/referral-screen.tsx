@@ -328,17 +328,22 @@ function ClaimBlock({
   const [flipped, setFlipped] = useState(false);
 
   const onChange = (v: string) => {
-    const raw = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    // Accept "KIDI-XXXX-XXXX" or just "XXXX-XXXX" (paste tolerant).
+    const cleaned = v.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const body = cleaned.startsWith("KIDI") ? cleaned.slice(4) : cleaned;
+    const raw = body.slice(0, 8);
     setToken(raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw);
   };
 
+  const fullToken = token ? `KIDI-${token}` : "";
+
   const submit = async () => {
     if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(token)) {
-      toast.error(t("referral.claim.badFormat", "Format attendu : XXXX-XXXX"));
+      toast.error(t("referral.claim.badFormat", "Format attendu : KIDI-XXXX-XXXX"));
       return;
     }
     setBusy(true);
-    const res = await claimPromoCode(token);
+    const res = await claimPromoCode(fullToken);
     setBusy(false);
     if (!res.ok) {
       const map: Record<string, string> = {
