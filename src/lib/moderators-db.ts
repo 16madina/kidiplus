@@ -73,6 +73,103 @@ export async function removeModerator(
   return { ok: true };
 }
 
+export type ModeratorCandidate = {
+  id: string;
+  displayName: string | null;
+  handle: string | null;
+  avatarUrl: string | null;
+};
+
+/** Escape `%` / `_` for ILIKE and strip commas (PostgREST `.or()` separators). */
+function sanitizeIlikeQuery(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/,/g, " ")
+    .replace(/"/g, "")
+    .replace(/[%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Typeahead for promoting moderators — matches handle OR display_name (ilike).
+ * Not limited to sellers. Host can promote any KiDi+ account.
+ */
+export async function searchModeratorCandidates(
+  query: string,
+  opts?: { excludeIds?: Iterable<string>; limit?: number },
+): Promise<ModeratorCandidate[]> {
+  const cleaned = sanitizeIlikeQuery(query);
+  if (cleaned.length < 1) return [];
+  const limit = opts?.limit ?? 8;
+  const exclude = new Set(opts?.excludeIds ?? []);
+  const pattern = `%${cleaned}%`;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, handle, avatar_url")
+    .or(`display_name.ilike."${pattern}",handle.ilike."${pattern}"`)
+    .order("handle", { ascending: true })
+    .limit(Math.max(limit + exclude.size, limit));
+
+  if (error) {
+    console.error("[searchModeratorCandidates]", error);
+    return [];
+  }
+
+  const rows: ModeratorCandidate[] = [];
+  for (const p of data ?? []) {
+    if (exclude.has(p.id)) continue;
+    rows.push({
+      id: p.id,
+      displayName: p.display_name ?? null,
+      handle: p.handle ?? null,
+      avatarUrl: p.avatar_url
+        ? (await resolveAvatarUrl(p.avatar_url)) ?? null
+        : null,
+    });
+    if (rows.length >= limit) break;
+  }
+  return rows;
+}
+
+/** Resolve a typed value to a single profile id (handle / display_name / uuid). */
+export async function resolveModeratorCandidateId(
+  rawInput: string,
+): Promise<string | null> {
+  const raw = rawInput.trim().replace(/^@+/, "");
+  if (!raw) return null;
+
+  // UUID paste
+  if (/^[0-9a-f-]{36}$/i.test(raw)) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", raw)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+
+  const lower = raw.toLowerCase();
+  // Exact handle (case-insensitive)
+  const byHandle = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("handle", lower)
+    .limit(2);
+  if (byHandle.data?.length === 1) return byHandle.data[0]!.id;
+
+  // Exact display_name (case-insensitive) — only if unique
+  const byName = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("display_name", raw)
+    .limit(2);
+  if (byName.data?.length === 1) return byName.data[0]!.id;
+
+  // Ambiguous / not found — let the host pick from suggestions
+  return null;
+}
+
 /** Realtime hook — is `userId` currently a moderator of `liveId`? */
 export function useIsModerator(
   liveId: string | null | undefined,
