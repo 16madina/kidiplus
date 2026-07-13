@@ -12,6 +12,9 @@ import { haptic } from "@/lib/haptics";
  * Android system PiP shows the whole WebView in the bubble — so in that mode
  * we render a plain fixed inset-0 black layer (no framer size animation, no
  * max-width). Otherwise the home tab bar peeks under the live in the PiP window.
+ *
+ * Mini player: tap body → expand; tap X → close. Do NOT use framer onTap on the
+ * shell — it also fires when pressing X and re-opens the live instead of closing.
  */
 export function LivePipShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -88,18 +91,10 @@ export function LivePipShell({ children }: { children: ReactNode }) {
             }
           : undefined
       }
-      onTap={
-        floatingMini
-          ? () => {
-              haptic.light();
-              expand();
-            }
-          : undefined
-      }
       data-kp-live-pip={floatingMini ? "mini" : "full"}
       className={
         floatingMini
-          ? "fixed z-[55] max-w-none cursor-pointer overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+          ? "fixed z-[55] max-w-none overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
           : "fixed z-[60] max-w-xl overflow-hidden bg-black"
       }
       style={floatingMini ? { marginBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
@@ -107,9 +102,19 @@ export function LivePipShell({ children }: { children: ReactNode }) {
       {children}
 
       {floatingMini && (
-        <div className="pointer-events-none absolute inset-0 z-40">
+        <div className="absolute inset-0 z-40">
+          {/* Expand hit-area — separate from X so close is never overridden. */}
+          <button
+            type="button"
+            aria-label={t("live.expand", "Agrandir le live")}
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => {
+              haptic.light();
+              expand();
+            }}
+          />
           <span
-            className="absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[9px] font-black tracking-wide text-white"
+            className="pointer-events-none absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[9px] font-black tracking-wide text-white"
             style={{ backgroundColor: "var(--live)" }}
           >
             LIVE
@@ -117,10 +122,15 @@ export function LivePipShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             aria-label={t("live.leave")}
-            className="pointer-events-auto absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full text-white"
+            className="absolute right-1 top-1 z-10 grid h-8 w-8 place-items-center rounded-full text-white"
             style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+            onPointerDown={(e) => {
+              // Stop framer drag + parent handlers from stealing the close tap.
+              e.stopPropagation();
+            }}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               haptic.light();
               close();
             }}
