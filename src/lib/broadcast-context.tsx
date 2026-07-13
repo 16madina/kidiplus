@@ -101,8 +101,13 @@ type Ctx = {
   cameraFacing: "user" | "environment";
   setCameraFacing: (f: "user" | "environment") => void;
 
+  /** Allow viewers to send virtual gifts during the live. */
+  allowGifts: boolean;
+  setAllowGifts: (v: boolean) => void;
+
   reset: () => void;
 };
+
 
 
 
