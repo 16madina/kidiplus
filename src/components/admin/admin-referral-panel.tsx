@@ -489,6 +489,10 @@ function CodeRow({
           className="!min-h-9 inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground py-2 text-[12px] font-semibold text-background">
           <UserPlus size={12} /> {claimed ? t("referral.admin.reassign", "Réassigner") : t("referral.admin.assign", "Assigner")}
         </Press>
+        <Press disabled={busy !== null} onClick={remove}
+          className="!min-h-9 inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] font-semibold text-rose-700 dark:text-rose-400">
+          <Trash2 size={12} /> {t("referral.admin.delete", "Supprimer")}
+        </Press>
       </div>
 
       {assigning && (
