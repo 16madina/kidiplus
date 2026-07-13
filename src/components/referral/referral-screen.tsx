@@ -253,10 +253,10 @@ function ReferralWalletCard({
             </div>
           </div>
 
-          {/* Centered KiDi+ wordmark + balance */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          {/* Centered KiDi+ wordmark */}
+          <div className="flex flex-1 items-center justify-center py-4">
             <div
-              className="text-[30px] font-black leading-none tracking-tight"
+              className="text-[38px] font-black leading-none tracking-tight"
               style={{
                 color: INK,
                 textShadow: "0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(0,0,0,0.15)",
@@ -264,19 +264,21 @@ function ReferralWalletCard({
             >
               KiDi<span style={{ color: "#3a0f0f" }}>+</span>
             </div>
-            <div
-              className="text-[26px] font-black tabular-nums leading-none"
-              style={{ color: INK, textShadow: "0 1px 0 rgba(255,255,255,0.3)" }}
-            >
-              {formatMoney(available, normalizeCurrency(cur), i18n.language)}
-            </div>
           </div>
 
-          {/* Bottom row: wallet label + currency */}
+          {/* Bottom row: wallet label + balance + currency */}
           <div className="flex items-end justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em]" style={{ color: INK, opacity: 0.7 }}>
-              <WalletIcon size={10} />
-              {t("referral.wallet.title", "Portefeuille parrainage")}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em]" style={{ color: INK, opacity: 0.7 }}>
+                <WalletIcon size={10} />
+                {t("referral.wallet.title", "Portefeuille parrainage")}
+              </div>
+              <div
+                className="mt-1 truncate text-[22px] font-black tabular-nums leading-none"
+                style={{ color: INK }}
+              >
+                {formatMoney(available, normalizeCurrency(cur), i18n.language)}
+              </div>
             </div>
             <div
               className="rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-widest"
@@ -285,6 +287,7 @@ function ReferralWalletCard({
               {normalizeCurrency(cur)}
             </div>
           </div>
+
 
         </div>
       </div>
