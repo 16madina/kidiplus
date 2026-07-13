@@ -18,6 +18,17 @@ import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner"
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
@@ -154,6 +165,23 @@ function LiveScreenAuthed() {
   const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const activateSeller = async () => {
+    setConfirmOpen(false);
+    setFlipping(true);
+    try {
+      await becomeSeller();
+      haptic.success();
+      toast.success(t("broadcast.becomeSellerCreated", { defaultValue: "Ta boutique KiDi+ est créée 🎉" }));
+    } catch (e) {
+      haptic.error();
+      toast.error(frenchAuthError(e));
+    } finally {
+      setFlipping(false);
+    }
+  };
+
 
   if (loading || !profile) {
     return (
@@ -191,19 +219,7 @@ function LiveScreenAuthed() {
           {t("broadcast.becomeSellerBody")}
         </p>
         <Press
-          onClick={async () => {
-            setFlipping(true);
-            try {
-              await becomeSeller();
-              haptic.success();
-              toast.success(t("broadcast.becomeSellerCta") + " 🎉");
-            } catch (e) {
-              haptic.error();
-              toast.error(frenchAuthError(e));
-            } finally {
-              setFlipping(false);
-            }
-          }}
+          onClick={() => { haptic.light(); setConfirmOpen(true); }}
           disabled={flipping}
           className="!min-h-12 mt-8 h-12 w-full max-w-xs rounded-2xl text-[15px] font-bold text-white"
           style={{
@@ -220,9 +236,31 @@ function LiveScreenAuthed() {
             t("broadcast.becomeSellerCta")
           )}
         </Press>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("broadcast.createShopTitle", { defaultValue: "Voulez-vous créer votre boutique KiDi+ ?" })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("broadcast.createShopBody", { defaultValue: "En confirmant, ta boutique est créée et tu deviens vendeur. Tu pourras ensuite ajouter tes produits et lancer des lives. Sans boutique, tu restes en mode visiteur." })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {t("common.no", { defaultValue: "Non" })}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => { void activateSeller(); }}>
+                {t("broadcast.createShopConfirm", { defaultValue: "Oui, créer ma boutique" })}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </motion.div>
     );
   }
+
 
   return (
     <BroadcastProvider>
