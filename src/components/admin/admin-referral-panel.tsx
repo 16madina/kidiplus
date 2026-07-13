@@ -93,6 +93,8 @@ export function AdminReferralPanel() {
           onClose={() => setCreatedToken(null)}
         />
       )}
+      </>
+      )}
     </div>
   );
 }
