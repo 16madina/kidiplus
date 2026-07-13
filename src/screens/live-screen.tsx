@@ -211,19 +211,19 @@ function LiveScreenAuthed() {
         <div
           className="relative w-full overflow-hidden"
           style={{
-            height: "clamp(260px, 42vh, 360px)",
+            height: "clamp(290px, 46vh, 390px)",
             backgroundColor: NAVY_LOCAL,
             backgroundImage: `url(${sellerHero.url})`,
-            backgroundSize: "contain",
-            backgroundPosition: "center bottom",
+            backgroundSize: "cover",
+            backgroundPosition: "center 42%",
             backgroundRepeat: "no-repeat",
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
           }}
         >
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.82) 100%)" }}
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.78) 100%)" }}
           />
         </div>
 
