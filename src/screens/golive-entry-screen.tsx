@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -64,26 +64,29 @@ export function GoLiveEntryScreen({
   const [confirmCancel, setConfirmCancel] = useState<ScheduledLiveRow | null>(null);
   const [covers, setCovers] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    let alive = true;
-    void (async () => {
-      setLoadingList(true);
-      const rows = await fetchMyScheduledLives(user.id);
-      if (!alive) return;
-      setScheduled(rows);
-      setLoadingList(false);
-      const entries = await Promise.all(
-        rows
-          .filter((r) => r.cover_url)
-          .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
-      );
-      if (alive) setCovers(Object.fromEntries(entries));
-    })();
-    return () => {
-      alive = false;
-    };
+    setLoadingList(true);
+    const rows = await fetchMyScheduledLives(user.id);
+    setScheduled(rows);
+    setLoadingList(false);
+    const entries = await Promise.all(
+      rows
+        .filter((r) => r.cover_url)
+        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
+    );
+    setCovers(Object.fromEntries(entries));
   }, [user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    const onChanged = () => void reload();
+    window.addEventListener("kidi:scheduled-lives-changed", onChanged);
+    return () => window.removeEventListener("kidi:scheduled-lives-changed", onChanged);
+  }, [reload]);
 
   const loadIntoForm = async (row: ScheduledLiveRow) => {
     setBusyId(row.id);
