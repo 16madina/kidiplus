@@ -219,19 +219,7 @@ function LiveScreenAuthed() {
           {t("broadcast.becomeSellerBody")}
         </p>
         <Press
-          onClick={async () => {
-            setFlipping(true);
-            try {
-              await becomeSeller();
-              haptic.success();
-              toast.success(t("broadcast.becomeSellerCta") + " 🎉");
-            } catch (e) {
-              haptic.error();
-              toast.error(frenchAuthError(e));
-            } finally {
-              setFlipping(false);
-            }
-          }}
+          onClick={() => { haptic.light(); setConfirmOpen(true); }}
           disabled={flipping}
           className="!min-h-12 mt-8 h-12 w-full max-w-xs rounded-2xl text-[15px] font-bold text-white"
           style={{
@@ -248,9 +236,31 @@ function LiveScreenAuthed() {
             t("broadcast.becomeSellerCta")
           )}
         </Press>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("broadcast.createShopTitle", { defaultValue: "Voulez-vous créer votre boutique KiDi+ ?" })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("broadcast.createShopBody", { defaultValue: "En confirmant, ta boutique est créée et tu deviens vendeur. Tu pourras ensuite ajouter tes produits et lancer des lives. Sans boutique, tu restes en mode visiteur." })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {t("common.no", { defaultValue: "Non" })}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => { void activateSeller(); }}>
+                {t("broadcast.createShopConfirm", { defaultValue: "Oui, créer ma boutique" })}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </motion.div>
     );
   }
+
 
   return (
     <BroadcastProvider>
