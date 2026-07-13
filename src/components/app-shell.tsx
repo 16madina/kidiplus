@@ -159,6 +159,7 @@ function AppShellInner() {
   const liveFullScreen = !!liveStream && presentation === "full";
   const liveMinimized = !!liveStream && presentation === "minimized";
   const inSystemPip = useInSystemPip();
+  const hideTabs = liveFullScreen || inSystemPip;
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
   const keyboardOpen = useKeyboardOpen();
@@ -281,6 +282,7 @@ function AppShellInner() {
       className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
       style={{ isolation: "isolate" }}
     >
+      <div data-kp-shell-chrome>
       <TabPane visible={active === "home"}>
         <ErrorBoundary boundary="tab_home"><HomeScreen /></ErrorBoundary>
       </TabPane>
@@ -296,14 +298,21 @@ function AppShellInner() {
       <TabPane visible={active === "profile"}>
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
       </TabPane>
+      </div>
 
-      {!immersive && !liveFullScreen && !inSystemPip && !keyboardOpen && (
-        <BottomTabBar active={active} onChange={setActive} />
+      {!immersive && !hideTabs && !keyboardOpen && (
+        <div data-kp-shell-chrome>
+          <BottomTabBar active={active} onChange={setActive} />
+        </div>
       )}
 
-      {/* Hide welcome/tabs behind the live while Android system PiP shows the WebView. */}
+      {/* Solid mask under the live while Android system PiP shows the WebView. */}
       {inSystemPip && (
-        <div className="pointer-events-none fixed inset-0 z-[99] bg-black" aria-hidden />
+        <div
+          className="pointer-events-none fixed inset-0 bg-black"
+          style={{ zIndex: 2147482990 }}
+          aria-hidden
+        />
       )}
 
       <AnimatePresence>
