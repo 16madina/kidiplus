@@ -175,7 +175,12 @@ function LiveScreenAuthed() {
     try {
       await becomeSeller();
       haptic.success();
-      toast.success(t("broadcast.becomeSellerCreated", { defaultValue: "Ta boutique KiDi+ est créée 🎉" }));
+      toast.success(t("broadcast.becomeSellerCreated", { defaultValue: "Ta boutique KiDi+ est créée 🎉 Ajoute tes produits pour commencer." }));
+      // Redirect to profile → My Shop so the user can set up banner & products
+      window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "profile" }));
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("kidi:open-my-shop"));
+      }, 250);
     } catch (e) {
       haptic.error();
       toast.error(frenchAuthError(e));
@@ -183,6 +188,7 @@ function LiveScreenAuthed() {
       setFlipping(false);
     }
   };
+
 
 
   if (loading || !profile) {
