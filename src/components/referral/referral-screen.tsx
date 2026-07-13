@@ -264,10 +264,10 @@ function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
       <div className="mb-4 overflow-hidden rounded-3xl p-5 text-white"
         style={{ background: `linear-gradient(135deg, ${NAVY}, #1C2440)` }}>
         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
-          <Sparkles size={12} style={{ color: GOLD }} /> KiDi+ Influenceurs
+          <Sparkles size={12} style={{ color: GOLD }} /> KiDi+ Partenaires
         </div>
         <h2 className="text-[20px] font-black leading-tight">
-          {t("referral.claim.title", "Deviens influenceur KiDi+")}
+          {t("referral.claim.title", "Deviens partenaire KiDi+")}
         </h2>
         <p className="mt-2 text-[13px] opacity-80">
           {t("referral.claim.intro", "Reçois la commission KiDi+ sur les premières commandes de chaque personne qui s'inscrit avec ton code.")}
@@ -290,7 +290,7 @@ function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
           className="mt-2 w-full rounded-xl border border-border bg-transparent px-3 py-3 text-center text-[20px] font-black tracking-[0.3em] outline-none"
         />
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {t("referral.claim.hint", "Ce code t'a été communiqué par l'équipe KiDi+. Il est différent du code public que tu partageras.")}
+          {t("referral.claim.hint", "As-tu déjà reçu un code d'activation ? Entre-le ci-dessous. Sinon, tu peux demander un code de parrainage plus bas.")}
         </p>
         <Press
           disabled={busy}
@@ -302,9 +302,112 @@ function ClaimBlock({ onClaimed }: { onClaimed: () => void | Promise<void> }) {
         </Press>
       </div>
 
+      <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground">
+        <div className="h-px flex-1 bg-border" />
+        <span>{t("common.or", "ou")}</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <RequestCodeBlock />
+
       <p className="mt-6 text-center text-[11px] text-muted-foreground">
-        {t("referral.claim.notInfluencer", "Pas encore de code ? Contacte l'équipe KiDi+ pour rejoindre le programme.")}
+        {t("referral.claim.notInfluencer", "Pas de code ? Fais une demande — l'équipe KiDi+ répond sous quelques jours.")}
       </p>
+    </div>
+  );
+}
+
+function RequestCodeBlock() {
+  const { t } = useTranslation();
+  const [req, setReq] = useState<MyPromoCodeRequest | null | undefined>(undefined);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => setReq(await fetchMyPromoCodeRequest());
+  useEffect(() => { void load(); }, []);
+
+  const submit = async () => {
+    setBusy(true);
+    const res = await submitPromoCodeRequest(message);
+    setBusy(false);
+    if (!res.ok) {
+      const map: Record<string, string> = {
+        already_pending: t("referral.claim.request.errPending", "Tu as déjà une demande en attente."),
+        already_has_code: t("referral.claim.request.errHasCode", "Tu as déjà un code de parrainage."),
+        unauthorized: t("referral.claim.errAuth", "Connecte-toi pour réclamer."),
+      };
+      toast.error(map[res.error] ?? res.error);
+      return;
+    }
+    haptic.success();
+    toast.success(t("referral.claim.request.sent", "Demande envoyée ✨"));
+    setMessage("");
+    await load();
+  };
+
+  if (req === undefined) return null;
+
+  const isPending = req?.status === "pending";
+  const isRejected = req?.status === "rejected";
+
+  return (
+    <div className="rounded-2xl border border-border p-4">
+      <label className="flex items-center gap-1.5 text-[13px] font-bold">
+        <Sparkles size={13} style={{ color: GOLD }} />
+        {t("referral.claim.request.title", "Demander un code de parrainage")}
+      </label>
+
+      {isPending ? (
+        <div className="mt-3 rounded-xl bg-amber-500/10 p-3 text-[12px]">
+          <div className="font-bold text-amber-700 dark:text-amber-400">
+            ⏳ {t("referral.claim.request.pendingBadge", "Demande en attente")}
+          </div>
+          <p className="mt-1 text-muted-foreground">
+            {t("referral.claim.request.pendingHint", "Nous étudions ta demande. Tu recevras une notification dès qu'elle sera traitée.")}
+          </p>
+          {req?.message && (
+            <p className="mt-2 whitespace-pre-wrap text-[11px] italic text-muted-foreground">"{req.message}"</p>
+          )}
+        </div>
+      ) : (
+        <>
+          {isRejected && (
+            <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-[12px]">
+              <div className="font-bold text-red-700 dark:text-red-400">
+                ✕ {t("referral.claim.request.rejectedBadge", "Demande refusée")}
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                {t("referral.claim.request.rejectedHint", "Ta dernière demande a été refusée. Tu peux en soumettre une nouvelle.")}
+              </p>
+              {req?.admin_note && (
+                <p className="mt-2 text-[11px]">
+                  <span className="font-semibold">{t("referral.claim.request.reason", "Motif :")}</span>{" "}
+                  <span className="text-muted-foreground">{req.admin_note}</span>
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            {t("referral.claim.request.intro", "Explique en quelques mots pourquoi tu veux devenir partenaire (audience, réseaux, motivation…). L'équipe KiDi+ étudiera ta demande.")}
+          </p>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, 500))}
+            placeholder={t("referral.claim.request.placeholder", "Parle-nous de toi, ton audience, tes réseaux…")}
+            rows={4}
+            className="mt-2 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[13px] outline-none"
+          />
+          <div className="mt-1 text-right text-[10px] text-muted-foreground">{message.length}/500</div>
+          <Press
+            disabled={busy}
+            onClick={submit}
+            className="!min-h-11 mt-2 inline-flex w-full items-center justify-center rounded-2xl bg-foreground py-3 text-[14px] font-bold text-background disabled:opacity-50"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : t("referral.claim.request.cta", "Envoyer ma demande")}
+          </Press>
+        </>
+      )}
     </div>
   );
 }
