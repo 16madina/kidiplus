@@ -11,6 +11,7 @@ import {
   fetchAdminReferralReconciliation,
   type AdminReconRow,
 } from "@/lib/referrals-db";
+import { AdminReferralCodeDetailsSheet } from "./admin-referral-code-details-sheet";
 
 type StatusKey = "held" | "credited" | "reversed";
 const STATUS_LABEL: Record<StatusKey, string> = {
