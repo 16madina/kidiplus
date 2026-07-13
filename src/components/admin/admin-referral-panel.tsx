@@ -79,6 +79,234 @@ export function AdminReferralPanel() {
 }
 
 // ============================================================================
+// Requests section — pending demandes de code de parrainage from users.
+// ============================================================================
+
+function RequestsSection() {
+  const { t } = useTranslation();
+  const [rows, setRows] = useState<AdminPromoCodeRequestRow[] | null>(null);
+  const [filter, setFilter] = useState<"pending" | "all">("pending");
+
+  const reload = async () => {
+    setRows(await fetchAdminPromoCodeRequests(filter === "pending" ? "pending" : undefined));
+  };
+  useEffect(() => { void reload(); }, [filter]);
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[16px] font-bold">
+          {t("referral.admin.requests.title", "Demandes de code")}
+        </h2>
+        <div className="flex gap-1 rounded-full bg-muted p-1 text-[11px] font-semibold">
+          <button type="button" onClick={() => setFilter("pending")}
+            className={`rounded-full px-2.5 py-1 ${filter === "pending" ? "bg-background shadow" : "text-muted-foreground"}`}>
+            {t("referral.admin.requests.pending", "En attente")}
+          </button>
+          <button type="button" onClick={() => setFilter("all")}
+            className={`rounded-full px-2.5 py-1 ${filter === "all" ? "bg-background shadow" : "text-muted-foreground"}`}>
+            {t("referral.admin.requests.all", "Toutes")}
+          </button>
+        </div>
+      </div>
+
+      {rows === null ? (
+        <div className="flex h-20 items-center justify-center text-muted-foreground">
+          <Loader2 size={16} className="animate-spin" />
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border p-4 text-center text-[12px] text-muted-foreground">
+          {t("referral.admin.requests.empty", "Aucune demande pour l'instant.")}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((r) => <RequestRow key={r.id} row={r} onChange={reload} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RequestRow({ row, onChange }: { row: AdminPromoCodeRequestRow; onChange: () => void }) {
+  const { t } = useTranslation();
+  const [reviewing, setReviewing] = useState<null | "approve" | "reject">(null);
+
+  const pending = row.status === "pending";
+  const statusBadge = pending
+    ? { txt: t("referral.admin.requests.pending", "En attente"), cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400" }
+    : row.status === "approved"
+      ? { txt: t("referral.admin.requests.approved", "Approuvée"), cls: "bg-green-500/15 text-green-700 dark:text-green-400" }
+      : { txt: t("referral.admin.requests.rejected", "Refusée"), cls: "bg-red-500/15 text-red-700 dark:text-red-400" };
+
+  return (
+    <div className="rounded-2xl border border-border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-bold">
+              {row.user_name ?? row.user_handle ?? "—"}
+            </span>
+            {row.user_handle && (
+              <span className="text-[11px] text-muted-foreground">@{row.user_handle}</span>
+            )}
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusBadge.cls}`}>
+              {statusBadge.txt}
+            </span>
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {new Date(row.created_at).toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {row.message && (
+        <p className="mt-2 whitespace-pre-wrap rounded-xl bg-muted/50 p-3 text-[12px]">
+          {row.message}
+        </p>
+      )}
+
+      {row.admin_note && !pending && (
+        <p className="mt-2 text-[11px]">
+          <span className="font-semibold">
+            {t("referral.claim.request.reason", "Motif :")}
+          </span>{" "}
+          <span className="text-muted-foreground">{row.admin_note}</span>
+        </p>
+      )}
+
+      {pending && (
+        <div className="mt-3 flex gap-2">
+          <Press onClick={() => setReviewing("reject")}
+            className="!min-h-9 inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-muted py-2 text-[12px] font-semibold">
+            {t("referral.admin.requests.reject", "Refuser")}
+          </Press>
+          <Press onClick={() => setReviewing("approve")}
+            className="!min-h-9 inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-foreground py-2 text-[12px] font-semibold text-background">
+            {t("referral.admin.requests.approve", "Approuver")}
+          </Press>
+        </div>
+      )}
+
+      {reviewing && (
+        <ReviewSheet
+          row={row}
+          action={reviewing}
+          onClose={() => setReviewing(null)}
+          onDone={() => { setReviewing(null); onChange(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReviewSheet({
+  row, action, onClose, onDone,
+}: {
+  row: AdminPromoCodeRequestRow;
+  action: "approve" | "reject";
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const suggested = (row.user_handle ?? "").toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 20);
+  const [code, setCode] = useState(suggested);
+  const [quota, setQuota] = useState(14);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (action === "approve") {
+      if (!/^[A-Z0-9_-]{4,20}$/.test(code)) {
+        toast.error(t("referral.admin.badFormat", "Code : 4–20 caractères A-Z, 0-9, _ ou -"));
+        return;
+      }
+    }
+    setBusy(true);
+    const res = await adminReviewPromoCodeRequest(row.id, action, {
+      code: action === "approve" ? code : undefined,
+      reward_quota: quota,
+      note: note.trim() || undefined,
+    });
+    setBusy(false);
+    if (!res.ok) { toast.error(res.error); return; }
+    haptic.success();
+    toast.success(action === "approve"
+      ? t("referral.admin.requests.approvedToast", "Demande approuvée — code créé et notification envoyée")
+      : t("referral.admin.requests.rejectedToast", "Demande refusée — notification envoyée"));
+    onDone();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end bg-black/60" onClick={onClose}>
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-muted" />
+        <h3 className="text-[16px] font-bold">
+          {action === "approve"
+            ? t("referral.admin.requests.approveTitle", "Approuver la demande")
+            : t("referral.admin.requests.rejectTitle", "Refuser la demande")}
+        </h3>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {row.user_name ?? row.user_handle}
+        </p>
+
+        {action === "approve" && (
+          <>
+            <label className="mt-4 block text-[12px] font-semibold text-muted-foreground">
+              {t("referral.admin.codeLabel", "Code public (4–20 caractères)")}
+            </label>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="AMINATA"
+              className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[15px] font-bold tracking-wide"
+            />
+
+            <label className="mt-3 block text-[12px] font-semibold text-muted-foreground">
+              {t("referral.admin.quotaLabel", "Quota par inscrit")}
+            </label>
+            <input
+              type="number" min={1} max={999}
+              value={quota}
+              onChange={(e) => setQuota(Math.max(1, Number(e.target.value) || 14))}
+              className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[15px]"
+            />
+          </>
+        )}
+
+        <label className="mt-3 block text-[12px] font-semibold text-muted-foreground">
+          {action === "approve"
+            ? t("referral.admin.requests.noteApprove", "Note interne (optionnel)")
+            : t("referral.admin.requests.noteReject", "Motif du refus (envoyé à l'utilisateur)")}
+        </label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value.slice(0, 500))}
+          rows={3}
+          className="mt-1 w-full rounded-xl border border-border bg-transparent px-3 py-2 text-[13px]"
+        />
+
+        <div className="mt-4 flex gap-2">
+          <Press onClick={onClose}
+            className="!min-h-11 inline-flex flex-1 items-center justify-center rounded-2xl bg-muted py-3 text-[14px] font-semibold">
+            {t("common.cancel", "Annuler")}
+          </Press>
+          <Press disabled={busy} onClick={submit}
+            className={`!min-h-11 inline-flex flex-1 items-center justify-center rounded-2xl py-3 text-[14px] font-bold disabled:opacity-50 ${
+              action === "approve" ? "bg-foreground text-background" : "bg-red-600 text-white"
+            }`}>
+            {busy ? <Loader2 size={14} className="animate-spin" /> : (
+              action === "approve"
+                ? t("referral.admin.requests.approve", "Approuver")
+                : t("referral.admin.requests.reject", "Refuser")
+            )}
+          </Press>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Row
 // ============================================================================
 
