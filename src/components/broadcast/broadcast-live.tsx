@@ -986,6 +986,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                   liveId={b.liveId}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
+                  presentIds={room.presentViewers.map((p) => ({
+                    id: p.identity,
+                    name: p.name,
+                  }))}
                 />
               )}
             </div>
@@ -1164,6 +1168,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                   liveId={b.liveId}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
+                  presentIds={room.presentViewers.map((p) => ({
+                    id: p.identity,
+                    name: p.name,
+                  }))}
                 />
               )}
             </div>

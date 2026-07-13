@@ -78,6 +78,8 @@ export type ModeratorCandidate = {
   displayName: string | null;
   handle: string | null;
   avatarUrl: string | null;
+  /** Raw profiles.avatar_url (path or URL) — UI can re-resolve if signed URL fails. */
+  avatarPath?: string | null;
 };
 
 /** Escape `%` / `_` for ILIKE and strip commas (PostgREST `.or()` separators). */
@@ -116,20 +118,99 @@ export async function searchModeratorCandidates(
     return [];
   }
 
-  const rows: ModeratorCandidate[] = [];
-  for (const p of data ?? []) {
-    if (exclude.has(p.id)) continue;
-    rows.push({
+  const filtered = (data ?? []).filter((p) => !exclude.has(p.id)).slice(0, limit);
+  return hydrateCandidates(filtered);
+}
+
+async function hydrateCandidates(
+  rows: Array<{
+    id: string;
+    display_name: string | null;
+    handle: string | null;
+    avatar_url: string | null;
+  }>,
+): Promise<ModeratorCandidate[]> {
+  return Promise.all(
+    rows.map(async (p) => ({
       id: p.id,
       displayName: p.display_name ?? null,
       handle: p.handle ?? null,
-      avatarUrl: p.avatar_url
-        ? (await resolveAvatarUrl(p.avatar_url)) ?? null
-        : null,
-    });
-    if (rows.length >= limit) break;
+      avatarUrl: p.avatar_url ? await resolveAvatarUrl(p.avatar_url) : null,
+      avatarPath: p.avatar_url,
+    })),
+  );
+}
+
+/** Load profiles by ids (presence / follow quick-picks). */
+export async function fetchModeratorCandidatesByIds(
+  ids: string[],
+  opts?: { excludeIds?: Iterable<string>; limit?: number },
+): Promise<ModeratorCandidate[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const exclude = new Set(opts?.excludeIds ?? []);
+  const limit = opts?.limit ?? 20;
+  const wanted = unique.filter((id) => !exclude.has(id)).slice(0, limit);
+  if (wanted.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, handle, avatar_url")
+    .in("id", wanted);
+  if (error) {
+    console.error("[fetchModeratorCandidatesByIds]", error);
+    return [];
   }
-  return rows;
+  // Preserve input order when possible
+  const byId = new Map((data ?? []).map((p) => [p.id, p]));
+  const ordered = wanted.map((id) => byId.get(id)).filter(Boolean) as Array<{
+    id: string;
+    display_name: string | null;
+    handle: string | null;
+    avatar_url: string | null;
+  }>;
+  return hydrateCandidates(ordered);
+}
+
+/**
+ * Follow graph around the host: people who follow them + people they follow.
+ */
+export async function fetchFollowModeratorCandidates(
+  hostId: string,
+  opts?: { excludeIds?: Iterable<string>; limit?: number },
+): Promise<ModeratorCandidate[]> {
+  const exclude = new Set(opts?.excludeIds ?? []);
+  exclude.add(hostId);
+  const limit = opts?.limit ?? 24;
+
+  const [followersRes, followingRes] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("follower_id")
+      .eq("followed_id", hostId)
+      .limit(40),
+    supabase
+      .from("follows")
+      .select("followed_id")
+      .eq("follower_id", hostId)
+      .limit(40),
+  ]);
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const row of followersRes.data ?? []) {
+    const id = row.follower_id as string;
+    if (!id || exclude.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  for (const row of followingRes.data ?? []) {
+    const id = row.followed_id as string;
+    if (!id || exclude.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return fetchModeratorCandidatesByIds(ids, { excludeIds: exclude, limit });
 }
 
 /** Resolve a typed value to a single profile id (handle / display_name / uuid). */

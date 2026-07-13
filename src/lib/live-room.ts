@@ -86,9 +86,18 @@ export type GiftEvt = {
   ts: number;
 };
 
+export type LivePresenceViewer = {
+  /** Presence key / identity — for signed-in users this is their profile UUID. */
+  identity: string;
+  name: string;
+  isHost: boolean;
+};
+
 export type LiveRoomState = {
   ready: boolean;
   viewerCount: number;
+  /** Logged-in viewers currently in the Supabase presence channel (excludes guests + host). */
+  presentViewers: LivePresenceViewer[];
   chat: ChatEvt[];
   heartTick: number;
   products: LiveProductRow[];
@@ -141,6 +150,7 @@ export function useLiveRoom(params: {
   const { liveId, identity, displayName, isHost } = params;
   const [ready, setReady] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
+  const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
   const [chat, setChat] = useState<ChatEvt[]>([]);
   const [heartTick, setHeartTick] = useState(0);
   const [products, setProducts] = useState<LiveProductRow[]>([]);
@@ -373,6 +383,29 @@ export function useLiveRoom(params: {
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
       setViewerCount(Math.max(1, Object.keys(state).length));
+      const people: LivePresenceViewer[] = [];
+      const seen = new Set<string>();
+      for (const [key, metas] of Object.entries(state)) {
+        const list = metas as Array<{
+          identity?: string;
+          name?: string;
+          host?: boolean;
+        }>;
+        const m = list?.[0];
+        const identity = String(m?.identity ?? key);
+        if (!identity || seen.has(identity)) continue;
+        seen.add(identity);
+        const isHost = !!m?.host;
+        // Guests / truncated LiveKit ids can't be promoted — only real profile UUIDs.
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identity);
+        if (isHost || !isUuid) continue;
+        people.push({
+          identity,
+          name: String(m?.name ?? "").trim() || identity.slice(0, 8),
+          isHost,
+        });
+      }
+      setPresentViewers(people);
     });
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -401,6 +434,7 @@ export function useLiveRoom(params: {
     return () => {
       if (retryTimer != null) clearTimeout(retryTimer);
       setReady(false);
+      setPresentViewers([]);
       supabase.removeChannel(ch);
       channelRef.current = null;
     };
@@ -424,6 +458,7 @@ export function useLiveRoom(params: {
     () => ({
       ready,
       viewerCount,
+      presentViewers,
       chat,
       heartTick,
       products,
@@ -488,7 +523,18 @@ export function useLiveRoom(params: {
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid, lastGift,
+      ready,
+      viewerCount,
+      presentViewers,
+      chat,
+      heartTick,
+      products,
+      liveStatus,
+      auctionStart,
+      lastAuctionEnd,
+      lastExtension,
+      lastBid,
+      lastGift,
       identity, displayName,
     ],
   );
