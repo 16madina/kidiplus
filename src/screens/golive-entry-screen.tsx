@@ -303,7 +303,8 @@ export function GoLiveEntryScreen({
         )}
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
-            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 60_000;
+            // The seller can start their live from 15 minutes before the scheduled time.
+            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 15 * 60_000;
             return (
               <motion.li
                 key={row.id}
