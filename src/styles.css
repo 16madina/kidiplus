@@ -216,6 +216,14 @@ html {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Tablets (iPad + landscape phones ≥768px): give every pt-safe surface a
+ * comfortable top breathing room. Mobile phones keep the exact safe area. */
+@media (min-width: 768px) {
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 1.75rem);
+  }
+}
+
 /* Ensure buttons meet 44x44 by default (unless overridden) */
 @utility tap {
   min-width: 44px;
