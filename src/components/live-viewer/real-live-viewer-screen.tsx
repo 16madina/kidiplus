@@ -664,6 +664,11 @@ export function RealLiveViewerScreen() {
   const dragY = useMotionValue(0);
   const handleVideoStatus = useCallback((s: ViewerStatus) => setViewerVideoStatus(s), []);
 
+  // Mini / system PiP: clear vertical pager offset so expand isn't clipped.
+  useEffect(() => {
+    if (chromeHidden) dragY.set(0);
+  }, [chromeHidden, dragY]);
+
   // Prefetch neighbour posters so swipe commit never flashes black.
   useEffect(() => {
     prefetchLivePeek([peekNext, peekPrev]);
