@@ -11,6 +11,7 @@ import {
   fetchAdminReferralReconciliation,
   type AdminReconRow,
 } from "@/lib/referrals-db";
+import { AdminReferralCodeDetailsSheet } from "./admin-referral-code-details-sheet";
 
 type StatusKey = "held" | "credited" | "reversed";
 const STATUS_LABEL: Record<StatusKey, string> = {
@@ -37,6 +38,7 @@ export function AdminReferralReconciliation() {
   const [rows, setRows] = useState<AdminReconRow[] | null>(null);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openRow, setOpenRow] = useState<{ id: string; code: string } | null>(null);
 
   const reload = async () => {
     setLoading(true);
@@ -112,9 +114,21 @@ export function AdminReferralReconciliation() {
         </p>
       ) : (
         <div className="space-y-3">
-          {filtered!.map((r) => <ReconRow key={r.promo_code_id} row={r} />)}
+          {filtered!.map((r) => (
+            <ReconRow
+              key={r.promo_code_id}
+              row={r}
+              onOpen={() => { haptic.light(); setOpenRow({ id: r.promo_code_id, code: r.code }); }}
+            />
+          ))}
         </div>
       )}
+
+      <AdminReferralCodeDetailsSheet
+        promoCodeId={openRow?.id ?? null}
+        code={openRow?.code ?? null}
+        onClose={() => setOpenRow(null)}
+      />
     </div>
   );
 }
@@ -128,7 +142,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ReconRow({ row }: { row: AdminReconRow }) {
+function ReconRow({ row, onOpen }: { row: AdminReconRow; onOpen: () => void }) {
   const wallet =
     row.wallet_available != null && row.wallet_currency
       ? formatMoney(Number(row.wallet_available), normalizeCurrency(row.wallet_currency))
@@ -137,7 +151,11 @@ function ReconRow({ row }: { row: AdminReconRow }) {
   const hasEarnings = row.earning_rows > 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-background p-3">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-2xl border border-border bg-background p-3 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -193,7 +211,7 @@ function ReconRow({ row }: { row: AdminReconRow }) {
           Aucun gain calculé
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
