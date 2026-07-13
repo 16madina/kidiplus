@@ -179,9 +179,14 @@ export function LivePipController() {
           const stillPip = await pipIsActive();
           if (stillPip) return;
           if (getInSystemPip() || pipActuallyStartedRef.current) {
-            clearSystemPipUi();
-            pipActuallyStartedRef.current = false;
+            // Expand first while still flagged as system-PiP so the shell
+            // stays fullscreen — then clear the flag next frame (avoids a
+            // mini/poster flash on iOS restore).
             if (activeRef.current) expandRef.current();
+            pipActuallyStartedRef.current = false;
+            requestAnimationFrame(() => {
+              clearSystemPipUi();
+            });
           }
         })();
       }
@@ -213,7 +218,6 @@ export function LivePipController() {
       // (user dismissed the bubble). A failed start must NOT kill the session.
       const hadRealPip = pipActuallyStartedRef.current;
       pipActuallyStartedRef.current = false;
-      clearSystemPipUi();
       if (!hadRealPip) {
         console.info("[pip] stop ignored — PiP never actually started");
         return;
@@ -229,10 +233,16 @@ export function LivePipController() {
         } catch {
           appActive = false;
         }
-        if (!activeRef.current) return;
+        if (!activeRef.current) {
+          clearSystemPipUi();
+          return;
+        }
         if (appActive) {
+          // Expand while still in system-PiP chrome, then clear next frame.
           expandRef.current();
+          requestAnimationFrame(() => clearSystemPipUi());
         } else {
+          clearSystemPipUi();
           closeRef.current();
         }
       })();

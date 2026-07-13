@@ -356,7 +356,11 @@ final class LivePipSession: NSObject {
             ) { [weak self] _ in
                 guard let self else { return }
                 self.cancelPipRetries()
-                // Returning to the app (icon or PiP tap) — leave system PiP.
+                // Hide the native sample-buffer source BEFORE stopping system
+                // PiP so it doesn't flash as a "splash/screenshot" over the
+                // WebView when returning to the live.
+                self.previewController.view?.isHidden = true
+                self.previewController.view?.alpha = 0
                 if self.isInPip {
                     self.stopPip()
                 }

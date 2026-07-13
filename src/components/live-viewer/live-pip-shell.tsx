@@ -9,8 +9,9 @@ import { haptic } from "@/lib/haptics";
 /**
  * Full-screen ↔ floating mini-player shell.
  *
- * Keep a SINGLE motion node for mini↔full so LiveKit <video> never remounts
- * (remount caused a splash/poster flash on iOS when expanding the mini).
+ * Keep a SINGLE motion node for mini↔full↔system-PiP so LiveKit <video>
+ * never remounts (remount caused a splash/poster flash on iOS when expanding
+ * the mini or returning from system PiP).
  * Drag offsets are reset via motion values when leaving mini — no key swap.
  */
 export function LivePipShell({ children }: { children: ReactNode }) {
@@ -28,34 +29,11 @@ export function LivePipShell({ children }: { children: ReactNode }) {
     y.set(0);
   }, [floatingMini, x, y]);
 
-  if (inSystemPip) {
-    return (
-      <div
-        data-kp-live-pip="system"
-        className="overflow-hidden bg-black"
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          maxWidth: "none",
-          margin: 0,
-          transform: "none",
-          borderRadius: 0,
-          zIndex: 2147483000,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
+  const mode = inSystemPip ? "system" : floatingMini ? "mini" : "full";
 
   return (
     <motion.div
-      data-kp-live-pip={floatingMini ? "mini" : "full"}
+      data-kp-live-pip={mode}
       initial={false}
       drag={floatingMini}
       dragMomentum={false}
@@ -81,7 +59,9 @@ export function LivePipShell({ children }: { children: ReactNode }) {
       className={
         floatingMini
           ? "fixed z-[55] max-w-none overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
-          : "fixed inset-0 z-[60] mx-auto w-full max-w-xl overflow-hidden bg-black"
+          : inSystemPip
+            ? "fixed inset-0 z-[2147483000] max-w-none overflow-hidden bg-black"
+            : "fixed inset-0 z-[60] mx-auto w-full max-w-xl overflow-hidden bg-black"
       }
       style={
         floatingMini
@@ -99,8 +79,16 @@ export function LivePipShell({ children }: { children: ReactNode }) {
           : {
               x: 0,
               y: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              maxWidth: inSystemPip ? "none" : undefined,
               borderRadius: 0,
               transform: "none",
+              margin: 0,
             }
       }
     >
