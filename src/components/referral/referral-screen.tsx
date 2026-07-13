@@ -70,7 +70,7 @@ export function ReferralScreen({ open, onClose }: { open: boolean; onClose: () =
             <Loader2 size={18} className="animate-spin" />
           </div>
         ) : codes.length === 0 ? (
-          <ClaimBlock onClaimed={reload} />
+          <ClaimBlock onClaimed={reload} balance={balance} fallbackCurrency={profile?.currency ?? "EUR"} />
         ) : (
           <>
             {/* Referral wallet card — separate from seller earnings */}
