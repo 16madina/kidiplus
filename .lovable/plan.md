@@ -1,25 +1,27 @@
 ## Problème
 
-Sur la home, la carte « live démo » passe par 3 états contrôlés par `useDemoVideo()` (un HEAD sur la vidéo) :
+Sur la page "Activer le mode vendeur" (`src/screens/live-screen.tsx`), le hero affiche uniquement une zone navy vide au lieu de la scène (vendeuse + baskets + gavel + téléphone).
 
-- probe en cours → `DemoCardSkeleton` (fond gris/noir uni, **pas d'image**)
-- probe OK → `DemoCard` (avec l'image de couverture)
-- probe KO → rien du tout
+Cause : l'image est bien servie (HTTP 200, image/png, 1.7 MB), mais elle est très verticale (portrait ~9:16) avec beaucoup de ciel navy en haut. Le conteneur actuel utilise `aspect-ratio: 3/4` + `object-cover` — sur des viewports larges (tablet/preview 702 px) le conteneur devient très haut (~936 px) et le crop se retrouve entièrement dans la zone haute vide de l'image.
 
-Tant que la probe vidéo n'aboutit pas (lenteur réseau, CORS, 404…), on reste bloqué sur le skeleton noir. C'est ce que tu vois.
+## Correctifs
 
-L'image de couverture n'a rien à voir avec la disponibilité de la vidéo — elle doit s'afficher tout de suite.
+1. **Réencadrer la source** — l'image d'origine a ~30% de vide en haut. Générer une version recadrée sur le sujet, la ré-uploader via `lovable-assets` et remplacer `sellerHero.url`. Ça garantit que quel que soit le viewport, on voit la scène.
 
-## Correctif
+2. **Contraindre la hauteur du hero** dans `live-screen.tsx` :
+   - remplacer `aspectRatio: "3 / 4"` par une hauteur en `vh` avec cap : `height: "min(58vh, 520px)"` (au lieu de laisser l'aspect ratio exploser la hauteur sur écrans larges).
+   - garder `object-cover` avec `objectPosition: "center 45%"` pour centrer le sujet.
 
-Dans `src/components/home/demo-card.tsx` :
+3. **Fallback visuel** — si l'image ne charge pas (`onError`), garder le fond navy plein plutôt qu'un carré vide. Ajouter un léger dégradé radial gold en overlay pour rester dans la charte même sans image.
 
-1. **`DemoCardSkeleton`** : ajouter la même `<img>` de couverture (`demo-live-cover.jpg.asset.json`) en fond que `DemoCard`, avec le même overlay + vignette. Le skeleton garde son disque pulsant à la place du bouton play pour signaler le chargement, mais l'image est visible dès la première frame.
+4. **Vérification** — après implémentation, capturer un screenshot de la preview en mobile (390 px) ET en tablet (702 px) via Playwright pour confirmer que la scène est bien visible dans les deux cas.
 
-2. **Rendu dans `home-screen.tsx`** : quand la probe échoue (`demoAvailable === false`), afficher quand même la carte avec l'image — mais désactiver l'ouverture du player (ou afficher un toast « vidéo indisponible » au clic). L'image reste la vitrine du live démo même si la vidéo n'est pas jointe.
+## Fichiers touchés
 
-3. Vérifier que l'URL `demoLivePosterAsset.url` renvoie bien 200 (au cas où l'asset lui-même serait cassé) via un rapide test navigateur après le fix.
+- `src/assets/seller-hero.png.asset.json` (remplacer par version recadrée)
+- `src/screens/live-screen.tsx` (bloc hero du `if (!profile.is_seller)`)
 
-## Résultat attendu
+## Ce qui ne change pas
 
-Dès que la home s'ouvre : ton image de couverture est visible sur la carte, avec les badges DÉMO / LIVE / compteur. Plus jamais de fond noir vide.
+- La structure de la page (titre, 3 features, bouton gold, dialogue de confirmation) reste identique.
+- Le flux `becomeSeller` inchangé.
