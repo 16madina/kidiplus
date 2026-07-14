@@ -14,13 +14,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
-import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
+// Bundled poster (Vite) — reliable fallback without Lovable CDN asset pipeline.
+import demoCoverUrl from "@/assets/demo-live-poster.jpg";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
-export const DEMO_COVER_FALLBACK_URL = demoCoverAsset.url;
+export const DEMO_COVER_FALLBACK_URL = demoCoverUrl;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
-export const DEMO_COVER_CONFIG_KEY = "demo_cover_url";
+// v2: ignore stale `demo_cover_url` overrides so the new bundled poster shows
+// until an admin uploads a fresh cover via the dashboard.
+export const DEMO_COVER_CONFIG_KEY = "demo_cover_url_v2";
 export const DEMO_VERSION_CONFIG_KEY = "demo_version";
 
 export const DEMO_VIDEO_BUCKET = "demo-videos";
