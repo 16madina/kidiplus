@@ -569,6 +569,7 @@ function BroadcastFlow() {
         </div>
       )}
     </div>
+    </FilterProvider>
   );
 }
 
