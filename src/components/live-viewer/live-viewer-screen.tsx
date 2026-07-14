@@ -854,9 +854,122 @@ function MockLiveViewerScreen() {
         </div>
       )}
 
+      {/* Winner reveal — Whatnot-style flip; same component as real lives. */}
+      <WinnerReveal
+        open={!!winnerReveal}
+        winnerName={winnerReveal?.name ?? null}
+        isMe={!!winnerReveal?.isMe}
+        productName={winnerReveal?.productName ?? null}
+        revealKey={winnerReveal?.key ?? null}
+        onDone={() => setWinnerReveal(null)}
+      />
+
+      {/* Simulated viewers list — Apple reviewers tap the eye pill. */}
+      <SimulatedViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        viewerCount={displayViewers}
+        seed={active.id}
+      />
+
     </LivePipShell>
   );
 }
+
+/**
+ * SimulatedViewersSheet — populated with fake but realistic French usernames.
+ * Deterministic per live (`seed`) so the same room lists the same people while
+ * open. No network calls — sample lives must feel populated for Apple review.
+ */
+function SimulatedViewersSheet({
+  open,
+  onClose,
+  viewerCount,
+  seed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  viewerCount: number;
+  seed: string;
+}) {
+  const { t } = useTranslation();
+  const rows = useMemo(() => {
+    const NAMES = [
+      "Julie P.", "Kévin", "Marion", "Sofiane", "Léa", "Amine",
+      "Clémence", "Thomas B.", "Élodie", "Yanis", "Camille", "Nadir",
+      "Aurélie", "Mehdi K.", "Manon", "Hugo J.", "Sarah M.", "Farah",
+      "Romain", "Chloé", "Inès", "Adam", "Victoire", "Noa",
+      "Louise", "Raphaël", "Sabrina", "Younes", "Margaux", "Bilel",
+    ];
+    const COLORS = [
+      "oklch(0.75 0.16 30)", "oklch(0.78 0.14 200)", "oklch(0.8 0.16 140)",
+      "oklch(0.78 0.16 60)", "oklch(0.75 0.18 320)", "oklch(0.8 0.14 260)",
+      "oklch(0.78 0.16 100)", "oklch(0.75 0.18 10)",
+    ];
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    const shown = Math.min(NAMES.length, Math.max(6, Math.min(viewerCount, 24)));
+    return Array.from({ length: shown }, (_, i) => {
+      const idx = Math.abs((h + i * 97) | 0) % NAMES.length;
+      const name = NAMES[idx];
+      return {
+        id: `sim-${seed}-${i}`,
+        name,
+        color: COLORS[Math.abs((h + i * 13) | 0) % COLORS.length],
+      };
+    });
+  }, [seed, viewerCount]);
+
+  const guestCount = Math.max(0, viewerCount - rows.length);
+
+  return (
+    <BottomSheet open={open} onClose={onClose} heightPercent={62}>
+      <div className="flex h-full min-h-0 flex-col px-4">
+        <div className="flex items-center gap-2 pb-3 pt-1">
+          <Users size={18} />
+          <h2 className="text-[18px] font-bold">
+            {t("live.viewersSheetTitle", "Spectateurs")}
+          </h2>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold tabular-nums text-muted-foreground">
+            {viewerCount}
+          </span>
+        </div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <ul className="flex flex-col gap-1">
+            {rows.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-xl px-2 py-2.5"
+              >
+                <div
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[14px] font-bold text-white"
+                  style={{ backgroundColor: r.color }}
+                >
+                  {r.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-semibold">{r.name}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {guestCount > 0 && (
+            <p className="mt-4 px-1 text-[12px] text-muted-foreground">
+              {t("live.viewersGuests", { count: guestCount, defaultValue: "+ {{count}} invités" })}
+            </p>
+          )}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
 
 /**
  * PeekSlide — the adjacent live's poster, glued to the current slide's drag.
