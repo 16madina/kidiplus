@@ -64,14 +64,18 @@ export function LiveCard({
         <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
           <span
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-            style={{ backgroundColor: "var(--live)" }}
+            style={{
+              backgroundColor: stream.fictitious ? "oklch(0.45 0.08 250)" : "var(--live)",
+            }}
           >
-            <motion.span
-              className="h-1.5 w-1.5 rounded-full bg-white"
-              animate={{ opacity: [1, 0.35, 1], scale: [1, 0.85, 1] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-            />
-            Live
+            {!stream.fictitious && (
+              <motion.span
+                className="h-1.5 w-1.5 rounded-full bg-white"
+                animate={{ opacity: [1, 0.35, 1], scale: [1, 0.85, 1] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
+            {stream.fictitious ? "Démo" : "Live"}
           </span>
           <span
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"

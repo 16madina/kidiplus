@@ -8,6 +8,7 @@ import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tile
 import { FilterPills } from "@/components/filter-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
 import type { LiveStream } from "@/lib/live-mock";
+import { INCLUDE_FICTITIOUS_HOME_LIVES, makeStreams } from "@/lib/live-mock";
 import {
   applyHomeCategory,
   applyHomeFilter,
@@ -20,6 +21,7 @@ import { dismissKeyboard, nativeShare } from "@/lib/native";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
+import { useBlockedIds } from "@/lib/moderation-db";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -42,6 +44,7 @@ export function HomeScreen() {
   const [demoOpen, setDemoOpen] = useState(false);
   const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
+  const blockedIds = useBlockedIds();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -49,9 +52,8 @@ export function HomeScreen() {
   const pullRotate = useTransform(pullY, [0, PULL_MAX], [0, 360]);
   const pullOpacity = useTransform(pullY, [0, 40, PULL_TRIGGER], [0, 0.5, 1]);
 
-  // Real lives feed + realtime subscription. No mock filler on home per
-  // Apple review guidance (no AI/demo lives on the landing screen — only
-  // the pinned demo video remains).
+  // Real lives + fictitious review streams so every category has content
+  // for App Store review while the marketplace inventory is still empty.
   const refreshRealLives = useCallback(async () => {
     const rows = await fetchActiveLives(60);
     setRealLives(rows);
@@ -87,12 +89,16 @@ export function HomeScreen() {
   const rankForYou = usePersonalizedRanking();
 
   const filtered = useMemo(() => {
-    // Only real DB lives are shown. Category filter still applies so users
-    // can narrow the feed; personalized ranking runs on "Pour toi".
-    const scoped = applyHomeCategory(realLives, category);
+    const notBlocked = (s: LiveStream) => !s.sellerId || !blockedIds.has(s.sellerId);
+    const fictive = INCLUDE_FICTITIOUS_HOME_LIVES
+      ? makeStreams().filter(notBlocked)
+      : [];
+    // Real lives first, then fictitious fillers for App Review completeness.
+    const merged = [...realLives.filter(notBlocked), ...fictive];
+    const scoped = applyHomeCategory(merged, category);
     const base = category === "Pour toi" ? rankForYou(scoped) : scoped;
     return applyHomeFilter(base, filter);
-  }, [realLives, category, filter, rankForYou]);
+  }, [realLives, category, filter, rankForYou, blockedIds]);
 
 
   const doRefresh = useCallback(() => {

@@ -51,13 +51,15 @@ export const HOME_CATEGORY_META: Record<HomeCategory, Meta> = {
     gradient: "linear-gradient(135deg, #FFE1EC 0%, #FFD4E0 100%)",
   },
   "Sacs & accessoires": {
-    match: ["Fashion"],
+    // Align with broadcast key `Bags` (not Fashion).
+    match: ["Bags"],
     image:
       "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80&auto=format&fit=crop",
     gradient: "linear-gradient(135deg, #E9E2D5 0%, #D9CFBE 100%)",
   },
   "Parfums": {
-    match: ["Beauty"],
+    // Align with broadcast key `Perfumes` (not Beauty).
+    match: ["Perfumes"],
     image:
       "https://images.unsplash.com/photo-1541643600914-78b084683601?w=300&q=80&auto=format&fit=crop",
     gradient: "linear-gradient(135deg, #F5E6D3 0%, #EED2B6 100%)",

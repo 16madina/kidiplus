@@ -21,7 +21,7 @@ import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { formatShortDateTime } from "@/i18n/format";
 import { ReportSheet } from "@/components/moderation/report-sheet";
-import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
+import { blockUserAndNotify } from "@/lib/moderation-db";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
@@ -232,10 +232,13 @@ function SellerProfileInner({
       toast.error(t("block.failed"));
       return;
     }
-    const r = await blockUser(profile.id);
+    const r = await blockUserAndNotify(profile.id, {
+      handle: profile.handle ?? undefined,
+      displayName: profile.display_name ?? profile.handle ?? undefined,
+      avatarUrl: profile.avatar_url,
+    });
     setBlocking(false); setActionsOpen(false);
     if (r.ok) {
-      await refreshBlockedIds();
       haptic.success();
       toast.success(t("block.blocked"));
       onBack();

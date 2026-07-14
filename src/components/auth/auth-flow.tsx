@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
@@ -9,6 +10,7 @@ import { SignInScreen } from "./sign-in-screen";
 import { SignUpScreen } from "./sign-up-screen";
 import { ForgotPasswordScreen } from "./forgot-password-screen";
 import { useAuth } from "@/lib/auth-context";
+import { LegalScreen } from "@/components/legal/legal-screen";
 import badge from "@/assets/kidi-badge-v2.png.asset.json";
 import wordmark from "@/assets/kidi-wordmark.png.asset.json";
 import bg1 from "@/assets/welcome-bgs/auth-bg-1.png.asset.json";
@@ -95,6 +97,16 @@ function Welcome({
   const { t } = useTranslation();
   const GOLD = "#F5C34A";
   const bg = useMemo(() => WELCOME_BGS[Math.floor(Math.random() * WELCOME_BGS.length)], []);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
+
+  const requireTerms = (fn: () => void) => {
+    if (!acceptTerms) {
+      toast.error(t("consent.required"));
+      return;
+    }
+    fn();
+  };
 
   return (
 
@@ -207,25 +219,57 @@ function Welcome({
           transition={{ duration: 0.4, ease: EASE_IOS, delay: 0.25 }}
           className="relative z-20 w-full flex flex-col gap-2"
         >
+          <label className="mb-1 flex items-start gap-2 text-[12px] leading-snug text-white/90">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#F5C34A]"
+            />
+            <span>
+              <Trans
+                i18nKey="consent.checkbox"
+                components={{
+                  t: (
+                    <button
+                      type="button"
+                      onClick={() => setOpenLegal("terms")}
+                      className="font-bold underline underline-offset-2"
+                    />
+                  ),
+                  p: (
+                    <button
+                      type="button"
+                      onClick={() => setOpenLegal("privacy")}
+                      className="font-bold underline underline-offset-2"
+                    />
+                  ),
+                }}
+              />
+            </span>
+          </label>
+
           <Press
-            onClick={onSignUp}
+            onClick={() => requireTerms(onSignUp)}
             className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-bold"
             style={{
               background: `linear-gradient(180deg, #F7CE5A 0%, ${GOLD} 55%, #D9A73A 100%)`,
               color: "#151022",
               boxShadow:
                 "0 12px 28px rgba(245,195,74,0.35), inset 0 1px 0 rgba(255,255,255,0.45)",
+              opacity: acceptTerms ? 1 : 0.55,
             }}
           >
             {t("auth.welcome.signUp")}
           </Press>
 
           <Press
-            onClick={onSignIn}
+            onClick={() => requireTerms(onSignIn)}
             className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-semibold text-white"
             style={{
               backgroundColor: "transparent",
               border: "1.5px solid rgba(255,255,255,0.35)",
+              opacity: acceptTerms ? 1 : 0.55,
             }}
           >
             {t("auth.welcome.signIn")}
@@ -237,11 +281,12 @@ function Welcome({
                 {t("common.or")}
               </div>
               <Press
-                onClick={onGuest}
+                onClick={() => requireTerms(onGuest)}
                 className="!min-h-[50px] h-[50px] w-full rounded-full text-[15px] font-semibold text-white/90"
                 style={{
                   backgroundColor: "transparent",
                   border: "1.5px solid rgba(255,255,255,0.35)",
+                  opacity: acceptTerms ? 1 : 0.55,
                 }}
               >
                 {t("auth.welcome.continueAsGuest")}
@@ -252,6 +297,8 @@ function Welcome({
 
         <div className="flex-1" style={{ maxHeight: "3vh", minHeight: 0 }} />
       </div>
+      <LegalScreen open={openLegal === "terms"} onClose={() => setOpenLegal(null)} kind="terms" />
+      <LegalScreen open={openLegal === "privacy"} onClose={() => setOpenLegal(null)} kind="privacy" />
     </motion.div>
   );
 }

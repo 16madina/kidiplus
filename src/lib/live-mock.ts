@@ -5,7 +5,13 @@ export type Category =
   | "Fashion"
   | "Cards"
   | "Electronics"
-  | "Jewelry";
+  | "Jewelry"
+  | "Bags"
+  | "Perfumes"
+  | "Watches"
+  | "Games"
+  | "Home"
+  | "Bundles";
 
 export const CATEGORIES: Category[] = [
   "For You",
@@ -15,6 +21,8 @@ export const CATEGORIES: Category[] = [
   "Cards",
   "Electronics",
   "Jewelry",
+  "Bags",
+  "Perfumes",
 ];
 
 export type LiveStream = {
@@ -29,12 +37,31 @@ export type LiveStream = {
   roomName?: string;
   /** DB id (public.lives.id) when this stream is real. */
   liveId?: string;
-  /** Seller user id (profiles.id) — present on real DB-backed streams. */
+  /** Seller user id (profiles.id) — or `fictitious:…` for review/demo streams. */
   sellerId?: string;
   /** Live currency (defaults to EUR when unspecified). */
   currency?: "XOF" | "EUR" | "CAD";
+  /** Client-only review/demo stream (no LiveKit / no DB row). */
+  fictitious?: boolean;
 };
 
+/** Show seeded review lives on Home until real inventory is enough. */
+export const INCLUDE_FICTITIOUS_HOME_LIVES = true;
+
+export function isFictitiousSellerId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith("fictitious:");
+}
+
+export function fictitiousSellerId(seller: string): string {
+  const slug = seller
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return `fictitious:${slug || "seller"}`;
+}
 
 // Unsplash source images per category (stable IDs, hot-linkable).
 const IMG = {
@@ -77,6 +104,30 @@ const IMG = {
     "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=70",
     "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=70",
   ],
+  Bags: [
+    "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=70",
+    "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=70",
+    "https://images.unsplash.com/photo-1590874103328-eac38a67437a?w=600&q=70",
+    "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=600&q=70",
+  ],
+  Perfumes: [
+    "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=70",
+    "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=600&q=70",
+    "https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=600&q=70",
+    "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600&q=70",
+  ],
+  Watches: [
+    "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&q=70",
+  ],
+  Games: [
+    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=600&q=70",
+  ],
+  Home: [
+    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=70",
+  ],
+  Bundles: [
+    "https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=600&q=70",
+  ],
 } as const;
 
 const AVATAR = (seed: string) =>
@@ -90,54 +141,60 @@ type Seed = {
 
 const SEEDS: Seed[] = [
   { seller: "Aïcha Beauty", title: "Nouveautés maquillage — prix cassés ce soir 💄", category: "Beauty" },
-  { seller: "Kevin Sneaks", title: "Drop Jordan 4 + Yeezy taille 42-45", category: "Sneakers" },
-  { seller: "Marie Vintage", title: "Friperie de luxe : Chanel, Dior, YSL", category: "Fashion" },
-  { seller: "Studio Dee", title: "Pokémon vintage : booster japonais 1999", category: "Cards" },
-  { seller: "Fatou Bijoux", title: "Or 18 carats — enchères à partir de 10€", category: "Jewelry" },
-  { seller: "Tech Amir", title: "iPhone reconditionnés + AirPods garantis", category: "Electronics" },
   { seller: "Léa Glow", title: "Routine peau grasse — tout à -50%", category: "Beauty" },
-  { seller: "Sneak Léo", title: "Nike Dunk Low : je vide le stock", category: "Sneakers" },
-  { seller: "Chloé Chic", title: "Robes d'été — pièces uniques", category: "Fashion" },
-  { seller: "Yassine Cards", title: "One Piece TCG — cartes rares OP07", category: "Cards" },
-  { seller: "Nina Diamants", title: "Bagues solitaires — direct atelier", category: "Jewelry" },
-  { seller: "Momo Gadgets", title: "Manettes PS5 & accessoires gaming", category: "Electronics" },
   { seller: "Sarah Skin", title: "Soins coréens : masques & sérums", category: "Beauty" },
-  { seller: "Drip Malik", title: "New Balance 550 & 990 en direct", category: "Sneakers" },
-  { seller: "Camille Paris", title: "Streetwear premium — Stüssy, Palace", category: "Fashion" },
-  { seller: "Baptiste TCG", title: "Magic The Gathering — sealed boxes", category: "Cards" },
-  { seller: "Inès Or", title: "Chaînes cubaines argent 925 massif", category: "Jewelry" },
-  { seller: "Karim Console", title: "Rétro gaming : Game Boy & cartouches", category: "Electronics" },
   { seller: "Élodie Rouge", title: "Rouges à lèvres MAC & Charlotte Tilbury", category: "Beauty" },
-  { seller: "Théo Kicks", title: "ASICS Gel Kayano — toutes tailles", category: "Sneakers" },
-  { seller: "Sofia Mode", title: "Sacs vintage Louis Vuitton authentifiés", category: "Fashion" },
-  { seller: "Lucas Poké", title: "Cartes Pokémon FR — session enchères", category: "Cards" },
+  { seller: "Kevin Sneaks", title: "Drop Jordan 4 + Yeezy taille 42-45", category: "Sneakers" },
+  { seller: "Sneak Léo", title: "Nike Dunk Low : je vide le stock", category: "Sneakers" },
+  { seller: "Drip Malik", title: "New Balance 550 & 990 en direct", category: "Sneakers" },
+  { seller: "Marie Vintage", title: "Friperie de luxe : Chanel, Dior, YSL", category: "Fashion" },
+  { seller: "Chloé Chic", title: "Robes d'été — pièces uniques", category: "Fashion" },
+  { seller: "Camille Paris", title: "Streetwear premium — Stüssy, Palace", category: "Fashion" },
+  { seller: "Sofia Mode", title: "Looks seconde main authentifiés", category: "Fashion" },
+  { seller: "Studio Dee", title: "Pokémon vintage : booster japonais 1999", category: "Cards" },
+  { seller: "Yassine Cards", title: "One Piece TCG — cartes rares OP07", category: "Cards" },
+  { seller: "Fatou Bijoux", title: "Or 18 carats — enchères à partir de 10€", category: "Jewelry" },
+  { seller: "Nina Diamants", title: "Bagues solitaires — direct atelier", category: "Jewelry" },
+  { seller: "Inès Or", title: "Chaînes cubaines argent 925 massif", category: "Jewelry" },
   { seller: "Amélie Perles", title: "Colliers perles Tahiti — direct grossiste", category: "Jewelry" },
+  { seller: "Tech Amir", title: "iPhone reconditionnés + AirPods garantis", category: "Electronics" },
+  { seller: "Momo Gadgets", title: "Manettes PS5 & accessoires gaming", category: "Electronics" },
+  { seller: "Karim Console", title: "Rétro gaming : Game Boy & cartouches", category: "Electronics" },
   { seller: "Rayan Audio", title: "Casques Bose & Sony — neufs scellés", category: "Electronics" },
+  { seller: "Lina Bags", title: "Sacs Louis Vuitton & Hermès authentifiés", category: "Bags" },
+  { seller: "Nora Accessoires", title: "Ceintures & pochettes cuir — live shopping", category: "Bags" },
+  { seller: "Maya Sac", title: "Sacs à main tendance — lots du jour", category: "Bags" },
+  { seller: "Parfum Zoé", title: "Niche & designer — décants et flacons", category: "Perfumes" },
+  { seller: "Oud Maison", title: "Parfums orientaux — découvertes du soir", category: "Perfumes" },
+  { seller: "Scent Lab", title: "Sélection été : frais & boisés", category: "Perfumes" },
 ];
 
 function pick<T>(arr: readonly T[], i: number): T {
   return arr[i % arr.length];
 }
 
-// Deterministic viewer count between 15 and 2400 based on seed index
 function viewers(i: number): number {
   const noise = (i * 9301 + 49297) % 233280;
   return 15 + (noise % 2386);
 }
 
+/** Seeded fictitious lives for App Review / empty inventory. */
 export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
   return Array.from({ length: count }, (_, k) => {
     const i = (offset + k) % SEEDS.length;
     const s = SEEDS[i];
-    const gallery = IMG[s.category];
+    const gallery = IMG[s.category] ?? IMG.Fashion;
+    const sellerId = fictitiousSellerId(s.seller);
     return {
-      id: `stream-${offset + k}`,
+      id: `fictitious-stream-${offset + k}`,
       seller: s.seller,
+      sellerId,
       avatar: AVATAR(s.seller),
       title: s.title,
       thumbnail: pick(gallery, offset + k),
       viewers: viewers(offset + k + 1),
       category: s.category,
+      fictitious: true,
     };
   });
 }

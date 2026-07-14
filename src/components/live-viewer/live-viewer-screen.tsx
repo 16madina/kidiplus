@@ -1,6 +1,6 @@
-import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
+import { motion, useMotionValue, animate, AnimatePresence, type MotionValue } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
+import { Send, Heart, Share2, X, Eye, Gift, MoreVertical, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
@@ -39,8 +39,9 @@ import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/wallet-context";
 import { normalizeCurrency } from "@/lib/money";
 import type { GiftEvt } from "@/lib/live-room";
-
-
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
 
 const AUCTION_SECONDS = 45;
 
@@ -52,11 +53,17 @@ export function LiveViewerScreen() {
 }
 
 function MockLiveViewerScreen() {
+  const { t, i18n } = useTranslation();
   const { active, close, minimize, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
   const { chromeHidden } = useLivePip();
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
+  const { requireAuth } = useAuthPrompt();
+  const blockedIds = useBlockedIds();
+  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Force light status-bar content while the viewer is mounted (dark background).
   useEffect(() => {
@@ -76,7 +83,11 @@ function MockLiveViewerScreen() {
   useEffect(() => {
     if (!active) return;
     setMessages([
-      systemMessage(`Bienvenue dans le live de ${active.seller} 👋`),
+      systemMessage(
+        active.fictitious
+          ? `Démo interactive — tu peux enchérir, chatter et tester Signaler / Bloquer. Aucun paiement réel.`
+          : `Bienvenue dans le live de ${active.seller} 👋`,
+      ),
     ]);
     if (!appActive) return;
     let cancelled = false;
@@ -165,6 +176,10 @@ function MockLiveViewerScreen() {
         ),
       );
       setLastBidder(bidder);
+      setMessages((prev) => [
+        ...prev,
+        systemMessage(`@${bidder} a enchéri 🔨`),
+      ]);
       // extend if under 5s (auction extension for excitement)
       setSecondsLeft((s) => (s < 6 ? s + 3 : s));
       timer = window.setTimeout(tick, 3000 + Math.random() * 3000);
@@ -238,14 +253,19 @@ function MockLiveViewerScreen() {
   const doBid = () => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
     haptic.medium();
+    const nextPrice = currentProduct.price + 1;
     setProducts((prev) =>
       prev.map((p) =>
-        p.id === currentProduct.id ? { ...p, price: p.price + 1 } : p,
+        p.id === currentProduct.id ? { ...p, price: nextPrice } : p,
       ),
     );
 
     setLastBidder("toi");
     setSecondsLeft((s) => (s < 6 ? s + 3 : s));
+    setMessages((prev) => [
+      ...prev,
+      systemMessage(`@toi a enchéri à ${formatEuro(nextPrice)} 🔨`),
+    ]);
   };
 
   // Sheets
@@ -254,9 +274,6 @@ function MockLiveViewerScreen() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
-  const { t, i18n } = useTranslation();
-  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
-
 
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
@@ -344,8 +361,30 @@ function MockLiveViewerScreen() {
   }, [peekNext, peekPrev]);
 
   if (!active) return null;
+  if (active.sellerId && blockedIds.has(active.sellerId)) {
+    toast.info(t("block.autoClosedLive", "Ce live est masqué car tu as bloqué l'hôte."));
+    close();
+    return null;
+  }
 
   const followerCount = 1000 + ((active.viewers * 7) % 24000);
+
+  const doBlockSeller = async () => {
+    if (!active.sellerId) return;
+    const r = await blockUserAndNotify(active.sellerId, {
+      handle: active.seller,
+      displayName: active.seller,
+      avatarUrl: active.avatar,
+      liveId: active.id,
+    });
+    if (r.ok) {
+      toast.success(t("block.blocked"));
+      close();
+    } else {
+      toast.error(t("block.failed"));
+    }
+    setMoreOpen(false);
+  };
 
   return (
     <LivePipShell>
@@ -506,6 +545,7 @@ function MockLiveViewerScreen() {
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
                 >
                   {active.seller}
+                  {active.fictitious ? " · Démo" : ""}
                 </p>
                 <p
                   className="text-[11px] text-white/80"
@@ -563,7 +603,30 @@ function MockLiveViewerScreen() {
               {displayViewers}
             </div>
             <Press
-              aria-label="Partager"
+              aria-label={t("live.share")}
+              onClick={async () => {
+                haptic.light();
+                const shareUrl = "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", {
+                  defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴",
+                  name: active.seller,
+                });
+                try {
+                  const nav =
+                    typeof navigator !== "undefined"
+                      ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> })
+                      : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav?.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch {
+                  /* cancelled */
+                }
+              }}
               className="h-9 w-9 rounded-full text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
@@ -572,6 +635,18 @@ function MockLiveViewerScreen() {
               }}
             >
               <Share2 size={16} />
+            </Press>
+            <Press
+              aria-label="More"
+              onClick={() => setMoreOpen(true)}
+              className="h-9 w-9 rounded-full text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.45)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <MoreVertical size={16} />
             </Press>
             <Press
               aria-label={t("live.minimize", "Réduire")}
@@ -607,6 +682,8 @@ function MockLiveViewerScreen() {
             product={currentProduct}
             secondsLeft={secondsLeft}
             lastBidder={lastBidder}
+            auctionActive
+            isHighestBidder={lastBidder === "toi"}
             onBid={doBid}
             onOpenProducts={() => setShowProducts(true)}
             onBuy={() => setBuyProduct(currentProduct)}
@@ -725,6 +802,66 @@ function MockLiveViewerScreen() {
       )}
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+
+      <AnimatePresence>
+        {moreOpen && (
+          <motion.div
+            className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMoreOpen(false)}
+          >
+            <motion.div
+              className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+              <Press
+                onClick={() => {
+                  setMoreOpen(false);
+                  requireAuth(() => {
+                    if (
+                      confirm(
+                        t("report.confirm", {
+                          defaultValue:
+                            "Signaler ce live ? Notre équipe examinera ton signalement.",
+                        }),
+                      )
+                    ) {
+                      setReportOpen(true);
+                    }
+                  });
+                }}
+                className="mb-2 flex !min-h-12 w-full items-center justify-start gap-3 rounded-2xl border border-border px-4 text-[15px] font-semibold"
+              >
+                <Flag size={18} /> {t("report.action", "Signaler")}
+              </Press>
+              <Press
+                onClick={() => {
+                  requireAuth(() => {
+                    if (confirm(t("block.confirm"))) void doBlockSeller();
+                  });
+                }}
+                className="flex !min-h-12 w-full items-center justify-start gap-3 rounded-2xl border border-border px-4 text-[15px] font-semibold text-red-600"
+              >
+                <UserX size={18} /> {t("block.action")}
+              </Press>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="live"
+        targetId={active.id}
+      />
 
     </LivePipShell>
   );

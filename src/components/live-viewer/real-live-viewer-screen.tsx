@@ -41,7 +41,7 @@ import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
-import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
+import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsModerator } from "@/lib/moderators-db";
@@ -699,8 +699,13 @@ export function RealLiveViewerScreen() {
 
   const doBlockSeller = async () => {
     if (!active?.sellerId) return;
-    const r = await blockUser(active.sellerId);
-    if (r.ok) { await refreshBlockedIds(); toast.success(t("block.blocked")); close(); }
+    const r = await blockUserAndNotify(active.sellerId, {
+      handle: active.seller,
+      displayName: active.seller,
+      avatarUrl: active.avatar,
+      liveId: active.liveId ?? active.id,
+    });
+    if (r.ok) { toast.success(t("block.blocked")); close(); }
     else toast.error(t("block.failed"));
     setMoreOpen(false);
   };
