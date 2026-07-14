@@ -335,7 +335,10 @@ function AppShellInner() {
 
       <Toaster
         position="top-center"
-        offset={{ top: "calc(1rem + env(safe-area-inset-top) + 48px)" }}
+        // Sonner uses `mobileOffset` below 600px (phones) and ignores `offset`.
+        // Keep toasts below the home header (safe-area + ~56px bar).
+        offset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
+        mobileOffset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
         duration={3000}
         visibleToasts={3}
         toastOptions={{
