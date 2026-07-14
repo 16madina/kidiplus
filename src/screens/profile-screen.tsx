@@ -47,6 +47,7 @@ import { useWallet } from "@/lib/wallet-context";
 import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
+import { OrdersScreen } from "@/screens/orders-screen";
 import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
