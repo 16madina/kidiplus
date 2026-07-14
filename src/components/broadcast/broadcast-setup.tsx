@@ -303,6 +303,23 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           fallbackImage={b.cover}
           onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
         />
+        {/* Filters button — bottom-right of the preview */}
+        <Press
+          onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
+          aria-label="Filtres"
+          className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
+          style={{
+            bottom: 12,
+            backgroundColor: "rgba(10,12,20,0.55)",
+            border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+            color: activeLens.lensId !== "none" ? GOLD : "white",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Sparkles size={18} />
+        </Press>
+        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
       </div>
 
       {/* Top bar — X · KIDI+ · Refresh */}
