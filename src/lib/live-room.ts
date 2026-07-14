@@ -174,6 +174,24 @@ export function useLiveRoom(params: {
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // Drop ephemeral room state whenever the live changes — otherwise a prior
+  // auction:end / bid / countdown can leak into the next live (or a re-open)
+  // and replay confetti / winner reveal for late joiners.
+  useEffect(() => {
+    setReady(false);
+    setViewerCount(1);
+    setPresentViewers([]);
+    setChat([]);
+    setHeartTick(0);
+    setProducts([]);
+    setLiveStatus(null);
+    setAuctionStart(null);
+    setLastAuctionEnd(null);
+    setLastExtension(null);
+    setLastBid(null);
+    setLastGift(null);
+  }, [liveId]);
+
   // Load initial products + rehydrate an already-running auction so late
   // joiners see the same countdown as everyone else. `auction_deadline_at`
   // is stored on the live_products row by the start_auction RPC.

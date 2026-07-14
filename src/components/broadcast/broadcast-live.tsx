@@ -298,6 +298,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     productName: string | null;
   } | null>(null);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  const joinedAtRef = useRef(Date.now());
+  const productsRef = useRef(room.products);
+  productsRef.current = room.products;
+
+  useEffect(() => {
+    joinedAtRef.current = Date.now();
+    seenEndIdsRef.current = new Set();
+    setWinnerReveal(null);
+  }, [b.liveId]);
+
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
@@ -305,13 +315,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Same buyer can win the same item N times in one live.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
     if (seenEndIdsRef.current.has(endId)) return;
+    const ts = evt.ts ?? 0;
+    if (ts > 0 && ts < joinedAtRef.current - 2500) return;
     seenEndIdsRef.current.add(endId);
     // Bound memory across a long live.
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
       if (first) seenEndIdsRef.current.delete(first);
     }
-    const prod = room.products.find((p) => p.id === evt.productId);
+    const prod = productsRef.current.find((p) => p.id === evt.productId);
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
@@ -348,7 +360,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room, fmt, resolveWinnerAvatar]);
+  }, [room.lastAuctionEnd, t, room, fmt, resolveWinnerAvatar]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
