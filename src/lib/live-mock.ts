@@ -67,6 +67,8 @@ export function fictitiousSellerId(seller: string): string {
 }
 
 // Unsplash source images per category (stable IDs, hot-linkable).
+// Each gallery is intentionally diverse: different framing, palette, subject,
+// lighting — so cards in the same category never look interchangeable.
 const IMG = {
   Beauty: [
     "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=70",
@@ -74,6 +76,11 @@ const IMG = {
     "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600&q=70",
     "https://images.unsplash.com/photo-1631730359585-38a4935cbec4?w=600&q=70",
     "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&q=70",
+    "https://images.unsplash.com/photo-1503236823255-94609f598e71?w=600&q=70",
+    "https://images.unsplash.com/photo-1560869713-7d0954430e29?w=600&q=70",
+    "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=600&q=70",
+    "https://images.unsplash.com/photo-1583241800698-9c2e8c1362b9?w=600&q=70",
+    "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=70",
   ],
   Sneakers: [
     "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70",
@@ -81,6 +88,11 @@ const IMG = {
     "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&q=70",
     "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&q=70",
     "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&q=70",
+    "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=600&q=70",
+    "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=600&q=70",
+    "https://images.unsplash.com/photo-1520639888713-7851133b1ed0?w=600&q=70",
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&q=70",
+    "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=600&q=70",
   ],
   Fashion: [
     "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=70",
@@ -88,6 +100,11 @@ const IMG = {
     "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=70",
     "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&q=70",
     "https://images.unsplash.com/photo-1485518882345-15568b007407?w=600&q=70",
+    "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?w=600&q=70",
+    "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=600&q=70",
+    "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&q=70",
+    "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&q=70",
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=70",
   ],
   Cards: [
     "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=600&q=70",
@@ -96,42 +113,73 @@ const IMG = {
     "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=600&q=70",
     "https://images.unsplash.com/photo-1606166187734-a4cb74079037?w=600&q=70",
     "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=600&q=70",
+    "https://images.unsplash.com/photo-1611890999368-c0e1a1a9b3f8?w=600&q=70",
+    "https://images.unsplash.com/photo-1529154691717-3306083d869e?w=600&q=70",
+    "https://images.unsplash.com/photo-1601370552761-3f1d0761cc0c?w=600&q=70",
+    "https://images.unsplash.com/photo-1541278107931-e006523892df?w=600&q=70",
   ],
   Electronics: [
     "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70",
     "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=600&q=70",
     "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=70",
     "https://images.unsplash.com/photo-1512446816042-444d641267d4?w=600&q=70",
+    "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&q=70",
+    "https://images.unsplash.com/photo-1546027658-7aa750153465?w=600&q=70",
+    "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=600&q=70",
+    "https://images.unsplash.com/photo-1600861194942-f883de0dfe96?w=600&q=70",
+    "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&q=70",
   ],
   Jewelry: [
     "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=600&q=70",
     "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=600&q=70",
     "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=70",
     "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=70",
+    "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=600&q=70",
+    "https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=600&q=70",
+    "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&q=70",
+    "https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=600&q=70",
   ],
   Bags: [
     "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=70",
     "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=70",
     "https://images.unsplash.com/photo-1590874103328-eac38a67437a?w=600&q=70",
     "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=600&q=70",
+    "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=70",
+    "https://images.unsplash.com/photo-1591561954557-26941169b49e?w=600&q=70",
+    "https://images.unsplash.com/photo-1547949003-9792a18a2601?w=600&q=70",
+    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=70",
   ],
   Perfumes: [
     "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=70",
     "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=600&q=70",
     "https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=600&q=70",
     "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600&q=70",
+    "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=600&q=70",
+    "https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=600&q=70",
+    "https://images.unsplash.com/photo-1557170334-a9086d21c1f6?w=600&q=70",
   ],
   Watches: [
     "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&q=70",
+    "https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=600&q=70",
+    "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=600&q=70",
+    "https://images.unsplash.com/photo-1548171245-b0ecc23f0743?w=600&q=70",
   ],
   Games: [
     "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=600&q=70",
+    "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=70",
+    "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=600&q=70",
+    "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=600&q=70",
   ],
   Home: [
     "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=70",
+    "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&q=70",
+    "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=600&q=70",
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=600&q=70",
   ],
   Bundles: [
     "https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=600&q=70",
+    "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=600&q=70",
+    "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=70",
   ],
 } as const;
 
