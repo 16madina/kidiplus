@@ -12,8 +12,8 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   Always use the Lovable CDN absolute URL on kidiplus.com (works in the
-//   Lovable editor iframe too). Admin https overrides still win.
+//   Embedded data-URI (see demo-live-poster-data.ts) so the card never
+//   depends on CDN / public path availability. Admin https overrides still win.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -25,20 +25,16 @@ import {
   fetchDemoConfig,
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
-  DEMO_COVER_ABSOLUTE_URL,
-  DEMO_COVER_LOVABLE_URL,
+  DEMO_COVER_FALLBACK_URL,
 } from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
-/** Prefer admin https override; otherwise the known-good absolute CDN poster. */
+/** Prefer admin https override; otherwise the embedded poster. */
 function resolvePosterUrl(coverUrl: string | undefined): string {
   if (coverUrl && /^https?:\/\//i.test(coverUrl)) return coverUrl;
-  // Relative Lovable asset path → make absolute so iframes/previews work.
-  if (coverUrl && coverUrl.startsWith("/__l5e/")) {
-    return `https://kidiplus.com${coverUrl}`;
-  }
-  return DEMO_COVER_ABSOLUTE_URL;
+  if (coverUrl && coverUrl.startsWith("data:image/")) return coverUrl;
+  return DEMO_COVER_FALLBACK_URL;
 }
 
 /** Resolves the current demo video + cover URLs (admin-overridable via
@@ -47,7 +43,7 @@ function resolvePosterUrl(coverUrl: string | undefined): string {
 export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
   const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
-  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_ABSOLUTE_URL);
+  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_FALLBACK_URL);
   const [version, setVersion] = useState<string>("0");
   const lastVersion = useRef<string>("");
 
@@ -84,32 +80,18 @@ export function useDemoAvailable(): boolean | null {
   return useDemoVideo().ok;
 }
 
-function DemoPoster({ src, className }: { src: string; className?: string }) {
-  const [current, setCurrent] = useState(src);
-  useEffect(() => { setCurrent(src); }, [src]);
-  return (
-    <img
-      key={current}
-      src={current}
-      alt=""
-      className={className}
-      loading="eager"
-      decoding="async"
-      draggable={false}
-      onError={() => {
-        if (current !== DEMO_COVER_ABSOLUTE_URL) {
-          setCurrent(DEMO_COVER_ABSOLUTE_URL);
-        } else if (current !== DEMO_COVER_LOVABLE_URL) {
-          setCurrent(DEMO_COVER_LOVABLE_URL);
-        }
-      }}
-    />
-  );
-}
-
 export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
   const poster = resolvePosterUrl(coverUrl);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+  }, [poster]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -121,17 +103,21 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
         onClick={onOpen}
         aria-label={t("home.demo.title")}
         className="relative !block w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
-        style={{
-          aspectRatio: "3 / 4",
-          backgroundImage: `url("${poster}")`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
+        style={{ aspectRatio: "3 / 4" }}
       >
-        {/* live poster background */}
-        <DemoPoster
+        {!loaded && (
+          <span className="skeleton absolute inset-0" aria-hidden />
+        )}
+
+        <img
+          ref={imgRef}
           src={poster}
-          className="absolute inset-0 z-0 h-full w-full object-cover"
+          alt=""
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          className="absolute inset-0 h-full w-full object-cover"
         />
 
         {/* subtle overlay + vignette so badges and text stay readable */}
@@ -233,16 +219,15 @@ export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
       aria-label={t("home.demo.title")}
       aria-busy="true"
       className="relative overflow-hidden rounded-2xl bg-muted"
-      style={{
-        aspectRatio: "3 / 4",
-        backgroundImage: `url("${poster}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      style={{ aspectRatio: "3 / 4" }}
     >
-      <DemoPoster
+      <img
         src={poster}
-        className="absolute inset-0 z-0 h-full w-full object-cover"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+        decoding="async"
+        draggable={false}
       />
       <span
         aria-hidden

@@ -15,21 +15,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
+import { DEMO_LIVE_POSTER_DATA_URI } from "@/assets/demo-live-poster-data";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
 
 /**
- * Default poster = Lovable CDN asset (demo-live-cover.jpg.asset.json).
- * This is the path Lovable actually hosts. Raw Vite jpg imports / public/
- * files have failed to deploy or returned 403 on preview hosts.
+ * Default poster is an embedded data-URI so the home card NEVER depends on
+ * Lovable CDN / public/ path quirks (403 on preview, black empty card, etc.).
+ * Admin https overrides via app_config still win when set.
  */
-export const DEMO_COVER_FALLBACK_URL = demoCoverAsset.url;
-export const DEMO_COVER_BUNDLED_URL = demoCoverAsset.url;
+export const DEMO_COVER_FALLBACK_URL = DEMO_LIVE_POSTER_DATA_URI;
+export const DEMO_COVER_BUNDLED_URL = DEMO_LIVE_POSTER_DATA_URI;
 export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
-
-/** Absolute URL — works inside Lovable editor iframes and any origin. */
-export const DEMO_COVER_ABSOLUTE_URL =
-  "https://kidiplus.com" + demoCoverAsset.url;
+export const DEMO_COVER_ABSOLUTE_URL = DEMO_LIVE_POSTER_DATA_URI;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
 // v2: ignore stale `demo_cover_url` Storage overrides that broke the home card.
@@ -60,14 +58,20 @@ export async function fetchDemoConfig(): Promise<DemoConfig> {
   (data ?? []).forEach((r) => map.set(r.key, r.value));
   return {
     videoUrl: map.get(DEMO_VIDEO_CONFIG_KEY) || DEMO_VIDEO_FALLBACK_URL,
-    coverUrl: map.get(DEMO_COVER_CONFIG_KEY) || DEMO_COVER_ABSOLUTE_URL,
+    // Only honor remote overrides that are real http(s) URLs. Anything else
+    // (relative paths that 403 on preview) falls back to the embedded poster.
+    coverUrl: (() => {
+      const remote = map.get(DEMO_COVER_CONFIG_KEY);
+      if (remote && /^https?:\/\//i.test(remote)) return remote;
+      return DEMO_COVER_FALLBACK_URL;
+    })(),
     version: map.get(DEMO_VERSION_CONFIG_KEY) || "0",
   };
 }
 
 /** Append `?v=<version>` to a URL (preserving any existing query string). */
 export function withVersion(url: string, version: string): string {
-  if (!url) return url;
+  if (!url || url.startsWith("data:")) return url;
   return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(version);
 }
 
