@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
-import type { LiveStream } from "@/lib/live-mock";
+import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
