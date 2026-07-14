@@ -44,7 +44,7 @@ import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { blockUser, refreshBlockedIds, useBlockedIds } from "@/lib/moderation-db";
+import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -758,8 +758,13 @@ export function RealLiveViewerScreen() {
 
   const doBlockSeller = async () => {
     if (!active?.sellerId) return;
-    const r = await blockUser(active.sellerId);
-    if (r.ok) { await refreshBlockedIds(); toast.success(t("block.blocked")); close(); }
+    const r = await blockUserAndNotify(active.sellerId, {
+      handle: active.seller,
+      displayName: active.seller,
+      avatarUrl: active.avatar,
+      liveId: active.liveId ?? active.id,
+    });
+    if (r.ok) { toast.success(t("block.blocked")); close(); }
     else toast.error(t("block.failed"));
     setMoreOpen(false);
   };
@@ -924,9 +929,11 @@ export function RealLiveViewerScreen() {
                 if (isModerator && active.liveId) {
                   await muteLiveChatUser(active.liveId, userId, user.id);
                 }
-                const r = await blockUser(userId);
+                const r = await blockUserAndNotify(userId, {
+                  handle: displayName,
+                  displayName,
+                });
                 if (r.ok) {
-                  await refreshBlockedIds();
                   haptic.selection();
                   toast.success(t("moderator.blocked", { name: displayName }));
                 } else {

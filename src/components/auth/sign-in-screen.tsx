@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, Fingerprint, Loader2, ScanFace } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
@@ -14,6 +14,7 @@ import {
   type BiometricInfo,
 } from "@/lib/biometric";
 import { toast } from "sonner";
+import { LegalScreen } from "@/components/legal/legal-screen";
 
 export function SignInScreen({
   onBack,
@@ -32,6 +33,8 @@ export function SignInScreen({
   const [loading, setLoading] = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
   const [bio, setBio] = useState<BiometricInfo>({
     available: false,
     kind: null,
@@ -69,6 +72,10 @@ export function SignInScreen({
     setError(null);
     if (!email.trim() || !password) {
       setError(t("auth.validation.emailRequired"));
+      return;
+    }
+    if (!acceptTerms) {
+      setError(t("consent.required"));
       return;
     }
     setLoading(true);
@@ -162,14 +169,32 @@ export function SignInScreen({
           </button>
         </div>
 
+        <label className="mt-1 flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+          />
+          <span>
+            <Trans
+              i18nKey="consent.checkbox"
+              components={{
+                t: <button type="button" onClick={() => setOpenLegal("terms")} className="font-bold underline underline-offset-2" />,
+                p: <button type="button" onClick={() => setOpenLegal("privacy")} className="font-bold underline underline-offset-2" />,
+              }}
+            />
+          </span>
+        </label>
+
         <Press
           type="submit"
-          disabled={loading}
+          disabled={loading || !acceptTerms}
           className="!min-h-12 mt-2 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
           style={{
             background:
               "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            opacity: loading ? 0.7 : 1,
+            opacity: loading || !acceptTerms ? 0.5 : 1,
           }}
         >
           {loading ? (
@@ -185,8 +210,14 @@ export function SignInScreen({
         {bio.available && bioEnabled && (
           <Press
             type="button"
-            onClick={onBiometric}
-            disabled={bioLoading || loading}
+            onClick={() => {
+              if (!acceptTerms) {
+                setError(t("consent.required"));
+                return;
+              }
+              void onBiometric();
+            }}
+            disabled={bioLoading || loading || !acceptTerms}
             className="!min-h-12 h-12 w-full rounded-2xl border-2 border-border bg-card text-[15px] font-bold text-foreground"
           >
             <span className="inline-flex items-center justify-center gap-2">
@@ -213,6 +244,8 @@ export function SignInScreen({
           </button>
         </p>
       </form>
+      <LegalScreen open={openLegal === "terms"} onClose={() => setOpenLegal(null)} kind="terms" />
+      <LegalScreen open={openLegal === "privacy"} onClose={() => setOpenLegal(null)} kind="privacy" />
     </AuthScreenShell>
   );
 }

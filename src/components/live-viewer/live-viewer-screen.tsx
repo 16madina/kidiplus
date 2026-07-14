@@ -41,6 +41,9 @@ import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/wallet-context";
 import { normalizeCurrency } from "@/lib/money";
 import type { GiftEvt } from "@/lib/live-room";
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
 
 
 
@@ -59,6 +62,9 @@ function MockLiveViewerScreen() {
   const { open: openSeller } = useSellerProfile();
   const appActive = useAppActive();
   const { requestWithPrePrompt } = usePush();
+  const { requireAuth } = useAuthPrompt();
+  const blockedIds = useBlockedIds();
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Force light status-bar content while the viewer is mounted (dark background).
   useEffect(() => {
@@ -78,7 +84,11 @@ function MockLiveViewerScreen() {
   useEffect(() => {
     if (!active) return;
     setMessages([
-      systemMessage(`Bienvenue dans le live de ${active.seller} 👋`),
+      systemMessage(
+        active.fictitious
+          ? `Démo interactive — tu peux enchérir, chatter et tester Signaler / Bloquer. Aucun paiement réel.`
+          : `Bienvenue dans le live de ${active.seller} 👋`,
+      ),
     ]);
     if (!appActive) return;
     let cancelled = false;
@@ -400,6 +410,11 @@ function MockLiveViewerScreen() {
   }, [peekNext, peekPrev]);
 
   if (!active) return null;
+  if (active.sellerId && blockedIds.has(active.sellerId)) {
+    toast.info(t("block.autoClosedLive", "Ce live est masqué car tu as bloqué l'hôte."));
+    close();
+    return null;
+  }
 
   const followerCount = 1000 + ((active.viewers * 7) % 24000);
 
@@ -822,9 +837,8 @@ function MockLiveViewerScreen() {
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
 
-      {/* Signaler / Bloquer — Apple 1.2. Actions démo pour les lives échantillons :
-          confirment l'action (toast) puis ferment le live pour montrer l'effet
-          instantané. Les lives réels utilisent le vrai flux via ReportSheet. */}
+      {/* Signaler / Bloquer — Apple 1.2. Demo lives use the same report +
+          block flows as real lives (local block + moderation report). */}
       {moreOpen && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
@@ -832,8 +846,18 @@ function MockLiveViewerScreen() {
             <Press
               onClick={() => {
                 setMoreOpen(false);
-                toast.success(t("report.sent"));
-                haptic.success();
+                requireAuth(() => {
+                  if (
+                    confirm(
+                      t("report.confirm", {
+                        defaultValue:
+                          "Signaler ce live ? Notre équipe examinera ton signalement.",
+                      }),
+                    )
+                  ) {
+                    setReportOpen(true);
+                  }
+                });
               }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]"
             >
@@ -842,9 +866,29 @@ function MockLiveViewerScreen() {
             <Press
               onClick={() => {
                 setMoreOpen(false);
-                toast.success(t("block.blocked"));
-                haptic.success();
-                close();
+                requireAuth(() => {
+                  if (!confirm(t("block.confirm"))) return;
+                  void (async () => {
+                    if (!active?.sellerId) {
+                      toast.success(t("block.blocked"));
+                      close();
+                      return;
+                    }
+                    const r = await blockUserAndNotify(active.sellerId, {
+                      handle: active.seller,
+                      displayName: active.seller,
+                      avatarUrl: active.avatar,
+                      liveId: active.id,
+                    });
+                    if (r.ok) {
+                      toast.success(t("block.blocked"));
+                      haptic.success();
+                      close();
+                    } else {
+                      toast.error(t("block.failed"));
+                    }
+                  })();
+                });
               }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive"
             >
@@ -853,6 +897,13 @@ function MockLiveViewerScreen() {
           </div>
         </div>
       )}
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="live"
+        targetId={active.id}
+      />
 
       {/* Winner reveal — Whatnot-style flip; same component as real lives. */}
       <WinnerReveal

@@ -70,6 +70,26 @@ export function LiveCard({
               <CalendarClock size={11} strokeWidth={2.6} />
               Programmé
             </span>
+          ) : stream.fictitious ? (
+            <>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                style={{ backgroundColor: "oklch(0.45 0.08 250)" }}
+              >
+                Démo
+              </span>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                <Eye size={11} strokeWidth={2.4} />
+                {formatViewers(stream.viewers)}
+              </span>
+            </>
           ) : (
             <>
               <span

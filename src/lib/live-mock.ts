@@ -5,7 +5,13 @@ export type Category =
   | "Fashion"
   | "Cards"
   | "Electronics"
-  | "Jewelry";
+  | "Jewelry"
+  | "Bags"
+  | "Perfumes"
+  | "Watches"
+  | "Games"
+  | "Home"
+  | "Bundles";
 
 export const CATEGORIES: Category[] = [
   "For You",
@@ -15,6 +21,8 @@ export const CATEGORIES: Category[] = [
   "Cards",
   "Electronics",
   "Jewelry",
+  "Bags",
+  "Perfumes",
 ];
 
 export type LiveStream = {
@@ -29,10 +37,12 @@ export type LiveStream = {
   roomName?: string;
   /** DB id (public.lives.id) when this stream is real. */
   liveId?: string;
-  /** Seller user id (profiles.id) — present on real DB-backed streams. */
+  /** Seller user id (profiles.id) — or `fictitious:…` for review/demo streams. */
   sellerId?: string;
   /** Live currency (defaults to EUR when unspecified). */
   currency?: "XOF" | "EUR" | "CAD";
+  /** Client-only review/demo stream (no LiveKit / no DB row). */
+  fictitious?: boolean;
   /** When true, the card renders as a scheduled (upcoming) live, not LIVE. */
   scheduled?: boolean;
   /** Minutes until the scheduled live starts (only when scheduled). */
@@ -41,6 +51,20 @@ export type LiveStream = {
   endsInMin?: number;
 };
 
+export function isFictitiousSellerId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith("fictitious:");
+}
+
+export function fictitiousSellerId(seller: string): string {
+  const slug = seller
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return `fictitious:${slug || "seller"}`;
+}
 
 // Unsplash source images per category (stable IDs, hot-linkable).
 const IMG = {
@@ -85,6 +109,30 @@ const IMG = {
     "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=70",
     "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=70",
   ],
+  Bags: [
+    "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=70",
+    "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=70",
+    "https://images.unsplash.com/photo-1590874103328-eac38a67437a?w=600&q=70",
+    "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=600&q=70",
+  ],
+  Perfumes: [
+    "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=70",
+    "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=600&q=70",
+    "https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=600&q=70",
+    "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600&q=70",
+  ],
+  Watches: [
+    "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&q=70",
+  ],
+  Games: [
+    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=600&q=70",
+  ],
+  Home: [
+    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=70",
+  ],
+  Bundles: [
+    "https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=600&q=70",
+  ],
 } as const;
 
 const AVATAR = (seed: string) =>
@@ -117,10 +165,16 @@ const SEEDS: Seed[] = [
   { seller: "Karim Console", title: "Rétro gaming : Game Boy & cartouches", category: "Electronics" },
   { seller: "Élodie Rouge", title: "Rouges à lèvres MAC & Charlotte Tilbury", category: "Beauty" },
   { seller: "Théo Kicks", title: "ASICS Gel Kayano — toutes tailles", category: "Sneakers" },
-  { seller: "Sofia Mode", title: "Sacs vintage Louis Vuitton authentifiés", category: "Fashion" },
+  { seller: "Sofia Mode", title: "Looks seconde main authentifiés", category: "Fashion" },
   { seller: "Lucas Poké", title: "Cartes Pokémon FR — session enchères", category: "Cards" },
   { seller: "Amélie Perles", title: "Colliers perles Tahiti — direct grossiste", category: "Jewelry" },
   { seller: "Rayan Audio", title: "Casques Bose & Sony — neufs scellés", category: "Electronics" },
+  { seller: "Lina Bags", title: "Sacs Louis Vuitton & Hermès authentifiés", category: "Bags" },
+  { seller: "Nora Accessoires", title: "Ceintures & pochettes cuir — live shopping", category: "Bags" },
+  { seller: "Maya Sac", title: "Sacs à main tendance — lots du jour", category: "Bags" },
+  { seller: "Parfum Zoé", title: "Niche & designer — décants et flacons", category: "Perfumes" },
+  { seller: "Oud Maison", title: "Parfums orientaux — découvertes du soir", category: "Perfumes" },
+  { seller: "Scent Lab", title: "Sélection été : frais & boisés", category: "Perfumes" },
 ];
 
 function pick<T>(arr: readonly T[], i: number): T {
@@ -146,11 +200,12 @@ function viewers(i: number): number {
 const SCHEDULE_MINUTES = [12, 27, 45, 63, 90, 120, 180, 240] as const;
 const END_MINUTES = [8, 14, 22, 31, 47, 58] as const;
 
+/** Seeded demo/sample lives for App Review and empty inventory. */
 export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
   return Array.from({ length: count }, (_, k) => {
     const i = (offset + k) % SEEDS.length;
     const s = SEEDS[i];
-    const gallery = IMG[s.category];
+    const gallery = IMG[s.category] ?? IMG.Fashion;
     const abs = offset + k;
     // ~28% of cards are scheduled — enough to feel active without dominating.
     const scheduled = abs % 7 === 2 || abs % 7 === 5;
@@ -162,13 +217,15 @@ export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
       ? END_MINUTES[abs % END_MINUTES.length]
       : undefined;
     return {
-      id: `stream-${abs}`,
+      id: `fictitious-stream-${abs}`,
       seller: s.seller,
+      sellerId: fictitiousSellerId(s.seller),
       avatar: AVATAR(s.seller),
       title: s.title,
       thumbnail: pick(gallery, abs),
       viewers: viewers(abs + 1),
       category: s.category,
+      fictitious: true,
       scheduled,
       startsInMin,
       endsInMin,
@@ -182,4 +239,3 @@ export function formatViewers(n: number): string {
   // "2k" placeholders.
   return n.toLocaleString("fr-FR").replace(/\u202F/g, "\u00A0");
 }
-
