@@ -621,6 +621,8 @@ function MockLiveViewerScreen() {
             product={currentProduct}
             secondsLeft={secondsLeft}
             lastBidder={lastBidder}
+            auctionActive={currentProduct.mode === "auction"}
+            isHighestBidder={lastBidder === "toi"}
             onBid={doBid}
             onOpenProducts={() => setShowProducts(true)}
             onBuy={() => setBuyProduct(currentProduct)}
