@@ -172,8 +172,10 @@ export function HomeScreen() {
     const combined = [...scopedReal, ...samplesForCategory];
 
     const base = category === "Pour toi" ? rankForYou(combined) : combined;
-    return applyHomeFilter(base, filter);
-  }, [realLives, category, filter, rankForYou, blockedIds]);
+    const withFilter = applyHomeFilter(base, filter);
+    // "Uniquement en direct" toggle from the filter sheet — hide scheduled cards.
+    return liveOnly ? withFilter.filter((s) => !s.scheduled) : withFilter;
+  }, [realLives, category, filter, rankForYou, blockedIds, liveOnly]);
 
 
   const doRefresh = useCallback(() => {
