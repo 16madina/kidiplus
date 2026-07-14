@@ -257,8 +257,6 @@ export function GoLiveEntryScreen({
       <div className="grid grid-cols-2 gap-3 px-4 pt-3">
         <ChoiceCard
           image={startBgAsset.url}
-          badge={{ label: t("golive.entry.liveBadge", "EN DIRECT"), variant: "live" }}
-          icon={<Radio size={22} color={GOLD} strokeWidth={2.4} />}
           title={t("golive.entry.startNow", "Commencer un live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
@@ -270,8 +268,6 @@ export function GoLiveEntryScreen({
         />
         <ChoiceCard
           image={scheduleBgAsset.url}
-          badge={{ label: t("golive.entry.planBadge", "PLANIFIER"), variant: "plan" }}
-          icon={<CalendarIcon size={22} color={GOLD} strokeWidth={2.4} />}
           title={t("golive.entry.schedule", "Programmer un live")}
           subtitle={t("golive.entry.scheduleSub", "Annonce ton live et prépare tes articles")}
           onPress={() => {
