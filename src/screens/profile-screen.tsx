@@ -532,6 +532,7 @@ function ProfileScreenAuthed() {
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
       <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <OrdersScreen open={ordersOpen} onClose={() => setOrdersOpen(false)} />
       <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
       <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />
