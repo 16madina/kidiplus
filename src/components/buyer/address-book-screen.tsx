@@ -134,6 +134,7 @@ export function AddressBookScreen({ open, onClose }: { open: boolean; onClose: (
         onClose={() => setFormOpen(false)}
         userId={user?.id ?? ""}
         currency={currency}
+        defaultCountry={defaultCountry}
         initial={editing}
         onSaved={() => void load()}
       />
