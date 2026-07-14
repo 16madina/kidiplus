@@ -109,6 +109,15 @@ function MockLiveViewerScreen() {
   const [heartTrigger, setHeartTrigger] = useState(0);
   // Signaler / Bloquer sheet (Apple 1.2 — flag/block on every UGC surface).
   const [moreOpen, setMoreOpen] = useState(false);
+  // Simulated viewers list — Apple reviewers tap the viewers pill.
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
+  // Winner reveal (logo flip → gold card) — parity with real lives.
+  const [winnerReveal, setWinnerReveal] = useState<{
+    key: string;
+    name: string;
+    isMe: boolean;
+    productName: string;
+  } | null>(null);
   const fireHeart = () => {
     haptic.medium();
     setHeartTrigger((v) => v + 1);
