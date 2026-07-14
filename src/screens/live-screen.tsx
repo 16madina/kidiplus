@@ -490,6 +490,7 @@ function BroadcastFlow() {
   };
 
   return (
+    <FilterProvider>
     <div className="relative h-full w-full overflow-hidden">
       {/* Entry stays mounted while setup is open so scroll and list state
           are preserved when the user comes back. */}
