@@ -1,11 +1,13 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { BroadcastVideo } from "./broadcast-video";
+import { FiltersCarousel } from "./filters-carousel";
+import { useFilter } from "@/lib/filters/filter-context";
 import { AddProductSheet } from "./add-product-sheet";
 import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
@@ -49,6 +51,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeLens } = useFilter();
   const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup
@@ -299,6 +303,23 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           fallbackImage={b.cover}
           onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
         />
+        {/* Filters button — bottom-right of the preview */}
+        <Press
+          onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
+          aria-label="Filtres"
+          className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
+          style={{
+            bottom: 12,
+            backgroundColor: "rgba(10,12,20,0.55)",
+            border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+            color: activeLens.lensId !== "none" ? GOLD : "white",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <Sparkles size={18} />
+        </Press>
+        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
       </div>
 
       {/* Top bar — X · KIDI+ · Refresh */}

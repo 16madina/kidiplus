@@ -1,7 +1,7 @@
 // Right-side vertical tool rail for the host (and moderator) during a live.
 // TikTok-style column: 44pt glass buttons + optional tiny label underneath.
 import { motion } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus, Sparkles } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 
@@ -11,10 +11,12 @@ export type HostToolRailProps = {
   canFlip?: boolean;
   flipBusy?: boolean;
   moderatorsOpen?: boolean;
+  filtersActive?: boolean;
   onToggleMic?: () => void;
   onToggleCam?: () => void;
   onFlip?: () => void;
   onOpenModerators?: () => void;
+  onOpenFilters?: () => void;
   onAddProduct?: () => void;
   /** Hide the mic/cam buttons (viewer moderator mode). */
   hideAV?: boolean;
@@ -35,10 +37,12 @@ export function HostToolRail({
   canFlip = true,
   flipBusy = false,
   moderatorsOpen = false,
+  filtersActive = false,
   onToggleMic,
   onToggleCam,
   onFlip,
   onOpenModerators,
+  onOpenFilters,
   onAddProduct,
   hideAV = false,
 }: HostToolRailProps) {
@@ -78,6 +82,21 @@ export function HostToolRail({
       )}
       {!hideAV && canFlip && onFlip && (
         <FlipButton onFlip={onFlip} busy={flipBusy} />
+      )}
+      {onOpenFilters && (
+        <Press
+          onClick={() => { haptic.selection(); onOpenFilters(); }}
+          aria-label="Filtres"
+          className={`${btn} pointer-events-auto`}
+          style={{
+            ...btnStyle,
+            outline: filtersActive ? "2px solid oklch(0.85 0.18 90)" : undefined,
+            outlineOffset: -2,
+            color: filtersActive ? "oklch(0.85 0.18 90)" : "white",
+          }}
+        >
+          <Sparkles size={16} />
+        </Press>
       )}
       {onOpenModerators && (
         <Press

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
+import { FilterProvider } from "@/lib/filters/filter-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
 import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
@@ -489,6 +490,7 @@ function BroadcastFlow() {
   };
 
   return (
+    <FilterProvider>
     <div className="relative h-full w-full overflow-hidden">
       {/* Entry stays mounted while setup is open so scroll and list state
           are preserved when the user comes back. */}
@@ -567,6 +569,7 @@ function BroadcastFlow() {
         </div>
       )}
     </div>
+    </FilterProvider>
   );
 }
 

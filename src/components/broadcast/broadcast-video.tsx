@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import { useFilter } from "@/lib/filters/filter-context";
 import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -523,17 +524,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             style={{ filter: "blur(4px) brightness(0.55)" }}
           />
         )}
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{
-            transform: mirrored ? "scaleX(-1)" : undefined,
-            willChange: "transform",
-            display: showVideo ? "block" : "none",
-          }}
+        <VideoWithFilter
+          videoRef={videoRef}
+          mirrored={mirrored}
+          showVideo={showVideo}
         />
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center">
@@ -601,3 +595,36 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
 // Re-export event type consumers may need.
 export { RoomEvent, Track };
+
+// Small wrapper: reads the currently-selected lens from FilterContext and
+// applies its `webPreview` string as a CSS `filter:` on the local <video>.
+// Sur natif (Capacitor + Snap Camera Kit), le plugin remplace la piste
+// MediaStreamTrack en amont, donc ce CSS n'a plus d'effet visible — c'est
+// juste un mode démo pour le web en attendant l'app mobile.
+function VideoWithFilter({
+  videoRef,
+  mirrored,
+  showVideo,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  mirrored: boolean;
+  showVideo: boolean;
+}) {
+  const { cssFilter } = useFilter();
+  return (
+    <video
+      ref={videoRef}
+      playsInline
+      muted
+      autoPlay
+      className="absolute inset-0 h-full w-full object-cover"
+      style={{
+        transform: mirrored ? "scaleX(-1)" : undefined,
+        filter: cssFilter,
+        willChange: "transform, filter",
+        display: showVideo ? "block" : "none",
+        transition: "filter 0.25s ease",
+      }}
+    />
+  );
+}

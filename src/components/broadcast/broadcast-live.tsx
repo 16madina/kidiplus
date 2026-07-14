@@ -4,6 +4,8 @@ import {
   Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
+import { FiltersCarousel } from "./filters-carousel";
+import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
   muteLiveChatUser,
@@ -75,6 +77,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [canFlip, setCanFlip] = useState(false);
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeLens } = useFilter();
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
@@ -971,6 +975,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         canFlip={canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
+        filtersActive={activeLens.lensId !== "none"}
+        onOpenFilters={() => setFiltersOpen((o) => !o)}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => {
@@ -987,6 +993,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
       />
+
+      <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+
 
       <LiveViewersSheet
         open={viewersSheetOpen}
