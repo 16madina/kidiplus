@@ -183,4 +183,3 @@ export function formatViewers(n: number): string {
   return n.toLocaleString("fr-FR").replace(/\u202F/g, "\u00A0");
 }
 
-}
