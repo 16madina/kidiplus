@@ -192,6 +192,11 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
         available={available}
         currency={balanceCurrency}
       />
+      <SellerOrderDetailSheet
+        order={detailOrder}
+        onClose={() => setDetailOrder(null)}
+        onShip={onShip}
+      />
     </PushScreen>
   );
 }
