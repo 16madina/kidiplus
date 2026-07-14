@@ -367,7 +367,11 @@ export function HomeScreen() {
 
         {/* ROW 3 — Filter pills */}
         <div className="pt-3">
-          <FilterPills active={filter} onChange={setFilter} />
+          <FilterPills
+            active={filter}
+            onChange={setFilter}
+            onOpenFilters={() => setFilterSheetOpen(true)}
+          />
         </div>
 
         {/* Upcoming scheduled lives */}
