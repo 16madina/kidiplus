@@ -994,6 +994,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onAddProduct={() => setAddOpen(true)}
       />
 
+      <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+
+
       <LiveViewersSheet
         open={viewersSheetOpen}
         onClose={() => setViewersSheetOpen(false)}
