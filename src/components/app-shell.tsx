@@ -335,7 +335,7 @@ function AppShellInner() {
 
       <Toaster
         position="top-center"
-        offset={16}
+        offset={{ top: "calc(1rem + env(safe-area-inset-top) + 48px)" }}
         duration={3000}
         visibleToasts={3}
         toastOptions={{
