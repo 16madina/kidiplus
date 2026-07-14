@@ -73,6 +73,8 @@ export function HomeScreen() {
   const tabVisible = useContext(TabVisibilityContext);
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [liveOnly, setLiveOnly] = useState(false);
   const [realLives, setRealLives] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
