@@ -12,8 +12,9 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   Bundled as src/assets/demo-live-poster.jpg (Vite import). Admins can
-//   still override it from the dashboard (app_config demo_cover_url_v2).
+//   Prefer same-origin `/demo-live-poster.jpg` (public/). Fall back to the
+//   Lovable CDN asset if that 404s. Admin can still override via
+//   app_config.demo_cover_url_v2.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,6 +27,7 @@ import {
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
   DEMO_COVER_FALLBACK_URL,
+  DEMO_COVER_LOVABLE_URL,
 } from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
@@ -37,7 +39,7 @@ export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
   const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
-  const [coverUrl, setCoverUrl] = useState<string>(withVersion(DEMO_COVER_FALLBACK_URL, "0"));
+  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_FALLBACK_URL);
   const [version, setVersion] = useState<string>("0");
   const lastVersion = useRef<string>("");
 
@@ -47,7 +49,12 @@ export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: str
     if (cfg.version === lastVersion.current) return;
     lastVersion.current = cfg.version;
     const vUrl = withVersion(cfg.videoUrl, cfg.version);
-    const cUrl = withVersion(cfg.coverUrl, cfg.version);
+    // Same-origin public poster: don't append ?v= (Capacitor/file quirks).
+    // Remote/admin covers still get cache-busted.
+    const cUrl =
+      cfg.coverUrl === DEMO_COVER_FALLBACK_URL
+        ? DEMO_COVER_FALLBACK_URL
+        : withVersion(cfg.coverUrl, cfg.version);
     setUrl(vUrl);
     setCoverUrl(cUrl);
     setVersion(cfg.version);
@@ -74,6 +81,27 @@ export function useDemoAvailable(): boolean | null {
   return useDemoVideo().ok;
 }
 
+function DemoPoster({ src, className }: { src: string; className?: string }) {
+  const [current, setCurrent] = useState(src);
+  useEffect(() => { setCurrent(src); }, [src]);
+  return (
+    <img
+      key={current}
+      src={current}
+      alt=""
+      className={className}
+      loading="eager"
+      decoding="async"
+      onError={() => {
+        // Public file missing (old native shell) → Lovable CDN asset.
+        if (current !== DEMO_COVER_LOVABLE_URL) {
+          setCurrent(DEMO_COVER_LOVABLE_URL);
+        }
+      }}
+    />
+  );
+}
+
 export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
   return (
@@ -87,16 +115,12 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
         onClick={onOpen}
         aria-label={t("home.demo.title")}
         className="!block h-full w-full overflow-hidden rounded-2xl p-0 text-left"
-        style={{ aspectRatio: "3 / 4" }}
+        style={{ aspectRatio: "3 / 4", backgroundColor: "#1a1a1a" }}
       >
         {/* live poster background */}
-        <img
-          key={coverUrl}
+        <DemoPoster
           src={coverUrl}
-          alt=""
           className="absolute inset-0 h-full w-full object-cover"
-          loading="eager"
-          decoding="async"
         />
 
         {/* subtle overlay + vignette so badges and text stay readable */}
@@ -191,7 +215,7 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
  */
 export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
   const { t } = useTranslation();
-  const poster = coverUrl ?? withVersion(DEMO_COVER_FALLBACK_URL, "0");
+  const poster = coverUrl ?? DEMO_COVER_FALLBACK_URL;
   return (
     <div
       role="status"
@@ -205,13 +229,9 @@ export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
     >
       {/* live poster background — visible from the first frame so the
           card never looks empty while the video HEAD probe is in flight */}
-      <img
-        key={poster}
+      <DemoPoster
         src={poster}
-        alt=""
         className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
-        decoding="async"
       />
       <span
         aria-hidden
