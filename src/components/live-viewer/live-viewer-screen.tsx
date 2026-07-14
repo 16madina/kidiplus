@@ -607,8 +607,10 @@ function MockLiveViewerScreen() {
 
           {/* Right: viewers / share / close */}
           <div className="flex items-center gap-1.5">
-            <div
-              className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+            <Press
+              onClick={() => { haptic.selection(); setViewersSheetOpen(true); }}
+              aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
                 backdropFilter: "blur(10px)",
@@ -617,9 +619,33 @@ function MockLiveViewerScreen() {
             >
               <Eye size={13} />
               {displayViewers}
-            </div>
+            </Press>
             <Press
-              aria-label="Partager"
+              aria-label={t("live.share", "Partager")}
+              onClick={async () => {
+                haptic.light();
+                const shareUrl =
+                  typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", {
+                  defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴",
+                  name: active.seller,
+                });
+                try {
+                  const nav =
+                    typeof navigator !== "undefined"
+                      ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> })
+                      : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav && nav.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch {
+                  /* user cancelled */
+                }
+              }}
               className="h-9 w-9 rounded-full text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
