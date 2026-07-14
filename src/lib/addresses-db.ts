@@ -52,6 +52,8 @@ export type AddressInput = {
   city: string;
   zone_or_commune?: string | null;
   street_address?: string | null;
+  postal_code?: string | null;
+  region?: string | null;
   details?: string | null;
   is_default?: boolean;
 };
@@ -71,6 +73,8 @@ export async function createAddress(
       city: input.city.trim(),
       zone_or_commune: (input.zone_or_commune ?? "").trim() || null,
       street_address: (input.street_address ?? "").trim() || null,
+      postal_code: (input.postal_code ?? "").trim() || null,
+      region: (input.region ?? "").trim() || null,
       details: (input.details ?? "").trim() || null,
       is_default: !!input.is_default,
     })
@@ -92,6 +96,8 @@ export async function updateAddress(
   if (patch.city !== undefined) row.city = patch.city.trim();
   if (patch.zone_or_commune !== undefined) row.zone_or_commune = (patch.zone_or_commune ?? "").trim() || null;
   if (patch.street_address !== undefined) row.street_address = (patch.street_address ?? "").trim() || null;
+  if (patch.postal_code !== undefined) row.postal_code = (patch.postal_code ?? "").trim() || null;
+  if (patch.region !== undefined) row.region = (patch.region ?? "").trim() || null;
   if (patch.details !== undefined) row.details = (patch.details ?? "").trim() || null;
   if (patch.is_default !== undefined) row.is_default = !!patch.is_default;
   const { data, error } = await sb
