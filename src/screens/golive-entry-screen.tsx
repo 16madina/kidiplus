@@ -257,6 +257,8 @@ export function GoLiveEntryScreen({
       <div className="grid grid-cols-2 gap-3 px-4 pt-3">
         <ChoiceCard
           image={startBgAsset.url}
+          badge={{ label: t("golive.entry.liveBadge", "EN DIRECT"), variant: "live" }}
+          icon={<Radio size={22} color={GOLD} strokeWidth={2.4} />}
           title={t("golive.entry.startNow", "Commencer un live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
@@ -268,6 +270,8 @@ export function GoLiveEntryScreen({
         />
         <ChoiceCard
           image={scheduleBgAsset.url}
+          badge={{ label: t("golive.entry.planBadge", "PLANIFIER"), variant: "plan" }}
+          icon={<CalendarIcon size={22} color={GOLD} strokeWidth={2.4} />}
           title={t("golive.entry.schedule", "Programmer un live")}
           subtitle={t("golive.entry.scheduleSub", "Annonce ton live et prépare tes articles")}
           onPress={() => {
@@ -470,20 +474,20 @@ function ChoiceCard({
   onPress,
 }: {
   image: string;
-  badge?: { label: string; variant: "live" | "plan" };
-  icon?: React.ReactNode;
+  badge: { label: string; variant: "live" | "plan" };
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
   onPress: () => void;
 }) {
-  const isLive = badge?.variant === "live";
+  const isLive = badge.variant === "live";
   return (
     <Press
       onClick={onPress}
       className="relative flex h-full w-full flex-col overflow-hidden text-left"
       style={{
-        aspectRatio: "9 / 17",
-        minHeight: 300,
+        aspectRatio: "9 / 15",
+        minHeight: 260,
         borderRadius: 24,
         border: `1px solid ${GOLD_DIM}`,
         boxShadow: `0 0 0 1px rgba(228,180,56,0.10), 0 0 24px rgba(228,180,56,0.14), 0 14px 32px rgba(0,0,0,0.5)`,
@@ -511,36 +515,34 @@ function ChoiceCard({
       />
 
       {/* Top badge */}
-      {badge && (
-        <div className="relative z-10 flex items-start p-3">
-          <span
-            className="rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider"
-            style={
-              isLive
-                ? {
-                    backgroundColor: LIVE_RED,
-                    color: "#FFFFFF",
-                    boxShadow: "0 4px 12px rgba(229,57,63,0.4)",
-                  }
-                : {
-                    backgroundColor: "rgba(6,19,49,0.7)",
-                    color: GOLD,
-                    border: `1px solid ${GOLD}`,
-                    backdropFilter: "blur(6px)",
-                  }
-            }
-          >
-            {badge.label}
-          </span>
-        </div>
-      )}
+      <div className="relative z-10 flex items-start p-3">
+        <span
+          className="rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider"
+          style={
+            isLive
+              ? {
+                  backgroundColor: LIVE_RED,
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 12px rgba(229,57,63,0.4)",
+                }
+              : {
+                  backgroundColor: "rgba(6,19,49,0.7)",
+                  color: GOLD,
+                  border: `1px solid ${GOLD}`,
+                  backdropFilter: "blur(6px)",
+                }
+          }
+        >
+          {badge.label}
+        </span>
+      </div>
 
       {/* Spacer pushes content to bottom */}
       <div className="flex-1" />
 
       {/* Bottom content */}
       <div className="relative z-10 flex flex-col gap-1.5 p-3.5 pr-10">
-        {icon && <div>{icon}</div>}
+        <div>{icon}</div>
         <div
           className="text-[17px] font-black leading-[1.1] text-white"
           style={{ letterSpacing: "-0.01em" }}
