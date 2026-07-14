@@ -1118,7 +1118,8 @@
       "fraud": "Scam / fraud",
       "counterfeit": "Counterfeit",
       "harassment": "Harassment",
-      "other": "Other"
+      "other": "Other",
+      "auto_block": "User block (auto)"
     }
   },
   "block": {

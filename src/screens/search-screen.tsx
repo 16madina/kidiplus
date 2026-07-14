@@ -12,6 +12,7 @@ import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { EASE_IOS } from "@/lib/motion";
 import {
   BROWSE_CATEGORIES,
+  TRENDS,
   type BrowseCategory,
 } from "@/lib/browse-mock";
 import { formatViewersLabel, formatFollowersLabel } from "@/i18n/format";
@@ -103,10 +104,21 @@ export function SearchScreen() {
           image: prev.image ?? l.thumbnail ?? null,
         });
       }
-      const list: TrendItem[] = Array.from(byCat.entries())
+      let list: TrendItem[] = Array.from(byCat.entries())
         .map(([label, v]) => ({ id: label, label, viewers: v.viewers, image: v.image }))
         .sort((a, b) => b.viewers - a.viewers)
         .slice(0, 8);
+      // Apple guideline 2.1(a): "Tendances" must never look empty on review.
+      // When no real live is running, fall back to the curated sample trends
+      // so the Explorer screen always presents populated content.
+      if (list.length === 0) {
+        list = TRENDS.map((tr) => ({
+          id: tr.id,
+          label: tr.name,
+          viewers: tr.viewers,
+          image: tr.image,
+        }));
+      }
       setTrends(list);
     })();
     return () => { cancelled = true; };

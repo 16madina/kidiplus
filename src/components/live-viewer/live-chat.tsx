@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Ban, VolumeX } from "lucide-react";
+import { ChevronDown, Ban, VolumeX, Flag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
@@ -11,13 +11,22 @@ const VISIBLE_MSGS = 40;
 const BURST_THRESHOLD_PER_SEC = 30;
 
 export type LiveChatModeration = {
+  /** True when the current viewer is host/moderator: shows the "Mute" action. */
   canModerate: boolean;
+  /**
+   * True when the viewer is signed in — Apple 1.2 requires flag/block on all
+   * UGC surfaces, so any authenticated user opens the same message menu to
+   * report a message or block its author.
+   */
+  canReport?: boolean;
   selfUserId?: string | null;
   /** Host / seller — never muteable from chat. */
   hostUserId?: string | null;
   mutedIds?: Set<string>;
   onMuteUser?: (userId: string, displayName: string) => void;
   onBlockUser?: (userId: string, displayName: string) => void;
+  /** Called with the message id when the viewer taps "Signaler". */
+  onReportMessage?: (messageId: string) => void;
 };
 
 export function LiveChat({
@@ -95,11 +104,14 @@ export function LiveChat({
     [],
   );
 
+  // Menu opens whenever the viewer can either moderate OR report the message.
+  // Apple 1.2: any signed-in user must be able to flag/block chat UGC — so
+  // `canActOn` returns true for regular viewers too when `canReport` is set.
   const canActOn = (m: ChatMsg) => {
-    if (!moderation?.canModerate || !m.userId || m.system) return false;
-    if (m.userId === moderation.selfUserId) return false;
-    if (m.userId === moderation.hostUserId) return false;
-    return true;
+    if (!m.userId || m.system) return false;
+    if (m.userId === moderation?.selfUserId) return false;
+    if (m.userId === moderation?.hostUserId) return false;
+    return !!(moderation?.canModerate || moderation?.canReport);
   };
 
   const { t } = useTranslation();
@@ -202,7 +214,23 @@ export function LiveChat({
                 {" · "}
                 <span className="line-clamp-1">{menuMsg.text}</span>
               </div>
-              {!(menuMsg.userId && moderation?.mutedIds?.has(menuMsg.userId)) && (
+              {/* Signaler — visible pour tout viewer connecté (Apple 1.2). */}
+              {moderation?.onReportMessage && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
+                  onClick={() => {
+                    const messageId = menuMsg.id;
+                    setMenuMsg(null);
+                    moderation?.onReportMessage?.(messageId);
+                  }}
+                >
+                  <Flag size={18} />
+                  {t("report.action", "Signaler")}
+                </button>
+              )}
+              {moderation?.canModerate &&
+                !(menuMsg.userId && moderation?.mutedIds?.has(menuMsg.userId)) && (
                 <button
                   type="button"
                   className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"

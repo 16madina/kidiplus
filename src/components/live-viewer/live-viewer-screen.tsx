@@ -1,6 +1,6 @@
 import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Share2, X, Eye, Gift } from "lucide-react";
+import { Send, Heart, Share2, X, Eye, Gift, MoreHorizontal, Flag, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
@@ -98,6 +98,8 @@ function MockLiveViewerScreen() {
 
   // === Hearts ===
   const [heartTrigger, setHeartTrigger] = useState(0);
+  // Signaler / Bloquer sheet (Apple 1.2 — flag/block on every UGC surface).
+  const [moreOpen, setMoreOpen] = useState(false);
   const fireHeart = () => {
     haptic.medium();
     setHeartTrigger((v) => v + 1);
@@ -574,6 +576,18 @@ function MockLiveViewerScreen() {
               <Share2 size={16} />
             </Press>
             <Press
+              aria-label={t("common.more", "Plus")}
+              onClick={() => { haptic.selection(); setMoreOpen(true); }}
+              className="h-9 w-9 rounded-full text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.45)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <MoreHorizontal size={16} />
+            </Press>
+            <Press
               aria-label={t("live.leave")}
               onClick={() => { haptic.light(); close(); }}
               className="h-9 w-9 rounded-full text-white"
@@ -725,6 +739,38 @@ function MockLiveViewerScreen() {
       )}
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+
+      {/* Signaler / Bloquer — Apple 1.2. Actions démo pour les lives échantillons :
+          confirment l'action (toast) puis ferment le live pour montrer l'effet
+          instantané. Les lives réels utilisent le vrai flux via ReportSheet. */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
+          <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <Press
+              onClick={() => {
+                setMoreOpen(false);
+                toast.success(t("report.sent"));
+                haptic.success();
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]"
+            >
+              <Flag size={18} /> {t("report.action")}
+            </Press>
+            <Press
+              onClick={() => {
+                setMoreOpen(false);
+                toast.success(t("block.blocked"));
+                haptic.success();
+                close();
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive"
+            >
+              <UserX size={18} /> {t("block.action")}
+            </Press>
+          </div>
+        </div>
+      )}
 
     </LivePipShell>
   );
