@@ -466,61 +466,104 @@ export function GoLiveEntryScreen({
 }
 
 function ChoiceCard({
+  image,
+  badge,
   icon,
   title,
   subtitle,
   onPress,
 }: {
+  image: string;
+  badge: { label: string; variant: "live" | "plan" };
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   onPress: () => void;
 }) {
+  const isLive = badge.variant === "live";
   return (
     <Press
       onClick={onPress}
-      className="flex h-full min-h-[248px] w-full flex-col items-center justify-start gap-3 rounded-3xl p-5 text-center"
+      className="relative flex h-full w-full flex-col overflow-hidden text-left"
       style={{
-        backgroundColor: "rgba(255,255,255,0.04)",
+        aspectRatio: "9 / 15",
+        minHeight: 260,
+        borderRadius: 24,
         border: `1px solid ${GOLD_DIM}`,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
+        boxShadow: `0 0 0 1px rgba(228,180,56,0.10), 0 0 24px rgba(228,180,56,0.14), 0 14px 32px rgba(0,0,0,0.5)`,
+        backgroundColor: NAVY_B,
       }}
     >
-        <div className="relative mt-2 h-[92px] w-[92px]">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              filter: "blur(16px)",
-              background: "radial-gradient(circle, rgba(255,205,110,0.35), transparent 70%)",
-            }}
-          />
-          <div
-            className="relative grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
-            style={{
-              background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
-              border: `1px solid ${GOLD_DIM}`,
-              boxShadow: `inset 0 0 0 1px rgba(255,215,140,0.08), 0 0 22px rgba(255,205,110,0.18)`,
-            }}
-          >
-            {icon}
-          </div>
+      {/* Background image */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+      {/* Vertical gradient overlay */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(180deg, rgba(6,19,49,0) 0%, rgba(6,19,49,0.25) 45%, rgba(6,19,49,0.85) 78%, rgba(6,19,49,0.96) 100%)`,
+        }}
+      />
+
+      {/* Top badge */}
+      <div className="relative z-10 flex items-start p-3">
+        <span
+          className="rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider"
+          style={
+            isLive
+              ? {
+                  backgroundColor: LIVE_RED,
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 12px rgba(229,57,63,0.4)",
+                }
+              : {
+                  backgroundColor: "rgba(6,19,49,0.7)",
+                  color: GOLD,
+                  border: `1px solid ${GOLD}`,
+                  backdropFilter: "blur(6px)",
+                }
+          }
+        >
+          {badge.label}
+        </span>
+      </div>
+
+      {/* Spacer pushes content to bottom */}
+      <div className="flex-1" />
+
+      {/* Bottom content */}
+      <div className="relative z-10 flex flex-col gap-1.5 p-3.5 pr-10">
+        <div>{icon}</div>
+        <div
+          className="text-[17px] font-black leading-[1.1] text-white"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          {title}
         </div>
-        <div className="min-w-0">
-          <div
-            className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
-            style={{ letterSpacing: "-0.01em" }}
-          >
-            {title}
-          </div>
+        <div className="text-[11.5px] leading-snug" style={{ color: "#B7BECE" }}>
+          {subtitle}
         </div>
-        <div className="flex items-center">
-          <div
-            className="h-px w-20"
-            style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
-          />
-        </div>
-        <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
+      </div>
+
+      {/* Arrow bottom-right */}
+      <div
+        aria-hidden
+        className="absolute bottom-3 right-3 z-10 grid h-7 w-7 place-items-center rounded-full"
+        style={{ backgroundColor: "rgba(228,180,56,0.14)", border: `1px solid ${GOLD_DIM}` }}
+      >
+        <ArrowRight size={14} color={GOLD} strokeWidth={2.5} />
+      </div>
     </Press>
   );
+}
+
 }
