@@ -254,10 +254,12 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Choice cards */}
-      <div className="grid grid-cols-2 gap-3 px-5 pt-4">
+      <div className="grid grid-cols-2 gap-3 px-4 pt-3">
         <ChoiceCard
-          icon={<Radio size={38} color={GOLD} />}
-          title={t("golive.entry.startNow", "Commencer\nun live")}
+          image={startBgAsset.url}
+          badge={{ label: t("golive.entry.liveBadge", "EN DIRECT"), variant: "live" }}
+          icon={<Radio size={22} color={GOLD} strokeWidth={2.4} />}
+          title={t("golive.entry.startNow", "Commencer un live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
             haptic.medium();
@@ -267,9 +269,11 @@ export function GoLiveEntryScreen({
           }}
         />
         <ChoiceCard
-          icon={<CalendarIcon size={38} color={GOLD} />}
-          title={t("golive.entry.schedule", "Programmer\nun live")}
-          subtitle={t("golive.entry.scheduleSub", "Annonce ton live à l'avance et prépare tes articles")}
+          image={scheduleBgAsset.url}
+          badge={{ label: t("golive.entry.planBadge", "PLANIFIER"), variant: "plan" }}
+          icon={<CalendarIcon size={22} color={GOLD} strokeWidth={2.4} />}
+          title={t("golive.entry.schedule", "Programmer un live")}
+          subtitle={t("golive.entry.scheduleSub", "Annonce ton live et prépare tes articles")}
           onPress={() => {
             haptic.medium();
             b.reset();
@@ -289,20 +293,45 @@ export function GoLiveEntryScreen({
         </div>
         {!loadingList && scheduled.length === 0 && (
           <div
-            className="mt-3 grid place-items-center rounded-2xl px-6 py-8 text-center"
+            className="mt-3 flex items-center gap-3 px-4 py-4"
             style={{
-              border: `1.5px dashed ${GOLD_DIM}`,
-              backgroundColor: "rgba(255,255,255,0.02)",
+              borderRadius: 22,
+              border: `1px solid ${GOLD_DIM}`,
+              background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
             }}
           >
-            <div className="mb-3">
-              <CalendarIcon size={54} color={GOLD} strokeWidth={1.5} style={{ opacity: 0.55 }} />
+            <div
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
+              style={{
+                background: "rgba(228,180,56,0.10)",
+                border: `1px solid ${GOLD_DIM}`,
+              }}
+            >
+              <CalendarIcon size={22} color={GOLD} strokeWidth={2} />
             </div>
-            <p className="text-[13px] text-white/55">
-              {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
-            </p>
+            <div className="min-w-0 flex-1 text-[13.5px] font-semibold text-white">
+              {t("golive.entry.emptyScheduled", "Aucun live programmé")}
+            </div>
+            <Press
+              onClick={() => {
+                haptic.medium();
+                b.reset();
+                b.setMode("schedule");
+                onSchedule();
+              }}
+              className="!min-h-9 h-9 shrink-0 rounded-full px-3 text-[12px] font-bold"
+              style={{
+                color: GOLD,
+                border: `1px solid ${GOLD}`,
+                backgroundColor: "rgba(228,180,56,0.06)",
+              }}
+            >
+              {t("golive.entry.emptyScheduledCta", "Programmer")}
+            </Press>
           </div>
         )}
+
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
             // The seller can start their live from 15 minutes before the scheduled time.
