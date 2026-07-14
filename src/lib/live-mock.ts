@@ -250,11 +250,16 @@ const END_MINUTES = [8, 14, 22, 31, 47, 58] as const;
 
 /** Seeded demo/sample lives for App Review and empty inventory. */
 export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
+  // Per-category counter so consecutive same-category cards never repeat the
+  // same thumbnail — spreads visuals across each gallery.
+  const catCursor: Partial<Record<LiveStream["category"], number>> = {};
   return Array.from({ length: count }, (_, k) => {
     const i = (offset + k) % SEEDS.length;
     const s = SEEDS[i];
     const gallery = IMG[s.category] ?? IMG.Fashion;
     const abs = offset + k;
+    const catIdx = (catCursor[s.category] ?? (offset * 3)) + 1;
+    catCursor[s.category] = catIdx;
     // ~28% of cards are scheduled — enough to feel active without dominating.
     const scheduled = abs % 7 === 2 || abs % 7 === 5;
     const startsInMin = scheduled
@@ -270,7 +275,7 @@ export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
       sellerId: fictitiousSellerId(s.seller),
       avatar: AVATAR(s.seller),
       title: s.title,
-      thumbnail: pick(gallery, abs),
+      thumbnail: pick(gallery, catIdx),
       viewers: viewers(abs + 1),
       category: s.category,
       fictitious: true,
