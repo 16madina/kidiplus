@@ -284,14 +284,24 @@ function MockLiveViewerScreen() {
   const doBid = () => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
     haptic.medium();
+    let nextPrice = currentProduct.price;
     setProducts((prev) =>
-      prev.map((p) =>
-        p.id === currentProduct.id ? { ...p, price: p.price + 1 } : p,
-      ),
+      prev.map((p) => {
+        if (p.id !== currentProduct.id) return p;
+        nextPrice = p.price + 1;
+        return { ...p, price: nextPrice };
+      }),
     );
 
     setLastBidder("toi");
     setSecondsLeft((s) => (s < 6 ? s + 3 : s));
+    setMessages((prev) => {
+      const next = [
+        ...prev,
+        systemMessage(`@toi a placé une enchère • ${formatEuro(nextPrice)}`),
+      ];
+      return next.length > 60 ? next.slice(next.length - 60) : next;
+    });
   };
 
   // Sheets
