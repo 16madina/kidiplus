@@ -30,6 +30,7 @@ import {
   type FulfillmentStatus,
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
+import { SellerOrderDetailSheet } from "./order-detail-sheet";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { markOrderShipped, releaseOverdueEscrow } from "@/lib/escrow-db";
