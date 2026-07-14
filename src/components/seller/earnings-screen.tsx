@@ -173,7 +173,13 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-3">
           {tab === "sales" ? (
-            <SalesList orders={orders} buyers={buyers} fmt={fmt} onShip={onShip} />
+            <SalesList
+              orders={orders}
+              buyers={buyers}
+              fmt={fmt}
+              onShip={onShip}
+              onOpen={(o) => setDetailOrder(o)}
+            />
           ) : (
             <PayoutsList payouts={payouts} fmt={fmt} tr={t} />
           )}
