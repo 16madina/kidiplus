@@ -148,6 +148,9 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
           <span className="skeleton absolute inset-0" aria-hidden />
         )}
 
+        {/* data-loaded is required: global CSS keeps <img> at opacity 0
+            until it is set (src/styles.css) — without it the poster loads
+            but stays invisible (grey card + play button). */}
         <img
           ref={imgRef}
           key={poster}
@@ -156,6 +159,7 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
           loading="eager"
           decoding="async"
           draggable={false}
+          data-loaded={loaded || undefined}
           onLoad={() => setLoaded(true)}
           onError={() => {
             const fallback = nextPosterFallback(poster);
@@ -276,6 +280,7 @@ export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
         loading="eager"
         decoding="async"
         draggable={false}
+        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
         onError={() => {
           const fallback = nextPosterFallback(poster);
           if (fallback) setPoster(fallback);
