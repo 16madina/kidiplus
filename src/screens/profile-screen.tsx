@@ -47,6 +47,7 @@ import { useWallet } from "@/lib/wallet-context";
 import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
 import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
+import { OrdersScreen } from "@/screens/orders-screen";
 import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
@@ -105,6 +106,7 @@ function ProfileScreenAuthed() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [addressesOpen, setAddressesOpen] = useState(false);
@@ -406,7 +408,7 @@ function ProfileScreenAuthed() {
                 <QuickAction
                   icon={<ShoppingBag size={18} />}
                   label={t("profile.quick.orders")}
-                  onClick={goActivity}
+                  onClick={() => { haptic.light(); setOrdersOpen(true); }}
                 />
               </div>
             </div>
@@ -530,6 +532,7 @@ function ProfileScreenAuthed() {
       <SettingsPushScreen open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditProfileScreen open={editOpen} onClose={() => setEditOpen(false)} />
       <SellerEarningsScreen open={salesOpen} onClose={() => setSalesOpen(false)} />
+      <OrdersScreen open={ordersOpen} onClose={() => setOrdersOpen(false)} />
       <AdminPayoutsScreen open={adminOpen} onClose={() => setAdminOpen(false)} />
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
       <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />

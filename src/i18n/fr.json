@@ -816,10 +816,17 @@
     "withdraw": "Retirer mes gains",
     "price": "Prix",
     "net": "Net",
+    "shippingHint": "Gère tes expéditions dans « Mes commandes ».",
+    "moneyState": { "released": "Libéré", "pending": "En attente" },
     "tabs": {
       "sales": "Ventes",
       "payouts": "Retraits"
     }
+  },
+  "myOrders": {
+    "title": "Mes commandes",
+    "tabs": { "sales": "Commandes", "purchases": "Commandé" },
+    "emptySales": "Aucune commande à expédier pour le moment."
   },
   "payout": {
     "title": "Retirer mes gains",

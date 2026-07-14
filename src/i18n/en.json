@@ -816,10 +816,17 @@
     "withdraw": "Withdraw earnings",
     "price": "Price",
     "net": "Net",
+    "shippingHint": "Manage shipments in \"My orders\".",
+    "moneyState": { "released": "Released", "pending": "Pending" },
     "tabs": {
       "sales": "Sales",
       "payouts": "Withdrawals"
     }
+  },
+  "myOrders": {
+    "title": "My orders",
+    "tabs": { "sales": "To ship", "purchases": "Purchased" },
+    "emptySales": "No orders to ship yet."
   },
   "payout": {
     "title": "Withdraw earnings",
