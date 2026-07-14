@@ -15,6 +15,8 @@ export type AddressRow = {
   city: string;
   zone_or_commune: string | null;
   street_address: string | null;
+  postal_code: string | null;
+  region: string | null;
   details: string | null;
   is_default: boolean;
   created_at: string;
