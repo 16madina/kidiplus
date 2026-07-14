@@ -15,16 +15,21 @@
 import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
-// Bundled same-origin hashed asset (same pattern as the Live tab badge).
-// Do NOT use `/demo-live-poster.jpg` in public/ — Lovable returns 403 for it.
-// Do NOT rely on `/__l5e/...` alone — it often fails inside Capacitor WebViews.
-import demoPosterBundled from "@/assets/img/demo-live-poster.jpg";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
-/** Always-available poster baked into the JS/CSS bundle. */
-export const DEMO_COVER_BUNDLED_URL = demoPosterBundled;
-export const DEMO_COVER_FALLBACK_URL = demoPosterBundled;
+
+/**
+ * Default poster = Lovable CDN asset (demo-live-cover.jpg.asset.json).
+ * This is the path Lovable actually hosts. Raw Vite jpg imports / public/
+ * files have failed to deploy or returned 403 on preview hosts.
+ */
+export const DEMO_COVER_FALLBACK_URL = demoCoverAsset.url;
+export const DEMO_COVER_BUNDLED_URL = demoCoverAsset.url;
 export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
+
+/** Absolute URL — works inside Lovable editor iframes and any origin. */
+export const DEMO_COVER_ABSOLUTE_URL =
+  "https://kidiplus.com" + demoCoverAsset.url;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
 // v2: ignore stale `demo_cover_url` Storage overrides that broke the home card.
@@ -55,7 +60,7 @@ export async function fetchDemoConfig(): Promise<DemoConfig> {
   (data ?? []).forEach((r) => map.set(r.key, r.value));
   return {
     videoUrl: map.get(DEMO_VIDEO_CONFIG_KEY) || DEMO_VIDEO_FALLBACK_URL,
-    coverUrl: map.get(DEMO_COVER_CONFIG_KEY) || DEMO_COVER_FALLBACK_URL,
+    coverUrl: map.get(DEMO_COVER_CONFIG_KEY) || DEMO_COVER_ABSOLUTE_URL,
     version: map.get(DEMO_VERSION_CONFIG_KEY) || "0",
   };
 }

@@ -12,9 +12,8 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   Vite-bundled `@/assets/img/demo-live-poster.jpg` (hashed `/assets/...`).
-//   Same approach as the Live tab badge — works on Lovable + Capacitor.
-//   Admin overrides (https only) still win via app_config.demo_cover_url_v2.
+//   Always use the Lovable CDN absolute URL on kidiplus.com (works in the
+//   Lovable editor iframe too). Admin https overrides still win.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,16 +25,20 @@ import {
   fetchDemoConfig,
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
-  DEMO_COVER_BUNDLED_URL,
+  DEMO_COVER_ABSOLUTE_URL,
   DEMO_COVER_LOVABLE_URL,
 } from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
-/** Prefer admin https override; otherwise the Vite-bundled poster. */
+/** Prefer admin https override; otherwise the known-good absolute CDN poster. */
 function resolvePosterUrl(coverUrl: string | undefined): string {
   if (coverUrl && /^https?:\/\//i.test(coverUrl)) return coverUrl;
-  return DEMO_COVER_BUNDLED_URL;
+  // Relative Lovable asset path → make absolute so iframes/previews work.
+  if (coverUrl && coverUrl.startsWith("/__l5e/")) {
+    return `https://kidiplus.com${coverUrl}`;
+  }
+  return DEMO_COVER_ABSOLUTE_URL;
 }
 
 /** Resolves the current demo video + cover URLs (admin-overridable via
@@ -44,7 +47,7 @@ function resolvePosterUrl(coverUrl: string | undefined): string {
 export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
   const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
-  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_BUNDLED_URL);
+  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_ABSOLUTE_URL);
   const [version, setVersion] = useState<string>("0");
   const lastVersion = useRef<string>("");
 
@@ -54,7 +57,7 @@ export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: str
     if (cfg.version === lastVersion.current) return;
     lastVersion.current = cfg.version;
     const vUrl = withVersion(cfg.videoUrl, cfg.version);
-    const cUrl = resolvePosterUrl(withVersion(cfg.coverUrl, cfg.version));
+    const cUrl = resolvePosterUrl(cfg.coverUrl);
     setUrl(vUrl);
     setCoverUrl(cUrl);
     setVersion(cfg.version);
@@ -94,8 +97,8 @@ function DemoPoster({ src, className }: { src: string; className?: string }) {
       decoding="async"
       draggable={false}
       onError={() => {
-        if (current !== DEMO_COVER_BUNDLED_URL) {
-          setCurrent(DEMO_COVER_BUNDLED_URL);
+        if (current !== DEMO_COVER_ABSOLUTE_URL) {
+          setCurrent(DEMO_COVER_ABSOLUTE_URL);
         } else if (current !== DEMO_COVER_LOVABLE_URL) {
           setCurrent(DEMO_COVER_LOVABLE_URL);
         }
@@ -117,10 +120,9 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
       <Press
         onClick={onOpen}
         aria-label={t("home.demo.title")}
-        className="relative !block h-full w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
+        className="relative !block w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
         style={{
           aspectRatio: "3 / 4",
-          // CSS background as belt-and-suspenders — shows even if <img> fails.
           backgroundImage: `url("${poster}")`,
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -129,7 +131,7 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
         {/* live poster background */}
         <DemoPoster
           src={poster}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 z-0 h-full w-full object-cover"
         />
 
         {/* subtle overlay + vignette so badges and text stay readable */}
@@ -238,11 +240,9 @@ export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
         backgroundPosition: "center",
       }}
     >
-      {/* live poster background — visible from the first frame so the
-          card never looks empty while the video HEAD probe is in flight */}
       <DemoPoster
         src={poster}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 z-0 h-full w-full object-cover"
       />
       <span
         aria-hidden
