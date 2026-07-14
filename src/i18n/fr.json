@@ -1118,7 +1118,8 @@
       "fraud": "Arnaque / fraude",
       "counterfeit": "Contrefaçon",
       "harassment": "Harcèlement",
-      "other": "Autre"
+      "other": "Autre",
+      "auto_block": "Blocage utilisateur (auto)"
     }
   },
   "block": {

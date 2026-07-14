@@ -303,11 +303,19 @@ export function RealLiveViewerScreen() {
       systemMessage(t("live.chatIntro", `Bienvenue dans le live de ${active.seller} 👋`)),
     ]);
   }, [active, t]);
+  // Personal blocks — used to filter chat messages in real time and to
+  // auto-close the live if the viewer opens a stream by an already-blocked
+  // host (see the guard further down). Hoisted before `messages` memo.
+  const blockedIdsForChat = useBlockedIds();
   const messages: ChatMsg[] = useMemo(
     () => [
       ...localMessages,
       ...room.chat
-        .filter((c) => !c.userId || !chatMutes.has(c.userId))
+        // Live-scoped mutes (moderator action) AND personal blocks (viewer
+        // tapped "Bloquer") both remove messages immediately. Blocked user
+        // messages disappear from the viewer's chat as soon as the block
+        // succeeds — no refresh required (Apple guideline 1.2).
+        .filter((c) => !c.userId || (!chatMutes.has(c.userId) && !blockedIdsForChat.has(c.userId)))
         .map((c) => ({
           id: c.id,
           user: c.user,
@@ -319,7 +327,7 @@ export function RealLiveViewerScreen() {
           isHost: !!c.isHost || (!!c.userId && c.userId === active?.sellerId),
         })),
     ],
-    [localMessages, room.chat, chatMutes, active?.sellerId],
+    [localMessages, room.chat, chatMutes, blockedIdsForChat, active?.sellerId],
   );
 
   // ---------- Payment sheet state ----------
@@ -729,9 +737,11 @@ export function RealLiveViewerScreen() {
 
   // Moderation
   const [reportOpen, setReportOpen] = useState(false);
+  // Per-chat-message report state (Apple 1.2 — any user can flag any UGC).
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
-  const blockedIds = useBlockedIds();
+  const blockedIds = blockedIdsForChat;
 
   // Drop open sheets when shrinking to mini / system PiP — they would block the tabs / bubble.
   useEffect(() => {
@@ -888,9 +898,16 @@ export function RealLiveViewerScreen() {
           messages={messages}
           moderation={{
             canModerate: isModerator,
+            // Even regular viewers can now open the message menu — Apple 1.2
+            // requires flagging + blocking to be available on every UGC
+            // surface (live streams, chat messages, profiles).
+            canReport: !!user,
             selfUserId: user?.id ?? null,
             hostUserId: active.sellerId ?? null,
             mutedIds: chatMutes,
+            onReportMessage: (messageId) => {
+              requireAuth(() => setReportMessageId(messageId));
+            },
             onMuteUser: async (userId, displayName) => {
               if (!active.liveId || !user) return;
               const res = await muteLiveChatUser(active.liveId, userId, user.id);
@@ -902,16 +919,20 @@ export function RealLiveViewerScreen() {
               toast.success(t("moderator.muted", { name: displayName }));
             },
             onBlockUser: async (userId, displayName) => {
-              if (!active.liveId || !user) return;
-              await muteLiveChatUser(active.liveId, userId, user.id);
-              const r = await blockUser(userId);
-              if (r.ok) {
-                await refreshBlockedIds();
-                haptic.selection();
-                toast.success(t("moderator.blocked", { name: displayName }));
-              } else {
-                toast.error(r.error ?? t("moderator.blockFailed"));
-              }
+              requireAuth(async () => {
+                if (!user) return;
+                if (isModerator && active.liveId) {
+                  await muteLiveChatUser(active.liveId, userId, user.id);
+                }
+                const r = await blockUser(userId);
+                if (r.ok) {
+                  await refreshBlockedIds();
+                  haptic.selection();
+                  toast.success(t("moderator.blocked", { name: displayName }));
+                } else {
+                  toast.error(r.error ?? t("moderator.blockFailed"));
+                }
+              });
             },
           }}
         />
@@ -1166,6 +1187,14 @@ export function RealLiveViewerScreen() {
           defaultReason="inappropriate"
         />
       )}
+      {/* Per-chat-message report (Apple 1.2). Any signed-in viewer can flag. */}
+      <ReportSheet
+        open={!!reportMessageId}
+        onClose={() => setReportMessageId(null)}
+        targetType="message"
+        targetId={reportMessageId ?? ""}
+        defaultReason="inappropriate"
+      />
       <AnimatePresence>
         {liveEnded && (
           <motion.div
