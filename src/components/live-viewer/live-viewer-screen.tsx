@@ -152,16 +152,24 @@ function MockLiveViewerScreen() {
   const [secondsLeft, setSecondsLeft] = useState(AUCTION_SECONDS);
   const [lastBidder, setLastBidder] = useState<string | undefined>();
   const [confettiKey, setConfettiKey] = useState(0);
+  const celebratedProductRef = useRef<string | null>(null);
+  // After switching demos / re-opening, skip celebrating a leftover secondsLeft===0
+  // until the timer is fresh again.
+  const skipCelebrateRef = useRef(false);
   const currentIndex = products.findIndex((p) => p.status === "current");
   const currentProduct = currentIndex >= 0 ? products[currentIndex] : null;
 
   // reset countdown when product changes / when active stream changes
   useEffect(() => {
     if (!active) return;
+    skipCelebrateRef.current = true;
+    celebratedProductRef.current = null;
+    setWinnerReveal(null);
+    setConfettiKey(0);
     setProducts(makeProducts());
     setSecondsLeft(AUCTION_SECONDS);
     setLastBidder(undefined);
-  }, [active]);
+  }, [active?.id]);
 
   // countdown tick (paused when app is backgrounded)
   useEffect(() => {
@@ -221,7 +229,15 @@ function MockLiveViewerScreen() {
   // Countdown hits zero -> sold, advance to next product
   useEffect(() => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
-    if (secondsLeft > 0) return;
+    if (secondsLeft > 0) {
+      skipCelebrateRef.current = false;
+      return;
+    }
+    // Don't replay a previous round's zero-timer when entering / swiping demos.
+    if (skipCelebrateRef.current) return;
+    if (celebratedProductRef.current === currentProduct.id) return;
+    celebratedProductRef.current = currentProduct.id;
+
     const winner = lastBidder ?? randomBidder();
     const isMe = winner === "toi";
     // mark sold, advance
@@ -253,6 +269,7 @@ function MockLiveViewerScreen() {
         // If we ran out of products, loop back to the top so the sample
         // live never runs out of auction rounds during review.
         if (!next.some((p) => p.status === "current")) {
+          celebratedProductRef.current = null;
           return next.map((p, i) =>
             i === 0 ? { ...p, status: "current" as const, price: p.startBid } : p,
           );
@@ -262,7 +279,7 @@ function MockLiveViewerScreen() {
       setSecondsLeft(AUCTION_SECONDS);
       setLastBidder(undefined);
     }, 1600);
-  }, [secondsLeft, currentProduct, lastBidder]);
+  }, [secondsLeft, currentProduct?.id, currentProduct?.mode, currentProduct?.name, currentProduct?.price, lastBidder]);
 
   // Follow toggle + viewer count
   const [following, setFollowing] = useState(false);

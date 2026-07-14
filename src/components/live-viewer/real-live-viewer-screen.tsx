@@ -384,18 +384,35 @@ export function RealLiveViewerScreen() {
     productName: string | null;
   } | null>(null);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  // Only celebrate ends that arrive after we joined this live session.
+  // Prevents replaying a leftover lastAuctionEnd (or a stale broadcast) when
+  // opening / rejoining a live after someone already won.
+  const joinedAtRef = useRef(Date.now());
+  const productsRef = useRef(room.products);
+  productsRef.current = room.products;
+
+  useEffect(() => {
+    joinedAtRef.current = Date.now();
+    seenEndIdsRef.current = new Set();
+    setWinnerReveal(null);
+    setConfettiKey(0);
+  }, [active?.liveId]);
+
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
     // Only dedupe by unique endId — same buyer may win the same item many times.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
     if (seenEndIdsRef.current.has(endId)) return;
+    // Stale end from before this viewer session (rejoin / swipe leak).
+    const ts = evt.ts ?? 0;
+    if (ts > 0 && ts < joinedAtRef.current - 2500) return;
     seenEndIdsRef.current.add(endId);
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
       if (first) seenEndIdsRef.current.delete(first);
     }
-    const prod = room.products.find((p) => p.id === evt.productId);
+    const prod = productsRef.current.find((p) => p.id === evt.productId);
 
     if (!evt.winnerName || !evt.winnerId) {
       // Unsold — central reveal, no confetti, no sale line.
@@ -462,8 +479,8 @@ export function RealLiveViewerScreen() {
           if (order) setPendingOrder(order);
         })();
       } else {
-        const prod = room.products.find((p) => p.id === evt.productId);
-        if (prod) {
+        const prodRow = productsRef.current.find((p) => p.id === evt.productId);
+        if (prodRow) {
           void (async () => {
             const dr = await resolveDeliveryForCheckout({
               sellerId: active.sellerId!,
@@ -483,10 +500,10 @@ export function RealLiveViewerScreen() {
               buyerId: user.id,
               sellerId: active.sellerId!,
               liveId: active.liveId!,
-              productId: prod.id,
+              productId: prodRow.id,
               kind: "auction",
-              itemName: prod.name,
-              itemImage: prod.image_url,
+              itemName: prodRow.name,
+              itemImage: prodRow.image_url,
               amount: evt.finalPrice,
               currency: liveCurrency,
               deliveryFee: dr.delivery.deliveryFee,
@@ -501,7 +518,7 @@ export function RealLiveViewerScreen() {
         }
       }
     }
-  }, [room.lastAuctionEnd, t, user, active, room.products, liveCurrency, formatLive]);
+  }, [room.lastAuctionEnd, t, user, active?.liveId, active?.sellerId, liveCurrency, formatLive]);
 
   // Sudden-death flash + haptic when the deadline is extended by a late bid.
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);
