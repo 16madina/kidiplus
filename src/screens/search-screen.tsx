@@ -155,7 +155,13 @@ export function SearchScreen() {
         setDbSellers(profiles);
         setActiveSellerIds(active.ids);
         setActiveLives(active.lives);
-        setLiveResults(lives);
+        // When a category tile is tapped, its `query` matches a LiveStream
+        // Category slug (Beauty / Fashion / Jewelry / Electronics / Sneakers /
+        // Cards). Append deterministic sample lives for that category so the
+        // "Lives" tab is never empty when no real lives are running — same
+        // safety net as the Home feed (Apple Guideline 2.1(a)).
+        const samples = sampleLivesForQuery(query);
+        setLiveResults([...lives, ...samples]);
         setProductResults(products);
 
         // Resolve avatars for sellers in parallel.
