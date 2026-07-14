@@ -33,6 +33,12 @@ export type LiveStream = {
   sellerId?: string;
   /** Live currency (defaults to EUR when unspecified). */
   currency?: "XOF" | "EUR" | "CAD";
+  /** When true, the card renders as a scheduled (upcoming) live, not LIVE. */
+  scheduled?: boolean;
+  /** Minutes until the scheduled live starts (only when scheduled). */
+  startsInMin?: number;
+  /** Minutes remaining on a live in progress (optional realism timer). */
+  endsInMin?: number;
 };
 
 
