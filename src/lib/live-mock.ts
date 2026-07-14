@@ -70,6 +70,8 @@ const IMG = {
     "https://images.unsplash.com/photo-1628960198207-3d1fed6f28d3?w=600&q=70",
     "https://images.unsplash.com/photo-1637419450536-378d5457abb8?w=600&q=70",
     "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=600&q=70",
+    "https://images.unsplash.com/photo-1606166187734-a4cb74079037?w=600&q=70",
+    "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=600&q=70",
   ],
   Electronics: [
     "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70",
