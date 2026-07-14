@@ -191,6 +191,8 @@ export function snapshotAddress(a: AddressLike & { id?: string }): Record<string
     city: a.city ?? null,
     zone_or_commune: a.zone_or_commune ?? null,
     street_address: a.street_address ?? null,
+    postal_code: a.postal_code ?? null,
+    region: a.region ?? null,
     details: a.details ?? null,
     line: formatAddressLine(a),
   };
