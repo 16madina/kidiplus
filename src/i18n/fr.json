@@ -1210,13 +1210,32 @@
       "city": "Ville",
       "zoneOrCommune": "Commune / quartier",
       "streetAddress": "Adresse (rue, numéro)",
+      "streetOptional": "Rue (optionnel)",
+      "postalCode": "Code postal",
+      "region": "Région / Province (optionnel)",
       "details": "Repère (ex : derrière la pharmacie X)"
     },
     "phoneRequired": "Le téléphone est requis.",
     "cityRequired": "La ville est requise.",
     "nameRequired": "Le nom est requis.",
+    "countryRequired": "Choisis un pays.",
+    "communeRequired": "La commune / quartier est requise.",
+    "streetRequired": "L'adresse (rue) est requise.",
+    "postalRequired": "Le code postal est requis.",
+    "pickCountry": "Choisir un pays",
+    "landmarkPlaceholder": "Ex : derrière la pharmacie, immeuble bleu",
     "chooseForCheckout": "Choisir une adresse",
     "quickAdd": "Ajouter une adresse rapidement"
+  },
+  "sellerOrder": {
+    "title": "Détails de la commande",
+    "shipTo": "Livrer à",
+    "copyAddress": "Copier l'adresse",
+    "copyPhone": "Copier le téléphone",
+    "copied": "Adresse copiée",
+    "phoneCopied": "Téléphone copié",
+    "awaitingPayment": "L'adresse sera visible dès que la commande est payée.",
+    "noAddress": "Cette commande n'a pas encore d'adresse enregistrée. Contacte l'acheteur."
   },
   "delivery": {
     "title": "Livraison",

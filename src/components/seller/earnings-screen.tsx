@@ -30,6 +30,7 @@ import {
   type FulfillmentStatus,
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
+import { SellerOrderDetailSheet } from "./order-detail-sheet";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { markOrderShipped, releaseOverdueEscrow } from "@/lib/escrow-db";
@@ -59,6 +60,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
   const [buyers, setBuyers] = useState<BuyerMap>({});
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<OrderRow | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -171,7 +173,13 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-3">
           {tab === "sales" ? (
-            <SalesList orders={orders} buyers={buyers} fmt={fmt} onShip={onShip} />
+            <SalesList
+              orders={orders}
+              buyers={buyers}
+              fmt={fmt}
+              onShip={onShip}
+              onOpen={(o) => setDetailOrder(o)}
+            />
           ) : (
             <PayoutsList payouts={payouts} fmt={fmt} tr={t} />
           )}
@@ -183,6 +191,11 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
         onClose={() => setWithdrawOpen(false)}
         available={available}
         currency={balanceCurrency}
+      />
+      <SellerOrderDetailSheet
+        order={detailOrder}
+        onClose={() => setDetailOrder(null)}
+        onShip={onShip}
       />
     </PushScreen>
   );
@@ -224,11 +237,13 @@ function SalesList({
   buyers,
   fmt,
   onShip,
+  onOpen,
 }: {
   orders: OrderRow[];
   buyers: BuyerMap;
   fmt: (n: number, cur?: string) => string;
   onShip: (orderId: string) => void;
+  onOpen: (o: OrderRow) => void;
 }) {
   const { t } = useTranslation();
   if (orders.length === 0) {
@@ -241,52 +256,67 @@ function SalesList({
         const isPaid = o.status === "paid";
         const canShip = isPaid && o.fulfillment_status === "awaiting";
         const fm = FULFILL_META[o.fulfillment_status];
+        const snap = (o.address_snapshot ?? null) as null | {
+          full_name?: string | null;
+          line?: string | null;
+        };
         return (
           <li key={o.id} className="rounded-2xl border border-border p-3">
-            <div className="flex items-center gap-3">
-              {o.item_image ? (
-                <img src={o.item_image} alt="" className="h-14 w-14 rounded-xl object-cover" />
-              ) : (
-                <div className="h-14 w-14 rounded-xl bg-muted" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
-                  {isPaid && (
-                    <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                      style={{ backgroundColor: fm.bg, color: fm.color }}
-                    >
-                      {t(fm.key)}
-                    </span>
+            <button
+              type="button"
+              onClick={() => onOpen(o)}
+              className="w-full text-left"
+            >
+              <div className="flex items-center gap-3">
+                {o.item_image ? (
+                  <img src={o.item_image} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                ) : (
+                  <div className="h-14 w-14 rounded-xl bg-muted" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
+                    {isPaid && (
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                        style={{ backgroundColor: fm.bg, color: fm.color }}
+                      >
+                        {t(fm.key)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
+                    {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
+                      ? t("orders.status.paymentTimeout")
+                      : t(`orders.status.${o.status}`)}
+                  </p>
+                  {o.status === "pending" && o.kind === "auction" && o.payment_deadline && (
+                    <p className="mt-0.5 text-[11px] font-semibold" style={{ color: "oklch(0.5 0.16 60)" }}>
+                      {t("orders.payBefore", { date: new Date(o.payment_deadline).toLocaleString() })}
+                    </p>
+                  )}
+                  {isPaid && snap?.full_name && (
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      📦 {snap.full_name}{snap.line ? ` — ${snap.line}` : ""}
+                    </p>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
-                  {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
-                    ? t("orders.status.paymentTimeout")
-                    : t(`orders.status.${o.status}`)}
-                </p>
-                {o.status === "pending" && o.kind === "auction" && o.payment_deadline && (
-                  <p className="mt-0.5 text-[11px] font-semibold" style={{ color: "oklch(0.5 0.16 60)" }}>
-                    {t("orders.payBefore", { date: new Date(o.payment_deadline).toLocaleString() })}
-                  </p>
-                )}
               </div>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
-              <BreakdownCell label={t("gains.price")} value={fmt(Number(o.amount), o.currency)} />
-              <BreakdownCell
-                label={`KiDi+ −${PLATFORM_FEE_PERCENT}%`}
-                value={`−${fmt(Number(o.platform_fee), o.currency)}`}
-                muted
-              />
-              <BreakdownCell
-                label={t("gains.net")}
-                value={fmt(Number(o.seller_net || 0), o.currency)}
-                strong
-              />
-            </div>
+              <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
+                <BreakdownCell label={t("gains.price")} value={fmt(Number(o.amount), o.currency)} />
+                <BreakdownCell
+                  label={`KiDi+ −${PLATFORM_FEE_PERCENT}%`}
+                  value={`−${fmt(Number(o.platform_fee), o.currency)}`}
+                  muted
+                />
+                <BreakdownCell
+                  label={t("gains.net")}
+                  value={fmt(Number(o.seller_net || 0), o.currency)}
+                  strong
+                />
+              </div>
+            </button>
             {canShip && (
               <Press
                 onClick={() => onShip(o.id)}

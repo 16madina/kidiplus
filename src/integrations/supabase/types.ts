@@ -25,6 +25,8 @@ export type Database = {
           is_default: boolean
           label: string
           phone: string
+          postal_code: string | null
+          region: string | null
           street_address: string | null
           updated_at: string
           user_id: string
@@ -40,6 +42,8 @@ export type Database = {
           is_default?: boolean
           label?: string
           phone: string
+          postal_code?: string | null
+          region?: string | null
           street_address?: string | null
           updated_at?: string
           user_id: string
@@ -55,6 +59,8 @@ export type Database = {
           is_default?: boolean
           label?: string
           phone?: string
+          postal_code?: string | null
+          region?: string | null
           street_address?: string | null
           updated_at?: string
           user_id?: string
