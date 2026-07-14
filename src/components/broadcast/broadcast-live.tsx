@@ -77,6 +77,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [canFlip, setCanFlip] = useState(false);
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeLens } = useFilter();
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
@@ -973,6 +975,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         canFlip={canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
+        filtersActive={activeLens.lensId !== "none"}
+        onOpenFilters={() => setFiltersOpen((o) => !o)}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => {
