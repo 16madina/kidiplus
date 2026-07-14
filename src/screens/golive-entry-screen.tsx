@@ -486,8 +486,8 @@ function ChoiceCard({
       onClick={onPress}
       className="relative flex h-full w-full flex-col overflow-hidden text-left"
       style={{
-        aspectRatio: "9 / 15",
-        minHeight: 260,
+        aspectRatio: "9 / 17",
+        minHeight: 300,
         borderRadius: 24,
         border: `1px solid ${GOLD_DIM}`,
         boxShadow: `0 0 0 1px rgba(228,180,56,0.10), 0 0 24px rgba(228,180,56,0.14), 0 14px 32px rgba(0,0,0,0.5)`,
