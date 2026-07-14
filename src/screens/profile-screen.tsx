@@ -123,6 +123,24 @@ function ProfileScreenAuthed() {
   const [referralOpen, setReferralOpen] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
 
+  // Soft URL routes (/wallet, /orders, …) → open the matching overlay.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const section = (e as CustomEvent<string>).detail;
+      haptic.light();
+      if (section === "wallet") setWalletOpen(true);
+      else if (section === "orders") setOrdersOpen(true);
+      else if (section === "earnings") setSalesOpen(true);
+      else if (section === "shop") setShopOpen(true);
+      else if (section === "sell") {
+        if (profile?.is_seller) setShopOpen(true);
+        else void becomeSeller().catch(() => {});
+      }
+    };
+    window.addEventListener("kidi:open-section", onOpen as EventListener);
+    return () => window.removeEventListener("kidi:open-section", onOpen as EventListener);
+  }, [profile?.is_seller, becomeSeller]);
+
   useEffect(() => {
     if (!profile?.id) { setIsInfluencer(false); return; }
     let alive = true;

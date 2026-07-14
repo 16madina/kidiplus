@@ -1,13 +1,15 @@
 // GuestProfileScreen — shown in the Profile tab for non-authenticated users.
 // Onboarding pitch with soft gold background, CTAs pinned at top, illustration
-// and features below.
+// and features below. Feature tiles open the auth flow (no dead ends / 404).
 
-import { UserPlus, LogIn, Wallet, Package, MapPin, Settings, ShieldCheck } from "lucide-react";
+import { UserPlus, LogIn, Wallet, Package, MapPin, Settings, ShieldCheck, TrendingUp, Store } from "lucide-react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
+import { OPEN_SECTION_EVENT } from "@/lib/soft-profile-routes";
 import illustration from "@/assets/guest-profile-illustration.png";
 import background from "@/assets/guest-profile-bg-v2.png.asset.json";
 
@@ -18,6 +20,13 @@ export function GuestProfileScreen() {
   const { openAuth } = useAuthPrompt();
 
   const go = () => { haptic.light(); openAuth(); };
+
+  // Deep links / soft routes (/wallet, /orders, …) land here for guests.
+  useEffect(() => {
+    const onOpen = () => { openAuth(); };
+    window.addEventListener(OPEN_SECTION_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(OPEN_SECTION_EVENT, onOpen as EventListener);
+  }, [openAuth]);
 
   return (
     <div
@@ -82,12 +91,41 @@ export function GuestProfileScreen() {
           className="-mt-2 -mb-6 h-auto w-[90px] select-none"
         />
 
-        {/* Feature grid */}
+        {/* Feature grid — each tile opens auth (no 404 / empty dead ends) */}
         <div className="mt-0 grid w-full grid-cols-4 gap-1">
-          <Feature icon={<Wallet size={17} />} label={t("guestProfile.feat.wallet", { defaultValue: "Portefeuille sécurisé" })} />
-          <Feature icon={<Package size={17} />} label={t("guestProfile.feat.orders", { defaultValue: "Suivi de tes commandes" })} />
-          <Feature icon={<MapPin size={17} />} label={t("guestProfile.feat.addresses", { defaultValue: "Adresses enregistrées" })} />
-          <Feature icon={<Settings size={17} />} label={t("guestProfile.feat.settings", { defaultValue: "Réglages personnalisés" })} />
+          <Feature
+            icon={<Wallet size={17} />}
+            label={t("profile.quick.wallet", { defaultValue: "Portefeuille" })}
+            onClick={go}
+          />
+          <Feature
+            icon={<Package size={17} />}
+            label={t("profile.quick.orders", { defaultValue: "Commandes" })}
+            onClick={go}
+          />
+          <Feature
+            icon={<TrendingUp size={17} />}
+            label={t("profile.quick.earnings", { defaultValue: "Gains" })}
+            onClick={go}
+          />
+          <Feature
+            icon={<Store size={17} />}
+            label={t("profile.quick.myShop", { defaultValue: "Boutique" })}
+            onClick={go}
+          />
+        </div>
+
+        <div className="mt-2 grid w-full grid-cols-2 gap-1">
+          <Feature
+            icon={<MapPin size={17} />}
+            label={t("guestProfile.feat.addresses", { defaultValue: "Adresses" })}
+            onClick={go}
+          />
+          <Feature
+            icon={<Settings size={17} />}
+            label={t("guestProfile.feat.settings", { defaultValue: "Réglages" })}
+            onClick={go}
+          />
         </div>
 
         {/* Trust footer */}
@@ -112,9 +150,17 @@ export function GuestProfileScreen() {
   );
 }
 
-function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
+function Feature({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
+    <Press onClick={onClick} className="flex flex-col items-center gap-0.5 !min-h-0 py-1">
       <div
         className="grid h-9 w-9 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
         style={{ boxShadow: "0 2px 8px rgba(16,22,43,0.06)" }}
@@ -122,6 +168,6 @@ function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
         {icon}
       </div>
       <p className="text-[10px] font-semibold leading-tight text-[#10162B]/70">{label}</p>
-    </div>
+    </Press>
   );
 }

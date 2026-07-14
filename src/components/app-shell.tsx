@@ -186,6 +186,36 @@ function AppShellInner() {
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
   }, []);
 
+  // Soft profile URLs (/wallet, /orders, …) stash a section then redirect here.
+  // Also resume `kidi.pending_path` on web (native bootstrap already handles Capacitor).
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const { takeSoftSection, softSectionFromPath, stashSoftSection, dispatchOpenSection } =
+        await import("@/lib/soft-profile-routes");
+      try {
+        const pending = window.localStorage.getItem("kidi.pending_path");
+        if (pending?.startsWith("/")) {
+          window.localStorage.removeItem("kidi.pending_path");
+          const mapped = softSectionFromPath(pending.split("?")[0] ?? pending);
+          if (mapped) stashSoftSection(mapped);
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      const section = takeSoftSection();
+      if (!section) return;
+      setActive("profile");
+      // Let Profile / Guest mount, then open overlay or auth.
+      setTimeout(() => {
+        if (!cancelled) dispatchOpenSection(section);
+      }, 80);
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, []);
+
 
 
 

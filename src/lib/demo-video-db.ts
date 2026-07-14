@@ -16,10 +16,15 @@ import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
 import { DEMO_LIVE_POSTER_DATA_URI } from "@/assets/demo-live-poster-data";
+// Same pattern as bottom-tab-bar Live badge: Vite-hashed same-origin URL.
+// `/__l5e/` CDN paths fail on some mobile browsers; large data-URIs fail on iOS.
+import demoPosterBundledUrl from "@/assets/img/demo-live-poster.jpg";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
 
-/** Lovable CDN relative path — works on kidiplus.com (same origin). */
+/** Vite-bundled ~42KB jpg — primary poster (works on iPhone + Capacitor). */
+export const DEMO_COVER_BUNDLED_URL = demoPosterBundledUrl;
+/** Lovable CDN relative path — secondary fallback on kidiplus.com. */
 export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
 /** Same-origin public file (copied into `public/`). */
 export const DEMO_COVER_PUBLIC_URL = "/demo-live-poster.jpg";
@@ -28,11 +33,10 @@ export const DEMO_COVER_DATA_URI = DEMO_LIVE_POSTER_DATA_URI;
 
 /**
  * Default poster for the home demo card.
- * Prefer the Lovable CDN asset on the live site (what worked on iPhone).
- * Data-URI is only a last-resort fallback (kept under ~60KB for iOS).
+ * Prefer the Vite-bundled asset (same as Live tab badge). CDN / public /
+ * data-URI are only fallbacks when that URL fails to load.
  */
-export const DEMO_COVER_FALLBACK_URL = DEMO_COVER_LOVABLE_URL;
-export const DEMO_COVER_BUNDLED_URL = DEMO_COVER_LOVABLE_URL;
+export const DEMO_COVER_FALLBACK_URL = DEMO_COVER_BUNDLED_URL;
 export const DEMO_COVER_ABSOLUTE_URL =
   "https://kidiplus.com" + DEMO_COVER_LOVABLE_URL;
 

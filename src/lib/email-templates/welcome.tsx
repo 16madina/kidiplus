@@ -67,7 +67,7 @@ const WelcomeEmail = ({ displayName, appUrl = EMAIL_CONFIG.WEB_URL }: WelcomePro
             <Text style={bullet}>💼 Créer ta boutique et vendre en quelques minutes.</Text>
 
             <Section style={ctaWrap}>
-              <Button href={openLink('/sell/onboarding')} style={ctaButton}>
+              <Button href={openLink('/')} style={ctaButton}>
                 🚀 Créer ma boutique
               </Button>
             </Section>

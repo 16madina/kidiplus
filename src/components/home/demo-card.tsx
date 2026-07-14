@@ -12,10 +12,11 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   1) Lovable CDN `/__l5e/.../demo-live-cover.jpg` (works on kidiplus.com)
+//   1) Vite-bundled `/assets/demo-live-poster-*.jpg` (primary — iPhone-safe)
 //   2) `/demo-live-poster.jpg` in public/
-//   3) Small data-URI fallback (iOS-safe size)
-//   Large data-URIs break on iPhone Safari — do not use as primary.
+//   3) Lovable CDN `/__l5e/...` (absolute on non-prod hosts)
+//   4) Small data-URI fallback (iOS-safe size)
+//   Large data-URIs / flaky `/__l5e/` paths break on iPhone — do not use as primary.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -28,7 +29,9 @@ import {
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
   DEMO_COVER_FALLBACK_URL,
+  DEMO_COVER_BUNDLED_URL,
   DEMO_COVER_PUBLIC_URL,
+  DEMO_COVER_LOVABLE_URL,
   DEMO_COVER_ABSOLUTE_URL,
   DEMO_COVER_DATA_URI,
 } from "@/lib/demo-video-db";
@@ -39,21 +42,12 @@ export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 function resolvePosterUrl(coverUrl: string | undefined): string {
   if (coverUrl && /^https?:\/\//i.test(coverUrl)) return coverUrl;
   if (coverUrl && coverUrl.startsWith("data:image/")) return coverUrl;
-  if (coverUrl && coverUrl.startsWith("/__l5e/")) {
-    // On non-production hosts (Lovable preview), prefer absolute CDN URL.
-    if (typeof window !== "undefined") {
-      const host = window.location.hostname;
-      if (host && host !== "kidiplus.com" && host !== "www.kidiplus.com") {
-        return DEMO_COVER_ABSOLUTE_URL;
-      }
-    }
-    return coverUrl;
+  // Prefer Vite-bundled same-origin asset over CDN paths.
+  if (!coverUrl || coverUrl.startsWith("/__l5e/")) {
+    return DEMO_COVER_BUNDLED_URL;
   }
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host && host !== "kidiplus.com" && host !== "www.kidiplus.com") {
-      return DEMO_COVER_ABSOLUTE_URL;
-    }
+  if (coverUrl.startsWith("/assets/") || coverUrl === DEMO_COVER_BUNDLED_URL) {
+    return coverUrl;
   }
   return DEMO_COVER_FALLBACK_URL;
 }
@@ -61,18 +55,18 @@ function resolvePosterUrl(coverUrl: string | undefined): string {
 /** Ordered fallbacks when an <img> fails to load. */
 function nextPosterFallback(current: string): string | null {
   const chain = [
-    DEMO_COVER_FALLBACK_URL,
+    DEMO_COVER_BUNDLED_URL,
     DEMO_COVER_PUBLIC_URL,
+    DEMO_COVER_LOVABLE_URL,
     DEMO_COVER_ABSOLUTE_URL,
     DEMO_COVER_DATA_URI,
   ];
   const idx = chain.indexOf(current);
   if (idx >= 0 && idx < chain.length - 1) return chain[idx + 1]!;
-  // current might be an admin https URL or absolute variant
-  if (current !== DEMO_COVER_PUBLIC_URL && current !== DEMO_COVER_DATA_URI) {
-    return DEMO_COVER_PUBLIC_URL;
+  // Admin https URL or unknown — walk the chain from public onward
+  for (const url of chain) {
+    if (url !== current) return url;
   }
-  if (current !== DEMO_COVER_DATA_URI) return DEMO_COVER_DATA_URI;
   return null;
 }
 

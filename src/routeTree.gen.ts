@@ -9,17 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OpenRouteImport } from './routes/open'
+import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
@@ -40,6 +45,11 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
@@ -48,6 +58,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SafetyRoute = SafetyRouteImport.update({
@@ -65,9 +80,19 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpenRoute = OpenRouteImport.update({
   id: '/open',
   path: '/open',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EarningsRoute = EarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -93,6 +118,11 @@ const AccountDeletionRoute = AccountDeletionRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SellOnboardingRoute = SellOnboardingRouteImport.update({
+  id: '/sell/onboarding',
+  path: '/sell/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveIdRoute = LiveIdRouteImport.update({
@@ -203,12 +233,16 @@ export interface FileRoutesByFullPath {
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
+  '/earnings': typeof EarningsRoute
   '/open': typeof OpenRoute
+  '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/wallet': typeof WalletRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
@@ -219,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
+  '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -235,12 +270,16 @@ export interface FileRoutesByTo {
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
+  '/earnings': typeof EarningsRoute
   '/open': typeof OpenRoute
+  '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/wallet': typeof WalletRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
@@ -251,6 +290,7 @@ export interface FileRoutesByTo {
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
+  '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -268,12 +308,16 @@ export interface FileRoutesById {
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
+  '/earnings': typeof EarningsRoute
   '/open': typeof OpenRoute
+  '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
+  '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/wallet': typeof WalletRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
@@ -284,6 +328,7 @@ export interface FileRoutesById {
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
+  '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -302,12 +347,16 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/community'
     | '/download'
+    | '/earnings'
     | '/open'
+    | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
+    | '/shop'
     | '/terms'
     | '/unsubscribe'
+    | '/wallet'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
     | '/api/checkout'
@@ -318,6 +367,7 @@ export interface FileRouteTypes {
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
+    | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
@@ -334,12 +384,16 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/community'
     | '/download'
+    | '/earnings'
     | '/open'
+    | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
+    | '/shop'
     | '/terms'
     | '/unsubscribe'
+    | '/wallet'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
     | '/api/checkout'
@@ -350,6 +404,7 @@ export interface FileRouteTypes {
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
+    | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
@@ -366,12 +421,16 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/community'
     | '/download'
+    | '/earnings'
     | '/open'
+    | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
+    | '/shop'
     | '/terms'
     | '/unsubscribe'
+    | '/wallet'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
     | '/api/checkout'
@@ -382,6 +441,7 @@ export interface FileRouteTypes {
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
+    | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
@@ -399,12 +459,16 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   CommunityRoute: typeof CommunityRoute
   DownloadRoute: typeof DownloadRoute
+  EarningsRoute: typeof EarningsRoute
   OpenRoute: typeof OpenRoute
+  OrdersRoute: typeof OrdersRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SafetyRoute: typeof SafetyRoute
+  ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  WalletRoute: typeof WalletRoute
   DotwellKnownAppleAppSiteAssociationRoute: typeof DotwellKnownAppleAppSiteAssociationRoute
   DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
@@ -415,6 +479,7 @@ export interface RootRouteChildren {
   GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
   JoinCodeRoute: typeof JoinCodeRoute
   LiveIdRoute: typeof LiveIdRoute
+  SellOnboardingRoute: typeof SellOnboardingRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
@@ -426,6 +491,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
@@ -438,6 +510,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/safety': {
@@ -461,11 +540,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/open': {
       id: '/open'
       path: '/open'
       fullPath: '/open'
       preLoaderRoute: typeof OpenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/earnings': {
+      id: '/earnings'
+      path: '/earnings'
+      fullPath: '/earnings'
+      preLoaderRoute: typeof EarningsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -501,6 +594,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sell/onboarding': {
+      id: '/sell/onboarding'
+      path: '/sell/onboarding'
+      fullPath: '/sell/onboarding'
+      preLoaderRoute: typeof SellOnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live/$id': {
@@ -669,12 +769,16 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   CommunityRoute: CommunityRoute,
   DownloadRoute: DownloadRoute,
+  EarningsRoute: EarningsRoute,
   OpenRoute: OpenRoute,
+  OrdersRoute: OrdersRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SafetyRoute: SafetyRoute,
+  ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  WalletRoute: WalletRoute,
   DotwellKnownAppleAppSiteAssociationRoute:
     DotwellKnownAppleAppSiteAssociationRoute,
   DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
@@ -686,6 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
   JoinCodeRoute: JoinCodeRoute,
   LiveIdRoute: LiveIdRoute,
+  SellOnboardingRoute: SellOnboardingRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
