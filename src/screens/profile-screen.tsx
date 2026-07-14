@@ -408,7 +408,7 @@ function ProfileScreenAuthed() {
                 <QuickAction
                   icon={<ShoppingBag size={18} />}
                   label={t("profile.quick.orders")}
-                  onClick={goActivity}
+                  onClick={() => { haptic.light(); setOrdersOpen(true); }}
                 />
               </div>
             </div>
