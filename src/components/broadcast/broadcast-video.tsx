@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import { useFilter } from "@/lib/filters/filter-context";
 import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -523,17 +524,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             style={{ filter: "blur(4px) brightness(0.55)" }}
           />
         )}
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{
-            transform: mirrored ? "scaleX(-1)" : undefined,
-            willChange: "transform",
-            display: showVideo ? "block" : "none",
-          }}
+        <VideoWithFilter
+          videoRef={videoRef}
+          mirrored={mirrored}
+          showVideo={showVideo}
         />
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center">
