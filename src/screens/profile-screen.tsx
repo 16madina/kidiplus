@@ -106,6 +106,7 @@ function ProfileScreenAuthed() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [addressesOpen, setAddressesOpen] = useState(false);
