@@ -85,7 +85,14 @@ function MockLiveViewerScreen() {
     const tick = () => {
       if (cancelled) return;
       setMessages((prev) => {
-        const next = [...prev, nextChatMessage()];
+        // Occasionally push a realistic "@name a rejoint le live" system line
+        // so sample lives feel populated for reviewers.
+        const roll = Math.random();
+        const nextMsg =
+          roll < 0.12
+            ? systemMessage(`@${randomBidder()} a rejoint le live 👋`)
+            : nextChatMessage();
+        const next = [...prev, nextMsg];
         return next.length > 60 ? next.slice(next.length - 60) : next;
       });
       timer = window.setTimeout(tick, 1000 + Math.random() * 2000);
