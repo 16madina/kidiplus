@@ -51,6 +51,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeLens } = useFilter();
   const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup
