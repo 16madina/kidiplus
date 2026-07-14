@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
-import { Bell, Moon, Share2, Sun, Loader2 } from "lucide-react";
+import { Bell, Check, Moon, Share2, Sun, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
@@ -73,6 +73,8 @@ export function HomeScreen() {
   const tabVisible = useContext(TabVisibilityContext);
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
   const [filter, setFilter] = useState<HomeFilter>("Recommandés");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [liveOnly, setLiveOnly] = useState(false);
   const [realLives, setRealLives] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -170,8 +172,10 @@ export function HomeScreen() {
     const combined = [...scopedReal, ...samplesForCategory];
 
     const base = category === "Pour toi" ? rankForYou(combined) : combined;
-    return applyHomeFilter(base, filter);
-  }, [realLives, category, filter, rankForYou, blockedIds]);
+    const withFilter = applyHomeFilter(base, filter);
+    // "Uniquement en direct" toggle from the filter sheet — hide scheduled cards.
+    return liveOnly ? withFilter.filter((s) => !s.scheduled) : withFilter;
+  }, [realLives, category, filter, rankForYou, blockedIds, liveOnly]);
 
 
   const doRefresh = useCallback(() => {
@@ -363,7 +367,11 @@ export function HomeScreen() {
 
         {/* ROW 3 — Filter pills */}
         <div className="pt-3">
-          <FilterPills active={filter} onChange={setFilter} />
+          <FilterPills
+            active={filter}
+            onChange={setFilter}
+            onOpenFilters={() => setFilterSheetOpen(true)}
+          />
         </div>
 
         {/* Upcoming scheduled lives */}
@@ -432,9 +440,135 @@ export function HomeScreen() {
         </div>
       </div>
       <DemoPlayer open={demoOpen} onClose={() => setDemoOpen(false)} src={demoUrl} />
+      <HomeFilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filter={filter}
+        onFilterChange={setFilter}
+        liveOnly={liveOnly}
+        onLiveOnlyChange={setLiveOnly}
+        onReset={() => {
+          setFilter("Recommandés");
+          setLiveOnly(false);
+        }}
+      />
     </div>
   );
 }
+
+/**
+ * Bottom sheet opened by the "Filtre" pill on the home feed. Lets the user
+ * pick a sort mode and toggle "Uniquement en direct" — mirrors the pill row
+ * with a larger accessible list, and adds an option the pills can't express.
+ */
+function HomeFilterSheet({
+  open,
+  onClose,
+  filter,
+  onFilterChange,
+  liveOnly,
+  onLiveOnlyChange,
+  onReset,
+}: {
+  open: boolean;
+  onClose: () => void;
+  filter: HomeFilter;
+  onFilterChange: (f: HomeFilter) => void;
+  liveOnly: boolean;
+  onLiveOnlyChange: (v: boolean) => void;
+  onReset: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[70]">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/50"
+          />
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.3, ease: EASE_IOS }}
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-background p-4"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[17px] font-bold">
+                {t("home.filters.sheetTitle", "Filtres")}
+              </h3>
+              <Press
+                onClick={onReset}
+                className="!min-h-8 rounded-full px-3 text-[13px] font-semibold text-accent"
+              >
+                {t("home.filters.reset", "Réinitialiser")}
+              </Press>
+            </div>
+
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("home.filters.sortBy", "Trier par")}
+            </p>
+            <div className="mb-4 flex flex-col gap-1">
+              {(["Recommandés", "Populaires", "Nouveautés", "Achat immédiat"] as HomeFilter[]).map((f) => {
+                const active = f === filter;
+                return (
+                  <Press
+                    key={f}
+                    onClick={() => onFilterChange(f)}
+                    className="!min-h-12 flex h-12 w-full items-center justify-between rounded-2xl px-3 text-left text-[15px]"
+                    style={{
+                      backgroundColor: active ? "color-mix(in oklch, var(--accent) 12%, transparent)" : "transparent",
+                    }}
+                  >
+                    <span className="font-semibold">
+                      {f === "Recommandés" && t("home.filters.recommended")}
+                      {f === "Populaires" && t("home.filters.popular")}
+                      {f === "Nouveautés" && t("home.filters.new")}
+                      {f === "Achat immédiat" && t("home.filters.buyNow")}
+                    </span>
+                    {active && <Check size={18} className="text-accent" />}
+                  </Press>
+                );
+              })}
+            </div>
+
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("home.filters.availability", "Disponibilité")}
+            </p>
+            <Press
+              onClick={() => onLiveOnlyChange(!liveOnly)}
+              className="!min-h-12 flex h-12 w-full items-center justify-between rounded-2xl px-3 text-left text-[15px]"
+              style={{
+                backgroundColor: liveOnly ? "color-mix(in oklch, var(--accent) 12%, transparent)" : "transparent",
+              }}
+            >
+              <span className="font-semibold">
+                {t("home.filters.onlyLive", "Uniquement en direct")}
+              </span>
+              {liveOnly && <Check size={18} className="text-accent" />}
+            </Press>
+
+            <Press
+              onClick={onClose}
+              className="!min-h-12 mt-4 flex h-12 w-full items-center justify-center rounded-2xl text-[15px] font-bold text-white"
+              style={{ backgroundColor: "var(--accent)" }}
+            >
+              {t("home.filters.apply", "Voir les résultats")}
+            </Press>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 
 function easeOut(t: number) {
   return 1 - Math.pow(1 - t, 3);

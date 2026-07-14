@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { SwipeableTabs, type TabDef } from "@/components/swipeable-tabs";
 import { LiveCard } from "@/components/live-card";
-import type { LiveStream } from "@/lib/live-mock";
+import { makeStreams, type Category, type LiveStream } from "@/lib/live-mock";
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useSellerProfile } from "@/lib/seller-profile-context";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
@@ -39,6 +39,33 @@ const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
 type SellerScope = "all" | "live";
 
 type TrendItem = { id: string; label: string; viewers: number; image: string | null };
+
+/**
+ * Deterministic sample lives keyed to a LiveStream category slug — used as a
+ * Guideline 2.1(a) safety net so tapping a category tile in Explorer always
+ * shows something in the Lives tab, even when no real live matches. Cards
+ * look identical to real ones and open the real mock live viewer.
+ */
+const SEARCH_SAMPLE_POOL: LiveStream[] = makeStreams(0, 48);
+const CATEGORY_SLUGS: Category[] = [
+  "Beauty", "Fashion", "Jewelry", "Electronics", "Sneakers", "Cards",
+];
+function sampleLivesForQuery(query: string): LiveStream[] {
+  const q = query.trim();
+  if (!q) return [];
+  const match = CATEGORY_SLUGS.find(
+    (c) => c.toLowerCase() === q.toLowerCase(),
+  );
+  if (!match) return [];
+  const pool = SEARCH_SAMPLE_POOL.filter((s) => s.category === match);
+  if (pool.length === 0) return [];
+  const out: LiveStream[] = [];
+  for (let i = 0; i < 8; i += 1) {
+    const src = pool[i % pool.length];
+    out.push({ ...src, id: `${src.id}_search_${match}_${i}` });
+  }
+  return out;
+}
 
 
 
@@ -155,7 +182,13 @@ export function SearchScreen() {
         setDbSellers(profiles);
         setActiveSellerIds(active.ids);
         setActiveLives(active.lives);
-        setLiveResults(lives);
+        // When a category tile is tapped, its `query` matches a LiveStream
+        // Category slug (Beauty / Fashion / Jewelry / Electronics / Sneakers /
+        // Cards). Append deterministic sample lives for that category so the
+        // "Lives" tab is never empty when no real lives are running — same
+        // safety net as the Home feed (Apple Guideline 2.1(a)).
+        const samples = sampleLivesForQuery(query);
+        setLiveResults([...lives, ...samples]);
         setProductResults(products);
 
         // Resolve avatars for sellers in parallel.
