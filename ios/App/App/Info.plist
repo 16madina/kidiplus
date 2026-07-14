@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CAPACITOR_DEBUG</key>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>fr</string>
 	<key>CFBundleDisplayName</key>
-        <string>KiDi+</string>
+	<string>KiDi+</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,8 +22,39 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kidiplus.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kidiplus</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>KiDi+ a besoin d'accéder à ta caméra pour diffuser tes lives</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KiDi+ a besoin de ton micro pour diffuser le son de tes lives</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>KiDi+ a besoin d'accéder à tes photos pour choisir la couverture et les images produits</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>KiDi+ utilise votre position pour vous proposer des lives et vendeurs à proximité.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>KiDi+ utilise votre position pour vous proposer des lives et vendeurs à proximité.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>KiDi+ utilise Face ID pour sécuriser l'accès à votre compte et à votre portefeuille</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -40,11 +71,6 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-	</array>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>voip</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>

@@ -14,7 +14,7 @@ import {
   type RemoteParticipant,
 } from "@/lib/livekit";
 import { useAppActive } from "@/lib/app-state";
-import { useMediaSessionActive } from "@/lib/pip-session";
+import { getInSystemPip, getPipHold, useMediaSessionActive } from "@/lib/pip-session";
 import { Room } from "livekit-client";
 
 export type ViewerLiveVideoProps = {
@@ -34,6 +34,59 @@ export type ViewerStatus =
   | "ended"        // host disconnected after having been live
   | "error";
 
+
+/** Soft kick — play() only. */
+function kickPlayback(
+  video: HTMLVideoElement | null,
+  audio: HTMLAudioElement | null,
+) {
+  void video?.play()?.catch(() => {});
+  void audio?.play()?.catch(() => {});
+}
+
+/** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
+function reattachRemoteMedia(
+  room: Room,
+  video: HTMLVideoElement | null,
+  audio: HTMLAudioElement | null,
+  hard = true,
+): boolean {
+  let gotVideo = false;
+  room.remoteParticipants.forEach((p) => {
+    p.trackPublications.forEach((pub) => {
+      try {
+        if (!pub.isSubscribed) pub.setSubscribed(true);
+      } catch {
+        /* ignore */
+      }
+      const track = pub.track;
+      if (!track) return;
+      try {
+        if (track.kind === Track.Kind.Video && video) {
+          if (hard) {
+            try { track.detach(video); } catch { /* ignore */ }
+          }
+          track.attach(video);
+          gotVideo = true;
+        } else if (track.kind === Track.Kind.Audio && audio) {
+          if (hard) {
+            try { track.detach(audio); } catch { /* ignore */ }
+          }
+          track.attach(audio);
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+  if (hard && video?.srcObject) {
+    const stream = video.srcObject;
+    video.srcObject = null;
+    video.srcObject = stream;
+  }
+  kickPlayback(video, audio);
+  return gotVideo;
+}
 
 export function ViewerLiveVideo({
   room,
@@ -99,7 +152,9 @@ export function ViewerLiveVideo({
       try {
         const { token, url } = await getToken(room, identity, name, "viewer");
         if (cancelled) return;
-        const r = await connectRoom(url, token);
+        // adaptiveStream:false — first open in Capacitor WKWebView otherwise
+        // often sticks on a single frame until background/PiP return.
+        const r = await connectRoom(url, token, { adaptiveStream: false });
         if (cancelled) {
           await disconnectRoom(r);
           return;
@@ -109,12 +164,29 @@ export function ViewerLiveVideo({
         const attachTrack = (track: RemoteTrack) => {
           if (cancelled) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
-            track.attach(videoRef.current);
+            const el = videoRef.current;
+            track.attach(el);
+            const kick = () => kickPlayback(el, audioRef.current);
+            el.addEventListener("loadedmetadata", kick, { once: true });
+            el.addEventListener("canplay", kick, { once: true });
+            kick();
+            // Soft recover after layout — hard recover only if still stalled.
+            requestAnimationFrame(() => {
+              if (cancelled || !roomRef.current) return;
+              reattachRemoteMedia(
+                roomRef.current,
+                videoRef.current,
+                audioRef.current,
+                false,
+              );
+            });
             hadVideo = true;
             clearEndTimer();
             setStatus("live");
           } else if (track.kind === Track.Kind.Audio && audioRef.current) {
-            track.attach(audioRef.current);
+            const el = audioRef.current;
+            track.attach(el);
+            void el.play().catch(() => {});
           }
         };
 
@@ -134,6 +206,9 @@ export function ViewerLiveVideo({
             // component is remounting (e.g. after appActive flip / Stripe
             // iframe momentarily hiding the tab).
             if (cancelled) return;
+            // While system PiP / background hold is active, WKWebView often
+            // briefly drops tracks — treat that as noise, not host leave.
+            if (getPipHold() || getInSystemPip()) return;
             if (track.kind === Track.Kind.Video) {
               scheduleEnd("TrackUnsubscribed(video)");
             }
@@ -162,13 +237,24 @@ export function ViewerLiveVideo({
         r.on(RoomEvent.Reconnected, () => {
           if (cancelled) return;
           clearEndTimer();
-          setStatus(hadVideo ? "live" : "waiting");
+          const gotVideo = reattachRemoteMedia(
+            r,
+            videoRef.current,
+            audioRef.current,
+          );
+          if (gotVideo) hadVideo = true;
+          setStatus(gotVideo || hadVideo ? "live" : "waiting");
         });
 
 
         // Attach any tracks already subscribed at connect time.
         r.remoteParticipants.forEach((p) => {
           p.trackPublications.forEach((pub) => {
+            try {
+              if (!pub.isSubscribed) pub.setSubscribed(true);
+            } catch {
+              /* ignore */
+            }
             if (pub.track) attachTrack(pub.track);
           });
         });
@@ -192,6 +278,66 @@ export function ViewerLiveVideo({
     };
   }, [room, identity, name, sessionActive]);
 
+  // After returning from system PiP / background, WKWebView media is often
+  // frozen on the last frame (or stuck on the poster). Re-attach + play.
+  useEffect(() => {
+    if (!appActive) return;
+    const r = roomRef.current;
+    if (!r) return;
+    if (reattachRemoteMedia(r, videoRef.current, audioRef.current)) {
+      setStatus("live");
+    }
+  }, [appActive]);
+
+  // First paint as "live" can still leave WKWebView paused. Soft kicks + stall watchdog.
+  useEffect(() => {
+    if (status !== "live") return;
+    const soft = () => {
+      const r = roomRef.current;
+      if (r) {
+        reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
+        return;
+      }
+      kickPlayback(videoRef.current, audioRef.current);
+    };
+    soft();
+    const t1 = window.setTimeout(soft, 120);
+    const t2 = window.setTimeout(soft, 400);
+    const t3 = window.setTimeout(() => {
+      const r = roomRef.current;
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, true);
+    }, 1000);
+
+    // If currentTime stops advancing while "live", force the same hard recovery
+    // that works after returning from PiP.
+    let lastTime = -1;
+    let stallTicks = 0;
+    const watch = window.setInterval(() => {
+      const v = videoRef.current;
+      const r = roomRef.current;
+      if (!v || !r) return;
+      if (v.paused) void v.play().catch(() => {});
+      const t = v.currentTime;
+      if (t <= lastTime + 0.01) {
+        stallTicks += 1;
+        if (stallTicks >= 2) {
+          console.warn("[livekit viewer] frozen frame watchdog — hard reattach");
+          reattachRemoteMedia(r, v, audioRef.current, true);
+          stallTicks = 0;
+        }
+      } else {
+        stallTicks = 0;
+      }
+      lastTime = t;
+    }, 700);
+
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.clearInterval(watch);
+    };
+  }, [status]);
 
   const showPoster = status !== "live";
 
@@ -210,6 +356,15 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
+      {/* Keep <video> always opaque so decoding keeps running under the poster. */}
+      <video
+        ref={videoRef}
+        playsInline
+        autoPlay
+        muted
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <audio ref={audioRef} autoPlay playsInline />
       {posterImage && (
         <img
           src={posterImage}
@@ -220,25 +375,11 @@ export function ViewerLiveVideo({
             // is visually continuous — no blur/brightness jump.
             opacity: showPoster ? 1 : 0,
             transition: "none",
+            pointerEvents: "none",
           }}
           draggable={false}
         />
       )}
-      <video
-        ref={videoRef}
-        playsInline
-        autoPlay
-        className="absolute inset-0 h-full w-full object-cover"
-        // Keep the element mounted; flip visibility via opacity with NO
-        // transition so the first painted frame of the live replaces the
-        // poster in the same frame as the "live" status flip.
-        style={{
-          opacity: status === "live" ? 1 : 0,
-          transition: "none",
-          willChange: "opacity",
-        }}
-      />
-      <audio ref={audioRef} autoPlay />
       {showPoster && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div

@@ -16,9 +16,12 @@ export const EMAIL_CONFIG = {
   WEB_URL: 'https://kidiplus.com',
   LOGO_URL: 'https://kidiplus.com/icon-192.png',
   APP_SCHEME: 'kidiplus',
-  // When the native app can't be opened, land users on the web app itself
-  // (KIDI+ works as a PWA) instead of a separate download page.
-  FALLBACK_URL: 'https://kidiplus.com',
+  // When the native app can't be opened, send users to the store landing.
+  FALLBACK_URL: 'https://kidiplus.com/download',
+  // Store URLs — Play works with the package id; App Store needs the numeric
+  // Apple ID once the app is on App Store Connect (replace APP_STORE_ID).
+  APP_STORE_URL: 'https://apps.apple.com/app/idYOUR_APP_STORE_ID',
+  PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.kidiplus.app',
 } as const
 
 /**

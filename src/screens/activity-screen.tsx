@@ -1,24 +1,12 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
-import { Bell, Radio, Package, Truck, Trash2, Inbox, Check, PackageCheck, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Bell, Radio, Truck, Trash2, Inbox, Check, PackageCheck, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
-import { PushScreen } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
-import { formatRelative, orderDateShort } from "@/lib/activity-mock";
-import { formatMoney } from "@/lib/money";
+import { formatRelative } from "@/lib/activity-mock";
 import { useAuth } from "@/lib/auth-context";
-import {
-  fetchMyOrders,
-  subscribeOrders,
-  type OrderRow,
-  type OrderStatus,
-  type FulfillmentStatus,
-} from "@/lib/orders-db";
-import { confirmOrderDelivered, disputeOrder, releaseOverdueEscrow } from "@/lib/escrow-db";
-import { expireOverdueOrders } from "@/lib/lives-db";
-import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
 import { SuspensionBanner } from "@/components/moderation/moderation-gate";
 import {
@@ -28,12 +16,9 @@ import {
   subscribeMyNotifications,
   type NotificationRow,
 } from "@/lib/notifications-db";
-import { OrderTimeline } from "@/components/orders/order-timeline";
-import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
-import { fetchOrderById } from "@/lib/orders-db";
-import { fetchMyReviewedOrderIds } from "@/lib/reviews-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
 import { GuestActivityScreen } from "@/components/guest-activity-screen";
+import { OrdersScreenContent } from "@/screens/orders-screen";
 
 type Tab = "notifs" | "orders";
 
@@ -50,13 +35,7 @@ function ActivityScreenAuthed() {
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<NotificationRow[]>([]);
-  const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [openOrder, setOpenOrder] = useState<OrderRow | null>(null);
-  const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
-  const [reviewOrder, setReviewOrder] = useState<OrderRow | null>(null);
-  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
-  // Real DB-backed notifications.
   useEffect(() => {
     if (!user) { setNotifs([]); setLoading(false); return; }
     let alive = true;
@@ -71,43 +50,14 @@ function ActivityScreenAuthed() {
     return () => { alive = false; unsub(); };
   }, [user]);
 
+  // Auto-switch to orders tab on deep-link (order-specific push).
   useEffect(() => {
-    if (!user) { setOrders([]); return; }
-    let alive = true;
-    const load = async () => {
-      // Opportunistic cleanup + escrow auto-release/reminders.
-      await expireOverdueOrders().catch(() => 0);
-      await releaseOverdueEscrow().catch(() => null);
-      const rows = await fetchMyOrders(user.id);
-      if (!alive) return;
-      setOrders(rows);
-      const deliveredIds = rows.filter((r) => r.fulfillment_status === "delivered").map((r) => r.id);
-      const set = await fetchMyReviewedOrderIds(deliveredIds).catch(() => new Set<string>());
-      if (alive) setReviewedIds(set);
-    };
-    void load();
-    const unsub = subscribeOrders({ buyerId: user.id }, () => { void load(); });
-    return () => { alive = false; unsub(); };
-  }, [user]);
-
-  // Listen for deep-link requests to open a specific order (from push tap).
-  useEffect(() => {
-    const onOpen = async (e: Event) => {
-      const detail = (e as CustomEvent<{ order_id?: string }>).detail;
-      const id = detail?.order_id;
-      if (!id) return;
-      setTab("orders");
-      const local = orders.find((o) => o.id === id);
-      if (local) { setOpenOrder(local); return; }
-      const fetched = await fetchOrderById(id).catch(() => null);
-      if (fetched) setOpenOrder(fetched);
-    };
-    window.addEventListener("kidi:open-order", onOpen as EventListener);
-    return () => window.removeEventListener("kidi:open-order", onOpen as EventListener);
-  }, [orders]);
+    const onOpen = () => setTab("orders");
+    window.addEventListener("kidi:open-order", onOpen);
+    return () => window.removeEventListener("kidi:open-order", onOpen);
+  }, []);
 
   const removeNotif = (id: string) => {
-    // Soft-hide locally (no destructive server delete — mark read).
     setNotifs((prev) => prev.filter((n) => n.id !== id));
     void markNotificationRead(id);
     toast(t("common.remove"));
@@ -118,15 +68,12 @@ function ActivityScreenAuthed() {
   };
   const openNotif = (n: NotificationRow) => {
     markRead(n.id);
-    // Route based on notification kind + payload.
     openFromPush(payloadFromNotificationRow(n));
   };
   const markAll = () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
     void markAllNotificationsRead();
   };
-
-
 
   return (
     <div className="flex h-full flex-col">
@@ -213,62 +160,13 @@ function ActivityScreenAuthed() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15, ease: EASE_IOS }}
-              className="space-y-3 px-4 pt-3"
+              className="h-full"
             >
-              {loading ? (
-                <OrderSkeletons />
-              ) : orders.length === 0 ? (
-                <EmptyState
-                  icon={<Package size={22} className="text-muted-foreground" />}
-                  message={t("activity.empty.orders")}
-                />
-              ) : (
-                orders.map((o, i) => (
-                  <OrderCard
-                    key={o.id}
-                    order={o}
-                    index={i}
-                    hasReview={reviewedIds.has(o.id)}
-                    onOpen={() => setOpenOrder(o)}
-                    onPay={() => setPayOrder(o)}
-                    onReview={() => setReviewOrder(o)}
-                    onConfirm={async () => {
-                      const r = await confirmOrderDelivered(o.id);
-                      if (!r.ok) { toast.error(r.error); return; }
-                      toast.success(t("orders.delivered"));
-                      setOrders((os) => os.map((x) => (x.id === o.id ? { ...x, fulfillment_status: "delivered", delivered_confirmed_at: new Date().toISOString() } : x)));
-                    }}
-                    onDispute={async () => {
-                      const r = await disputeOrder(o.id, "other");
-                      if (!r.ok) { toast.error(r.error); return; }
-                      toast.success(t("orders.disputeOpened"));
-                      setOrders((os) => os.map((x) => (x.id === o.id ? { ...x, fulfillment_status: "disputed" } : x)));
-                    }}
-                  />
-                ))
-              )}
+              <OrdersScreenContent />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
-      <OrderDetailScreen order={openOrder} onClose={() => setOpenOrder(null)} />
-      <PaymentSheet
-        order={payOrder}
-        onClose={() => setPayOrder(null)}
-        onPaid={() => setPayOrder(null)}
-      />
-      {reviewOrder && (
-        <LeaveReviewSheet
-          open={!!reviewOrder}
-          onClose={() => setReviewOrder(null)}
-          orderId={reviewOrder.id}
-          onSubmitted={() => {
-            const id = reviewOrder.id;
-            setReviewedIds((prev) => { const n = new Set(prev); n.add(id); return n; });
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -433,7 +331,6 @@ function NotifKindIcon({ kind }: { kind: string }) {
   );
 }
 
-
 function NotifSkeletons() {
   return (
     <ul>
@@ -447,284 +344,6 @@ function NotifSkeletons() {
         </li>
       ))}
     </ul>
-  );
-}
-
-/* ================= Orders (real, from DB) ================= */
-
-function statusMeta(s: OrderStatus): { bg: string; color: string; labelKey: string } {
-  switch (s) {
-    case "paid":
-      return { bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)", labelKey: "orders.status.paid" };
-    case "failed":
-      return { bg: "oklch(0.94 0.06 27)", color: "oklch(0.45 0.18 27)", labelKey: "orders.status.failed" };
-    case "cancelled":
-      return { bg: "var(--muted)", color: "var(--muted-foreground)", labelKey: "orders.status.cancelled" };
-    default:
-      return { bg: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)", labelKey: "orders.status.pending" };
-  }
-}
-
-function formatDeadline(iso: string, lang: string): string {
-  return new Date(iso).toLocaleString(lang, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-function hoursLeft(iso: string): number {
-  return (new Date(iso).getTime() - Date.now()) / 3_600_000;
-}
-
-const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: string }> = {
-  awaiting: { bg: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)", key: "orders.fulfillment.awaiting" },
-  shipped:  { bg: "oklch(0.94 0.06 60)",  color: "oklch(0.42 0.14 60)",  key: "orders.fulfillment.shipped" },
-  delivered:{ bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)",  key: "orders.fulfillment.delivered" },
-  disputed: { bg: "oklch(0.94 0.06 27)",  color: "oklch(0.45 0.18 27)",  key: "orders.fulfillment.disputed" },
-};
-
-function OrderCard({
-  order, index, hasReview, onOpen, onPay, onConfirm, onDispute, onReview,
-}: {
-  order: OrderRow;
-  index: number;
-  hasReview?: boolean;
-  onOpen: () => void;
-  onPay: () => void;
-  onConfirm: () => void;
-  onDispute: () => void;
-  onReview: () => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const meta = statusMeta(order.status);
-  const isAuctionPending =
-    order.status === "pending" && order.kind === "auction" && !!order.payment_deadline;
-  const isTimeoutCancel =
-    order.status === "cancelled" && order.cancelled_reason === "payment_timeout";
-  const hrs = order.payment_deadline ? hoursLeft(order.payment_deadline) : null;
-  const urgent = hrs !== null && hrs > 0 && hrs < 6;
-  const isPaid = order.status === "paid";
-  const canConfirm = isPaid && (order.fulfillment_status === "shipped" || order.fulfillment_status === "awaiting");
-  const canDispute = isPaid && (order.fulfillment_status === "shipped" || order.fulfillment_status === "awaiting");
-  const fm = FULFILL_META[order.fulfillment_status];
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: EASE_IOS, delay: Math.min(index, 8) * 0.03 }}
-    >
-      <div
-        className="overflow-hidden rounded-2xl"
-        style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
-      >
-        <Press onClick={onOpen} className="!block w-full p-0 text-left">
-          <div className="flex items-center gap-3 p-3">
-            {order.item_image ? (
-              <img
-                src={order.item_image}
-                alt=""
-                className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                draggable={false}
-              />
-            ) : (
-              <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 truncate text-[14px] font-semibold">{order.item_name}</p>
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                  style={{ backgroundColor: meta.bg, color: meta.color }}
-                >
-                  {isTimeoutCancel ? t("orders.status.paymentTimeout") : t(meta.labelKey)}
-                </span>
-              </div>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                {orderDateShort(new Date(order.created_at))}
-              </p>
-              <div className="mt-0.5 flex items-center gap-2">
-                <p className="text-[13px] font-bold">{formatMoney(Number(order.total), order.currency)}</p>
-                {isPaid && (
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                    style={{ backgroundColor: fm.bg, color: fm.color }}
-                  >
-                    {t(fm.key)}
-                  </span>
-                )}
-              </div>
-              {isAuctionPending && order.payment_deadline && (
-                <p
-                  className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                  style={{
-                    backgroundColor: urgent ? "oklch(0.94 0.06 27)" : "oklch(0.94 0.05 80)",
-                    color: urgent ? "oklch(0.45 0.18 27)" : "oklch(0.42 0.14 70)",
-                  }}
-                >
-                  {t("orders.payBefore", { date: formatDeadline(order.payment_deadline, i18n.language) })}
-                </p>
-              )}
-            </div>
-          </div>
-        </Press>
-        {isAuctionPending && (
-          <div className="border-t border-border p-2">
-            <Press
-              onClick={onPay}
-              className="!block w-full rounded-xl py-2.5 text-center text-[13px] font-bold text-white"
-              style={{ backgroundColor: "oklch(0.6 0.18 250)" }}
-            >
-              {t("orders.payNow")}
-            </Press>
-          </div>
-        )}
-        {isPaid && canConfirm && (
-          <div className="flex gap-2 border-t border-border p-2">
-            <Press
-              onClick={onConfirm}
-              className="!min-h-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold text-white"
-              style={{ backgroundColor: "oklch(0.55 0.18 155)" }}
-            >
-              <PackageCheck size={14} /> {t("orders.confirmDelivery")}
-            </Press>
-            {canDispute && (
-              <Press
-                onClick={onDispute}
-                className="!min-h-10 flex items-center justify-center gap-1 rounded-xl border px-3 py-2 text-[12px] font-semibold"
-                style={{ borderColor: "oklch(0.85 0.14 27)", color: "oklch(0.5 0.18 27)" }}
-              >
-                <AlertTriangle size={12} /> {t("orders.reportProblem")}
-              </Press>
-            )}
-          </div>
-        )}
-        {isPaid && order.fulfillment_status === "delivered" && (
-          <div className="border-t border-border p-2">
-            {hasReview ? (
-              <div
-                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold"
-                style={{ backgroundColor: "oklch(0.96 0.03 155)", color: "oklch(0.4 0.12 155)" }}
-              >
-                <Check size={14} /> {t("reviews.left", { defaultValue: "Avis laissé" })}
-              </div>
-            ) : (
-              <Press
-                onClick={onReview}
-                className="!min-h-10 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-bold text-white"
-                style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
-              >
-                ⭐ {t("reviews.rateOrder", { defaultValue: "Noter cette commande" })}
-              </Press>
-            )}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function OrderSkeletons() {
-  return (
-    <>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-2xl border border-border p-3">
-          <div className="skeleton h-16 w-16 rounded-xl" />
-          <div className="flex-1 space-y-1.5">
-            <div className="skeleton h-3.5 w-3/5" />
-            <div className="skeleton h-3 w-2/5" />
-            <div className="skeleton h-3 w-1/4" />
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
-
-/* ================= Order detail (real) ================= */
-
-function OrderDetailScreen({ order, onClose }: { order: OrderRow | null; onClose: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <PushScreen
-      open={!!order}
-      onClose={onClose}
-      title={order ? order.item_name : ""}
-      zIndex={65}
-    >
-      {order && <OrderDetailBody order={order} />}
-      {!order && <div className="p-4 text-sm text-muted-foreground">{t("orders.empty")}</div>}
-    </PushScreen>
-  );
-}
-
-function OrderDetailBody({ order }: { order: OrderRow }) {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const meta = statusMeta(order.status);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const isBuyer = !!user && user.id === order.buyer_id;
-  const canReview = isBuyer && order.fulfillment_status === "delivered";
-
-  return (
-    <div className="space-y-4 px-4 py-4">
-      <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
-        {order.item_image ? (
-          <img src={order.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" draggable={false} />
-        ) : (
-          <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-semibold">{order.item_name}</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
-            {orderDateShort(new Date(order.created_at))}
-          </p>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-[14px] font-bold">{formatMoney(Number(order.total), order.currency)}</span>
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-              style={{ backgroundColor: meta.bg, color: meta.color }}
-            >
-              {t(meta.labelKey)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-border p-4">
-        <Row label={t("pay.item")} value={formatMoney(Number(order.amount), order.currency)} />
-        <Row label={t("pay.platformFee")} value={formatMoney(Number(order.platform_fee), order.currency)} />
-        <Row label={t("pay.processingFee")} value={formatMoney(Number(order.processing_fee), order.currency)} />
-        <div className="my-2 h-px bg-border" />
-        <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency)} bold />
-      </div>
-
-      {canReview && (
-        <Press
-          onClick={() => setReviewOpen(true)}
-          className="!min-h-12 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white"
-          style={{ background: "linear-gradient(135deg, oklch(0.7 0.16 60), oklch(0.62 0.17 45))" }}
-        >
-          <Check size={16} /> {t("reviews.leave", { defaultValue: "Laisser un avis" })}
-        </Press>
-      )}
-
-      <div className="rounded-2xl border border-border p-4">
-        <p className="mb-3 text-[13px] font-semibold">{t("timeline.title")}</p>
-        <OrderTimeline orderId={order.id} />
-      </div>
-
-      <LeaveReviewSheet
-        open={reviewOpen}
-        onClose={() => setReviewOpen(false)}
-        orderId={order.id}
-      />
-    </div>
-  );
-}
-
-
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return (
-    <div className="flex items-center justify-between py-1">
-      <span className={`text-[13px] ${bold ? "font-bold" : "text-muted-foreground"}`}>{label}</span>
-      <span className={`text-[13px] tabular-nums ${bold ? "font-bold" : ""}`}>{value}</span>
-    </div>
   );
 }
 

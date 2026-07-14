@@ -1,18 +1,19 @@
 // Viewer-side "moderator dock" — surfaces product-management actions to a
 // moderator watching a live. Mirrors the host's compact featured actions
 // but limited to what a moderator can safely do (add / feature / start
-// auction / put fixed on sale). Ending the live and ending an auction stay
-// host-only.
+// auction / put fixed on sale / pick from seller shop). Ending the live
+// and ending an auction stay host-only.
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Package, Plus, Shield } from "lucide-react";
+import { Package, Plus, Shield, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BottomSheet } from "./bottom-sheet";
 import { LiveProductImage } from "./live-product-image";
 import { AddProductSheet } from "@/components/broadcast/add-product-sheet";
+import { ShopPickerSheet, type PickedShopItem } from "@/components/shop/shop-picker-sheet";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
 import {
@@ -29,6 +30,8 @@ import type { BProduct } from "@/lib/broadcast-context";
 export type ModeratorDockProps = {
   liveId: string;
   userId: string;
+  /** Host / seller — used to open their shop catalog. */
+  sellerId: string;
   products: LiveProductRow[];
   activeAuction: AuctionStartEvt | null;
   currency: string;
@@ -39,6 +42,7 @@ export type ModeratorDockProps = {
 export function ModeratorDock({
   liveId,
   userId,
+  sellerId,
   products,
   activeAuction,
   currency,
@@ -48,22 +52,30 @@ export function ModeratorDock({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const fmt = (n: number) => formatMoney(n, currency, locale);
 
   const doStartAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
     haptic.medium();
-    const res = await startAuctionInDb(p.id);
-    const deadlineMs = res.ok && res.deadlineMs
-      ? res.deadlineMs
-      : Date.now() + p.timer_seconds * 1000;
-    broadcastAuctionStart({
-      productId: p.id,
-      deadlineMs,
-      timerSec: p.timer_seconds,
-    });
-    setOpen(false);
+    setBusy(true);
+    try {
+      const res = await startAuctionInDb(p.id);
+      if (!res.ok || !res.deadlineMs) {
+        toast.error(res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère"));
+        return;
+      }
+      broadcastAuctionStart({
+        productId: p.id,
+        deadlineMs: res.deadlineMs,
+        timerSec: res.timerSec ?? p.timer_seconds,
+      });
+      toast.success(t("moderator.auctionStarted", "Enchère démarrée"));
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doToggleFixed = async (p: LiveProductRow) => {
@@ -73,9 +85,9 @@ export function ModeratorDock({
     else await activateFixedInDb(p.id);
   };
 
-  const onAddProduct = async (p: Omit<BProduct, "id">) => {
-    if (busy) return;
-    setBusy(true);
+  const persistProduct = async (
+    p: Omit<BProduct, "id"> & { shopProductId?: string },
+  ): Promise<boolean> => {
     const res = await createLiveProductInDb({
       liveId,
       userId,
@@ -87,12 +99,50 @@ export function ModeratorDock({
       price: p.price,
       stock: p.stock,
       timerSeconds: p.timerSec,
+      shopProductId: p.shopProductId ?? null,
     });
-    setBusy(false);
-    if (!res.ok) toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
-    else {
-      haptic.success();
-      toast.success(t("live.productAdded", "Produit ajouté"));
+    if (!res.ok) {
+      toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+      return false;
+    }
+    return true;
+  };
+
+  const onAddProduct = async (p: Omit<BProduct, "id">) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await persistProduct(p);
+      if (ok) {
+        haptic.success();
+        toast.success(t("live.productAdded", "Produit ajouté"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickFromShop = async (items: PickedShopItem[]) => {
+    if (busy || items.length === 0) return;
+    setBusy(true);
+    try {
+      let okCount = 0;
+      for (const it of items) {
+        if (await persistProduct(it)) okCount += 1;
+      }
+      if (okCount > 0) {
+        haptic.success();
+        toast.success(
+          okCount === 1
+            ? t("live.productAdded", "Produit ajouté")
+            : t("moderator.productsAdded", {
+                count: okCount,
+                defaultValue: "{{count}} produits ajoutés",
+              }),
+        );
+      }
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -124,19 +174,28 @@ export function ModeratorDock({
 
       <BottomSheet open={open} onClose={() => setOpen(false)} heightPercent={80}>
         <div className="flex h-full min-h-0 flex-col px-4">
-          <div className="flex items-center justify-between pb-2 pt-1">
-            <div className="flex items-center gap-2">
-              <Shield size={16} className="text-[oklch(0.75_0.16_85)]" />
-              <h2 className="text-[17px] font-bold">
+          <div className="flex items-center justify-between gap-2 pb-2 pt-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <Shield size={16} className="shrink-0 text-[oklch(0.75_0.16_85)]" />
+              <h2 className="truncate text-[17px] font-bold">
                 {t("moderator.title", "Modérateur")}
               </h2>
             </div>
-            <Press
-              onClick={() => { haptic.selection(); setOpen(false); setAddOpen(true); }}
-              className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
-            >
-              <Plus size={14} /> {t("moderator.addProduct", "Ajouter")}
-            </Press>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Press
+                onClick={() => { haptic.selection(); setOpen(false); setShopOpen(true); }}
+                className="!min-h-9 inline-flex items-center gap-1.5 rounded-full border px-3 text-[12px] font-bold"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <Store size={14} /> {t("moderator.fromShop", "Boutique")}
+              </Press>
+              <Press
+                onClick={() => { haptic.selection(); setOpen(false); setAddOpen(true); }}
+                className="!min-h-9 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+              >
+                <Plus size={14} /> {t("moderator.addProduct", "Ajouter")}
+              </Press>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pb-6">
             {products.length === 0 ? (
@@ -203,7 +262,8 @@ export function ModeratorDock({
                           ) : (
                             <Press
                               onClick={() => { void doStartAuction(p); }}
-                              className="!min-h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background"
+                              disabled={busy}
+                              className="!min-h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
                             >
                               {t("moderator.startAuction", "Démarrer")}
                             </Press>
@@ -237,7 +297,18 @@ export function ModeratorDock({
       <AddProductSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        currency={currency}
+        pickFromShopLabel={t("moderator.pickFromShop", "📦 Boutique du vendeur")}
+        onPickFromShop={() => { setAddOpen(false); setShopOpen(true); }}
         onAdd={(p) => { void onAddProduct(p); }}
+      />
+
+      <ShopPickerSheet
+        open={shopOpen}
+        onClose={() => setShopOpen(false)}
+        sellerId={sellerId}
+        currency={currency}
+        onConfirm={(items) => { void onPickFromShop(items); }}
       />
     </>
   );

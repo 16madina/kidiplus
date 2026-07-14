@@ -19,7 +19,9 @@ import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { AddProductSheet } from "./add-product-sheet";
+import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { useBroadcast } from "@/lib/broadcast-context";
+
 import {
   BROADCAST_CATEGORY_KEYS,
   BROADCAST_CATEGORY_LABEL_KEY,
@@ -155,13 +157,15 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [allowBids, setAllowBids] = useState(true);
   const [allowBuyNow, setAllowBuyNow] = useState(true);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
-  const [allowGifts, setAllowGifts] = useState(false);
+  const allowGifts = b.allowGifts;
+  const setAllowGifts = b.setAllowGifts;
   const [showAdd, setShowAdd] = useState(false);
+  const [showShopPicker, setShowShopPicker] = useState(false);
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [launching, setLaunching] = useState(false);
 
-  const minDt = toLocalInput(new Date(Date.now() + 15 * 60 * 1000));
-  const maxDt = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+
+  // Kept for the datetime min/max clamps used by the split date/time inputs.
 
   const currentDate = b.scheduledAt ? new Date(b.scheduledAt) : null;
   const dateStr = currentDate
@@ -178,21 +182,60 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       })
     : "--:--";
 
-  const currentDtValue = b.scheduledAt ? toLocalInput(new Date(b.scheduledAt)) : "";
+  
   const scheduleValid =
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
   const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
 
-  const pickCover = () => coverInputRef.current?.click();
+  
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = urlTrackerRef.current.track(URL.createObjectURL(file));
     if (isBlobUrl(b.cover)) urlTrackerRef.current.revoke(b.cover);
-    b.setCover(url);
+    // Use a data URL for the preview — it works everywhere (mobile Safari,
+    // WebViews, HEIC-converted images) whereas blob URLs can silently fail
+    // to render inside <img> in some sandboxed previews.
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      if (dataUrl) b.setCover(dataUrl);
+    };
+    reader.readAsDataURL(file);
     b.setCoverFile(file);
     e.target.value = "";
     haptic.selection();
+  };
+
+  // Split date/time controls: separate <input type="date"> and <input type="time">
+  // so tapping "Heure" opens a time-only picker, not a full datetime calendar.
+  const dateInputValue = currentDate
+    ? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`
+    : "";
+  const timeInputValue = currentDate
+    ? `${String(currentDate.getHours()).padStart(2, "0")}:${String(currentDate.getMinutes()).padStart(2, "0")}`
+    : "";
+  const minDateOnly = toLocalInput(new Date(Date.now() + 15 * 60 * 1000)).slice(0, 10);
+  const maxDateOnly = toLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).slice(0, 10);
+
+  const onDateChange = (value: string) => {
+    if (!value) {
+      b.setScheduledAt(null);
+      return;
+    }
+    const [y, m, d] = value.split("-").map(Number);
+    const base = currentDate ?? new Date(Date.now() + 60 * 60 * 1000);
+    const next = new Date(base);
+    next.setFullYear(y, (m ?? 1) - 1, d ?? 1);
+    b.setScheduledAt(next.toISOString());
+  };
+
+  const onTimeChange = (value: string) => {
+    if (!value) return;
+    const [h, min] = value.split(":").map(Number);
+    const base = currentDate ?? new Date(Date.now() + 60 * 60 * 1000);
+    const next = new Date(base);
+    next.setHours(h ?? 0, min ?? 0, 0, 0);
+    b.setScheduledAt(next.toISOString());
   };
 
   const uploadProducts = async () =>
@@ -243,6 +286,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           category: b.category,
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          allowGifts,
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -256,11 +300,14 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          allowGifts,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
         toast.success(t("schedule.savedToast", "Live programmé 📅"));
       }
+
+      window.dispatchEvent(new CustomEvent("kidi:scheduled-lives-changed"));
       onExit();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -369,9 +416,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
 
         {/* 1 — Cover */}
         <Card step={1} title={t("schedule.form.coverTitle", "Image de couverture")}>
-          <Press
-            onClick={pickCover}
-            className="!min-h-40 relative flex h-40 w-full items-center justify-center overflow-hidden rounded-xl"
+          <label
+            htmlFor="schedule-cover-input"
+            className="relative flex h-40 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: `1.5px dashed ${GOLD_DIM}`,
@@ -381,7 +428,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
             {b.cover ? (
               <img src={b.cover} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center gap-3">
+              <div className="pointer-events-none flex flex-col items-center gap-3">
                 <ImageIcon size={36} color="rgba(255,255,255,0.35)" />
                 <span
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold"
@@ -396,15 +443,17 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
                 </span>
               </div>
             )}
-          </Press>
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onCoverFile}
-          />
+            <input
+              id="schedule-cover-input"
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={onCoverFile}
+            />
+          </label>
         </Card>
+
 
         {/* 2 — Info */}
         <Card step={2} title={t("schedule.form.infoTitle", "Informations du live")}>
@@ -509,15 +558,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <CalendarIcon size={16} color={GOLD} />
               <span className="truncate text-[14px] text-white">{dateStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="date"
+                min={minDateOnly}
+                max={maxDateOnly}
+                value={dateInputValue}
+                onChange={(e) => onDateChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
@@ -535,15 +580,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               <Clock size={16} color={GOLD} />
               <span className="text-[14px] text-white">{timeStr}</span>
               <input
-                type="datetime-local"
-                min={minDt}
-                max={maxDt}
-                value={currentDtValue}
-                onChange={(e) =>
-                  b.setScheduledAt(
-                    e.target.value ? new Date(e.target.value).toISOString() : null,
-                  )
-                }
+                type="time"
+                value={timeInputValue}
+                onChange={(e) => onTimeChange(e.target.value)}
                 className="absolute inset-0 cursor-pointer opacity-0"
                 style={{ colorScheme: "dark" }}
                 lang={i18n.language}
@@ -714,7 +753,31 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={(p) => b.addProduct(p)}
+        onPickFromShop={() => {
+          setShowAdd(false);
+          setShowShopPicker(true);
+        }}
+      />
+      <ShopPickerSheet
+        open={showShopPicker}
+        onClose={() => setShowShopPicker(false)}
+        currency={b.currency}
+        onConfirm={(items) => {
+          for (const it of items) {
+            b.addProduct({
+              name: it.name,
+              image: it.image,
+              mode: it.mode,
+              startPrice: it.startPrice,
+              price: it.price,
+              stock: it.stock,
+              timerSec: it.timerSec,
+            });
+          }
+          setShowShopPicker(false);
+        }}
       />
     </motion.div>
   );
 }
+

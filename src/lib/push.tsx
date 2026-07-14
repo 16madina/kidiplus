@@ -16,6 +16,7 @@ import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { App } from "@capacitor/app";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
@@ -130,8 +131,19 @@ export function PushProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const registerForPush = useCallback(async () => {
+    // APNs first (required on iOS), then read the FCM registration token.
+    // Backend sendFcmToTokens expects FCM tokens — not raw APNs device tokens.
     await PushNotifications.register();
-  }, []);
+    try {
+      const { token: fcmToken } = await FirebaseMessaging.getToken();
+      if (fcmToken) {
+        setToken(fcmToken);
+        void persistToken(fcmToken);
+      }
+    } catch (e) {
+      console.warn("[push] FirebaseMessaging.getToken failed", e);
+    }
+  }, [persistToken]);
 
   // Listeners + auto-register when permission is already granted.
   useEffect(() => {
@@ -141,14 +153,25 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
     try {
       PushNotifications.addListener("registration", (t: Token) => {
-        console.info("[push] token received");
-        setToken(t.value);
-        void persistToken(t.value);
+        // On Android this is already an FCM token; on iOS it's APNs — we still
+        // prefer FirebaseMessaging.getToken() below / via registerForPush.
+        console.info("[push] native registration token received", { len: t.value?.length });
+        if (currentPlatform() === "android" && t.value) {
+          setToken(t.value);
+          void persistToken(t.value);
+        }
       }).then((h) => handles.push(h)).catch((e) => console.warn("[push] listener registration failed", e));
 
       PushNotifications.addListener("registrationError", (e) => {
         console.warn("[push] registration error", e);
       }).then((h) => handles.push(h)).catch(() => {});
+
+      FirebaseMessaging.addListener("tokenReceived", ({ token: newToken }) => {
+        if (!newToken) return;
+        console.info("[push] FCM token refreshed");
+        setToken(newToken);
+        void persistToken(newToken);
+      }).then((h) => handles.push(h)).catch((e) => console.warn("[push] FCM token listener failed", e));
 
       PushNotifications.addListener("pushNotificationReceived", (n) => {
         const data = normalizePushData((n as unknown as { data?: unknown }).data);

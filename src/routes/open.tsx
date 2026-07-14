@@ -24,10 +24,9 @@ export const Route = createFileRoute('/open')({
 function OpenBridge() {
   const { path } = Route.useSearch()
   const safePath = path.startsWith('/') ? path : `/${path}`
-  // Fallback: land on the web app itself at the requested path (KIDI+ works
-  // as a PWA). Centralized in EMAIL_CONFIG.FALLBACK_URL.
+  // No app installed → store download page (keep intended path for after install).
   const fallbackBase = EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, '')
-  const downloadUrl = `${fallbackBase}${safePath}`
+  const downloadUrl = `${fallbackBase}?next=${encodeURIComponent(safePath)}`
   const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://${safePath.replace(/^\//, '')}`
   const [fallback, setFallback] = useState(false)
 

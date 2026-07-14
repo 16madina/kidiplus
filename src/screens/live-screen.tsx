@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, LogIn, Store, UserPlus } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, Store, TrendingUp, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
+import { FilterProvider } from "@/lib/filters/filter-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
 import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
@@ -17,7 +18,20 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
+import sellerHero from "@/assets/seller-hero.png.asset.json";
 import { Gavel, Radio, Sparkles } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+
 
 const GOLD = "#D4AF37";
 const NAVY = "#10162B";
@@ -154,6 +168,29 @@ function LiveScreenAuthed() {
   const { t } = useTranslation();
   const { profile, loading, becomeSeller } = useAuth();
   const [flipping, setFlipping] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const activateSeller = async () => {
+    setConfirmOpen(false);
+    setFlipping(true);
+    try {
+      await becomeSeller();
+      haptic.success();
+      toast.success(t("broadcast.becomeSellerCreated", { defaultValue: "Ta boutique KiDi+ est créée 🎉 Ajoute tes produits pour commencer." }));
+      // Redirect to profile → My Shop so the user can set up banner & products
+      window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "profile" }));
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("kidi:open-my-shop"));
+      }, 250);
+    } catch (e) {
+      haptic.error();
+      toast.error(frenchAuthError(e));
+    } finally {
+      setFlipping(false);
+    }
+  };
+
+
 
   if (loading || !profile) {
     return (
@@ -166,63 +203,125 @@ function LiveScreenAuthed() {
 
 
   if (!profile.is_seller) {
+    const NAVY_LOCAL = "#10162B";
+    const GOLD_LOCAL = "#D4AF37";
     return (
       <motion.div
         key="become-seller"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: EASE_IOS }}
-        className="flex h-full flex-col items-center justify-center px-6 pt-safe text-center"
-        style={{
-          paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
-        }}
+        transition={{ duration: 0.35, ease: EASE_IOS }}
+        className="seller-entry-screen relative flex h-full flex-col overflow-y-auto bg-white pt-safe md:px-8 md:pt-10"
+        style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
       >
+        {/* Hero image — navy bg with product */}
         <div
-          className="mb-4 grid h-16 w-16 place-items-center rounded-2xl"
+          className="seller-entry-hero relative w-full overflow-hidden md:mx-auto md:max-w-2xl md:rounded-3xl"
           style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
+            height: "clamp(290px, 46vh, 390px)",
+            backgroundColor: NAVY_LOCAL,
+            backgroundImage: `url(${sellerHero.url})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center 42%",
+            backgroundRepeat: "no-repeat",
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
           }}
         >
-          <Store size={30} color="white" />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.78) 100%)" }}
+          />
         </div>
-        <h1 className="text-[24px] font-bold">{t("broadcast.becomeSellerTitle")}</h1>
-        <p className="mt-2 max-w-xs text-[14px] leading-snug text-muted-foreground">
-          {t("broadcast.becomeSellerBody")}
-        </p>
-        <Press
-          onClick={async () => {
-            setFlipping(true);
-            try {
-              await becomeSeller();
-              haptic.success();
-              toast.success(t("broadcast.becomeSellerCta") + " 🎉");
-            } catch (e) {
-              haptic.error();
-              toast.error(frenchAuthError(e));
-            } finally {
-              setFlipping(false);
-            }
-          }}
-          disabled={flipping}
-          className="!min-h-12 mt-8 h-12 w-full max-w-xs rounded-2xl text-[15px] font-bold text-white"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            opacity: flipping ? 0.7 : 1,
-          }}
-        >
-          {flipping ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> {t("common.loading")}
+
+        {/* Content */}
+        <div className="seller-entry-content relative -mt-4 flex flex-col items-center px-6 text-center">
+          <h1 className="text-[26px] font-black leading-tight" style={{ color: NAVY_LOCAL, fontFamily: "'Inter', system-ui, sans-serif" }}>
+            {t("broadcast.seller.title", { defaultValue: "Vends en direct sur KiDi+" })}
+          </h1>
+          <p className="mt-3 max-w-xs text-[14px] leading-snug" style={{ color: `${NAVY_LOCAL}99` }}>
+            {t("broadcast.seller.subtitle", { defaultValue: "Crée tes lives, présente tes articles et laisse les acheteurs enchérir en temps réel." })}
+          </p>
+
+          {/* 3 features */}
+          <div className="mt-6 flex w-full max-w-sm items-start justify-between">
+            <FeatureItem
+              icon={<Radio size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f1", { defaultValue: "Lance ton live" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+            <div className="mx-1 h-12 w-px self-center" style={{ backgroundColor: `${NAVY_LOCAL}22` }} />
+            <FeatureItem
+              icon={<Gavel size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f2", { defaultValue: "Reçois des enchères" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+            <div className="mx-1 h-12 w-px self-center" style={{ backgroundColor: `${NAVY_LOCAL}22` }} />
+            <FeatureItem
+              icon={<TrendingUp size={22} strokeWidth={2.2} />}
+              label={t("broadcast.seller.f3", { defaultValue: "Développe tes ventes" })}
+              navy={NAVY_LOCAL}
+              gold={GOLD_LOCAL}
+            />
+          </div>
+
+          {/* Gold CTA */}
+          <Press
+            onClick={() => { haptic.light(); setConfirmOpen(true); }}
+            disabled={flipping}
+            className="!min-h-14 mt-7 flex h-14 w-full max-w-sm items-center justify-between rounded-full px-6 text-[16px] font-black"
+            style={{
+              background: `linear-gradient(180deg, #E8C86A 0%, ${GOLD_LOCAL} 55%, #B8912C 100%)`,
+              color: NAVY_LOCAL,
+              boxShadow: "0 12px 28px -10px rgba(212,175,55,0.7), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,90,10,0.35)",
+              border: "1px solid rgba(184,145,44,0.6)",
+              opacity: flipping ? 0.75 : 1,
+            }}
+          >
+            <span className="flex-1 text-center">
+              {flipping ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" /> {t("common.loading")}
+                </span>
+              ) : (
+                t("broadcast.seller.cta", { defaultValue: "Activer mon espace vendeur" })
+              )}
             </span>
-          ) : (
-            t("broadcast.becomeSellerCta")
-          )}
-        </Press>
+            {!flipping && <ArrowRight size={20} strokeWidth={2.4} />}
+          </Press>
+
+          <p className="mt-3 text-[12px]" style={{ color: `${NAVY_LOCAL}80` }}>
+            {t("broadcast.seller.free", { defaultValue: "Activation rapide et gratuite." })}
+          </p>
+        </div>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("broadcast.createShopTitle", { defaultValue: "Voulez-vous créer votre boutique KiDi+ ?" })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("broadcast.createShopBody", { defaultValue: "En confirmant, ta boutique est créée et tu deviens vendeur. Tu pourras ensuite ajouter tes produits et lancer des lives. Sans boutique, tu restes en mode visiteur." })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {t("common.no", { defaultValue: "Non" })}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => { void activateSeller(); }}>
+                {t("broadcast.createShopConfirm", { defaultValue: "Oui, créer ma boutique" })}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </motion.div>
     );
   }
+
+
 
   return (
     <BroadcastProvider>
@@ -230,6 +329,28 @@ function LiveScreenAuthed() {
     </BroadcastProvider>
   );
 }
+
+function FeatureItem({
+  icon,
+  label,
+  navy,
+  gold,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  navy: string;
+  gold: string;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1.5">
+      <div style={{ color: gold }}>{icon}</div>
+      <span className="text-[11px] font-bold leading-tight" style={{ color: navy }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 
 function BroadcastFlow() {
   const { t } = useTranslation();
@@ -369,6 +490,7 @@ function BroadcastFlow() {
   };
 
   return (
+    <FilterProvider>
     <div className="relative h-full w-full overflow-hidden">
       {/* Entry stays mounted while setup is open so scroll and list state
           are preserved when the user comes back. */}
@@ -447,6 +569,7 @@ function BroadcastFlow() {
         </div>
       )}
     </div>
+    </FilterProvider>
   );
 }
 

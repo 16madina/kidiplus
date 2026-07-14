@@ -95,6 +95,9 @@ export type CreateLiveInput = {
   roomName: string;
   /** Live currency — inherited from the seller's profile; a DB trigger enforces it. */
   currency?: string;
+  /** Whether viewers can send virtual gifts during the live. */
+  allowGifts?: boolean;
+
   products: Array<{
     name: string;
     imagePath: string | null; // storage path OR absolute URL
@@ -694,16 +697,63 @@ export async function purchaseFixedPriceRpc(
 // Feed realtime
 // -------------------------------------------------------------------------
 
+/**
+ * Subscribe to `lives` table changes for the home feed.
+ * Android WebViews often drop the Realtime WebSocket without auto-recovery,
+ * so we re-subscribe on error and emit on SUBSCRIBED for a catch-up refetch.
+ */
 export function subscribeToLivesFeed(onChange: () => void): () => void {
+  let dead = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryDelay = 1_000;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emit = () => {
+    if (dead) return;
+    if (debounceTimer != null) clearTimeout(debounceTimer);
+    // Host heartbeats / viewer_count updates fire often — coalesce briefly.
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      if (!dead) onChange();
+    }, 400);
+  };
+
   const channel = supabase
-    .channel("public:lives:feed")
+    .channel(`public:lives:feed:${Date.now()}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "lives" },
-      () => onChange(),
+      () => emit(),
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (dead) return;
+      if (status === "SUBSCRIBED") {
+        retryDelay = 1_000;
+        // Resync after connect / reconnect — covers missed INSERTs while WS was down.
+        emit();
+      } else if (
+        status === "CHANNEL_ERROR" ||
+        status === "TIMED_OUT" ||
+        status === "CLOSED"
+      ) {
+        if (retryTimer != null) return;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          if (dead) return;
+          try {
+            void channel.subscribe();
+          } catch {
+            /* channel already gone */
+          }
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 15_000);
+      }
+    });
+
   return () => {
+    dead = true;
+    if (retryTimer != null) clearTimeout(retryTimer);
+    if (debounceTimer != null) clearTimeout(debounceTimer);
     supabase.removeChannel(channel);
   };
 }
@@ -721,8 +771,10 @@ export type ScheduledLiveRow = {
   scheduled_at: string | null;
   currency: string | null;
   status: string;
+  allow_gifts?: boolean | null;
   products?: LiveProductRow[];
 };
+
 
 export type ScheduledLiveWithSeller = ScheduledLiveRow & {
   seller: {
@@ -748,10 +800,12 @@ export async function createScheduledLiveInDb(
       status: "scheduled",
       scheduled_at: input.scheduledAt,
       ...(input.currency ? { currency: input.currency } : {}),
+      ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
     })
     .select("id")
     .single();
   if (error || !live) throw error ?? new Error("Failed to schedule live");
+
 
   const productIds: string[] = [];
   if (input.products.length > 0) {
@@ -790,6 +844,7 @@ export async function updateScheduledLiveInDb(
     category: string;
     coverPath: string | null;
     scheduledAt: string;
+    allowGifts?: boolean;
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -800,10 +855,12 @@ export async function updateScheduledLiveInDb(
       category: patch.category,
       cover_url: patch.coverPath,
       scheduled_at: patch.scheduledAt,
+      ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
     })
     .eq("id", liveId)
     .eq("status", "scheduled");
   if (error) throw error;
+
 
   // Replace products wholesale.
   await supabase.from("live_products").delete().eq("live_id", liveId);
@@ -879,7 +936,8 @@ export async function fetchScheduledLiveWithProducts(
 ): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
   const { data } = await supabase
     .from("lives")
-    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status")
+    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts")
+
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;

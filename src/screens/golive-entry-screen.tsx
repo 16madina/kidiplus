@@ -1,6 +1,6 @@
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2 } from "lucide-react";
+import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -20,11 +20,15 @@ import {
   type ScheduledLiveRow,
 } from "@/lib/lives-db";
 import { notifyLiveReminders } from "@/lib/live-reminders-db";
+import startBgAsset from "@/assets/golive-start-bg.png.asset.json";
+import scheduleBgAsset from "@/assets/golive-schedule-bg.png.asset.json";
 
-const GOLD = "oklch(0.82 0.14 85)";
-const GOLD_DIM = "oklch(0.82 0.14 85 / 0.42)";
-const NAVY_A = "oklch(0.19 0.05 260)";
-const NAVY_B = "oklch(0.11 0.03 260)";
+const GOLD = "#E4B438";
+const GOLD_DIM = "rgba(228,180,56,0.42)";
+const NAVY_A = "#0B1938";
+const NAVY_B = "#061331";
+const LIVE_RED = "#E5393F";
+
 
 function formatDateChip(iso: string, lang: string): string {
   const d = new Date(iso);
@@ -64,26 +68,29 @@ export function GoLiveEntryScreen({
   const [confirmCancel, setConfirmCancel] = useState<ScheduledLiveRow | null>(null);
   const [covers, setCovers] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!user) return;
-    let alive = true;
-    void (async () => {
-      setLoadingList(true);
-      const rows = await fetchMyScheduledLives(user.id);
-      if (!alive) return;
-      setScheduled(rows);
-      setLoadingList(false);
-      const entries = await Promise.all(
-        rows
-          .filter((r) => r.cover_url)
-          .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
-      );
-      if (alive) setCovers(Object.fromEntries(entries));
-    })();
-    return () => {
-      alive = false;
-    };
+    setLoadingList(true);
+    const rows = await fetchMyScheduledLives(user.id);
+    setScheduled(rows);
+    setLoadingList(false);
+    const entries = await Promise.all(
+      rows
+        .filter((r) => r.cover_url)
+        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
+    );
+    setCovers(Object.fromEntries(entries));
   }, [user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    const onChanged = () => void reload();
+    window.addEventListener("kidi:scheduled-lives-changed", onChanged);
+    return () => window.removeEventListener("kidi:scheduled-lives-changed", onChanged);
+  }, [reload]);
 
   const loadIntoForm = async (row: ScheduledLiveRow) => {
     setBusyId(row.id);
@@ -95,7 +102,9 @@ export function GoLiveEntryScreen({
       b.setTitle(full.title);
       b.setCategory(full.category ?? "Fashion");
       b.setScheduledAt(full.scheduled_at);
+      b.setAllowGifts(full.allow_gifts !== false);
       b.setCoverFile(null);
+
       const resolvedCover = full.cover_url
         ? (await resolveLiveImage("live-covers", full.cover_url)) ?? null
         : null;
@@ -245,28 +254,30 @@ export function GoLiveEntryScreen({
       </div>
 
       {/* Choice cards */}
-      <div className="grid grid-cols-2 gap-3 px-5 pt-4">
+      <div className="grid grid-cols-2 gap-3 px-4 pt-3">
         <ChoiceCard
-          icon={<Radio size={38} color={GOLD} />}
-          title={t("golive.entry.startNow", "Commencer\nun live")}
+          image={startBgAsset.url}
+          badge={{ label: t("golive.entry.liveBadge", "EN DIRECT"), variant: "live" }}
+          icon={<Radio size={22} color={GOLD} strokeWidth={2.4} />}
+          title={t("golive.entry.startNow", "Commencer un live")}
           subtitle={t("golive.entry.startNowSub", "Passe en direct maintenant")}
           onPress={() => {
             haptic.medium();
+            b.reset();
             b.setMode("now");
-            b.setEditingLiveId(null);
-            b.setScheduledAt(null);
             onStartNow();
           }}
         />
         <ChoiceCard
-          icon={<CalendarIcon size={38} color={GOLD} />}
-          title={t("golive.entry.schedule", "Programmer\nun live")}
-          subtitle={t("golive.entry.scheduleSub", "Annonce ton live à l'avance et prépare tes articles")}
+          image={scheduleBgAsset.url}
+          badge={{ label: t("golive.entry.planBadge", "PLANIFIER"), variant: "plan" }}
+          icon={<CalendarIcon size={22} color={GOLD} strokeWidth={2.4} />}
+          title={t("golive.entry.schedule", "Programmer un live")}
+          subtitle={t("golive.entry.scheduleSub", "Annonce ton live et prépare tes articles")}
           onPress={() => {
             haptic.medium();
+            b.reset();
             b.setMode("schedule");
-            b.setEditingLiveId(null);
-            b.setScheduledAt(null);
             onSchedule();
           }}
         />
@@ -282,23 +293,49 @@ export function GoLiveEntryScreen({
         </div>
         {!loadingList && scheduled.length === 0 && (
           <div
-            className="mt-3 grid place-items-center rounded-2xl px-6 py-8 text-center"
+            className="mt-3 flex items-center gap-3 px-4 py-4"
             style={{
-              border: `1.5px dashed ${GOLD_DIM}`,
-              backgroundColor: "rgba(255,255,255,0.02)",
+              borderRadius: 22,
+              border: `1px solid ${GOLD_DIM}`,
+              background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
             }}
           >
-            <div className="mb-3">
-              <CalendarIcon size={54} color={GOLD} strokeWidth={1.5} style={{ opacity: 0.55 }} />
+            <div
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
+              style={{
+                background: "rgba(228,180,56,0.10)",
+                border: `1px solid ${GOLD_DIM}`,
+              }}
+            >
+              <CalendarIcon size={22} color={GOLD} strokeWidth={2} />
             </div>
-            <p className="text-[13px] text-white/55">
-              {t("golive.entry.emptyScheduled", "Aucun live programmé pour le moment.")}
-            </p>
+            <div className="min-w-0 flex-1 text-[13.5px] font-semibold text-white">
+              {t("golive.entry.emptyScheduled", "Aucun live programmé")}
+            </div>
+            <Press
+              onClick={() => {
+                haptic.medium();
+                b.reset();
+                b.setMode("schedule");
+                onSchedule();
+              }}
+              className="!min-h-9 h-9 shrink-0 rounded-full px-3 text-[12px] font-bold"
+              style={{
+                color: GOLD,
+                border: `1px solid ${GOLD}`,
+                backgroundColor: "rgba(228,180,56,0.06)",
+              }}
+            >
+              {t("golive.entry.emptyScheduledCta", "Programmer")}
+            </Press>
           </div>
         )}
+
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
-            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 60_000;
+            // The seller can start their live from 15 minutes before the scheduled time.
+            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 15 * 60_000;
             return (
               <motion.li
                 key={row.id}
@@ -343,15 +380,6 @@ export function GoLiveEntryScreen({
                     </Press>
                   ) : (
                     <>
-                      <Press
-                        onClick={() => startNow(row)}
-                        disabled={busyId === row.id}
-                        aria-label={t("golive.entry.startNowShort", "Démarrer")}
-                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-black"
-                        style={{ backgroundColor: GOLD }}
-                      >
-                        <Play size={14} fill="currentColor" />
-                      </Press>
                       <Press
                         onClick={() => loadIntoForm(row)}
                         disabled={busyId === row.id}
@@ -438,61 +466,104 @@ export function GoLiveEntryScreen({
 }
 
 function ChoiceCard({
+  image,
+  badge,
   icon,
   title,
   subtitle,
   onPress,
 }: {
+  image: string;
+  badge: { label: string; variant: "live" | "plan" };
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   onPress: () => void;
 }) {
+  const isLive = badge.variant === "live";
   return (
     <Press
       onClick={onPress}
-      className="flex h-full min-h-[248px] w-full flex-col items-center justify-start gap-3 rounded-3xl p-5 text-center"
+      className="relative flex h-full w-full flex-col overflow-hidden text-left"
       style={{
-        backgroundColor: "rgba(255,255,255,0.04)",
+        aspectRatio: "9 / 17",
+        minHeight: 300,
+        borderRadius: 24,
         border: `1px solid ${GOLD_DIM}`,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 32px rgba(0,0,0,0.4)",
+        boxShadow: `0 0 0 1px rgba(228,180,56,0.10), 0 0 24px rgba(228,180,56,0.14), 0 14px 32px rgba(0,0,0,0.5)`,
+        backgroundColor: NAVY_B,
       }}
     >
-        <div className="relative mt-2 h-[92px] w-[92px]">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              filter: "blur(16px)",
-              background: "radial-gradient(circle, rgba(255,205,110,0.35), transparent 70%)",
-            }}
-          />
-          <div
-            className="relative grid h-[92px] w-[92px] shrink-0 place-items-center rounded-full"
-            style={{
-              background: "radial-gradient(circle at 50% 40%, rgba(255,215,140,0.22), rgba(255,215,140,0.04) 70%)",
-              border: `1px solid ${GOLD_DIM}`,
-              boxShadow: `inset 0 0 0 1px rgba(255,215,140,0.08), 0 0 22px rgba(255,205,110,0.18)`,
-            }}
-          >
-            {icon}
-          </div>
+      {/* Background image */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+      {/* Vertical gradient overlay */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(180deg, rgba(6,19,49,0) 0%, rgba(6,19,49,0.25) 45%, rgba(6,19,49,0.85) 78%, rgba(6,19,49,0.96) 100%)`,
+        }}
+      />
+
+      {/* Top badge */}
+      <div className="relative z-10 flex items-start p-3">
+        <span
+          className="rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider"
+          style={
+            isLive
+              ? {
+                  backgroundColor: LIVE_RED,
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 12px rgba(229,57,63,0.4)",
+                }
+              : {
+                  backgroundColor: "rgba(6,19,49,0.7)",
+                  color: GOLD,
+                  border: `1px solid ${GOLD}`,
+                  backdropFilter: "blur(6px)",
+                }
+          }
+        >
+          {badge.label}
+        </span>
+      </div>
+
+      {/* Spacer pushes content to bottom */}
+      <div className="flex-1" />
+
+      {/* Bottom content */}
+      <div className="relative z-10 flex flex-col gap-1.5 p-3.5 pr-10">
+        <div>{icon}</div>
+        <div
+          className="text-[17px] font-black leading-[1.1] text-white"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          {title}
         </div>
-        <div className="min-w-0">
-          <div
-            className="whitespace-pre-line text-[19px] font-black leading-[1.15] text-white"
-            style={{ letterSpacing: "-0.01em" }}
-          >
-            {title}
-          </div>
+        <div className="text-[11.5px] leading-snug" style={{ color: "#B7BECE" }}>
+          {subtitle}
         </div>
-        <div className="flex items-center">
-          <div
-            className="h-px w-20"
-            style={{ background: `linear-gradient(to right, transparent, ${GOLD}, transparent)` }}
-          />
-        </div>
-        <div className="text-[12.5px] leading-snug text-white/60">{subtitle}</div>
+      </div>
+
+      {/* Arrow bottom-right */}
+      <div
+        aria-hidden
+        className="absolute bottom-3 right-3 z-10 grid h-7 w-7 place-items-center rounded-full"
+        style={{ backgroundColor: "rgba(228,180,56,0.14)", border: `1px solid ${GOLD_DIM}` }}
+      >
+        <ArrowRight size={14} color={GOLD} strokeWidth={2.5} />
+      </div>
     </Press>
   );
 }
+
+

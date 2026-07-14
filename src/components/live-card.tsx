@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Eye } from "lucide-react";
+import { Eye, Clock, CalendarClock } from "lucide-react";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
 import { formatViewers, type LiveStream } from "@/lib/live-mock";
@@ -60,35 +60,79 @@ export function LiveCard({
           draggable={false}
         />
 
-        {/* top badges */}
-        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
-          <span
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-            style={{
-              backgroundColor: stream.fictitious ? "oklch(0.45 0.08 250)" : "var(--live)",
-            }}
-          >
-            {!stream.fictitious && (
-              <motion.span
-                className="h-1.5 w-1.5 rounded-full bg-white"
-                animate={{ opacity: [1, 0.35, 1], scale: [1, 0.85, 1] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-              />
-            )}
-            {stream.fictitious ? "Démo" : "Live"}
-          </span>
-          <span
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <Eye size={11} strokeWidth={2.4} />
-            {formatViewers(stream.viewers)}
-          </span>
+        {/* top badges (single left-anchored row so nothing overlaps viewers) */}
+        <div className="absolute left-2 right-2 top-2 z-10 flex items-center gap-1.5">
+          {stream.scheduled ? (
+            <span
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+              style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
+            >
+              <CalendarClock size={11} strokeWidth={2.6} />
+              Programmé
+            </span>
+          ) : stream.fictitious ? (
+            <>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                style={{ backgroundColor: "oklch(0.45 0.08 250)" }}
+              >
+                Démo
+              </span>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                <Eye size={11} strokeWidth={2.4} />
+                {formatViewers(stream.viewers)}
+              </span>
+            </>
+          ) : (
+            <>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                style={{ backgroundColor: "var(--live)" }}
+              >
+                <motion.span
+                  className="h-1.5 w-1.5 rounded-full bg-white"
+                  animate={{ opacity: [1, 0.35, 1], scale: [1, 0.85, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                Live
+              </span>
+              <span
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                <Eye size={11} strokeWidth={2.4} />
+                {formatViewers(stream.viewers)}
+              </span>
+            </>
+          )}
+          {((stream.scheduled && stream.startsInMin) || stream.endsInMin) && (
+            <span
+              className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-white"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.5)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <Clock size={11} strokeWidth={2.4} />
+              {stream.scheduled
+                ? formatMin(stream.startsInMin!)
+                : formatMin(stream.endsInMin!)}
+            </span>
+          )}
         </div>
+
 
         {/* bottom gradient + seller */}
         <div
@@ -145,4 +189,13 @@ export function LiveCardSkeleton() {
       style={{ aspectRatio: "3 / 4" }}
     />
   );
+}
+
+function formatMin(min: number): string {
+  if (min >= 60) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m === 0 ? `${h} h` : `${h} h ${m}`;
+  }
+  return `${min} min`;
 }

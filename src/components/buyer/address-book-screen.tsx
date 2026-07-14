@@ -22,6 +22,7 @@ export function AddressBookScreen({ open, onClose }: { open: boolean; onClose: (
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const currency = profile?.currency ?? "EUR";
+  const defaultCountry = (profile as { country?: string | null } | null)?.country ?? null;
   const [addresses, setAddresses] = useState<AddressRow[]>([]);
   const [editing, setEditing] = useState<AddressRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -133,6 +134,7 @@ export function AddressBookScreen({ open, onClose }: { open: boolean; onClose: (
         onClose={() => setFormOpen(false)}
         userId={user?.id ?? ""}
         currency={currency}
+        defaultCountry={defaultCountry}
         initial={editing}
         onSaved={() => void load()}
       />

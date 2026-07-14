@@ -111,6 +111,15 @@ export async function adminSetPromoActive(id: string, active: boolean) {
   if (error) throw new Error(error.message);
 }
 
+export async function adminDeletePromoCode(
+  id: string,
+): Promise<{ ok: true; mode: "hard_deleted" | "soft_deleted"; code: string } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc("admin_delete_promo_code", { _id: id });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as any;
+  return r.ok ? { ok: true, mode: r.mode, code: r.code } : { ok: false, error: r.error };
+}
+
 export async function adminRenewPromoCredits(promoCodeId: string, amount = 14) {
   const { data, error } = await sb.rpc("admin_renew_promo_credits", {
     _promo_code_id: promoCodeId, _amount: amount,
@@ -133,7 +142,16 @@ export async function adminSearchUsersByHandle(q: string, limit = 10): Promise<U
 }
 
 export function buildShareMessage(code: string, lang: "fr" | "en" = "fr"): string {
-  const url = typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
+  // Always use the production domain so the link is stable across web / native
+  // shares. `/join/CODE` auto-detects the device: it tries to open the native
+  // app, and falls back to the download page (App Store / Play Store) when
+  // the app isn't installed.
+  const origin =
+    typeof window !== "undefined" && window.location.origin.startsWith("http")
+      ? window.location.origin
+      : "https://kidiplus.com";
+  const base = origin.includes("localhost") ? "https://kidiplus.com" : origin;
+  const url = `${base}/join/${encodeURIComponent(code)}`;
   if (lang === "en")
     return `Join me on KiDi+ 🎁 Use my code ${code} at signup: ${url}`;
   return `Rejoins-moi sur KiDi+ 🎁 Utilise mon code ${code} à l'inscription : ${url}`;
@@ -220,4 +238,67 @@ export async function adminReviewPromoCodeRequest(
   if (error) return { ok: false, error: error.message };
   const r = (data ?? {}) as any;
   return r.ok ? { ok: true, code: r.code, promo_code_id: r.promo_code_id } : { ok: false, error: r.error };
+}
+
+// ============================================================================
+// Admin — Reconciliation report
+// ============================================================================
+
+export type AdminReconRow = {
+  promo_code_id: string;
+  code: string;
+  active: boolean;
+  owner_id: string | null;
+  owner_handle: string | null;
+  owner_name: string | null;
+  owner_avatar: string | null;
+  claimed_at: string | null;
+  referred_count: number;
+  paid_orders: number;
+  earning_rows: number;
+  credits_by_status: Partial<Record<"held" | "credited" | "reversed", Record<string, number>>>;
+  wallet_available: number | null;
+  wallet_currency: string | null;
+};
+
+export async function fetchAdminReferralReconciliation(): Promise<AdminReconRow[]> {
+  const { data } = await sb.rpc("admin_referral_reconciliation", {});
+  return ((data as any)?.rows ?? []) as AdminReconRow[];
+}
+
+export type AdminReconEarning = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: "held" | "credited" | "reversed";
+  referred_user_id: string;
+  owner_id: string | null;
+  created_at: string;
+};
+
+export type AdminReconOrderRow = {
+  order_id: string;
+  buyer_id: string;
+  seller_id: string;
+  item_name: string | null;
+  item_image: string | null;
+  amount: number;
+  platform_fee: number | null;
+  total: number;
+  currency: string;
+  status: string;
+  paid_at: string | null;
+  created_at: string;
+  referred_role: "buyer" | "seller" | null;
+  referred_user_id: string | null;
+  buyer_handle: string | null;
+  buyer_name: string | null;
+  seller_handle: string | null;
+  seller_name: string | null;
+  earnings: AdminReconEarning[];
+};
+
+export async function fetchAdminReferralCodeDetails(promoCodeId: string): Promise<AdminReconOrderRow[]> {
+  const { data } = await sb.rpc("admin_referral_code_details", { _promo_code_id: promoCodeId });
+  return ((data as any)?.rows ?? []) as AdminReconOrderRow[];
 }

@@ -21,6 +21,10 @@ export function useAppActive(): boolean {
   useEffect(() => {
     if (nativePlatform()) {
       let handle: { remove: () => void } | null = null;
+      // Sync once — listener alone misses the initial Capacitor state.
+      void App.getState()
+        .then((s: AppState) => setActive(s.isActive))
+        .catch(() => {});
       App.addListener("appStateChange", (s: AppState) => {
         setActive(s.isActive);
       }).then((h) => {

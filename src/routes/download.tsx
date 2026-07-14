@@ -1,10 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { EMAIL_CONFIG } from '@/lib/email/config'
 
 /**
  * Landing page for app download links (App Store + Play Store).
- * The store URLs are placeholders — swap them in once the apps are approved.
+ * App Store URL stays disabled until YOUR_APP_STORE_ID is replaced in
+ * EMAIL_CONFIG. Play Store uses the Android package id.
  */
 export const Route = createFileRoute('/download')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    next: typeof search.next === 'string' ? search.next : undefined,
+    ref: typeof search.ref === 'string' ? search.ref : undefined,
+  }),
   component: DownloadPage,
   head: () => ({
     meta: [
@@ -23,12 +30,27 @@ export const Route = createFileRoute('/download')({
   }),
 })
 
-// TODO: replace with real store URLs once the apps are live.
-const APP_STORE_URL = '#'
-const PLAY_STORE_URL = '#'
+const APP_STORE_URL = EMAIL_CONFIG.APP_STORE_URL
+const PLAY_STORE_URL = EMAIL_CONFIG.PLAY_STORE_URL
+
+function isStoreReady(url: string) {
+  return !!url && url !== '#' && !url.includes('YOUR_APP_STORE_ID')
+}
 
 function DownloadPage() {
-  const disabled = (url: string) => url === '#'
+  const { next, ref } = Route.useSearch()
+
+  useEffect(() => {
+    try {
+      if (next?.startsWith('/')) window.localStorage.setItem('kidi.pending_path', next)
+      if (ref) window.localStorage.setItem('kidi.referral_code', ref)
+    } catch {
+      /* ignore */
+    }
+  }, [next, ref])
+
+  const appStoreReady = isStoreReady(APP_STORE_URL)
+  const playStoreReady = isStoreReady(PLAY_STORE_URL)
 
   return (
     <main
@@ -74,16 +96,16 @@ function DownloadPage() {
       >
         <StoreButton
           href={APP_STORE_URL}
-          disabled={disabled(APP_STORE_URL)}
-          badge="Bientôt disponible"
+          disabled={!appStoreReady}
+          badge={appStoreReady ? undefined : 'Bientôt disponible'}
           label="Télécharger sur"
           store="App Store"
           icon={<AppleIcon />}
         />
         <StoreButton
           href={PLAY_STORE_URL}
-          disabled={disabled(PLAY_STORE_URL)}
-          badge="Bientôt disponible"
+          disabled={!playStoreReady}
+          badge={playStoreReady ? undefined : 'Bientôt disponible'}
           label="Disponible sur"
           store="Google Play"
           icon={<PlayIcon />}
@@ -91,7 +113,7 @@ function DownloadPage() {
       </div>
 
       <a
-        href="https://kidiplus.com"
+        href={next?.startsWith('/') ? next : 'https://kidiplus.com'}
         style={{
           marginTop: 8,
           fontSize: 13,

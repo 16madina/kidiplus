@@ -21,12 +21,15 @@ import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known.assetlinks[.]json'
+import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known.apple-app-site-association'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
@@ -97,6 +100,11 @@ const LiveIdRoute = LiveIdRouteImport.update({
   path: '/live/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
   id: '/guide/what-is-live-shopping',
   path: '/guide/what-is-live-shopping',
@@ -127,6 +135,18 @@ const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
   path: '/api/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownAssetlinksDotjsonRoute =
+  DotwellKnownAssetlinksDotjsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownAppleAppSiteAssociationRoute =
+  DotwellKnownAppleAppSiteAssociationRouteImport.update({
+    id: '/.well-known/apple-app-site-association',
+    path: '/.well-known/apple-app-site-association',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -189,12 +209,15 @@ export interface FileRoutesByFullPath {
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -218,12 +241,15 @@ export interface FileRoutesByTo {
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -248,12 +274,15 @@ export interface FileRoutesById {
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-token': typeof ApiLivekitTokenRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
+  '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -279,12 +308,15 @@ export interface FileRouteTypes {
     | '/safety'
     | '/terms'
     | '/unsubscribe'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -308,12 +340,15 @@ export interface FileRouteTypes {
     | '/safety'
     | '/terms'
     | '/unsubscribe'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -337,12 +372,15 @@ export interface FileRouteTypes {
     | '/safety'
     | '/terms'
     | '/unsubscribe'
+    | '/.well-known/apple-app-site-association'
+    | '/.well-known/assetlinks.json'
     | '/api/checkout'
     | '/api/livekit-token'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
     | '/guide/what-is-live-shopping'
+    | '/join/$code'
     | '/live/$id'
     | '/api/account/delete'
     | '/api/admin/test-push'
@@ -367,12 +405,15 @@ export interface RootRouteChildren {
   SafetyRoute: typeof SafetyRoute
   TermsRoute: typeof TermsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  DotwellKnownAppleAppSiteAssociationRoute: typeof DotwellKnownAppleAppSiteAssociationRoute
+  DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   LiveIdRoute: typeof LiveIdRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
@@ -469,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/guide/what-is-live-shopping': {
       id: '/guide/what-is-live-shopping'
       path: '/guide/what-is-live-shopping'
@@ -509,6 +557,20 @@ declare module '@tanstack/react-router' {
       path: '/api/checkout'
       fullPath: '/api/checkout'
       preLoaderRoute: typeof ApiCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/apple-app-site-association': {
+      id: '/.well-known/apple-app-site-association'
+      path: '/.well-known/apple-app-site-association'
+      fullPath: '/.well-known/apple-app-site-association'
+      preLoaderRoute: typeof DotwellKnownAppleAppSiteAssociationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/suppression': {
@@ -613,12 +675,16 @@ const rootRouteChildren: RootRouteChildren = {
   SafetyRoute: SafetyRoute,
   TermsRoute: TermsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  DotwellKnownAppleAppSiteAssociationRoute:
+    DotwellKnownAppleAppSiteAssociationRoute,
+  DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
+  JoinCodeRoute: JoinCodeRoute,
   LiveIdRoute: LiveIdRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
@@ -631,3 +697,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

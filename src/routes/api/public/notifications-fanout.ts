@@ -19,6 +19,7 @@ function deriveKind(row: FanoutBody): string {
   if (explicit) return explicit;
   if (/^order_|^dispute_/.test(row.kind)) return "order";
   if (row.kind === "live_started") return "live";
+  if (row.kind === "moderator_promoted") return "live";
   if (row.kind === "new_follower") return "seller";
   if (/^chat_/.test(row.kind)) return "chat";
   return "notif";

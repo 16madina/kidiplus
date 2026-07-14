@@ -1,19 +1,20 @@
-// SellerEarningsScreen — "Mes gains" hub.
+// SellerEarningsScreen — "Mes gains" hub (MONEY ONLY).
+//
 // - Gold gradient available-balance card (realtime).
 // - "Retirer mes gains" opens WithdrawSheet.
-// - Tabs: Ventes (per-order breakdown) and Retraits (payout history).
+// - Tabs: Ventes (per-order earnings breakdown: price → commission → net)
+//         and Retraits (payout history).
+// - Fulfillment/logistics live in "Mes commandes" — a small hint links there.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Wallet as WalletIcon, ArrowDownToLine, Clock, PackageCheck } from "lucide-react";
-import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
 import { useAuth } from "@/lib/auth-context";
 import { formatMoney } from "@/lib/money";
-import { haptic } from "@/lib/haptics";
 import {
   fetchMyBalance,
   fetchMyPayouts,
@@ -27,12 +28,11 @@ import {
   fetchProfilesByIds,
   subscribeOrders,
   type OrderRow,
-  type FulfillmentStatus,
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import { expireOverdueOrders } from "@/lib/lives-db";
-import { markOrderShipped, releaseOverdueEscrow } from "@/lib/escrow-db";
+import { releaseOverdueEscrow } from "@/lib/escrow-db";
 
 type BuyerMap = Record<string, { display_name: string; handle: string }>;
 
@@ -97,14 +97,6 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
   const fmt = (n: number, cur?: string) => formatMoney(n, cur ?? balanceCurrency, i18n.language);
 
-  const onShip = async (orderId: string) => {
-    haptic.medium();
-    const r = await markOrderShipped(orderId);
-    if (!r.ok) { toast.error(r.error); return; }
-    toast.success(t("orders.shipped"));
-    setOrders((os) => os.map((o) => (o.id === orderId ? { ...o, fulfillment_status: "shipped", shipped_at: new Date().toISOString() } : o)));
-  };
-
   return (
     <PushScreen open={open} onClose={onClose} title={t("gains.title")} zIndex={65}>
       <div className="px-4 py-4">
@@ -159,6 +151,24 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
           {t("gains.escrowExplainer")}
         </p>
 
+        {/* Shipping hint → Mes commandes */}
+        <div
+          className="mt-3 flex items-start gap-2 rounded-2xl border border-border p-3"
+          style={{ backgroundColor: "oklch(0.98 0.02 260)" }}
+        >
+          <div
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl"
+            style={{ backgroundColor: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)" }}
+          >
+            <PackageCheck size={15} />
+          </div>
+          <p className="text-[12px] leading-snug text-muted-foreground">
+            {t("gains.shippingHint", {
+              defaultValue: "Gère tes expéditions dans « Mes commandes ».",
+            })}
+          </p>
+        </div>
+
         {/* Tabs */}
         <div className="mt-4 flex gap-1 rounded-full border border-border p-1">
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")}>
@@ -171,7 +181,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-3">
           {tab === "sales" ? (
-            <SalesList orders={orders} buyers={buyers} fmt={fmt} onShip={onShip} />
+            <SalesEarningsList orders={orders} buyers={buyers} fmt={fmt} />
           ) : (
             <PayoutsList payouts={payouts} fmt={fmt} tr={t} />
           )}
@@ -212,35 +222,28 @@ function TabBtn({
   );
 }
 
-const FULFILL_META: Record<FulfillmentStatus, { bg: string; color: string; key: string }> = {
-  awaiting: { bg: "oklch(0.95 0.03 260)", color: "oklch(0.35 0.12 260)", key: "orders.fulfillment.awaiting" },
-  shipped:  { bg: "oklch(0.94 0.06 60)",  color: "oklch(0.42 0.14 60)",  key: "orders.fulfillment.shipped" },
-  delivered:{ bg: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)",  key: "orders.fulfillment.delivered" },
-  disputed: { bg: "oklch(0.94 0.06 27)",  color: "oklch(0.45 0.18 27)",  key: "orders.fulfillment.disputed" },
-};
-
-function SalesList({
+function SalesEarningsList({
   orders,
   buyers,
   fmt,
-  onShip,
 }: {
   orders: OrderRow[];
   buyers: BuyerMap;
   fmt: (n: number, cur?: string) => string;
-  onShip: (orderId: string) => void;
 }) {
   const { t } = useTranslation();
-  if (orders.length === 0) {
+  const paid = orders.filter((o) => o.status === "paid");
+  if (paid.length === 0) {
     return <p className="py-12 text-center text-[13px] text-muted-foreground">{t("sales.empty")}</p>;
   }
   return (
     <ul className="space-y-2">
-      {orders.map((o) => {
+      {paid.map((o) => {
         const buyer = buyers[o.buyer_id];
-        const isPaid = o.status === "paid";
-        const canShip = isPaid && o.fulfillment_status === "awaiting";
-        const fm = FULFILL_META[o.fulfillment_status];
+        const released =
+          o.fulfillment_status === "delivered" ||
+          o.refund_status === "refunded_wallet" ||
+          o.refund_status === "refunded_card";
         return (
           <li key={o.id} className="rounded-2xl border border-border p-3">
             <div className="flex items-center gap-3">
@@ -252,26 +255,22 @@ function SalesList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
-                  {isPaid && (
-                    <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                      style={{ backgroundColor: fm.bg, color: fm.color }}
-                    >
-                      {t(fm.key)}
-                    </span>
-                  )}
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={
+                      released
+                        ? { backgroundColor: "oklch(0.94 0.06 155)", color: "oklch(0.4 0.12 155)" }
+                        : { backgroundColor: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)" }
+                    }
+                  >
+                    {released
+                      ? t("gains.moneyState.released", { defaultValue: "Libéré" })
+                      : t("gains.moneyState.pending", { defaultValue: "En attente" })}
+                  </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  {buyer ? `@${buyer.handle}` : t("sales.buyer")} ·{" "}
-                  {o.status === "cancelled" && o.cancelled_reason === "payment_timeout"
-                    ? t("orders.status.paymentTimeout")
-                    : t(`orders.status.${o.status}`)}
+                  {buyer ? `@${buyer.handle}` : t("sales.buyer")}
                 </p>
-                {o.status === "pending" && o.kind === "auction" && o.payment_deadline && (
-                  <p className="mt-0.5 text-[11px] font-semibold" style={{ color: "oklch(0.5 0.16 60)" }}>
-                    {t("orders.payBefore", { date: new Date(o.payment_deadline).toLocaleString() })}
-                  </p>
-                )}
               </div>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
@@ -287,15 +286,6 @@ function SalesList({
                 strong
               />
             </div>
-            {canShip && (
-              <Press
-                onClick={() => onShip(o.id)}
-                className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-bold text-white"
-                style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
-              >
-                <PackageCheck size={14} /> {t("orders.shipCta")}
-              </Press>
-            )}
           </li>
         );
       })}
@@ -382,4 +372,3 @@ function PayoutsList({
     </ul>
   );
 }
-

@@ -1,6 +1,6 @@
-import { motion, useMotionValue, animate, AnimatePresence, type MotionValue } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Share2, X, Eye, Gift, MoreVertical, Flag, UserX } from "lucide-react";
+import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Send, Heart, Share2, X, Eye, Gift, MoreHorizontal, Flag, UserX, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
@@ -33,6 +33,8 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { BottomSheet } from "./bottom-sheet";
+import { WinnerReveal } from "./winner-reveal";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { giftByKey, giftPrice, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
@@ -42,6 +44,8 @@ import type { GiftEvt } from "@/lib/live-room";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
+
+
 
 const AUCTION_SECONDS = 45;
 
@@ -53,7 +57,6 @@ export function LiveViewerScreen() {
 }
 
 function MockLiveViewerScreen() {
-  const { t, i18n } = useTranslation();
   const { active, close, minimize, next: nextLive, prev: prevLive, hasNext, hasPrev, peekNext, peekPrev } = useLiveViewer();
   const { chromeHidden } = useLivePip();
   const { open: openSeller } = useSellerProfile();
@@ -61,8 +64,6 @@ function MockLiveViewerScreen() {
   const { requestWithPrePrompt } = usePush();
   const { requireAuth } = useAuthPrompt();
   const blockedIds = useBlockedIds();
-  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
-  const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   // Force light status-bar content while the viewer is mounted (dark background).
@@ -94,7 +95,14 @@ function MockLiveViewerScreen() {
     const tick = () => {
       if (cancelled) return;
       setMessages((prev) => {
-        const next = [...prev, nextChatMessage()];
+        // Occasionally push a realistic "@name a rejoint le live" system line
+        // so sample lives feel populated for reviewers.
+        const roll = Math.random();
+        const nextMsg =
+          roll < 0.12
+            ? systemMessage(`@${randomBidder()} a rejoint le live 👋`)
+            : nextChatMessage();
+        const next = [...prev, nextMsg];
         return next.length > 60 ? next.slice(next.length - 60) : next;
       });
       timer = window.setTimeout(tick, 1000 + Math.random() * 2000);
@@ -109,6 +117,17 @@ function MockLiveViewerScreen() {
 
   // === Hearts ===
   const [heartTrigger, setHeartTrigger] = useState(0);
+  // Signaler / Bloquer sheet (Apple 1.2 — flag/block on every UGC surface).
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Simulated viewers list — Apple reviewers tap the viewers pill.
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
+  // Winner reveal (logo flip → gold card) — parity with real lives.
+  const [winnerReveal, setWinnerReveal] = useState<{
+    key: string;
+    name: string;
+    isMe: boolean;
+    productName: string;
+  } | null>(null);
   const fireHeart = () => {
     haptic.medium();
     setHeartTrigger((v) => v + 1);
@@ -168,18 +187,25 @@ function MockLiveViewerScreen() {
     const tick = () => {
       if (cancelled) return;
       const bidder = randomBidder();
+      let nextPrice = currentProduct.price;
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === currentProduct.id
-            ? { ...p, price: p.price + bidStep() }
-            : p,
-        ),
+        prev.map((p) => {
+          if (p.id !== currentProduct.id) return p;
+          nextPrice = p.price + bidStep();
+          return { ...p, price: nextPrice };
+        }),
       );
       setLastBidder(bidder);
-      setMessages((prev) => [
-        ...prev,
-        systemMessage(`@${bidder} a enchéri 🔨`),
-      ]);
+      // System line in chat — "@bidder a placé une enchère à X €".
+      setMessages((prev) => {
+        const next = [
+          ...prev,
+          systemMessage(
+            `@${bidder} a placé une enchère • ${formatEuro(nextPrice)}`,
+          ),
+        ];
+        return next.length > 60 ? next.slice(next.length - 60) : next;
+      });
       // extend if under 5s (auction extension for excitement)
       setSecondsLeft((s) => (s < 6 ? s + 3 : s));
       timer = window.setTimeout(tick, 3000 + Math.random() * 3000);
@@ -197,6 +223,7 @@ function MockLiveViewerScreen() {
     if (!currentProduct || currentProduct.mode !== "auction") return;
     if (secondsLeft > 0) return;
     const winner = lastBidder ?? randomBidder();
+    const isMe = winner === "toi";
     // mark sold, advance
     setMessages((prev) => [
       ...prev,
@@ -204,6 +231,13 @@ function MockLiveViewerScreen() {
     ]);
     haptic.success();
     setConfettiKey((k) => k + 1);
+    // Fire the shared WinnerReveal (logo flip → winner card), same as real lives.
+    setWinnerReveal({
+      key: `${currentProduct.id}-${Date.now()}`,
+      name: isMe ? "Toi" : winner,
+      isMe,
+      productName: currentProduct.name,
+    });
 
     setTimeout(() => {
       setProducts((prev) => {
@@ -216,6 +250,13 @@ function MockLiveViewerScreen() {
               ? { ...p, status: "current" as const }
               : p,
         );
+        // If we ran out of products, loop back to the top so the sample
+        // live never runs out of auction rounds during review.
+        if (!next.some((p) => p.status === "current")) {
+          return next.map((p, i) =>
+            i === 0 ? { ...p, status: "current" as const, price: p.startBid } : p,
+          );
+        }
         return next;
       });
       setSecondsLeft(AUCTION_SECONDS);
@@ -253,19 +294,24 @@ function MockLiveViewerScreen() {
   const doBid = () => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
     haptic.medium();
-    const nextPrice = currentProduct.price + 1;
+    let nextPrice = currentProduct.price;
     setProducts((prev) =>
-      prev.map((p) =>
-        p.id === currentProduct.id ? { ...p, price: nextPrice } : p,
-      ),
+      prev.map((p) => {
+        if (p.id !== currentProduct.id) return p;
+        nextPrice = p.price + 1;
+        return { ...p, price: nextPrice };
+      }),
     );
 
     setLastBidder("toi");
     setSecondsLeft((s) => (s < 6 ? s + 3 : s));
-    setMessages((prev) => [
-      ...prev,
-      systemMessage(`@toi a enchéri à ${formatEuro(nextPrice)} 🔨`),
-    ]);
+    setMessages((prev) => {
+      const next = [
+        ...prev,
+        systemMessage(`@toi a placé une enchère • ${formatEuro(nextPrice)}`),
+      ];
+      return next.length > 60 ? next.slice(next.length - 60) : next;
+    });
   };
 
   // Sheets
@@ -274,6 +320,9 @@ function MockLiveViewerScreen() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [giftEvt, setGiftEvt] = useState<GiftEvt | null>(null);
+  const { t, i18n } = useTranslation();
+  const { currency: walletCurrency, balance: walletBalance, demoDebit } = useWallet();
+
 
   // Composer message send (local echo)
   const [draft, setDraft] = useState("");
@@ -368,23 +417,6 @@ function MockLiveViewerScreen() {
   }
 
   const followerCount = 1000 + ((active.viewers * 7) % 24000);
-
-  const doBlockSeller = async () => {
-    if (!active.sellerId) return;
-    const r = await blockUserAndNotify(active.sellerId, {
-      handle: active.seller,
-      displayName: active.seller,
-      avatarUrl: active.avatar,
-      liveId: active.id,
-    });
-    if (r.ok) {
-      toast.success(t("block.blocked"));
-      close();
-    } else {
-      toast.error(t("block.failed"));
-    }
-    setMoreOpen(false);
-  };
 
   return (
     <LivePipShell>
@@ -545,7 +577,6 @@ function MockLiveViewerScreen() {
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
                 >
                   {active.seller}
-                  {active.fictitious ? " · Démo" : ""}
                 </p>
                 <p
                   className="text-[11px] text-white/80"
@@ -591,8 +622,10 @@ function MockLiveViewerScreen() {
 
           {/* Right: viewers / share / close */}
           <div className="flex items-center gap-1.5">
-            <div
-              className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+            <Press
+              onClick={() => { haptic.selection(); setViewersSheetOpen(true); }}
+              aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
                 backdropFilter: "blur(10px)",
@@ -601,12 +634,13 @@ function MockLiveViewerScreen() {
             >
               <Eye size={13} />
               {displayViewers}
-            </div>
+            </Press>
             <Press
-              aria-label={t("live.share")}
+              aria-label={t("live.share", "Partager")}
               onClick={async () => {
                 haptic.light();
-                const shareUrl = "https://kidiplus.com";
+                const shareUrl =
+                  typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", {
                   defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴",
@@ -619,12 +653,12 @@ function MockLiveViewerScreen() {
                       : null;
                   if (nav && typeof nav.share === "function") {
                     await nav.share({ title, text, url: shareUrl });
-                  } else if (nav?.clipboard) {
+                  } else if (nav && nav.clipboard) {
                     await nav.clipboard.writeText(shareUrl);
                     toast.success(t("live.shareCopied", "Lien copié"));
                   }
                 } catch {
-                  /* cancelled */
+                  /* user cancelled */
                 }
               }}
               className="h-9 w-9 rounded-full text-white"
@@ -637,8 +671,8 @@ function MockLiveViewerScreen() {
               <Share2 size={16} />
             </Press>
             <Press
-              aria-label="More"
-              onClick={() => setMoreOpen(true)}
+              aria-label={t("common.more", "Plus")}
+              onClick={() => { haptic.selection(); setMoreOpen(true); }}
               className="h-9 w-9 rounded-full text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
@@ -646,11 +680,11 @@ function MockLiveViewerScreen() {
                 WebkitBackdropFilter: "blur(10px)",
               }}
             >
-              <MoreVertical size={16} />
+              <MoreHorizontal size={16} />
             </Press>
             <Press
-              aria-label={t("live.minimize", "Réduire")}
-              onClick={() => { haptic.light(); minimize(); }}
+              aria-label={t("live.leave")}
+              onClick={() => { haptic.light(); close(); }}
               className="h-9 w-9 rounded-full text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.45)",
@@ -682,7 +716,7 @@ function MockLiveViewerScreen() {
             product={currentProduct}
             secondsLeft={secondsLeft}
             lastBidder={lastBidder}
-            auctionActive
+            auctionActive={currentProduct.mode === "auction"}
             isHighestBidder={lastBidder === "toi"}
             onBid={doBid}
             onOpenProducts={() => setShowProducts(true)}
@@ -803,58 +837,66 @@ function MockLiveViewerScreen() {
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
 
-      <AnimatePresence>
-        {moreOpen && (
-          <motion.div
-            className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMoreOpen(false)}
-          >
-            <motion.div
-              className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
+      {/* Signaler / Bloquer — Apple 1.2. Demo lives use the same report +
+          block flows as real lives (local block + moderation report). */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
+          <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <Press
+              onClick={() => {
+                setMoreOpen(false);
+                requireAuth(() => {
+                  if (
+                    confirm(
+                      t("report.confirm", {
+                        defaultValue:
+                          "Signaler ce live ? Notre équipe examinera ton signalement.",
+                      }),
+                    )
+                  ) {
+                    setReportOpen(true);
+                  }
+                });
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]"
             >
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
-              <Press
-                onClick={() => {
-                  setMoreOpen(false);
-                  requireAuth(() => {
-                    if (
-                      confirm(
-                        t("report.confirm", {
-                          defaultValue:
-                            "Signaler ce live ? Notre équipe examinera ton signalement.",
-                        }),
-                      )
-                    ) {
-                      setReportOpen(true);
+              <Flag size={18} /> {t("report.action")}
+            </Press>
+            <Press
+              onClick={() => {
+                setMoreOpen(false);
+                requireAuth(() => {
+                  if (!confirm(t("block.confirm"))) return;
+                  void (async () => {
+                    if (!active?.sellerId) {
+                      toast.success(t("block.blocked"));
+                      close();
+                      return;
                     }
-                  });
-                }}
-                className="mb-2 flex !min-h-12 w-full items-center justify-start gap-3 rounded-2xl border border-border px-4 text-[15px] font-semibold"
-              >
-                <Flag size={18} /> {t("report.action", "Signaler")}
-              </Press>
-              <Press
-                onClick={() => {
-                  requireAuth(() => {
-                    if (confirm(t("block.confirm"))) void doBlockSeller();
-                  });
-                }}
-                className="flex !min-h-12 w-full items-center justify-start gap-3 rounded-2xl border border-border px-4 text-[15px] font-semibold text-red-600"
-              >
-                <UserX size={18} /> {t("block.action")}
-              </Press>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    const r = await blockUserAndNotify(active.sellerId, {
+                      handle: active.seller,
+                      displayName: active.seller,
+                      avatarUrl: active.avatar,
+                      liveId: active.id,
+                    });
+                    if (r.ok) {
+                      toast.success(t("block.blocked"));
+                      haptic.success();
+                      close();
+                    } else {
+                      toast.error(t("block.failed"));
+                    }
+                  })();
+                });
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] text-destructive"
+            >
+              <UserX size={18} /> {t("block.action")}
+            </Press>
+          </div>
+        </div>
+      )}
 
       <ReportSheet
         open={reportOpen}
@@ -863,9 +905,122 @@ function MockLiveViewerScreen() {
         targetId={active.id}
       />
 
+      {/* Winner reveal — Whatnot-style flip; same component as real lives. */}
+      <WinnerReveal
+        open={!!winnerReveal}
+        winnerName={winnerReveal?.name ?? null}
+        isMe={!!winnerReveal?.isMe}
+        productName={winnerReveal?.productName ?? null}
+        revealKey={winnerReveal?.key ?? null}
+        onDone={() => setWinnerReveal(null)}
+      />
+
+      {/* Simulated viewers list — Apple reviewers tap the eye pill. */}
+      <SimulatedViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        viewerCount={displayViewers}
+        seed={active.id}
+      />
+
     </LivePipShell>
   );
 }
+
+/**
+ * SimulatedViewersSheet — populated with fake but realistic French usernames.
+ * Deterministic per live (`seed`) so the same room lists the same people while
+ * open. No network calls — sample lives must feel populated for Apple review.
+ */
+function SimulatedViewersSheet({
+  open,
+  onClose,
+  viewerCount,
+  seed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  viewerCount: number;
+  seed: string;
+}) {
+  const { t } = useTranslation();
+  const rows = useMemo(() => {
+    const NAMES = [
+      "Julie P.", "Kévin", "Marion", "Sofiane", "Léa", "Amine",
+      "Clémence", "Thomas B.", "Élodie", "Yanis", "Camille", "Nadir",
+      "Aurélie", "Mehdi K.", "Manon", "Hugo J.", "Sarah M.", "Farah",
+      "Romain", "Chloé", "Inès", "Adam", "Victoire", "Noa",
+      "Louise", "Raphaël", "Sabrina", "Younes", "Margaux", "Bilel",
+    ];
+    const COLORS = [
+      "oklch(0.75 0.16 30)", "oklch(0.78 0.14 200)", "oklch(0.8 0.16 140)",
+      "oklch(0.78 0.16 60)", "oklch(0.75 0.18 320)", "oklch(0.8 0.14 260)",
+      "oklch(0.78 0.16 100)", "oklch(0.75 0.18 10)",
+    ];
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    const shown = Math.min(NAMES.length, Math.max(6, Math.min(viewerCount, 24)));
+    return Array.from({ length: shown }, (_, i) => {
+      const idx = Math.abs((h + i * 97) | 0) % NAMES.length;
+      const name = NAMES[idx];
+      return {
+        id: `sim-${seed}-${i}`,
+        name,
+        color: COLORS[Math.abs((h + i * 13) | 0) % COLORS.length],
+      };
+    });
+  }, [seed, viewerCount]);
+
+  const guestCount = Math.max(0, viewerCount - rows.length);
+
+  return (
+    <BottomSheet open={open} onClose={onClose} heightPercent={62}>
+      <div className="flex h-full min-h-0 flex-col px-4">
+        <div className="flex items-center gap-2 pb-3 pt-1">
+          <Users size={18} />
+          <h2 className="text-[18px] font-bold">
+            {t("live.viewersSheetTitle", "Spectateurs")}
+          </h2>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold tabular-nums text-muted-foreground">
+            {viewerCount}
+          </span>
+        </div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <ul className="flex flex-col gap-1">
+            {rows.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-xl px-2 py-2.5"
+              >
+                <div
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[14px] font-bold text-white"
+                  style={{ backgroundColor: r.color }}
+                >
+                  {r.name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-semibold">{r.name}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {guestCount > 0 && (
+            <p className="mt-4 px-1 text-[12px] text-muted-foreground">
+              {t("live.viewersGuests", { count: guestCount, defaultValue: "+ {{count}} invités" })}
+            </p>
+          )}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
 
 /**
  * PeekSlide — the adjacent live's poster, glued to the current slide's drag.

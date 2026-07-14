@@ -4,7 +4,16 @@ import {
   Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
-import { useModerators, addModerator, removeModerator } from "@/lib/moderators-db";
+import { FiltersCarousel } from "./filters-carousel";
+import { useFilter } from "@/lib/filters/filter-context";
+import { ModeratorPromoteForm } from "./moderator-promote-form";
+import {
+  muteLiveChatUser,
+  removeModerator,
+  useLiveChatMutes,
+  useModerators,
+} from "@/lib/moderators-db";
+import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
 import { useAuth } from "@/lib/auth-context";
 import type { BroadcastVideoHandle } from "./broadcast-video";
 import { useTranslation } from "react-i18next";
@@ -14,6 +23,7 @@ import { BroadcastVideo } from "./broadcast-video";
 import { AddProductSheet } from "./add-product-sheet";
 import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
 import { LiveChat } from "@/components/live-viewer/live-chat";
+import { LiveViewersSheet } from "@/components/live-viewer/live-viewers-sheet";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -67,9 +77,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [canFlip, setCanFlip] = useState(false);
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { activeLens } = useFilter();
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
   const { moderators } = useModerators(b.liveId);
+  const chatMutes = useLiveChatMutes(b.liveId);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide the app's bottom tab bar while the host is on-air.
@@ -539,9 +553,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.success();
     toast.success(t("live.productAdded", "Produit ajouté"));
   };
-  const chatMessages: ChatMsg[] = room.chat.map((c) => ({
-    id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
-  }));
+  const chatMessages: ChatMsg[] = room.chat
+    .filter((c) => !c.userId || !chatMutes.has(c.userId))
+    .map((c) => ({
+      id: c.id,
+      user: c.user,
+      color: c.color,
+      text: c.text,
+      system: c.system,
+      userId: c.userId,
+      isModerator:
+        !!c.isModerator ||
+        (!!c.userId && moderators.some((m) => m.userId === c.userId)),
+      isHost: !!c.isHost || (!!c.userId && c.userId === user?.id),
+    }));
 
   return (
     <motion.div
@@ -594,9 +619,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           />
           <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
         </div>
-        {/* Viewer count */}
-        <div
-          className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+        {/* Viewer count — tap to see who's watching */}
+        <Press
+          onClick={() => {
+            haptic.selection();
+            setViewersSheetOpen(true);
+          }}
+          aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+          className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(10px)",
@@ -605,7 +635,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         >
           <Eye size={12} />
           {room.viewerCount}
-        </div>
+        </Press>
         {/* Spacer */}
         <div className="min-w-0" />
         {/* Products icon-only pill with count badge */}
@@ -738,7 +768,48 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
-      <LiveChat messages={chatMessages} />
+      <LiveChat
+        messages={chatMessages}
+        moderation={{
+          canModerate: true,
+          selfUserId: user?.id ?? null,
+          hostUserId: user?.id ?? null,
+          mutedIds: chatMutes,
+          onMuteUser: async (userId, displayName) => {
+            if (!b.liveId || !user) return;
+            const res = await muteLiveChatUser(b.liveId, userId, user.id);
+            if (!res.ok) {
+              toast.error(res.error ?? t("moderator.muteFailed", "Impossible de couper les commentaires"));
+              return;
+            }
+            haptic.selection();
+            toast.success(
+              t("moderator.muted", {
+                name: displayName,
+                defaultValue: "{{name}} ne peut plus commenter",
+              }),
+            );
+          },
+          onBlockUser: async (userId, displayName) => {
+            if (!b.liveId || !user) return;
+            // Mute for this live + personal block.
+            await muteLiveChatUser(b.liveId, userId, user.id);
+            const r = await blockUser(userId);
+            if (r.ok) {
+              await refreshBlockedIds();
+              haptic.selection();
+              toast.success(
+                t("moderator.blocked", {
+                  name: displayName,
+                  defaultValue: "{{name}} a été bloqué",
+                }),
+              );
+            } else {
+              toast.error(r.error ?? t("moderator.blockFailed", "Impossible de bloquer"));
+            }
+          },
+        }}
+      />
 
       {/* Sale flash */}
       <AnimatePresence>
@@ -904,6 +975,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         canFlip={canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
+        filtersActive={activeLens.lensId !== "none"}
+        onOpenFilters={() => setFiltersOpen((o) => !o)}
         onToggleMic={() => setMicOn((m) => !m)}
         onToggleCam={() => setCameraOn((c) => !c)}
         onFlip={() => {
@@ -919,6 +992,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }}
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
+      />
+
+      <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+
+
+      <LiveViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        presentViewers={room.presentViewers}
+        viewerCount={room.viewerCount}
       />
 
       {/* Moderators quick-access bottom sheet (opened from the rail). Same
@@ -983,8 +1066,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               {b.liveId && user && (
                 <ModeratorPromoteForm
                   liveId={b.liveId}
+                  hostId={user.id}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
+                  presentIds={room.presentViewers.map((p) => ({
+                    id: p.identity,
+                    name: p.name,
+                  }))}
                 />
               )}
             </div>
@@ -1161,8 +1249,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               {b.liveId && user && (
                 <ModeratorPromoteForm
                   liveId={b.liveId}
+                  hostId={user.id}
                   addedBy={user.id}
                   existingIds={new Set(moderators.map((m) => m.userId))}
+                  presentIds={room.presentViewers.map((p) => ({
+                    id: p.identity,
+                    name: p.name,
+                  }))}
                 />
               )}
             </div>
@@ -1227,75 +1320,5 @@ function AnimatedEuro({ value, currency = "EUR", locale = "fr" }: { value: numbe
     return () => ctrl.stop();
   }, [value, mv]);
   return <span className="text-[14px] font-bold tabular-nums">{formatMoney(display, currency, locale)}</span>;
-}
-
-/** Compact "promote by handle" form. The host types a @handle (or user id),
- *  we look up the profile and insert into live_moderators. RLS restricts
- *  insertion to the live's seller. */
-function ModeratorPromoteForm({
-  liveId,
-  addedBy,
-  existingIds,
-}: {
-  liveId: string;
-  addedBy: string;
-  existingIds: Set<string>;
-}) {
-  const { t } = useTranslation();
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async () => {
-    const raw = value.trim().replace(/^@/, "");
-    if (!raw) return;
-    setBusy(true);
-    try {
-      // Try handle first, then user id.
-      let userId: string | null = null;
-      const byHandle = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("handle", raw)
-        .maybeSingle();
-      if (byHandle.data?.id) userId = byHandle.data.id;
-      else {
-        const byId = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", raw)
-          .maybeSingle();
-        if (byId.data?.id) userId = byId.data.id;
-      }
-      if (!userId) { toast.error(t("moderator.notFound", "Profil introuvable")); return; }
-      if (existingIds.has(userId)) { toast(t("moderator.alreadyMod", "Déjà modérateur")); return; }
-      const res = await addModerator(liveId, userId, addedBy);
-      if (!res.ok) toast.error(res.error ?? t("moderator.addFailed", "Ajout impossible"));
-      else { toast.success(t("moderator.added", "Modérateur ajouté 🛡️")); setValue(""); }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); void submit(); }}
-      className="mt-3 flex items-center gap-2"
-    >
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={t("moderator.promotePlaceholder", "@handle du spectateur")}
-        className="min-w-0 flex-1 rounded-full border px-3 py-2 text-[13px] outline-none"
-        style={{ borderColor: "var(--border)" }}
-      />
-      <Press
-        onClick={busy ? undefined : submit}
-        disabled={busy || !value.trim()}
-        className="!min-h-9 h-9 rounded-full bg-foreground px-3 text-[12px] font-bold text-background disabled:opacity-50"
-      >
-        {t("moderator.promote", "Promouvoir 🛡️")}
-      </Press>
-    </form>
-  );
 }
 

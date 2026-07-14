@@ -42,12 +42,21 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   return row;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export type ChatEvt = {
   id: string;
   user: string;
   color: string;
   text: string;
   system?: boolean;
+  /** Profile UUID when identity is a signed-in user. */
+  userId?: string;
+  /** True when the sender is a live moderator (TikTok-style chat badge). */
+  isModerator?: boolean;
+  /** True when the sender is the live host. */
+  isHost?: boolean;
 };
 
 export type AuctionStartEvt = {
@@ -86,9 +95,18 @@ export type GiftEvt = {
   ts: number;
 };
 
+export type LivePresenceViewer = {
+  /** Presence key / identity — for signed-in users this is their profile UUID. */
+  identity: string;
+  name: string;
+  isHost: boolean;
+};
+
 export type LiveRoomState = {
   ready: boolean;
   viewerCount: number;
+  /** Logged-in viewers currently in the Supabase presence channel (excludes guests + host). */
+  presentViewers: LivePresenceViewer[];
   chat: ChatEvt[];
   heartTick: number;
   products: LiveProductRow[];
@@ -137,10 +155,13 @@ export function useLiveRoom(params: {
   identity: string; // stable id (user.id or anon)
   displayName: string;
   isHost: boolean;
+  /** Stamp chat messages with a moderator badge when true. */
+  isModerator?: boolean;
 }): LiveRoomState {
-  const { liveId, identity, displayName, isHost } = params;
+  const { liveId, identity, displayName, isHost, isModerator = false } = params;
   const [ready, setReady] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
+  const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
   const [chat, setChat] = useState<ChatEvt[]>([]);
   const [heartTick, setHeartTick] = useState(0);
   const [products, setProducts] = useState<LiveProductRow[]>([]);
@@ -373,6 +394,29 @@ export function useLiveRoom(params: {
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
       setViewerCount(Math.max(1, Object.keys(state).length));
+      const people: LivePresenceViewer[] = [];
+      const seen = new Set<string>();
+      for (const [key, metas] of Object.entries(state)) {
+        const list = metas as Array<{
+          identity?: string;
+          name?: string;
+          host?: boolean;
+        }>;
+        const m = list?.[0];
+        const identity = String(m?.identity ?? key);
+        if (!identity || seen.has(identity)) continue;
+        seen.add(identity);
+        const isHost = !!m?.host;
+        // Guests / truncated LiveKit ids can't be promoted — only real profile UUIDs.
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identity);
+        if (isHost || !isUuid) continue;
+        people.push({
+          identity,
+          name: String(m?.name ?? "").trim() || identity.slice(0, 8),
+          isHost,
+        });
+      }
+      setPresentViewers(people);
     });
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -401,6 +445,7 @@ export function useLiveRoom(params: {
     return () => {
       if (retryTimer != null) clearTimeout(retryTimer);
       setReady(false);
+      setPresentViewers([]);
       supabase.removeChannel(ch);
       channelRef.current = null;
     };
@@ -424,6 +469,7 @@ export function useLiveRoom(params: {
     () => ({
       ready,
       viewerCount,
+      presentViewers,
       chat,
       heartTick,
       products,
@@ -446,6 +492,9 @@ export function useLiveRoom(params: {
           user: displayName,
           color: colorFor(identity),
           text: trimmed,
+          ...(UUID_RE.test(identity) ? { userId: identity } : {}),
+          ...(isModerator && !isHost ? { isModerator: true } : {}),
+          ...(isHost ? { isHost: true } : {}),
         };
         // Optimistic local echo + broadcast to others.
         setChat((prev) => [...prev, evt].slice(-60));
@@ -488,8 +537,22 @@ export function useLiveRoom(params: {
       },
     }),
     [
-      ready, viewerCount, chat, heartTick, products, liveStatus, auctionStart, lastAuctionEnd, lastExtension, lastBid, lastGift,
-      identity, displayName,
+      ready,
+      viewerCount,
+      presentViewers,
+      chat,
+      heartTick,
+      products,
+      liveStatus,
+      auctionStart,
+      lastAuctionEnd,
+      lastExtension,
+      lastBid,
+      lastGift,
+      identity,
+      displayName,
+      isHost,
+      isModerator,
     ],
   );
 }

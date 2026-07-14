@@ -83,29 +83,49 @@ export async function bootstrapNative(): Promise<void> {
     });
   }
 
-  // Deep-link listener for OAuth return.
-  // Google (and Apple) refuse to sign in from inside a WebView, so the
-  // OAuth flow opens in the system browser (Safari View Controller / Chrome
-  // Custom Tabs). The provider then redirects to our custom scheme
-  // (kidiplus://auth-callback?code=...), which fires `appUrlOpen` here.
-  // We route to /auth-callback so the standard flow finishes the session,
-  // then close the in-app browser.
+  // Universal Links / App Links / custom-scheme deep links.
+  // - Warm start: `appUrlOpen` (tap a https://kidiplus.com/live/… share while
+  //   the app is already running, or kidiplus://… from /open /join bridges).
+  // - Cold start: `getLaunchUrl` (app launched from a link while killed).
+  // - After install from /download?next=…: resume `kidi.pending_path`.
+  // OAuth still lands on /auth-callback via the same path.
   try {
     const { App } = await import("@capacitor/app");
+    const { pathFromDeepLinkUrl } = await import("@/lib/deep-links");
+
+    const navigateInApp = (path: string) => {
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (current === path) return;
+      window.location.replace(path);
+    };
+
+    const openDeepLink = (rawUrl: string) => {
+      const path = pathFromDeepLinkUrl(rawUrl);
+      if (!path) return false;
+      // Close SFSafariViewController / Chrome Custom Tab if OAuth left it open.
+      void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
+      navigateInApp(path);
+      return true;
+    };
+
     App.addListener("appUrlOpen", (event: { url: string }) => {
-      try {
-        const url = new URL(event.url);
-        // Only handle our own auth-callback deep link.
-        if (!/auth-callback/i.test(url.pathname) && !/auth-callback/i.test(url.host)) return;
-        const path = "/auth-callback" + (url.search || "") + (url.hash || "");
-        // Close the system browser if it's still on top.
-        void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
-        // Navigate the WebView to the callback route.
-        window.location.replace(path);
-      } catch {
-        /* ignore malformed URL */
-      }
+      openDeepLink(event.url);
     });
+
+    const launch = await App.getLaunchUrl().catch(() => null);
+    if (launch?.url && openDeepLink(launch.url)) {
+      try { window.localStorage.removeItem("kidi.pending_path"); } catch { /* ignore */ }
+    } else {
+      try {
+        const pending = window.localStorage.getItem("kidi.pending_path");
+        if (pending?.startsWith("/")) {
+          window.localStorage.removeItem("kidi.pending_path");
+          navigateInApp(pending);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   } catch {
     /* @capacitor/app not installed — skip */
   }

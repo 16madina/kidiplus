@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
-import { listMyShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
+import { listMyShopProducts, listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
 import { formatMoney, normalizeCurrency, currencySymbol } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { haptic } from "@/lib/haptics";
@@ -28,34 +28,53 @@ export function ShopPickerSheet({
   open,
   onClose,
   onConfirm,
+  /** When set (e.g. moderator), load this seller's shop instead of the caller's. */
+  sellerId,
+  currency: currencyProp,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: (items: PickedShopItem[]) => void;
+  sellerId?: string | null;
+  currency?: string;
 }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
   const { user, profile } = useAuth();
-  const currency = normalizeCurrency(profile?.currency ?? "EUR");
+  const currency = normalizeCurrency(currencyProp ?? profile?.currency ?? "EUR");
   const symbol = currencySymbol(currency);
   const [items, setItems] = useState<ShopProduct[] | null>(null);
   const [imgs, setImgs] = useState<Record<string, string | null>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [configs, setConfigs] = useState<Record<string, ItemConfig>>({});
   const [step, setStep] = useState<"pick" | "config">("pick");
+  const [query, setQuery] = useState("");
+
+  const shopOwnerId = sellerId ?? user?.id ?? null;
+  const forOtherSeller = !!sellerId && sellerId !== user?.id;
 
   useEffect(() => {
-    if (!open || !user) return;
+    if (!open || !shopOwnerId) return;
     void (async () => {
-      const rows = (await listMyShopProducts(user.id)).filter((r) => r.active && r.stock > 0);
+      const rows = sellerId
+        ? (await listSellerActiveShopProducts(sellerId)).filter((r) => r.stock > 0)
+        : (await listMyShopProducts(shopOwnerId)).filter((r) => r.active && r.stock > 0);
       setItems(rows);
       const entries = await Promise.all(rows.map(async (r) => [r.id, await resolveShopImage(r.image_url)] as const));
       setImgs(Object.fromEntries(entries));
       setSelected(new Set());
       setConfigs({});
       setStep("pick");
+      setQuery("");
     })();
-  }, [open, user?.id]);
+  }, [open, shopOwnerId, sellerId]);
+
+  const filtered = useMemo(() => {
+    if (!items) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((p) => p.name.toLowerCase().includes(q));
+  }, [items, query]);
 
   const toggle = (id: string) => {
     haptic.selection();
@@ -118,7 +137,9 @@ export function ShopPickerSheet({
         <div className="flex items-center justify-between px-5 pt-1 pb-3">
           <h2 className="text-[19px] font-bold">
             {step === "pick"
-              ? t("shop.pickTitle", { defaultValue: "Choisir depuis ma boutique" })
+              ? forOtherSeller
+                ? t("shop.pickTitleSeller", { defaultValue: "Boutique du vendeur" })
+                : t("shop.pickTitle", { defaultValue: "Choisir depuis ma boutique" })
               : t("shop.configTitle", { defaultValue: "Configurer les articles" })}
           </h2>
           <Press onClick={onClose} className="!min-h-10 h-10 w-10 rounded-full" aria-label={t("common.close")}>
@@ -128,19 +149,32 @@ export function ShopPickerSheet({
 
         {step === "pick" ? (
           <>
+            <div className="px-4 pb-2">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("shop.searchPlaceholder", { defaultValue: "Rechercher un article…" })}
+                className="h-11 w-full rounded-xl border bg-muted px-3 text-[14px] outline-none placeholder:text-muted-foreground/70"
+                style={{ borderColor: "var(--border)" }}
+              />
+            </div>
             <div className="flex-1 overflow-y-auto px-4 pb-4">
               {items === null ? (
                 <div className="grid place-items-center py-14"><Loader2 className="animate-spin text-muted-foreground" /></div>
-              ) : items.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <div className="grid h-14 w-14 place-items-center rounded-full bg-muted"><Package className="text-muted-foreground" /></div>
                   <p className="mt-3 max-w-xs text-[13px] text-muted-foreground">
-                    {t("shop.emptyPicker", { defaultValue: "Aucun article actif. Ajoute des articles dans Ma boutique." })}
+                    {query.trim()
+                      ? t("shop.noSearchResults", { defaultValue: "Aucun article trouvé" })
+                      : forOtherSeller
+                        ? t("shop.emptyPickerSeller", { defaultValue: "Aucun article actif dans la boutique du vendeur." })
+                        : t("shop.emptyPicker", { defaultValue: "Aucun article actif. Ajoute des articles dans Ma boutique." })}
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
-                  {items.map((p) => {
+                  {filtered.map((p) => {
                     const on = selected.has(p.id);
                     return (
                       <Press

@@ -14,6 +14,7 @@ import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
+import { liveShareUrl } from "@/lib/deep-links";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
@@ -27,6 +28,7 @@ import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-moc
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
+import { LiveViewersSheet } from "./live-viewers-sheet";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { CustomBidStepper } from "./custom-bid-stepper";
@@ -41,10 +43,15 @@ import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsModerator } from "@/lib/moderators-db";
+import {
+  muteLiveChatUser,
+  useIsModerator,
+  useLiveChatMutes,
+} from "@/lib/moderators-db";
 import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
 import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
@@ -141,17 +148,41 @@ export function RealLiveViewerScreen() {
   const isGuest = !user;
   const displayName = profile?.display_name || profile?.handle || (isGuest ? "invité" : "invité");
 
+  const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const chatMutes = useLiveChatMutes(active?.liveId ?? null);
 
   const room = useLiveRoom({
     liveId: active?.liveId ?? null,
     identity,
     displayName,
     isHost: false,
+    isModerator,
   });
   const [viewerVideoStatus, setViewerVideoStatus] = useState<ViewerStatus>("connecting");
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
-  const isModerator = useIsModerator(active?.liveId ?? null, user?.id ?? null);
+  const wasModeratorRef = useRef(false);
+  const [modHydrated, setModHydrated] = useState(false);
+
+  // Wait for useIsModerator's initial fetch so we don't toast existing mods on open.
+  useEffect(() => {
+    setModHydrated(false);
+    wasModeratorRef.current = false;
+    const timer = window.setTimeout(() => setModHydrated(true), 900);
+    return () => window.clearTimeout(timer);
+  }, [active?.liveId, user?.id]);
+
+  useEffect(() => {
+    if (!modHydrated) {
+      wasModeratorRef.current = isModerator;
+      return;
+    }
+    if (isModerator && !wasModeratorRef.current) {
+      toast.success(t("moderator.youAreModerator", "Tu es maintenant modérateur 🛡️"));
+      haptic.success();
+    }
+    wasModeratorRef.current = isModerator;
+  }, [isModerator, modHydrated, t]);
 
   // Delivery eligibility (bid/buy gate — never blocks chat/hearts/gifts).
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
@@ -272,11 +303,31 @@ export function RealLiveViewerScreen() {
       systemMessage(t("live.chatIntro", `Bienvenue dans le live de ${active.seller} 👋`)),
     ]);
   }, [active, t]);
+  // Personal blocks — used to filter chat messages in real time and to
+  // auto-close the live if the viewer opens a stream by an already-blocked
+  // host (see the guard further down). Hoisted before `messages` memo.
+  const blockedIdsForChat = useBlockedIds();
   const messages: ChatMsg[] = useMemo(
-    () => [...localMessages, ...room.chat.map((c) => ({
-      id: c.id, user: c.user, color: c.color, text: c.text, system: c.system,
-    }))],
-    [localMessages, room.chat],
+    () => [
+      ...localMessages,
+      ...room.chat
+        // Live-scoped mutes (moderator action) AND personal blocks (viewer
+        // tapped "Bloquer") both remove messages immediately. Blocked user
+        // messages disappear from the viewer's chat as soon as the block
+        // succeeds — no refresh required (Apple guideline 1.2).
+        .filter((c) => !c.userId || (!chatMutes.has(c.userId) && !blockedIdsForChat.has(c.userId)))
+        .map((c) => ({
+          id: c.id,
+          user: c.user,
+          color: c.color,
+          text: c.text,
+          system: c.system,
+          userId: c.userId,
+          isModerator: !!c.isModerator,
+          isHost: !!c.isHost || (!!c.userId && c.userId === active?.sellerId),
+        })),
+    ],
+    [localMessages, room.chat, chatMutes, blockedIdsForChat, active?.sellerId],
   );
 
   // ---------- Payment sheet state ----------
@@ -654,6 +705,10 @@ export function RealLiveViewerScreen() {
   const send = () => {
     if (liveEnded) return;
     if (isGuest) { openAuth(); return; }
+    if (user?.id && chatMutes.has(user.id)) {
+      toast.error(t("moderator.youAreMuted", "Tu ne peux plus commenter dans ce live"));
+      return;
+    }
     const txt = draft.trim();
     if (!txt) return;
     room.sendChat(txt);
@@ -682,8 +737,11 @@ export function RealLiveViewerScreen() {
 
   // Moderation
   const [reportOpen, setReportOpen] = useState(false);
+  // Per-chat-message report state (Apple 1.2 — any user can flag any UGC).
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const blockedIds = useBlockedIds();
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
+  const blockedIds = blockedIdsForChat;
 
   // Drop open sheets when shrinking to mini / system PiP — they would block the tabs / bubble.
   useEffect(() => {
@@ -695,6 +753,7 @@ export function RealLiveViewerScreen() {
     setReportOpen(false);
     setCustomOpen(false);
     setPendingOrder(null);
+    setViewersSheetOpen(false);
   }, [chromeHidden]);
 
   const doBlockSeller = async () => {
@@ -754,36 +813,57 @@ export function RealLiveViewerScreen() {
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir le profil de ${active.seller}`}
-              className="!block flex min-w-0 items-center gap-2 p-0 text-left"
+              className="!block shrink-0 p-0"
             >
               <SellerAvatar src={active.avatar} name={active.seller} size="md" />
-              <div className="min-w-0">
+            </Press>
+            <div className="min-w-0">
+              <Press
+                onClick={() => openSeller(active.sellerId ?? active.seller)}
+                className="!block !min-h-0 max-w-full p-0 text-left"
+              >
                 <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   <span className="truncate">{active.seller}</span>
                   <VerifiedBadge verified={sellerVerified} size={13} />
                 </p>
+              </Press>
+              <Press
+                onClick={() => {
+                  haptic.selection();
+                  setViewersSheetOpen(true);
+                }}
+                aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+                className="!block !min-h-0 p-0 text-left"
+              >
                 <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                   {displayViewers} {t("live.viewers", { count: displayViewers })}
                 </p>
-              </div>
-            </Press>
+              </Press>
+            </div>
             <FollowButton sellerId={active.sellerId ?? null} size="sm" variant="solid" />
           </div>
 
           <div className="flex items-center gap-1.5">
             <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
-            <div className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+            <Press
+              onClick={() => {
+                haptic.selection();
+                setViewersSheetOpen(true);
+              }}
+              aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
+            >
               <Eye size={13} />{displayViewers}
-            </div>
+            </Press>
 
             <Press
               aria-label={t("live.share")}
               onClick={async () => {
                 haptic.light();
                 const shareUrl = active?.liveId
-                  ? `https://kidiplus.com/live/${active.liveId}`
+                  ? liveShareUrl(active.liveId)
                   : "https://kidiplus.com";
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
@@ -807,8 +887,8 @@ export function RealLiveViewerScreen() {
               <MoreVertical size={16} />
             </Press>
             <Press
-              aria-label={t("live.minimize", "Réduire")}
-              onClick={() => { haptic.light(); minimize(); }}
+              aria-label={t("live.leave")}
+              onClick={() => { haptic.light(); close(); }}
               className="h-9 w-9 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
               <X size={18} />
@@ -819,7 +899,50 @@ export function RealLiveViewerScreen() {
 
 
       <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
-        <LiveChat messages={messages} />
+        <LiveChat
+          messages={messages}
+          moderation={{
+            canModerate: isModerator,
+            // Even regular viewers can now open the message menu — Apple 1.2
+            // requires flagging + blocking to be available on every UGC
+            // surface (live streams, chat messages, profiles).
+            canReport: !!user,
+            selfUserId: user?.id ?? null,
+            hostUserId: active.sellerId ?? null,
+            mutedIds: chatMutes,
+            onReportMessage: (messageId) => {
+              requireAuth(() => setReportMessageId(messageId));
+            },
+            onMuteUser: async (userId, displayName) => {
+              if (!active.liveId || !user) return;
+              const res = await muteLiveChatUser(active.liveId, userId, user.id);
+              if (!res.ok) {
+                toast.error(res.error ?? t("moderator.muteFailed"));
+                return;
+              }
+              haptic.selection();
+              toast.success(t("moderator.muted", { name: displayName }));
+            },
+            onBlockUser: async (userId, displayName) => {
+              requireAuth(async () => {
+                if (!user) return;
+                if (isModerator && active.liveId) {
+                  await muteLiveChatUser(active.liveId, userId, user.id);
+                }
+                const r = await blockUserAndNotify(userId, {
+                  handle: displayName,
+                  displayName,
+                });
+                if (r.ok) {
+                  haptic.selection();
+                  toast.success(t("moderator.blocked", { name: displayName }));
+                } else {
+                  toast.error(r.error ?? t("moderator.blockFailed"));
+                }
+              });
+            },
+          }}
+        />
       </div>
 
       {currentAsProduct ? (
@@ -976,16 +1099,19 @@ export function RealLiveViewerScreen() {
       </div>
 
 
-      {isModerator && user && active?.liveId && !liveEnded && (
-        <ModeratorDock
-          liveId={active.liveId}
-          userId={user.id}
-          products={room.products}
-          activeAuction={room.auctionStart}
-          currency={liveCurrency}
-          locale={i18n.language}
-          broadcastAuctionStart={room.broadcastAuctionStart}
-        />
+      {isModerator && user && active?.liveId && active.sellerId && !liveEnded && (
+        <ErrorBoundary boundary="moderator_dock">
+          <ModeratorDock
+            liveId={active.liveId}
+            userId={user.id}
+            sellerId={active.sellerId}
+            products={room.products}
+            activeAuction={room.auctionStart}
+            currency={liveCurrency}
+            locale={i18n.language}
+            broadcastAuctionStart={room.broadcastAuctionStart}
+          />
+        </ErrorBoundary>
       )}
 
       <FloatingHearts trigger={room.heartTick} />
@@ -1004,6 +1130,14 @@ export function RealLiveViewerScreen() {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+
+      <LiveViewersSheet
+        open={viewersSheetOpen}
+        onClose={() => setViewersSheetOpen(false)}
+        presentViewers={room.presentViewers}
+        viewerCount={room.viewerCount}
+        onOpenProfile={(userId) => openSeller(userId)}
+      />
 
       <ProductsSheet
         open={showProducts}
@@ -1060,6 +1194,14 @@ export function RealLiveViewerScreen() {
           defaultReason="inappropriate"
         />
       )}
+      {/* Per-chat-message report (Apple 1.2). Any signed-in viewer can flag. */}
+      <ReportSheet
+        open={!!reportMessageId}
+        onClose={() => setReportMessageId(null)}
+        targetType="message"
+        targetId={reportMessageId ?? ""}
+        defaultReason="inappropriate"
+      />
       <AnimatePresence>
         {liveEnded && (
           <motion.div

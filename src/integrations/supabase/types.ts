@@ -25,6 +25,8 @@ export type Database = {
           is_default: boolean
           label: string
           phone: string
+          postal_code: string | null
+          region: string | null
           street_address: string | null
           updated_at: string
           user_id: string
@@ -40,6 +42,8 @@ export type Database = {
           is_default?: boolean
           label?: string
           phone: string
+          postal_code?: string | null
+          region?: string | null
           street_address?: string | null
           updated_at?: string
           user_id: string
@@ -55,6 +59,8 @@ export type Database = {
           is_default?: boolean
           label?: string
           phone?: string
+          postal_code?: string | null
+          region?: string | null
           street_address?: string | null
           updated_at?: string
           user_id?: string
@@ -361,6 +367,35 @@ export type Database = {
           },
         ]
       }
+      live_chat_mutes: {
+        Row: {
+          created_at: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          live_id: string
+          muted_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          live_id?: string
+          muted_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_mutes_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_gifts: {
         Row: {
           amount: number
@@ -619,12 +654,18 @@ export type Database = {
       lives: {
         Row: {
           abandon_push_sent_at: string | null
+          allow_gifts: boolean
           category: string | null
           cover_url: string | null
           currency: string
           ended_at: string | null
           host_last_seen_at: string | null
           id: string
+          reminder_buyer_15m_sent: boolean
+          reminder_buyer_1h_sent: boolean
+          reminder_buyer_24h_sent: boolean
+          reminder_seller_1h_sent: boolean
+          reminder_seller_24h_sent: boolean
           room_name: string
           scheduled_at: string | null
           seller_id: string
@@ -635,12 +676,18 @@ export type Database = {
         }
         Insert: {
           abandon_push_sent_at?: string | null
+          allow_gifts?: boolean
           category?: string | null
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
+          reminder_buyer_15m_sent?: boolean
+          reminder_buyer_1h_sent?: boolean
+          reminder_buyer_24h_sent?: boolean
+          reminder_seller_1h_sent?: boolean
+          reminder_seller_24h_sent?: boolean
           room_name: string
           scheduled_at?: string | null
           seller_id: string
@@ -651,12 +698,18 @@ export type Database = {
         }
         Update: {
           abandon_push_sent_at?: string | null
+          allow_gifts?: boolean
           category?: string | null
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
+          reminder_buyer_15m_sent?: boolean
+          reminder_buyer_1h_sent?: boolean
+          reminder_buyer_24h_sent?: boolean
+          reminder_seller_1h_sent?: boolean
+          reminder_seller_24h_sent?: boolean
           room_name?: string
           scheduled_at?: string | null
           seller_id?: string
@@ -1884,6 +1937,7 @@ export type Database = {
         Args: { _code: string; _owner_id?: string; _reward_quota?: number }
         Returns: Json
       }
+      admin_delete_promo_code: { Args: { _id: string }; Returns: Json }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
       admin_issue_sanction: {
         Args: {
@@ -1932,6 +1986,11 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_referral_code_details: {
+        Args: { _promo_code_id: string }
+        Returns: Json
+      }
+      admin_referral_reconciliation: { Args: never; Returns: Json }
       admin_refund_order: {
         Args: { _note?: string; _order_id: string }
         Returns: Json
@@ -2138,6 +2197,7 @@ export type Database = {
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
+      send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
         Returns: Json
