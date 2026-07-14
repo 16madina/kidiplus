@@ -60,6 +60,7 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
   const [buyers, setBuyers] = useState<BuyerMap>({});
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<OrderRow | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
