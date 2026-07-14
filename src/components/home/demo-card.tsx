@@ -12,8 +12,10 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   Embedded data-URI (see demo-live-poster-data.ts) so the card never
-//   depends on CDN / public path availability. Admin https overrides still win.
+//   1) Lovable CDN `/__l5e/.../demo-live-cover.jpg` (works on kidiplus.com)
+//   2) `/demo-live-poster.jpg` in public/
+//   3) Small data-URI fallback (iOS-safe size)
+//   Large data-URIs break on iPhone Safari — do not use as primary.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,15 +28,52 @@ import {
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
   DEMO_COVER_FALLBACK_URL,
+  DEMO_COVER_PUBLIC_URL,
+  DEMO_COVER_ABSOLUTE_URL,
+  DEMO_COVER_DATA_URI,
 } from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
-/** Prefer admin https override; otherwise the embedded poster. */
+/** Pick the best starting poster URL for this origin. */
 function resolvePosterUrl(coverUrl: string | undefined): string {
   if (coverUrl && /^https?:\/\//i.test(coverUrl)) return coverUrl;
   if (coverUrl && coverUrl.startsWith("data:image/")) return coverUrl;
+  if (coverUrl && coverUrl.startsWith("/__l5e/")) {
+    // On non-production hosts (Lovable preview), prefer absolute CDN URL.
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host && host !== "kidiplus.com" && host !== "www.kidiplus.com") {
+        return DEMO_COVER_ABSOLUTE_URL;
+      }
+    }
+    return coverUrl;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host && host !== "kidiplus.com" && host !== "www.kidiplus.com") {
+      return DEMO_COVER_ABSOLUTE_URL;
+    }
+  }
   return DEMO_COVER_FALLBACK_URL;
+}
+
+/** Ordered fallbacks when an <img> fails to load. */
+function nextPosterFallback(current: string): string | null {
+  const chain = [
+    DEMO_COVER_FALLBACK_URL,
+    DEMO_COVER_PUBLIC_URL,
+    DEMO_COVER_ABSOLUTE_URL,
+    DEMO_COVER_DATA_URI,
+  ];
+  const idx = chain.indexOf(current);
+  if (idx >= 0 && idx < chain.length - 1) return chain[idx + 1]!;
+  // current might be an admin https URL or absolute variant
+  if (current !== DEMO_COVER_PUBLIC_URL && current !== DEMO_COVER_DATA_URI) {
+    return DEMO_COVER_PUBLIC_URL;
+  }
+  if (current !== DEMO_COVER_DATA_URI) return DEMO_COVER_DATA_URI;
+  return null;
 }
 
 /** Resolves the current demo video + cover URLs (admin-overridable via
@@ -43,7 +82,7 @@ function resolvePosterUrl(coverUrl: string | undefined): string {
 export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
   const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
-  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_FALLBACK_URL);
+  const [coverUrl, setCoverUrl] = useState<string>(() => resolvePosterUrl(DEMO_COVER_FALLBACK_URL));
   const [version, setVersion] = useState<string>("0");
   const lastVersion = useRef<string>("");
 
@@ -82,12 +121,18 @@ export function useDemoAvailable(): boolean | null {
 
 export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
-  const poster = resolvePosterUrl(coverUrl);
+  const initial = resolvePosterUrl(coverUrl);
   const imgRef = useRef<HTMLImageElement>(null);
+  const [poster, setPoster] = useState(initial);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    const next = resolvePosterUrl(coverUrl);
+    setPoster(next);
     setLoaded(false);
+  }, [coverUrl]);
+
+  useEffect(() => {
     const el = imgRef.current;
     if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
   }, [poster]);
@@ -111,12 +156,17 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
 
         <img
           ref={imgRef}
+          key={poster}
           src={poster}
           alt=""
           loading="eager"
           decoding="async"
           draggable={false}
           onLoad={() => setLoaded(true)}
+          onError={() => {
+            const fallback = nextPosterFallback(poster);
+            if (fallback) setPoster(fallback);
+          }}
           className="absolute inset-0 h-full w-full object-cover"
         />
 
@@ -212,7 +262,10 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
  */
 export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
   const { t } = useTranslation();
-  const poster = resolvePosterUrl(coverUrl);
+  const [poster, setPoster] = useState(() => resolvePosterUrl(coverUrl));
+  useEffect(() => {
+    setPoster(resolvePosterUrl(coverUrl));
+  }, [coverUrl]);
   return (
     <div
       role="status"
@@ -222,12 +275,17 @@ export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
       style={{ aspectRatio: "3 / 4" }}
     >
       <img
+        key={poster}
         src={poster}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         loading="eager"
         decoding="async"
         draggable={false}
+        onError={() => {
+          const fallback = nextPosterFallback(poster);
+          if (fallback) setPoster(fallback);
+        }}
       />
       <span
         aria-hidden

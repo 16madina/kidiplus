@@ -19,15 +19,22 @@ import { DEMO_LIVE_POSTER_DATA_URI } from "@/assets/demo-live-poster-data";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
 
-/**
- * Default poster is an embedded data-URI so the home card NEVER depends on
- * Lovable CDN / public/ path quirks (403 on preview, black empty card, etc.).
- * Admin https overrides via app_config still win when set.
- */
-export const DEMO_COVER_FALLBACK_URL = DEMO_LIVE_POSTER_DATA_URI;
-export const DEMO_COVER_BUNDLED_URL = DEMO_LIVE_POSTER_DATA_URI;
+/** Lovable CDN relative path — works on kidiplus.com (same origin). */
 export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
-export const DEMO_COVER_ABSOLUTE_URL = DEMO_LIVE_POSTER_DATA_URI;
+/** Same-origin public file (copied into `public/`). */
+export const DEMO_COVER_PUBLIC_URL = "/demo-live-poster.jpg";
+/** Tiny data-URI fallback — iOS Safari rejects large data URIs (~150KB+). */
+export const DEMO_COVER_DATA_URI = DEMO_LIVE_POSTER_DATA_URI;
+
+/**
+ * Default poster for the home demo card.
+ * Prefer the Lovable CDN asset on the live site (what worked on iPhone).
+ * Data-URI is only a last-resort fallback (kept under ~60KB for iOS).
+ */
+export const DEMO_COVER_FALLBACK_URL = DEMO_COVER_LOVABLE_URL;
+export const DEMO_COVER_BUNDLED_URL = DEMO_COVER_LOVABLE_URL;
+export const DEMO_COVER_ABSOLUTE_URL =
+  "https://kidiplus.com" + DEMO_COVER_LOVABLE_URL;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
 // v2: ignore stale `demo_cover_url` Storage overrides that broke the home card.
@@ -58,8 +65,6 @@ export async function fetchDemoConfig(): Promise<DemoConfig> {
   (data ?? []).forEach((r) => map.set(r.key, r.value));
   return {
     videoUrl: map.get(DEMO_VIDEO_CONFIG_KEY) || DEMO_VIDEO_FALLBACK_URL,
-    // Only honor remote overrides that are real http(s) URLs. Anything else
-    // (relative paths that 403 on preview) falls back to the embedded poster.
     coverUrl: (() => {
       const remote = map.get(DEMO_COVER_CONFIG_KEY);
       if (remote && /^https?:\/\//i.test(remote)) return remote;
