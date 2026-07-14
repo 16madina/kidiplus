@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2 } from "lucide-react";
+import { X, Radio, Calendar as CalendarIcon, Loader2, Play, Pencil, Trash2, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -20,11 +20,15 @@ import {
   type ScheduledLiveRow,
 } from "@/lib/lives-db";
 import { notifyLiveReminders } from "@/lib/live-reminders-db";
+import startBgAsset from "@/assets/golive-start-bg.png.asset.json";
+import scheduleBgAsset from "@/assets/golive-schedule-bg.png.asset.json";
 
-const GOLD = "oklch(0.82 0.14 85)";
-const GOLD_DIM = "oklch(0.82 0.14 85 / 0.42)";
-const NAVY_A = "oklch(0.19 0.05 260)";
-const NAVY_B = "oklch(0.11 0.03 260)";
+const GOLD = "#E4B438";
+const GOLD_DIM = "rgba(228,180,56,0.42)";
+const NAVY_A = "#0B1938";
+const NAVY_B = "#061331";
+const LIVE_RED = "#E5393F";
+
 
 function formatDateChip(iso: string, lang: string): string {
   const d = new Date(iso);
