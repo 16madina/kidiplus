@@ -1,6 +1,6 @@
 import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { Send, Heart, Share2, X, Eye, Gift, MoreHorizontal, Flag, UserX } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Send, Heart, Share2, X, Eye, Gift, MoreHorizontal, Flag, UserX, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useLiveViewer } from "@/lib/live-viewer-context";
@@ -33,6 +33,8 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { BottomSheet } from "./bottom-sheet";
+import { WinnerReveal } from "./winner-reveal";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { giftByKey, giftPrice, type GiftKey } from "@/lib/gifts";
 import { useTranslation } from "react-i18next";
