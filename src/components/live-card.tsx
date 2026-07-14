@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Eye } from "lucide-react";
+import { Eye, Clock, CalendarClock } from "lucide-react";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
 import { formatViewers, type LiveStream } from "@/lib/live-mock";
