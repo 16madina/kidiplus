@@ -4,6 +4,8 @@ import {
   Eye, Package, AlertTriangle, X, Shield, Trash2,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
+import { FiltersCarousel } from "./filters-carousel";
+import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
   muteLiveChatUser,
