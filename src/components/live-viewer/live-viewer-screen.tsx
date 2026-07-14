@@ -177,14 +177,25 @@ function MockLiveViewerScreen() {
     const tick = () => {
       if (cancelled) return;
       const bidder = randomBidder();
+      let nextPrice = currentProduct.price;
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === currentProduct.id
-            ? { ...p, price: p.price + bidStep() }
-            : p,
-        ),
+        prev.map((p) => {
+          if (p.id !== currentProduct.id) return p;
+          nextPrice = p.price + bidStep();
+          return { ...p, price: nextPrice };
+        }),
       );
       setLastBidder(bidder);
+      // System line in chat — "@bidder a placé une enchère à X €".
+      setMessages((prev) => {
+        const next = [
+          ...prev,
+          systemMessage(
+            `@${bidder} a placé une enchère • ${formatEuro(nextPrice)}`,
+          ),
+        ];
+        return next.length > 60 ? next.slice(next.length - 60) : next;
+      });
       // extend if under 5s (auction extension for excitement)
       setSecondsLeft((s) => (s < 6 ? s + 3 : s));
       timer = window.setTimeout(tick, 3000 + Math.random() * 3000);
@@ -202,6 +213,7 @@ function MockLiveViewerScreen() {
     if (!currentProduct || currentProduct.mode !== "auction") return;
     if (secondsLeft > 0) return;
     const winner = lastBidder ?? randomBidder();
+    const isMe = winner === "toi";
     // mark sold, advance
     setMessages((prev) => [
       ...prev,
@@ -209,6 +221,13 @@ function MockLiveViewerScreen() {
     ]);
     haptic.success();
     setConfettiKey((k) => k + 1);
+    // Fire the shared WinnerReveal (logo flip → winner card), same as real lives.
+    setWinnerReveal({
+      key: `${currentProduct.id}-${Date.now()}`,
+      name: isMe ? "Toi" : winner,
+      isMe,
+      productName: currentProduct.name,
+    });
 
     setTimeout(() => {
       setProducts((prev) => {
@@ -221,6 +240,13 @@ function MockLiveViewerScreen() {
               ? { ...p, status: "current" as const }
               : p,
         );
+        // If we ran out of products, loop back to the top so the sample
+        // live never runs out of auction rounds during review.
+        if (!next.some((p) => p.status === "current")) {
+          return next.map((p, i) =>
+            i === 0 ? { ...p, status: "current" as const, price: p.startBid } : p,
+          );
+        }
         return next;
       });
       setSecondsLeft(AUCTION_SECONDS);
