@@ -33,6 +33,12 @@ export type LiveStream = {
   sellerId?: string;
   /** Live currency (defaults to EUR when unspecified). */
   currency?: "XOF" | "EUR" | "CAD";
+  /** When true, the card renders as a scheduled (upcoming) live, not LIVE. */
+  scheduled?: boolean;
+  /** Minutes until the scheduled live starts (only when scheduled). */
+  startsInMin?: number;
+  /** Minutes remaining on a live in progress (optional realism timer). */
+  endsInMin?: number;
 };
 
 
@@ -64,6 +70,8 @@ const IMG = {
     "https://images.unsplash.com/photo-1628960198207-3d1fed6f28d3?w=600&q=70",
     "https://images.unsplash.com/photo-1637419450536-378d5457abb8?w=600&q=70",
     "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=600&q=70",
+    "https://images.unsplash.com/photo-1606166187734-a4cb74079037?w=600&q=70",
+    "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=600&q=70",
   ],
   Electronics: [
     "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=70",
@@ -119,30 +127,59 @@ function pick<T>(arr: readonly T[], i: number): T {
   return arr[i % arr.length];
 }
 
-// Deterministic viewer count between 15 and 2400 based on seed index
+// Deterministic, natural-looking viewer counts. We hand-pick a pool of
+// realistic values (no perfectly-rounded "2k" figures) and index into it so
+// the same seed always renders the same count between refreshes.
+const VIEWER_POOL = [
+  59, 81, 127, 174, 213, 246, 289, 312, 347, 388, 421, 476, 512, 573, 618,
+  684, 731, 802, 869, 927, 1043, 1128, 1246, 1387, 1512, 1689, 1874, 2138,
+  2413, 2687, 2873, 3124,
+] as const;
+
 function viewers(i: number): number {
   const noise = (i * 9301 + 49297) % 233280;
-  return 15 + (noise % 2386);
+  return VIEWER_POOL[noise % VIEWER_POOL.length];
 }
+
+// Every Nth seed becomes a scheduled (upcoming) live so the feed shows a
+// realistic mix of live-now + programmed sessions.
+const SCHEDULE_MINUTES = [12, 27, 45, 63, 90, 120, 180, 240] as const;
+const END_MINUTES = [8, 14, 22, 31, 47, 58] as const;
 
 export function makeStreams(offset = 0, count = SEEDS.length): LiveStream[] {
   return Array.from({ length: count }, (_, k) => {
     const i = (offset + k) % SEEDS.length;
     const s = SEEDS[i];
     const gallery = IMG[s.category];
+    const abs = offset + k;
+    // ~28% of cards are scheduled — enough to feel active without dominating.
+    const scheduled = abs % 7 === 2 || abs % 7 === 5;
+    const startsInMin = scheduled
+      ? SCHEDULE_MINUTES[abs % SCHEDULE_MINUTES.length]
+      : undefined;
+    // ~40% of live cards show a countdown; others stay open-ended.
+    const endsInMin = !scheduled && abs % 5 !== 0
+      ? END_MINUTES[abs % END_MINUTES.length]
+      : undefined;
     return {
-      id: `stream-${offset + k}`,
+      id: `stream-${abs}`,
       seller: s.seller,
       avatar: AVATAR(s.seller),
       title: s.title,
-      thumbnail: pick(gallery, offset + k),
-      viewers: viewers(offset + k + 1),
+      thumbnail: pick(gallery, abs),
+      viewers: viewers(abs + 1),
       category: s.category,
+      scheduled,
+      startsInMin,
+      endsInMin,
     };
   });
 }
 
 export function formatViewers(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}k`;
-  return String(n);
+  // Exact counts with a thin non-breaking space thousands separator so the
+  // numbers read as real activity (347, 1 246, 2 873) rather than generated
+  // "2k" placeholders.
+  return n.toLocaleString("fr-FR").replace(/\u202F/g, "\u00A0");
 }
+
