@@ -15,21 +15,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
+// Bundled same-origin hashed asset (same pattern as the Live tab badge).
+// Do NOT use `/demo-live-poster.jpg` in public/ — Lovable returns 403 for it.
+// Do NOT rely on `/__l5e/...` alone — it often fails inside Capacitor WebViews.
+import demoPosterBundled from "@/assets/img/demo-live-poster.jpg";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
-/**
- * Cover sources (first that loads wins in the UI):
- * 1. Same-origin `/demo-live-poster.jpg` in `public/` — most reliable on
- *    Capacitor / mobile (no Lovable `__l5e` CDN, no Vite hash mismatch).
- * 2. Lovable asset CDN (updated when the image is uploaded in Lovable).
- */
-export const DEMO_COVER_PUBLIC_URL = "/demo-live-poster.jpg";
-export const DEMO_COVER_FALLBACK_URL = DEMO_COVER_PUBLIC_URL;
+/** Always-available poster baked into the JS/CSS bundle. */
+export const DEMO_COVER_BUNDLED_URL = demoPosterBundled;
+export const DEMO_COVER_FALLBACK_URL = demoPosterBundled;
 export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
-// v2: ignore stale `demo_cover_url` overrides that pointed at broken Storage
-// signed URLs and left the home card as a grey play button.
+// v2: ignore stale `demo_cover_url` Storage overrides that broke the home card.
 export const DEMO_COVER_CONFIG_KEY = "demo_cover_url_v2";
 export const DEMO_VERSION_CONFIG_KEY = "demo_version";
 

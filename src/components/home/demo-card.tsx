@@ -12,9 +12,9 @@
 //   lovable-assets CLI). Do not move or rename the .asset.json file.
 //
 // Cover / poster:
-//   Prefer same-origin `/demo-live-poster.jpg` (public/). Fall back to the
-//   Lovable CDN asset if that 404s. Admin can still override via
-//   app_config.demo_cover_url_v2.
+//   Vite-bundled `@/assets/img/demo-live-poster.jpg` (hashed `/assets/...`).
+//   Same approach as the Live tab badge — works on Lovable + Capacitor.
+//   Admin overrides (https only) still win via app_config.demo_cover_url_v2.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,20 +26,25 @@ import {
   fetchDemoConfig,
   withVersion,
   DEMO_VIDEO_FALLBACK_URL,
-  DEMO_COVER_FALLBACK_URL,
+  DEMO_COVER_BUNDLED_URL,
   DEMO_COVER_LOVABLE_URL,
 } from "@/lib/demo-video-db";
 
 export const DEMO_VIDEO_URL = DEMO_VIDEO_FALLBACK_URL;
 
+/** Prefer admin https override; otherwise the Vite-bundled poster. */
+function resolvePosterUrl(coverUrl: string | undefined): string {
+  if (coverUrl && /^https?:\/\//i.test(coverUrl)) return coverUrl;
+  return DEMO_COVER_BUNDLED_URL;
+}
+
 /** Resolves the current demo video + cover URLs (admin-overridable via
- *  app_config). Both URLs carry a `?v=<demo_version>` cache-bust param so
- *  re-uploads refresh instantly across browsers and CDNs. Re-fetches on
- *  window focus so a live app picks up admin changes without a full reload. */
+ *  app_config). Re-fetches on window focus so a live app picks up admin
+ *  changes without a full reload. */
 export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: string; version: string } {
   const [ok, setOk] = useState<boolean | null>(null);
   const [url, setUrl] = useState<string>(withVersion(DEMO_VIDEO_FALLBACK_URL, "0"));
-  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_FALLBACK_URL);
+  const [coverUrl, setCoverUrl] = useState<string>(DEMO_COVER_BUNDLED_URL);
   const [version, setVersion] = useState<string>("0");
   const lastVersion = useRef<string>("");
 
@@ -49,12 +54,7 @@ export function useDemoVideo(): { ok: boolean | null; url: string; coverUrl: str
     if (cfg.version === lastVersion.current) return;
     lastVersion.current = cfg.version;
     const vUrl = withVersion(cfg.videoUrl, cfg.version);
-    // Same-origin public poster: don't append ?v= (Capacitor/file quirks).
-    // Remote/admin covers still get cache-busted.
-    const cUrl =
-      cfg.coverUrl === DEMO_COVER_FALLBACK_URL
-        ? DEMO_COVER_FALLBACK_URL
-        : withVersion(cfg.coverUrl, cfg.version);
+    const cUrl = resolvePosterUrl(withVersion(cfg.coverUrl, cfg.version));
     setUrl(vUrl);
     setCoverUrl(cUrl);
     setVersion(cfg.version);
@@ -92,9 +92,11 @@ function DemoPoster({ src, className }: { src: string; className?: string }) {
       className={className}
       loading="eager"
       decoding="async"
+      draggable={false}
       onError={() => {
-        // Public file missing (old native shell) → Lovable CDN asset.
-        if (current !== DEMO_COVER_LOVABLE_URL) {
+        if (current !== DEMO_COVER_BUNDLED_URL) {
+          setCurrent(DEMO_COVER_BUNDLED_URL);
+        } else if (current !== DEMO_COVER_LOVABLE_URL) {
           setCurrent(DEMO_COVER_LOVABLE_URL);
         }
       }}
@@ -104,6 +106,7 @@ function DemoPoster({ src, className }: { src: string; className?: string }) {
 
 export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: string }) {
   const { t } = useTranslation();
+  const poster = resolvePosterUrl(coverUrl);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -114,12 +117,18 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
       <Press
         onClick={onOpen}
         aria-label={t("home.demo.title")}
-        className="!block h-full w-full overflow-hidden rounded-2xl p-0 text-left"
-        style={{ aspectRatio: "3 / 4", backgroundColor: "#1a1a1a" }}
+        className="relative !block h-full w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
+        style={{
+          aspectRatio: "3 / 4",
+          // CSS background as belt-and-suspenders — shows even if <img> fails.
+          backgroundImage: `url("${poster}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
         {/* live poster background */}
         <DemoPoster
-          src={coverUrl}
+          src={poster}
           className="absolute inset-0 h-full w-full object-cover"
         />
 
@@ -215,16 +224,18 @@ export function DemoCard({ onOpen, coverUrl }: { onOpen: () => void; coverUrl: s
  */
 export function DemoCardSkeleton({ coverUrl }: { coverUrl?: string } = {}) {
   const { t } = useTranslation();
-  const poster = coverUrl ?? DEMO_COVER_FALLBACK_URL;
+  const poster = resolvePosterUrl(coverUrl);
   return (
     <div
       role="status"
       aria-label={t("home.demo.title")}
       aria-busy="true"
-      className="relative overflow-hidden rounded-2xl"
+      className="relative overflow-hidden rounded-2xl bg-muted"
       style={{
         aspectRatio: "3 / 4",
-        backgroundColor: "#1a1a1a",
+        backgroundImage: `url("${poster}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
       {/* live poster background — visible from the first frame so the
