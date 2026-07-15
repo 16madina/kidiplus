@@ -540,7 +540,8 @@
     "title": "Activité",
     "tabs": {
       "notifications": "Notifications",
-      "orders": "Commandes"
+      "orders": "Commandes",
+      "messages": "Messages"
     },
     "orderStatus": {
       "paid": "Payé",
@@ -559,6 +560,18 @@
       "notifications": "Aucune notification pour l'instant.",
       "orders": "Aucune commande pour l'instant."
     }
+  },
+  "dm": {
+    "title": "Message",
+    "messageButton": "Message",
+    "you": "Toi",
+    "send": "Envoyer",
+    "inputPlaceholder": "Écris un message…",
+    "emptyThread": "Envoie ton premier message pour démarrer la conversation.",
+    "emptyInboxTitle": "Aucun message",
+    "emptyInboxBody": "Contacte un vendeur depuis son profil pour démarrer une conversation.",
+    "errorBlocked": "Vous ne pouvez pas échanger avec cet utilisateur.",
+    "errorSuspended": "Ton compte ne permet pas d'envoyer des messages."
   },
   "auth": {
     "welcome": {

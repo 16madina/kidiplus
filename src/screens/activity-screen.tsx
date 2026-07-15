@@ -18,9 +18,10 @@ import {
 } from "@/lib/notifications-db";
 import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
 import { GuestActivityScreen } from "@/components/guest-activity-screen";
-import { OrdersScreenContent } from "@/screens/orders-screen";
+import { OrdersScreen } from "@/screens/orders-screen";
+import { DmInboxContent, OPEN_DM_EVENT } from "@/components/dm/dm-inbox";
 
-type Tab = "notifs" | "orders";
+type Tab = "notifs" | "messages";
 
 export function ActivityScreen() {
   const { guestMode } = useAuth();
@@ -35,6 +36,7 @@ function ActivityScreenAuthed() {
   const [tab, setTab] = useState<Tab>("notifs");
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<NotificationRow[]>([]);
+  const [ordersOpen, setOrdersOpen] = useState(false);
 
   useEffect(() => {
     if (!user) { setNotifs([]); setLoading(false); return; }
@@ -50,11 +52,31 @@ function ActivityScreenAuthed() {
     return () => { alive = false; unsub(); };
   }, [user]);
 
-  // Auto-switch to orders tab on deep-link (order-specific push).
+  // Order deep-link (push tap): orders now live in the profile, so open the
+  // Orders overlay here and replay the event once its content is mounted.
   useEffect(() => {
-    const onOpen = () => setTab("orders");
-    window.addEventListener("kidi:open-order", onOpen);
-    return () => window.removeEventListener("kidi:open-order", onOpen);
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setOrdersOpen((already) => {
+        if (!already && detail?.order_id) {
+          setTimeout(() => {
+            try {
+              window.dispatchEvent(new CustomEvent("kidi:open-order", { detail }));
+            } catch { /* ignore */ }
+          }, 350);
+        }
+        return true;
+      });
+    };
+    window.addEventListener("kidi:open-order", onOpen as EventListener);
+    return () => window.removeEventListener("kidi:open-order", onOpen as EventListener);
+  }, []);
+
+  // DM deep-link (push tap) → switch to Messages tab; DmInboxContent opens the thread.
+  useEffect(() => {
+    const onOpen = () => setTab("messages");
+    window.addEventListener(OPEN_DM_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_DM_EVENT, onOpen);
   }, []);
 
   const removeNotif = (id: string) => {
@@ -93,7 +115,7 @@ function ActivityScreenAuthed() {
             onChange={setTab}
             options={[
               { key: "notifs", label: t("activity.tabs.notifications") },
-              { key: "orders", label: t("activity.tabs.orders") },
+              { key: "messages", label: t("activity.tabs.messages", { defaultValue: "Messages" }) },
             ]}
           />
         </div>
@@ -155,18 +177,21 @@ function ActivityScreenAuthed() {
             </motion.div>
           ) : (
             <motion.div
-              key="orders"
+              key="messages"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15, ease: EASE_IOS }}
               className="h-full"
             >
-              <OrdersScreenContent />
+              <DmInboxContent />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Orders overlay for push deep-links (orders tab moved to profile). */}
+      <OrdersScreen open={ordersOpen} onClose={() => setOrdersOpen(false)} />
     </div>
   );
 }

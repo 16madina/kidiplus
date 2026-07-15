@@ -540,7 +540,8 @@
     "title": "Activity",
     "tabs": {
       "notifications": "Notifications",
-      "orders": "Orders"
+      "orders": "Orders",
+      "messages": "Messages"
     },
     "orderStatus": {
       "paid": "Paid",
@@ -559,6 +560,18 @@
       "notifications": "No notifications yet.",
       "orders": "No orders yet."
     }
+  },
+  "dm": {
+    "title": "Message",
+    "messageButton": "Message",
+    "you": "You",
+    "send": "Send",
+    "inputPlaceholder": "Write a message…",
+    "emptyThread": "Send your first message to start the conversation.",
+    "emptyInboxTitle": "No messages",
+    "emptyInboxBody": "Contact a seller from their profile to start a conversation.",
+    "errorBlocked": "You can't message this user.",
+    "errorSuspended": "Your account can't send messages right now."
   },
   "auth": {
     "welcome": {

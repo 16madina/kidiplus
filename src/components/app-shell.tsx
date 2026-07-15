@@ -238,6 +238,18 @@ function AppShellInner() {
         }, 80);
         return;
       }
+      if (kind === "chat" && p.thread_id) {
+        // Direct message → activity tab, Messages inbox opens the thread.
+        setActive("activity");
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("kidi:open-dm", { detail: { thread_id: p.thread_id } }),
+            );
+          } catch {}
+        }, 80);
+        return;
+      }
       if (kind === "live" || kind === "chat") {
         if (p.live_id) {
           const stream = await fetchLiveById(p.live_id).catch(() => null);
