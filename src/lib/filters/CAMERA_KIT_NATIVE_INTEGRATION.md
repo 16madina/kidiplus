@@ -13,6 +13,11 @@
 > - Token staging actif (filigrane "Camera Kit Staging"). Après validation
 >   Snap ("Submit For Review" sur kit.snapchat.com/manage avec vidéo démo),
 >   définir `VITE_SNAP_CAMERA_KIT_API_TOKEN` avec le token production.
+> - Token PRODUCTION (à activer seulement après approbation Snap — jetons
+>   clients publics, identiques iOS/Android/Web) :
+>   `eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4`
+> - Si les lenses ne chargent pas : vérifier sur kit.snapchat.com/manage que
+>   le "Staging Camera Kit Status" de la version Initial Version est Enabled.
 >
 > Le contenu ci-dessous est conservé pour référence si un jour on veut la
 > variante 100% native (performances supérieures sur vieux téléphones).
