@@ -40,6 +40,7 @@ import {
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 
 
 
@@ -208,15 +209,7 @@ export function PaymentSheet({
 
                 {/* Summary */}
                 <div className="mt-4 flex items-center gap-3 rounded-2xl border p-3">
-                  {order.item_image ? (
-                    <img
-                      src={order.item_image}
-                      alt=""
-                      className="h-16 w-16 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 rounded-xl bg-muted" />
-                  )}
+                  <OrderItemImage src={order.item_image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{order.item_name}</p>
                     <p className="text-xs text-muted-foreground">

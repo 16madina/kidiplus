@@ -36,6 +36,7 @@ import {
 } from "./moderation-pieces";
 import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 
 
 type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral";
@@ -660,9 +661,7 @@ function PaymentsTab() {
           <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
             {orders.map((o) => (
               <li key={o.id} className="flex items-center gap-2 p-2.5">
-                {o.item_image
-                  ? <img src={o.item_image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
-                  : <div className="h-9 w-9 shrink-0 rounded-lg bg-muted" />}
+                <OrderItemImage src={o.item_image} className="h-9 w-9 shrink-0 rounded-lg object-cover" iconSize={14} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{o.item_name}</p>
                   <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {o.status === "cancelled" && o.cancelled_reason === "payment_timeout" ? t("orders.status.paymentTimeout") : t(`orders.status.${o.status}`, o.status)} · {o.payment_method}</p>

@@ -1259,6 +1259,16 @@
     "awaitingPayment": "Address is visible as soon as the order is paid.",
     "noAddress": "No delivery address recorded yet. Contact the buyer."
   },
+  "orderDetail": {
+    "deliveryAddress": "Delivery address",
+    "shippingTitle": "Delivery",
+    "orderedOn": "Ordered on",
+    "paidOn": "Paid on",
+    "shippedOn": "Shipped on",
+    "deliveredOn": "Received on",
+    "notYetShipped": "not shipped yet",
+    "notYetDelivered": "not received yet"
+  },
   "delivery": {
     "title": "Delivery",
     "notInYourCountry": "Delivery unavailable in your country 🌍",

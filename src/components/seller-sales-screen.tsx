@@ -17,6 +17,7 @@ import {
   type OrderStatus,
 } from "@/lib/orders-db";
 import { formatMoney } from "@/lib/money";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 
 type BuyerMap = Record<string, { display_name: string; handle: string }>;
 
@@ -113,16 +114,7 @@ export function SellerSalesScreen({
                     className="!block w-full rounded-2xl border border-border p-0 text-left"
                   >
                     <div className="flex items-center gap-3 p-3">
-                      {o.item_image ? (
-                        <img
-                          src={o.item_image}
-                          alt=""
-                          className="h-14 w-14 rounded-xl object-cover"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="h-14 w-14 rounded-xl bg-muted" />
-                      )}
+                      <OrderItemImage src={o.item_image} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
@@ -154,11 +146,7 @@ export function SellerSalesScreen({
         {detail && (
           <div className="space-y-4 px-4 py-4">
             <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
-              {detail.item_image ? (
-                <img src={detail.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
-              ) : (
-                <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-              )}
+              <OrderItemImage src={detail.item_image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-semibold">{detail.item_name}</p>
                 <p className="mt-1 text-[13px] font-bold">

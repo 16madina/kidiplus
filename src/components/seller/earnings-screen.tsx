@@ -30,6 +30,7 @@ import {
   type OrderRow,
 } from "@/lib/orders-db";
 import { WithdrawSheet } from "./withdraw-sheet";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { releaseOverdueEscrow } from "@/lib/escrow-db";
@@ -247,11 +248,7 @@ function SalesEarningsList({
         return (
           <li key={o.id} className="rounded-2xl border border-border p-3">
             <div className="flex items-center gap-3">
-              {o.item_image ? (
-                <img src={o.item_image} alt="" className="h-14 w-14 rounded-xl object-cover" />
-              ) : (
-                <div className="h-14 w-14 rounded-xl bg-muted" />
-              )}
+              <OrderItemImage src={o.item_image} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>

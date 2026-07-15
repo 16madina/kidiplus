@@ -1259,6 +1259,16 @@
     "awaitingPayment": "L'adresse sera visible dès que la commande est payée.",
     "noAddress": "Cette commande n'a pas encore d'adresse enregistrée. Contacte l'acheteur."
   },
+  "orderDetail": {
+    "deliveryAddress": "Adresse de livraison",
+    "shippingTitle": "Livraison",
+    "orderedOn": "Commandé le",
+    "paidOn": "Payé le",
+    "shippedOn": "Expédié le",
+    "deliveredOn": "Reçu le",
+    "notYetShipped": "pas encore expédié",
+    "notYetDelivered": "pas encore reçu"
+  },
   "delivery": {
     "title": "Livraison",
     "notInYourCountry": "Livraison indisponible dans ton pays 🌍",

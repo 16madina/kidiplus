@@ -14,6 +14,7 @@ import {
   MapPin,
   PackageCheck,
   UserRound,
+  Truck,
 } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
@@ -21,6 +22,7 @@ import { CountryFlag } from "@/components/country-flag";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
 import type { OrderRow } from "@/lib/orders-db";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 import { formatAddressLine, isCompactAddressCountry } from "@/lib/delivery";
 import { countryName } from "@/lib/delivery-zones-data";
 
@@ -44,6 +46,13 @@ function asSnapshot(v: unknown): AddressSnap | null {
 
 function digitsOnly(s: string | null | undefined): string {
   return (s ?? "").replace(/[^0-9+]/g, "");
+}
+
+function fullDate(iso: string | null, lang: string): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString(lang, {
+    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 async function copy(text: string, msg: string) {
@@ -101,11 +110,7 @@ export function SellerOrderDetailSheet({
 
         {/* Item summary */}
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border p-3">
-          {order.item_image ? (
-            <img src={order.item_image} alt="" className="h-14 w-14 rounded-xl object-cover" />
-          ) : (
-            <div className="h-14 w-14 rounded-xl bg-muted" />
-          )}
+          <OrderItemImage src={order.item_image} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold">{order.item_name}</p>
             <p className="text-[11px] text-muted-foreground">
@@ -247,6 +252,36 @@ export function SellerOrderDetailSheet({
             </Press>
           </section>
         )}
+
+        {/* Order dates recap */}
+        <section className="mt-4 rounded-2xl border border-border p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            <Truck size={12} />
+            {t("orderDetail.shippingTitle", { defaultValue: "Livraison" })}
+          </div>
+          <div className="space-y-1 text-[13px]">
+            <p>
+              <span className="font-semibold">{t("orderDetail.orderedOn", { defaultValue: "Commandé le" })}:</span>{" "}
+              {fullDate(order.created_at, i18n.language)}
+            </p>
+            {order.paid_at && (
+              <p>
+                <span className="font-semibold">{t("orderDetail.paidOn", { defaultValue: "Payé le" })}:</span>{" "}
+                {fullDate(order.paid_at, i18n.language)}
+              </p>
+            )}
+            <p>
+              <span className="font-semibold">{t("orderDetail.shippedOn", { defaultValue: "Expédié le" })}:</span>{" "}
+              {fullDate(order.shipped_at, i18n.language) ??
+                t("orderDetail.notYetShipped", { defaultValue: "pas encore expédié" })}
+            </p>
+            <p>
+              <span className="font-semibold">{t("orderDetail.deliveredOn", { defaultValue: "Reçu le" })}:</span>{" "}
+              {fullDate(order.delivered_confirmed_at, i18n.language) ??
+                t("orderDetail.notYetDelivered", { defaultValue: "pas encore reçu" })}
+            </p>
+          </div>
+        </section>
 
         {canShip && (
           <Press
