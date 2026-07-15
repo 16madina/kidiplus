@@ -571,7 +571,8 @@
     "emptyInboxTitle": "No messages",
     "emptyInboxBody": "Contact a seller from their profile to start a conversation.",
     "errorBlocked": "You can't message this user.",
-    "errorSuspended": "Your account can't send messages right now."
+    "errorSuspended": "Your account can't send messages right now.",
+    "blockedNotice": "You blocked this user. Unblock them to resume the conversation."
   },
   "auth": {
     "welcome": {

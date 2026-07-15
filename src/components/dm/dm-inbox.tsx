@@ -10,6 +10,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 import { useAuth } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { useBlockedIds } from "@/lib/moderation-db";
 import { formatRelative } from "@/lib/activity-mock";
 import {
   listMyDmThreads,
@@ -28,6 +29,9 @@ export function DmInboxContent() {
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [openTarget, setOpenTarget] = useState<DmChatTarget | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const blockedIds = useBlockedIds();
+  // Hide conversations with blocked users (Apple UGC guideline 1.2).
+  const visibleThreads = threads.filter((th) => !blockedIds.has(th.other_id));
 
   const load = async () => {
     const r = await listMyDmThreads(50);
@@ -97,7 +101,7 @@ export function DmInboxContent() {
         <div className="flex justify-center py-14">
           <Loader2 className="animate-spin text-muted-foreground" size={20} />
         </div>
-      ) : threads.length === 0 ? (
+      ) : visibleThreads.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
           <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
             <MessageCircle size={22} className="text-muted-foreground" />
@@ -113,7 +117,7 @@ export function DmInboxContent() {
         </div>
       ) : (
         <ul>
-          {threads.map((th) => {
+          {visibleThreads.map((th) => {
             const unread = th.unread > 0;
             const minutes = Math.max(0, Math.floor((Date.now() - new Date(th.last_message_at).getTime()) / 60000));
             const mine = th.last_sender_id === user?.id;

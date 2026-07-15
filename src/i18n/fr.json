@@ -571,7 +571,8 @@
     "emptyInboxTitle": "Aucun message",
     "emptyInboxBody": "Contacte un vendeur depuis son profil pour démarrer une conversation.",
     "errorBlocked": "Vous ne pouvez pas échanger avec cet utilisateur.",
-    "errorSuspended": "Ton compte ne permet pas d'envoyer des messages."
+    "errorSuspended": "Ton compte ne permet pas d'envoyer des messages.",
+    "blockedNotice": "Tu as bloqué cet utilisateur. Débloque-le pour reprendre la conversation."
   },
   "auth": {
     "welcome": {

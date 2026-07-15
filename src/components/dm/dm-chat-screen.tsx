@@ -3,15 +3,19 @@
 // ("Message" button — thread resolved/created on first send).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, MoreHorizontal, Flag, Ban, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { ReportSheet } from "@/components/moderation/report-sheet";
+import { blockUserAndNotify, unblockUser, useBlockedIds, refreshBlockedIds } from "@/lib/moderation-db";
 import { useAuth } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { EASE_IOS } from "@/lib/motion";
 import {
   listDmMessages,
   sendDm,
@@ -46,6 +50,11 @@ export function DmChatScreen({
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const blockedIds = useBlockedIds();
+  const isBlocked = target ? blockedIds.has(target.otherId) : false;
   const listRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback((smooth = false) => {
@@ -98,6 +107,28 @@ export function DmChatScreen({
     return unsub;
   }, [open, threadId, scrollToBottom]);
 
+  const onToggleBlock = async () => {
+    if (!target || blocking) return;
+    setBlocking(true);
+    haptic.medium();
+    const r = isBlocked
+      ? await unblockUser(target.otherId)
+      : await blockUserAndNotify(target.otherId, {
+          displayName: target.otherName ?? undefined,
+          avatarUrl: target.otherAvatarUrl ?? null,
+        });
+    setBlocking(false);
+    setActionsOpen(false);
+    if (r.ok) {
+      await refreshBlockedIds();
+      haptic.success();
+      toast.success(isBlocked ? t("block.unblocked") : t("block.blocked"));
+      if (!isBlocked) onClose();
+    } else {
+      toast.error(t("block.failed"));
+    }
+  };
+
   const onSend = async () => {
     const body = draft.trim();
     if (!body || !target || sending) return;
@@ -126,15 +157,24 @@ export function DmChatScreen({
       zIndex={80}
       title={target.otherName || t("dm.title", { defaultValue: "Message" })}
       right={
-        avatar ? (
-          <img
-            src={avatar}
-            alt=""
-            className="h-8 w-8 rounded-full object-cover"
-            onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-            draggable={false}
-          />
-        ) : undefined
+        <div className="flex items-center gap-1">
+          {avatar && (
+            <img
+              src={avatar}
+              alt=""
+              className="h-8 w-8 rounded-full object-cover"
+              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              draggable={false}
+            />
+          )}
+          <Press
+            aria-label={t("common.more", { defaultValue: "Plus" })}
+            onClick={() => { haptic.light(); setActionsOpen(true); }}
+            className="h-9 w-9 rounded-full text-foreground"
+          >
+            <MoreHorizontal size={20} strokeWidth={2.2} />
+          </Press>
+        </div>
       }
     >
       <div className="flex h-full min-h-0 flex-col">
@@ -190,7 +230,24 @@ export function DmChatScreen({
           )}
         </div>
 
-        {/* Composer */}
+        {/* Composer (or blocked notice) */}
+        {isBlocked ? (
+          <div
+            className="shrink-0 border-t border-border bg-background px-4 pt-3 text-center"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)" }}
+          >
+            <p className="text-[13px] text-muted-foreground">
+              {t("dm.blockedNotice", { defaultValue: "Tu as bloqué cet utilisateur. Débloque-le pour reprendre la conversation." })}
+            </p>
+            <Press
+              onClick={() => void onToggleBlock()}
+              disabled={blocking}
+              className="mt-2 !min-h-9 h-9 rounded-full border border-border px-4 text-[13px] font-semibold"
+            >
+              {blocking ? <Loader2 size={14} className="animate-spin" /> : t("block.unblock")}
+            </Press>
+          </div>
+        ) : (
         <div
           className="shrink-0 border-t border-border bg-background px-3 pt-2"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
@@ -224,7 +281,55 @@ export function DmChatScreen({
             </Press>
           </div>
         </div>
+        )}
       </div>
+
+      {/* Actions sheet: report / block (Apple UGC guideline 1.2) */}
+      <AnimatePresence>
+        {actionsOpen && (
+          <motion.div
+            className="fixed inset-0 z-[95] flex items-end justify-center bg-black/50"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setActionsOpen(false)}
+          >
+            <motion.div
+              className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ duration: 0.22, ease: EASE_IOS }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+              <div className="mb-1 flex items-center justify-between">
+                <h2 className="text-[16px] font-bold">{target.otherName || t("dm.title", { defaultValue: "Message" })}</h2>
+                <Press onClick={() => setActionsOpen(false)} className="h-9 w-9 rounded-full"><X size={18} /></Press>
+              </div>
+              <Press
+                onClick={() => { setActionsOpen(false); setReportOpen(true); }}
+                className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
+              >
+                <Flag size={20} />
+                {t("report.action", { defaultValue: "Signaler" })}
+              </Press>
+              <Press
+                onClick={() => void onToggleBlock()}
+                disabled={blocking}
+                className={`mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold ${isBlocked ? "" : "text-red-500"}`}
+              >
+                {blocking ? <Loader2 size={18} className="animate-spin" /> : <Ban size={20} />}
+                {isBlocked ? t("block.unblock") : t("block.action")}
+              </Press>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="user"
+        targetId={target.otherId}
+      />
     </PushScreen>
   );
 }
