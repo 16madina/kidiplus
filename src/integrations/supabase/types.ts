@@ -192,6 +192,93 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          last_sender_id: string | null
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender_id?: string | null
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender_id?: string | null
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_threads_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_threads_user_b_fkey"
+            columns: ["user_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1864,6 +1951,10 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _assert_not_blocked: {
+        Args: { _me: string; _other: string }
+        Returns: undefined
+      }
       _claim_and_backfill: {
         Args: { _owner: string; _promo_id: string }
         Returns: Json
@@ -2084,6 +2175,7 @@ export type Database = {
         }
         Returns: Json
       }
+      find_dm_thread: { Args: { _other: string }; Returns: string }
       fx_rate: { Args: { _from: string; _to: string }; Returns: number }
       get_my_email: { Args: never; Returns: string }
       get_seller_delivery_settings: {
@@ -2111,11 +2203,17 @@ export type Database = {
         Args: { _comment?: string; _order_id: string; _rating: number }
         Returns: Json
       }
+      list_dm_messages: {
+        Args: { _before?: string; _limit?: number; _thread: string }
+        Returns: Json
+      }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
+      list_my_dm_threads: { Args: { _limit?: number }; Returns: Json }
       list_my_notifications: { Args: { _limit?: number }; Returns: Json }
       mark_admin_message_read: { Args: { _id: string }; Returns: Json }
       mark_all_notifications_read: { Args: never; Returns: Json }
+      mark_dm_thread_read: { Args: { _thread: string }; Returns: undefined }
       mark_notification_read: { Args: { _id: string }; Returns: Json }
       mark_order_shipped: { Args: { _order_id: string }; Returns: Json }
       move_to_dlq: {
@@ -2197,6 +2295,7 @@ export type Database = {
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
+      send_dm: { Args: { _body: string; _to: string }; Returns: Json }
       send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
