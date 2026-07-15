@@ -9,7 +9,7 @@ import UIKit
  * The Capacitor WebView keeps the full live UI; this is a second viewer whose
  * frames go to AVSampleBufferDisplayLayer (LiveKit minimal-pip pattern).
  */
-final class LivePipSession: NSObject {
+final class LivePipSession: NSObject, @unchecked Sendable {
     static let shared = LivePipSession()
 
     private let room = Room()
@@ -440,7 +440,7 @@ private final class LivePipSampleView: UIView {
     }
 }
 
-private final class LivePipPreviewController: UIViewController, VideoRenderer {
+private final class LivePipPreviewController: UIViewController, VideoRenderer, @unchecked Sendable {
     private lazy var renderingView = LivePipSampleView()
 
     override func loadView() {
@@ -464,7 +464,7 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer {
     }
 }
 
-private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewController, VideoRenderer {
+private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewController, VideoRenderer, @unchecked Sendable {
     private lazy var renderingView = LivePipSampleView()
 
     override func loadView() {
