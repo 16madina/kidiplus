@@ -1,18 +1,23 @@
-# Intégration Snap Camera Kit — plan mobile natif (iOS + Android)
+# Intégration Snap Camera Kit
 
-Ce document décrit **comment brancher les vrais filtres AR faciaux Snapchat**
-dans l'app mobile KIDI+, une fois qu'on aura packagé l'app web en Capacitor
-et publié sur App Store + Play Store.
+> **OBSOLÈTE (juillet 2026)** : ce plan prévoyait des plugins natifs
+> Swift/Kotlin. Entre-temps, Snap a publié le **SDK Web** (`@snap/camera-kit`,
+> moteur AR en WebAssembly) qui fonctionne directement dans la WebView
+> Capacitor — l'intégration est faite SANS plugin natif. Voir :
+> - `src/lib/filters/camera-kit.ts` — bootstrap, chargement des lenses, pipeline
+> - `src/lib/filters/camera-kit-processor.ts` — TrackProcessor LiveKit (live)
+> - `src/components/broadcast/camera-kit-preview.tsx` — aperçu setup
+> - Lens Group branché : "test 1" (`df287f43-6646-4b01-a711-1a0e632c211a`) —
+>   gérer les lenses sur my-lenses.snapchat.com, elles apparaissent dans l'app
+>   sans changement de code.
+> - Token staging actif (filigrane "Camera Kit Staging"). Après validation
+>   Snap ("Submit For Review" sur kit.snapchat.com/manage avec vidéo démo),
+>   définir `VITE_SNAP_CAMERA_KIT_API_TOKEN` avec le token production.
+>
+> Le contenu ci-dessous est conservé pour référence si un jour on veut la
+> variante 100% native (performances supérieures sur vieux téléphones).
 
-## Résumé rapide
-
-- **Aujourd'hui (web)** : le carrousel de filtres est en place. La sélection
-  applique un `filter:` CSS sur l'élément `<video>` local. Pas de vraie
-  tracking faciale — c'est un aperçu visuel pour la UI.
-- **Demain (mobile)** : un plugin Capacitor natif (Swift + Kotlin) intercepte
-  la piste caméra AVANT publication LiveKit, la fait passer par le SDK
-  Snap Camera Kit qui applique la lens choisie, et renvoie la piste
-  filtrée vers LiveKit. Les viewers voient le filtre en temps réel.
+## Résumé rapide (ancien plan natif)
 
 ## Ce qu'on a déjà côté portail Snap
 

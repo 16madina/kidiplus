@@ -5,8 +5,9 @@
 // caméra locale (via le FilterContext). Un bouton croix ferme le carrousel ;
 // le filtre reste actif tant que le host ne repasse pas sur "Aucun".
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { useFilter } from "@/lib/filters/filter-context";
@@ -20,7 +21,12 @@ export type FiltersCarouselProps = {
 };
 
 export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
-  const { lenses, activeLens, setActiveLens } = useFilter();
+  const { lenses, activeLens, setActiveLens, loadLenses, lensesLoading } = useFilter();
+
+  // Charge les vraies lenses Snap (AR) à la première ouverture du carrousel.
+  useEffect(() => {
+    if (open) loadLenses();
+  }, [open, loadLenses]);
 
   return (
     <AnimatePresence>
@@ -66,6 +72,17 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
             className="flex gap-2 overflow-x-auto pb-1"
             style={{ scrollbarWidth: "none" }}
           >
+            {lensesLoading && (
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.55)",
+                  border: "2px solid rgba(255,255,255,0.14)",
+                }}
+              >
+                <Loader2 size={18} className="animate-spin text-white/70" />
+              </div>
+            )}
             {lenses.map((lens) => (
               <LensTile
                 key={lens.lensId}
@@ -108,10 +125,34 @@ function LensTile({
         transition: "border-color 0.15s, background 0.15s",
       }}
     >
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="text-[22px] leading-none">{lens.icon}</span>
+      {lens.iconUrl && (
+        <img
+          src={lens.iconUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full rounded-2xl object-cover"
+          draggable={false}
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+        />
+      )}
+      <div
+        className="relative flex flex-col items-center gap-0.5"
+        style={
+          lens.iconUrl
+            ? {
+                position: "absolute",
+                inset: 0,
+                justifyContent: "flex-end",
+                paddingBottom: 3,
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 45%)",
+                borderRadius: 14,
+              }
+            : undefined
+        }
+      >
+        {!lens.iconUrl && <span className="text-[22px] leading-none">{lens.icon}</span>}
         <span
-          className="text-[9px] font-semibold leading-tight"
+          className="max-w-[60px] truncate text-[9px] font-semibold leading-tight"
           style={{ color: active ? GOLD : "white" }}
         >
           {lens.name}

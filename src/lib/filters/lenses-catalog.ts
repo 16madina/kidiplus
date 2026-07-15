@@ -1,29 +1,31 @@
 // Catalogue des lenses/filtres disponibles pendant un live.
 //
-// Structure alignée sur Snap Camera Kit (`lensId` + `groupId`) pour qu'on puisse,
-// côté natif (Capacitor plugin Swift/Kotlin), appeler directement :
-//   cameraKit.lenses.repository.get(lensID: id, groupID: SNAP_LENS_GROUP_ID)
-//
-// Sur web (mode démo), on utilise `webPreview` — une chaîne CSS `filter:` appliquée
-// sur l'élément <video> local. Ça n'est PAS un vrai filtre AR facial, mais ça permet
-// au host de tester la UI, choisir un style, et voir l'aperçu avant/pendant le live.
-// La vraie tracking faciale (masques, effets, transformations) arrivera avec le
-// plugin natif Camera Kit dans l'app iOS/Android.
+// Deux familles :
+// - Lenses Snap Camera Kit (`isSnapLens: true`) : vrais filtres AR (suivi du
+//   visage, maquillage, masques 3D) chargées dynamiquement depuis le Lens
+//   Group KIDI+ (voir camera-kit.ts). Rendues par le moteur WebAssembly Snap.
+// - Styles CSS (`webPreview`) : simples effets de couleur appliqués en CSS
+//   sur le <video>. Conservés comme styles rapides + fallback si Camera Kit
+//   n'est pas disponible (WebGL2 absent, réseau bloqué...).
 
-export type LensCategory = "beauty" | "fun" | "style" | "background" | "none";
+export type LensCategory = "beauty" | "fun" | "style" | "background" | "snap" | "none";
 
 export type Lens = {
-  /** ID Snap Camera Kit (UUID fourni par le portail my-lenses.snapchat.com). */
+  /** ID de lens Snap Camera Kit, ou identifiant local pour les styles CSS. */
   lensId: string;
-  /** Groupe de lenses (le "Demo Lens Group ID" pour l'instant). */
+  /** Groupe de lenses Camera Kit. */
   groupId: string;
   /** Nom affiché sous la vignette. */
   name: string;
-  /** Emoji / icône affichée dans le carrousel avant qu'on ait les vraies vignettes Snap. */
+  /** Emoji affiché si pas de vignette Snap. */
   icon: string;
+  /** Vignette fournie par Snap (lenses réelles uniquement). */
+  iconUrl?: string;
   category: LensCategory;
-  /** Aperçu web (CSS `filter` string). Ignoré sur natif — Camera Kit prend le relais. */
+  /** Aperçu CSS (`filter:`). `"none"` pour les lenses Snap — le moteur AR rend le vrai effet. */
   webPreview: string;
+  /** true = vraie lens AR Snap (rendue par Camera Kit, pas par CSS). */
+  isSnapLens?: boolean;
 };
 
 // Group ID du Demo Lens Group fourni par le portail Snap pour KIDI+.

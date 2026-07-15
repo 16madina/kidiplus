@@ -6,6 +6,10 @@ import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
 import { ensureCameraMicAccess } from "@/lib/media-permissions";
+import { isCameraKitSupported } from "@/lib/filters/camera-kit";
+import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
+import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
+import type { Lens } from "@/lib/filters/lenses-catalog";
 import {
   Room,
   RoomEvent,
@@ -94,7 +98,43 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const roomRef = useRef<Room | null>(null);
     const localVideoTrackRef = useRef<LocalVideoTrack | null>(null);
     const [state, setState] = useState<BroadcastStatus>("idle");
+    const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
     const appActive = useAppActive();
+    const { activeLens } = useFilter();
+    const activeLensRef = useRef<Lens>(activeLens);
+    activeLensRef.current = activeLens;
+
+    // Applique le bon pipeline vidéo sur la piste publiée :
+    // - lens Snap active → processeur Camera Kit (filtre AR + miroir selfie)
+    // - sinon → miroir simple (caméra avant) / rien (caméra arrière)
+    const applyHostPipeline = async (track: LocalVideoTrack, facing: CameraFacing) => {
+      const lens = activeLensRef.current;
+      try {
+        if (lens.isSnapLens && isCameraKitSupported()) {
+          const current = track.getProcessor();
+          if (current instanceof CameraKitVideoProcessor) {
+            await current.setLens(lens.lensId, lens.groupId);
+            return;
+          }
+          try { await track.stopProcessor(); } catch { /* none */ }
+          await track.setProcessor(
+            new CameraKitVideoProcessor({
+              lensId: lens.lensId,
+              groupId: lens.groupId,
+              mirror: facing === "user",
+            }),
+            true,
+          );
+          return;
+        }
+        // Pas de lens AR : retirer un éventuel processeur Camera Kit et
+        // remettre le miroir selfie standard.
+        await syncFrontCameraMirror(track, facing);
+      } catch (e) {
+        console.warn("[camera-kit] host pipeline failed", e);
+        try { await syncFrontCameraMirror(track, facing); } catch { /* ignore */ }
+      }
+    };
 
     // Preview: pause capture when cam off / backgrounded.
     // LiveKit room must stay connected when the host only toggles the camera —
@@ -190,7 +230,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             localVideoTrackRef.current = pub.track as LocalVideoTrack;
             track = pub.track as LocalVideoTrack;
           }
-          await syncFrontCameraMirror(track, applied);
+          await applyHostPipeline(track, applied);
           const videoEl = videoRef.current;
           if (videoEl) {
             try {
@@ -238,6 +278,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
         if (res.status === "granted") {
           streamRef.current = res.stream;
+          setPreviewStream(res.stream);
           if (videoRef.current) {
             videoRef.current.srcObject = res.stream;
             videoRef.current.play().catch(() => {});
@@ -258,6 +299,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           s.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
         }
+        setPreviewStream(null);
         if (videoRef.current) videoRef.current.srcObject = null;
       }
 
@@ -326,7 +368,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               localVideoTrackRef.current = t;
               void (async () => {
                 const applied = syncFacingFromTrack(t, facingRef.current);
-                await syncFrontCameraMirror(t, applied ?? facingRef.current);
+                await applyHostPipeline(t, applied ?? facingRef.current);
                 if (videoRef.current) {
                   t.attach(videoRef.current);
                   videoRef.current.play().catch(() => {});
@@ -366,7 +408,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           // Hardware may ignore facingMode (esp. after background) — sync UI
           // to what actually opened so the first flip works.
           const appliedFacing = syncFacingFromTrack(track, desiredFacing);
-          await syncFrontCameraMirror(track, appliedFacing ?? desiredFacing);
+          await applyHostPipeline(track, appliedFacing ?? desiredFacing);
           if (videoRef.current) {
             track.attach(videoRef.current);
             videoRef.current.play().catch(() => {});
@@ -487,7 +529,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           }
           localVideoTrackRef.current = track;
           const appliedFacing = syncFacingFromTrack(track, desiredFacing);
-          await syncFrontCameraMirror(track, appliedFacing ?? desiredFacing);
+          await applyHostPipeline(track, appliedFacing ?? desiredFacing);
           if (videoRef.current) {
             track.attach(videoRef.current);
             videoRef.current.muted = true;
@@ -509,6 +551,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
     }, [micEnabled, livekit]);
 
+    // Changement de filtre pendant le live : mettre à jour le pipeline de la
+    // piste publiée (les viewers voient la nouvelle lens instantanément).
+    useEffect(() => {
+      if (!livekit) return;
+      const track = localVideoTrackRef.current;
+      if (!track || state !== "granted" || !enabled) return;
+      void applyHostPipeline(track, lastAppliedFacingRef.current ?? facingRef.current);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeLens.lensId, activeLens.isSnapLens, livekit, state, enabled]);
+
     const showVideo = roomShouldRun && state === "granted" && enabled;
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
@@ -529,6 +581,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           mirrored={mirrored}
           showVideo={showVideo}
         />
+        {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
+            <video> brut quand une vraie lens Snap est sélectionnée. En live,
+            le filtre passe par le TrackProcessor — pas besoin d'overlay. */}
+        {!livekit && showVideo && (
+          <CameraKitPreview
+            stream={previewStream}
+            lens={activeLens}
+            mirrored={mirrored}
+          />
+        )}
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center">
             <div
