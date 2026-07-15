@@ -104,19 +104,33 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const activeLensRef = useRef<Lens>(activeLens);
     activeLensRef.current = activeLens;
 
+    // Clé du dernier pipeline appliqué (lens + facing) — évite de
+    // stopper/recréer le processeur quand rien n'a changé : chaque
+    // remplacement de processeur fait "cligner" la vidéo publiée.
+    const lastPipelineKeyRef = useRef<string>("");
+
     // Applique le bon pipeline vidéo sur la piste publiée :
     // - lens Snap active → processeur Camera Kit (filtre AR + miroir selfie)
     // - sinon → miroir simple (caméra avant) / rien (caméra arrière)
+    // Idempotent : ne touche à la piste que si l'état souhaité diffère de
+    // l'état actuel du processeur.
     const applyHostPipeline = async (track: LocalVideoTrack, facing: CameraFacing) => {
       const lens = activeLensRef.current;
+      const wantSnap = lens.isSnapLens === true && isCameraKitSupported();
+      lastPipelineKeyRef.current = `${wantSnap ? lens.lensId : "none"}:${facing}`;
       try {
-        if (lens.isSnapLens && isCameraKitSupported()) {
-          const current = track.getProcessor();
-          if (current instanceof CameraKitVideoProcessor) {
-            await current.setLens(lens.lensId, lens.groupId);
+        const current = track.getProcessor();
+        const isCameraKit = current instanceof CameraKitVideoProcessor;
+
+        if (wantSnap) {
+          if (isCameraKit) {
+            // Session AR déjà en place : on change juste la lens (aucun blink).
+            await (current as CameraKitVideoProcessor).setLens(lens.lensId, lens.groupId);
             return;
           }
-          try { await track.stopProcessor(); } catch { /* none */ }
+          if (current) {
+            try { await track.stopProcessor(); } catch { /* none */ }
+          }
           await track.setProcessor(
             new CameraKitVideoProcessor({
               lensId: lens.lensId,
@@ -127,9 +141,18 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           );
           return;
         }
-        // Pas de lens AR : retirer un éventuel processeur Camera Kit et
-        // remettre le miroir selfie standard.
-        await syncFrontCameraMirror(track, facing);
+
+        // Pas de lens AR souhaitée.
+        if (facing === "user") {
+          // Miroir déjà en place (et pas de Camera Kit) : rien à faire.
+          if (current && !isCameraKit) return;
+          await syncFrontCameraMirror(track, facing);
+          return;
+        }
+        // Caméra arrière : aucun processeur nécessaire.
+        if (current) {
+          try { await track.stopProcessor(); } catch { /* none */ }
+        }
       } catch (e) {
         console.warn("[camera-kit] host pipeline failed", e);
         try { await syncFrontCameraMirror(track, facing); } catch { /* ignore */ }
@@ -553,11 +576,18 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
     // Changement de filtre pendant le live : mettre à jour le pipeline de la
     // piste publiée (les viewers voient la nouvelle lens instantanément).
+    // Ne réagit QU'AUX vrais changements de lens — les transitions d'état
+    // (connexion, toggle caméra, flip) appliquent déjà le pipeline dans leur
+    // propre chemin ; re-appliquer ici ferait cligner la vidéo.
     useEffect(() => {
       if (!livekit) return;
       const track = localVideoTrackRef.current;
       if (!track || state !== "granted" || !enabled) return;
-      void applyHostPipeline(track, lastAppliedFacingRef.current ?? facingRef.current);
+      const facing = lastAppliedFacingRef.current ?? facingRef.current;
+      const wantSnap = activeLens.isSnapLens === true && isCameraKitSupported();
+      const key = `${wantSnap ? activeLens.lensId : "none"}:${facing}`;
+      if (key === lastPipelineKeyRef.current) return;
+      void applyHostPipeline(track, facing);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeLens.lensId, activeLens.isSnapLens, livekit, state, enabled]);
 
