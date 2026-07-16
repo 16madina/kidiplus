@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OpenRouteImport } from './routes/open'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as CommunityRouteImport } from './routes/community'
@@ -60,6 +62,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -88,6 +95,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const OpenRoute = OpenRouteImport.update({
   id: '/open',
   path: '/open',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EarningsRoute = EarningsRouteImport.update({
@@ -234,12 +246,14 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
+  '/help': typeof HelpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
@@ -271,12 +285,14 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
+  '/help': typeof HelpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
@@ -309,12 +325,14 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
+  '/help': typeof HelpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/safety': typeof SafetyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
@@ -348,12 +366,14 @@ export interface FileRouteTypes {
     | '/community'
     | '/download'
     | '/earnings'
+    | '/help'
     | '/open'
     | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
     | '/shop'
+    | '/support'
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
@@ -385,12 +405,14 @@ export interface FileRouteTypes {
     | '/community'
     | '/download'
     | '/earnings'
+    | '/help'
     | '/open'
     | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
     | '/shop'
+    | '/support'
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
@@ -422,12 +444,14 @@ export interface FileRouteTypes {
     | '/community'
     | '/download'
     | '/earnings'
+    | '/help'
     | '/open'
     | '/orders'
     | '/privacy'
     | '/reset-password'
     | '/safety'
     | '/shop'
+    | '/support'
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
@@ -460,12 +484,14 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   DownloadRoute: typeof DownloadRoute
   EarningsRoute: typeof EarningsRoute
+  HelpRoute: typeof HelpRoute
   OpenRoute: typeof OpenRoute
   OrdersRoute: typeof OrdersRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SafetyRoute: typeof SafetyRoute
   ShopRoute: typeof ShopRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   WalletRoute: typeof WalletRoute
@@ -512,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -552,6 +585,13 @@ declare module '@tanstack/react-router' {
       path: '/open'
       fullPath: '/open'
       preLoaderRoute: typeof OpenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/earnings': {
@@ -770,12 +810,14 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   DownloadRoute: DownloadRoute,
   EarningsRoute: EarningsRoute,
+  HelpRoute: HelpRoute,
   OpenRoute: OpenRoute,
   OrdersRoute: OrdersRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SafetyRoute: SafetyRoute,
   ShopRoute: ShopRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   WalletRoute: WalletRoute,
