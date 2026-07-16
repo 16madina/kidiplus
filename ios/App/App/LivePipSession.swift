@@ -185,13 +185,28 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         if connected {
             await teardownRoomOnly()
         }
+        // Ensure LiveKit can play remote host audio in the background PiP bubble.
+        // Without this, video PiP can appear while playout stays silent.
+        await MainActor.run {
+            AudioManager.shared.isSpeakerOutputPreferred = true
+            do {
+                try AVAudioSession.sharedInstance().setCategory(
+                    .playback,
+                    mode: .moviePlayback,
+                    options: []
+                )
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                print("[KiDi+] PiP audio session pre-connect failed: \(error)")
+            }
+        }
         room.add(delegate: self)
         do {
             try await room.connect(url: url, token: token)
             connected = true
             print("[KiDi+] LivePipSession connected, remotes=\(room.remoteParticipants.count)")
             await MainActor.run {
-                self.bindExistingRemoteVideo()
+                self.bindExistingRemoteTracks()
             }
         } catch {
             print("[KiDi+] LivePipSession connect failed: \(error)")
@@ -221,12 +236,22 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         connected = false
     }
 
-    private func bindExistingRemoteVideo() {
+    private func bindExistingRemoteTracks() {
         for participant in room.remoteParticipants.values {
             for publication in participant.trackPublications.values {
+                // Keep audio subscribed so host voice keeps playing in system PiP.
+                if publication.kind == .audio {
+                    Task {
+                        do {
+                            try await publication.set(subscribed: true)
+                            print("[KiDi+] LivePipSession audio track subscribed")
+                        } catch {
+                            print("[KiDi+] LivePipSession audio subscribe failed: \(error)")
+                        }
+                    }
+                }
                 if let track = publication.track as? VideoTrack {
                     setHostTrack(track)
-                    return
                 }
             }
         }
@@ -337,12 +362,13 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                 queue: .main
             ) { [weak self] _ in
                 guard let self else { return }
-                // Reactivate audio so background PiP is allowed.
+                // Keep exclusive playback focus so host audio continues in PiP.
+                // mixWithOthers can leave the bubble silent on some iPhones.
                 do {
                     try AVAudioSession.sharedInstance().setCategory(
                         .playback,
                         mode: .moviePlayback,
-                        options: [.mixWithOthers]
+                        options: []
                     )
                     try AVAudioSession.sharedInstance().setActive(true)
                 } catch {
@@ -392,10 +418,18 @@ final class LivePipSession: NSObject, @unchecked Sendable {
 
 extension LivePipSession: RoomDelegate {
     func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
+        if publication.kind == .audio {
+            print("[KiDi+] LivePipSession remote audio subscribed")
+            return
+        }
         guard let track = publication.track as? VideoTrack else { return }
         Task { @MainActor in
             self.setHostTrack(track)
         }
+    }
+
+    func room(_ room: Room, participant: RemoteParticipant, didUnpublishTrack publication: RemoteTrackPublication) {
+        // no-op — keep PiP session alive if host briefly republishes
     }
 }
 
