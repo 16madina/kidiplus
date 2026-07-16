@@ -66,35 +66,46 @@ export function LivePipController() {
   const expandRef = useRef(expand);
   const closeRef = useRef(close);
   const activeRef = useRef(active);
+  const userIdRef = useRef(user?.id);
+  const displayNameRef = useRef(profile?.display_name || profile?.handle || "viewer");
   expandRef.current = expand;
   closeRef.current = close;
   activeRef.current = active;
+  userIdRef.current = user?.id;
+  displayNameRef.current = profile?.display_name || profile?.handle || "viewer";
 
   const liveOpen = !!active;
   const roomName = active?.roomName ?? null;
-  /** iOS: native LiveKit connect is deferred until background so the WebView
-   *  is the only subscriber while the user watches in-app (avoids frozen first open). */
+  const roomNameRef = useRef(roomName);
+  roomNameRef.current = roomName;
+
+  /** iOS: native LiveKit session ready for system PiP outside the app. */
   const iosSessionReadyRef = useRef(false);
   const iosConnectInFlightRef = useRef<Promise<boolean> | null>(null);
 
   const ensureIosNativeSession = async (): Promise<boolean> => {
-    if (!isIosPipPlatform() || !roomName) return false;
+    if (!isIosPipPlatform()) return false;
+    const room = roomNameRef.current;
+    if (!room) return false;
     if (iosSessionReadyRef.current) return true;
     if (iosConnectInFlightRef.current) return iosConnectInFlightRef.current;
 
     const work = (async () => {
       try {
-        const identity = user?.id
-          ? `pip_${user.id.replace(/-/g, "").slice(0, 10)}`
+        const uid = userIdRef.current;
+        const identity = uid
+          ? `pip_${uid.replace(/-/g, "").slice(0, 10)}`
           : `guest_pip_${Math.random().toString(36).slice(2, 10)}`;
-        const name = profile?.display_name || profile?.handle || "viewer";
-        const session = await getToken(roomName, identity, name, "viewer");
+        const name = displayNameRef.current;
+        const session = await getToken(room, identity, name, "viewer");
+        // Room may have changed while we awaited the token.
+        if (roomNameRef.current !== room || !getPipHold()) return false;
         await pipSetEnabled(true, session);
         iosSessionReadyRef.current = true;
-        console.info("[pip] iOS native session ready (deferred)", { roomName, identity });
+        console.info("[pip] iOS native session ready", { room, identity });
         return true;
       } catch (e) {
-        console.warn("[pip] iOS deferred token/connect failed", e);
+        console.warn("[pip] iOS native token/connect failed", e);
         iosSessionReadyRef.current = false;
         return false;
       } finally {
@@ -128,15 +139,23 @@ export function LivePipController() {
       }
 
       // Android: enable immediately (WebView PiP — no second LiveKit room).
-      // iOS: only mark hold; connect native LiveKit when the app backgrounds.
       if (isAndroidPipPlatform()) {
         await pipSetEnabled(true);
         return;
       }
-      // iOS — tear down any stale native room from a previous live, but do not
-      // connect yet (that froze the in-app WebView on first open).
+
+      // iOS — tear down any stale native room from a previous live first.
+      // IMPORTANT: do NOT depend on profile/user name here — profile loading
+      // used to re-run this effect and kill the native session mid-live, so
+      // Home→PiP had nothing ready.
       iosSessionReadyRef.current = false;
       await pipSetEnabled(false);
+      // Pre-connect while still foreground. Keep delay short: users often
+      // leave within a few seconds; 5s was too late and WebView networking
+      // then fails in the background.
+      await new Promise((r) => setTimeout(r, 1200));
+      if (cancelled || !getPipHold() || !activeRef.current) return;
+      await ensureIosNativeSession();
     })();
     return () => {
       cancelled = true;
@@ -147,7 +166,9 @@ export function LivePipController() {
       void pipSetEnabled(false);
       clearSystemPipUi();
     };
-  }, [liveOpen, roomName, user?.id, profile?.display_name, profile?.handle]);
+    // Only re-bind when the live room opens/closes — not when profile hydrates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveOpen, roomName]);
 
   // Android native injects kidi:pip-prepare before enterPictureInPictureMode.
   useEffect(() => {
@@ -182,7 +203,7 @@ export function LivePipController() {
           void (async () => {
             const ok = await ensureIosNativeSession();
             if (!ok || !getPipHold() || !activeRef.current) return;
-            for (const delay of [0, 300, 800, 1600, 3000]) {
+            for (const delay of [0, 200, 500, 1000, 2000, 3500]) {
               if (delay) await new Promise((r) => setTimeout(r, delay));
               if (!getPipHold() || !activeRef.current) return;
               try {
@@ -223,9 +244,8 @@ export function LivePipController() {
     return () => {
       handle?.remove();
     };
-    // ensureIosNativeSession closes over roomName/user — rebind when live changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveOpen, roomName, user?.id]);
+  }, [liveOpen, roomName]);
 
   useEffect(() => {
     if (!isNativePipPlatform()) return;

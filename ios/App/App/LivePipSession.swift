@@ -99,6 +99,7 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                 self.schedulePipRetries()
                 return
             }
+            // Must be visible before startPictureInPicture / auto-inline.
             self.ensureSourceViewsAttached()
             self.ensurePipController(forceRebuild: false)
             guard let pip = self.pipController else {
@@ -120,15 +121,25 @@ final class LivePipSession: NSObject, @unchecked Sendable {
             } else {
                 possible = true
             }
+            // If still "impossible", rebuild the controller once — stale
+            // ContentSource after hide/show of the source view is common.
+            if !possible {
+                print("[KiDi+] PiP not possible yet — rebuilding controller")
+                self.ensurePipController(forceRebuild: true)
+                self.pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+            }
+            let controller = self.pipController ?? pip
             print("[KiDi+] starting Picture in Picture… possible=\(possible)")
-            pip.startPictureInPicture()
+            controller.startPictureInPicture()
             self.schedulePipRetries()
         }
     }
 
     private func schedulePipRetries() {
         cancelPipRetries()
-        let delays: [TimeInterval] = [0.4, 1.0, 2.0, 4.0]
+        // Aggressive retries while suspended — first frames / track subscribe
+        // often land a beat after Home.
+        let delays: [TimeInterval] = [0.25, 0.6, 1.2, 2.0, 3.5, 5.5]
         for delay in delays {
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
@@ -139,6 +150,7 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                     return
                 }
                 print("[KiDi+] PiP retry after \(delay)s")
+                self.ensureSourceViewsAttached()
                 self.startPipIfPossible()
             }
             pipRetryWorkItems.append(work)
@@ -330,12 +342,15 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                     try AVAudioSession.sharedInstance().setCategory(
                         .playback,
                         mode: .moviePlayback,
-                        options: []
+                        options: [.mixWithOthers]
                     )
                     try AVAudioSession.sharedInstance().setActive(true)
                 } catch {
                     print("[KiDi+] AVAudioSession reactivate failed: \(error)")
                 }
+                // Source view must be visible in the hierarchy for
+                // isPictureInPicturePossible — it was hidden on last return.
+                self.ensureSourceViewsAttached()
                 self.startPipIfPossible()
             }
         }
@@ -345,7 +360,9 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.startPipIfPossible()
+                guard let self else { return }
+                self.ensureSourceViewsAttached()
+                self.startPipIfPossible()
             }
         }
         if activeObserver == nil {
@@ -448,11 +465,10 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer, @
         view = renderingView
     }
 
-    var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize {
-        let s = view.bounds.size
-        return s.width > 1 && s.height > 1 ? s : CGSize(width: 118, height: 210)
-    }
+    // Keep frames flowing even when the source view is tiny / briefly hidden —
+    // adaptive stream was pausing video before Home→PiP could start.
+    var isAdaptiveStreamEnabled: Bool { false }
+    var adaptiveStreamSize: CGSize { CGSize(width: 270, height: 480) }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
@@ -473,11 +489,8 @@ private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewC
         preferredContentSize = CGSize(width: 9, height: 16)
     }
 
-    var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize {
-        let s = view.bounds.size
-        return s.width > 1 && s.height > 1 ? s : CGSize(width: 270, height: 480)
-    }
+    var isAdaptiveStreamEnabled: Bool { false }
+    var adaptiveStreamSize: CGSize { CGSize(width: 270, height: 480) }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
