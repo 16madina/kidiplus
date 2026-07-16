@@ -39,6 +39,7 @@ import { pushStatusBarLight } from "@/lib/native";
 import { useLiveRoom } from "@/lib/live-room";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
+import { fetchOrdersForLive, subscribeOrders } from "@/lib/orders-db";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
   createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb, touchLiveHostInDb,
@@ -410,21 +411,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
   };
 
-  // Totals from finalized sales.
-  const totalRevenue = useMemo(
-    () => room.products.reduce((sum, p) => {
-      if (p.mode === "auction" && p.status === "sold") return sum + Number(p.final_price ?? 0);
-      if (p.mode === "fixed") return sum + Number(p.price) * (1 - Math.max(0, p.stock)) * 0 + 0;
-      return sum;
-    }, 0) + room.products.reduce((s, p) => {
-      // fixed sales: (initial stock - current stock) × price. We don't have initial stock;
-      // approximate via sold_to_identity + price when status='out'. Best-effort UI number.
-      return s;
-    }, 0),
-    [room.products],
-  );
+  // Live sales counter — paid orders for this live (realtime). The previous
+  // product-stock approximation always returned 0 for fixed-price sales
+  // (`* 0 + 0`), so the "Ventes" pill never moved while viewers kept buying.
+  const [liveSales, setLiveSales] = useState<{ revenue: number; count: number }>({
+    revenue: 0,
+    count: 0,
+  });
+  useEffect(() => {
+    if (!b.liveId || !user?.id) {
+      setLiveSales({ revenue: 0, count: 0 });
+      return;
+    }
+    let alive = true;
+    const load = async () => {
+      const rows = await fetchOrdersForLive(b.liveId!);
+      if (!alive) return;
+      const paid = rows.filter((r) => r.status === "paid");
+      setLiveSales({
+        revenue: paid.reduce((s, o) => s + Number(o.amount), 0),
+        count: paid.length,
+      });
+    };
+    void load();
+    const unsub = subscribeOrders({ sellerId: user.id }, () => void load());
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [b.liveId, user?.id]);
 
-  const soldCount = room.products.filter((p) => p.status === "sold" || p.status === "out").length;
+  const totalRevenue = liveSales.revenue;
+  const soldCount = liveSales.count;
 
   // Aggregate gifts received in-session (from realtime broadcast frames).
   const [giftStats, setGiftStats] = useState<{ count: number; sellerNet: number }>({ count: 0, sellerNet: 0 });
