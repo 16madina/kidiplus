@@ -240,10 +240,11 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         for participant in room.remoteParticipants.values {
             for publication in participant.trackPublications.values {
                 // Keep audio subscribed so host voice keeps playing in system PiP.
-                if publication.kind == .audio {
+                // trackPublications is typed as TrackPublication — cast to remote.
+                if publication.kind == .audio, let remote = publication as? RemoteTrackPublication {
                     Task {
                         do {
-                            try await publication.set(subscribed: true)
+                            try await remote.set(subscribed: true)
                             print("[KiDi+] LivePipSession audio track subscribed")
                         } catch {
                             print("[KiDi+] LivePipSession audio subscribe failed: \(error)")
