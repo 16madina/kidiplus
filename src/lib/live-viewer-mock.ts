@@ -38,10 +38,17 @@ export type ChatMsg = {
   color: string;
   text: string;
   system?: boolean;
+  /** Structured system lines — UI localizes (e.g. join). */
+  systemKind?: "join";
   /** Profile UUID when the sender is signed in — needed for mute/block. */
   userId?: string;
   isModerator?: boolean;
   isHost?: boolean;
+  replyTo?: {
+    user: string;
+    userId?: string;
+    text: string;
+  };
 };
 
 let msgId = 0;

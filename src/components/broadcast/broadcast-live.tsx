@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  Eye, Package, AlertTriangle, X, Shield, Trash2,
+  Eye, Package, AlertTriangle, X, Shield, Trash2, Send,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
 import { FiltersCarousel } from "./filters-carousel";
@@ -28,6 +28,7 @@ import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
+import { GiftComboFeed } from "@/components/live-viewer/gift-combo-feed";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
@@ -452,17 +453,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (!g) return;
     if (seenGiftIdsRef.current.has(g.id)) return;
     seenGiftIdsRef.current.add(g.id);
-    // Resolve price from the local catalog (same as server) to derive seller_net.
+    // Chat line is added by useLiveRoom for everyone; here we only update host stats.
     void import("@/lib/gifts").then(({ giftByKey }) => {
       const def = giftByKey(g.giftKey);
       const price = def?.prices[cur] ?? 0;
       const net = price * 0.7;
       setGiftStats((s) => ({ count: s.count + 1, sellerNet: s.sellerNet + net }));
-      const emoji = def?.emoji ?? "🎁";
-      const name = def ? t(def.nameKey) : t("gifts.name.rose");
-      room.systemMessage(`${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: g.senderName, gift: name })}`);
     });
-  }, [room.lastGift, room, t, cur]);
+  }, [room.lastGift, cur]);
 
   const featured = room.products.find((p) => p.id === featuredId) ?? room.products[0];
 
@@ -591,12 +589,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       color: c.color,
       text: c.text,
       system: c.system,
+      systemKind: c.systemKind,
       userId: c.userId,
+      replyTo: c.replyTo,
       isModerator:
         !!c.isModerator ||
         (!!c.userId && moderators.some((m) => m.userId === c.userId)),
       isHost: !!c.isHost || (!!c.userId && c.userId === user?.id),
     }));
+
+  const [hostDraft, setHostDraft] = useState("");
+  const [hostReplyTo, setHostReplyTo] = useState<ChatMsg | null>(null);
+  const sendHostChat = () => {
+    const txt = hostDraft.trim();
+    if (!txt) return;
+    room.sendChat(
+      txt,
+      hostReplyTo
+        ? {
+            user: hostReplyTo.user,
+            text: hostReplyTo.text,
+            ...(hostReplyTo.userId ? { userId: hostReplyTo.userId } : {}),
+          }
+        : undefined,
+    );
+    setHostDraft("");
+    setHostReplyTo(null);
+    haptic.light();
+  };
 
   return (
     <motion.div
@@ -784,6 +804,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
+      <GiftComboFeed trigger={room.lastGift} bottomOffsetPx={180} />
       <GiftAnimationsLayer trigger={room.lastGift} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
@@ -802,9 +823,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         messages={chatMessages}
         moderation={{
           canModerate: true,
+          canReport: true,
           selfUserId: user?.id ?? null,
           hostUserId: user?.id ?? null,
           mutedIds: chatMutes,
+          onReply: (msg) => {
+            haptic.light();
+            setHostReplyTo(msg);
+          },
           onMuteUser: async (userId, displayName) => {
             if (!b.liveId || !user) return;
             const res = await muteLiveChatUser(b.liveId, userId, user.id);
@@ -996,6 +1022,81 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {/* Host chat composer — same comments as viewers (reply supported). */}
+      <div
+        className="absolute inset-x-0 z-30 flex flex-col gap-1.5 px-3"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom) + 10px)",
+          paddingRight: "72px",
+        }}
+      >
+        {hostReplyTo && (
+          <div
+            className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-semibold">
+                {t("live.replyingTo", { name: hostReplyTo.user, defaultValue: "Réponse à {{name}}" })}
+              </span>
+              <span className="text-white/65"> · {hostReplyTo.text}</span>
+            </div>
+            <Press
+              onClick={() => setHostReplyTo(null)}
+              aria-label={t("common.cancel", "Annuler")}
+              className="!min-h-7 h-7 w-7 shrink-0 rounded-full text-white/80"
+            >
+              <X size={14} />
+            </Press>
+          </div>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendHostChat();
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            value={hostDraft}
+            onChange={(e) => setHostDraft(e.target.value)}
+            placeholder={
+              hostReplyTo
+                ? t("live.replyPlaceholder", {
+                    name: hostReplyTo.user,
+                    defaultValue: "Répondre à {{name}}…",
+                  })
+                : t("live.chatPlaceholder", "Écris un message…")
+            }
+            className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          />
+          <Press
+            onClick={sendHostChat}
+            aria-label={t("live.sendMessage", "Envoyer")}
+            className="h-11 w-11 shrink-0 rounded-full text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            <Send size={17} />
+          </Press>
+        </form>
+      </div>
 
       {/* Bottom area is chat + featured card only. Mic / cam / flip /
           moderators / add live on the right tool rail. Filters removed. */}

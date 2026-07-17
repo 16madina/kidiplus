@@ -1,5 +1,5 @@
-// Client wrapper around the send_gift RPC + realtime feed for a live.
-import { useEffect, useState } from "react";
+// Client wrapper around the send_gift RPC + helpers for a live.
+// Gift realtime (broadcast + postgres backup) lives in `useLiveRoom`.
 import { supabase } from "@/integrations/supabase/client";
 import type { GiftKey } from "@/lib/gifts";
 
@@ -113,54 +113,3 @@ export async function fetchLiveGiftsTotal(liveId: string): Promise<{
   };
 }
 
-/** Subscribe to gift INSERTs for a live (resilient backup for the LiveKit broadcast). */
-export function useLiveGiftsFeed(liveId: string | null | undefined): {
-  lastGift: LiveGiftEvent | null;
-} {
-  const [lastGift, setLastGift] = useState<LiveGiftEvent | null>(null);
-  useEffect(() => {
-    if (!liveId) return;
-    const ch = supabase
-      .channel(`live-gifts:${liveId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "live_gifts", filter: `live_id=eq.${liveId}` },
-        (payload) => {
-          const row = payload.new as {
-            id: string;
-            live_id: string;
-            sender_id: string;
-            gift_key: string;
-            amount: number;
-            currency: string;
-            seller_net: number;
-            created_at: string;
-          };
-          // Enrich with sender name (best-effort).
-          void (async () => {
-            const { data } = await supabase
-              .from("profiles")
-              .select("display_name, handle")
-              .eq("id", row.sender_id)
-              .maybeSingle();
-            setLastGift({
-              id: row.id,
-              liveId: row.live_id,
-              senderId: row.sender_id,
-              senderName: data?.display_name || data?.handle || "invité",
-              giftKey: row.gift_key,
-              amount: Number(row.amount),
-              currency: row.currency,
-              sellerNet: Number(row.seller_net),
-              createdAt: new Date(row.created_at).getTime(),
-            });
-          })();
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [liveId]);
-  return { lastGift };
-}

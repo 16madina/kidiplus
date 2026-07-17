@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Ban, VolumeX, Flag } from "lucide-react";
+import { ChevronDown, Ban, VolumeX, Flag, Reply } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
@@ -27,6 +27,8 @@ export type LiveChatModeration = {
   onBlockUser?: (userId: string, displayName: string) => void;
   /** Called with the message id when the viewer taps "Signaler". */
   onReportMessage?: (messageId: string) => void;
+  /** Reply to a comment (TikTok-style). */
+  onReply?: (msg: ChatMsg) => void;
 };
 
 export function LiveChat({
@@ -104,15 +106,27 @@ export function LiveChat({
     [],
   );
 
-  // Menu opens whenever the viewer can either moderate OR report the message.
-  // Apple 1.2: any signed-in user must be able to flag/block chat UGC — so
-  // `canActOn` returns true for regular viewers too when `canReport` is set.
-  const canActOn = (m: ChatMsg) => {
+  const canModerateMsg = (m: ChatMsg) => {
     if (!m.userId || m.system) return false;
     if (m.userId === moderation?.selfUserId) return false;
     if (m.userId === moderation?.hostUserId) return false;
-    return !!(moderation?.canModerate || moderation?.canReport);
+    return !!moderation?.canModerate;
   };
+
+  const canReportMsg = (m: ChatMsg) => {
+    if (!m.userId || m.system) return false;
+    if (m.userId === moderation?.selfUserId) return false;
+    return !!moderation?.canReport;
+  };
+
+  const canReplyMsg = (m: ChatMsg) => {
+    if (m.system || !moderation?.onReply) return false;
+    if (m.userId && m.userId === moderation.selfUserId) return false;
+    return !!m.user;
+  };
+
+  const canOpenMenu = (m: ChatMsg) =>
+    canReplyMsg(m) || canModerateMsg(m) || canReportMsg(m);
 
   const { t } = useTranslation();
 
@@ -137,7 +151,7 @@ export function LiveChat({
                 <div key={m.id}>
                   <ChatBubble
                     msg={m}
-                    canModerate={canActOn(m)}
+                    interactive={canOpenMenu(m)}
                     alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
                     onOpenMenu={() => setMenuMsg(m)}
                   />
@@ -155,7 +169,7 @@ export function LiveChat({
                   >
                     <ChatBubble
                       msg={m}
-                      canModerate={canActOn(m)}
+                      interactive={canOpenMenu(m)}
                       alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
                       onOpenMenu={() => setMenuMsg(m)}
                     />
@@ -193,7 +207,7 @@ export function LiveChat({
       </div>
 
       <AnimatePresence>
-        {menuMsg && menuMsg.userId && (
+        {menuMsg && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -214,8 +228,21 @@ export function LiveChat({
                 {" · "}
                 <span className="line-clamp-1">{menuMsg.text}</span>
               </div>
-              {/* Signaler — visible pour tout viewer connecté (Apple 1.2). */}
-              {moderation?.onReportMessage && (
+              {canReplyMsg(menuMsg) && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
+                  onClick={() => {
+                    const msg = menuMsg;
+                    setMenuMsg(null);
+                    moderation?.onReply?.(msg);
+                  }}
+                >
+                  <Reply size={18} />
+                  {t("live.reply", "Répondre")}
+                </button>
+              )}
+              {canReportMsg(menuMsg) && moderation?.onReportMessage && (
                 <button
                   type="button"
                   className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
@@ -229,7 +256,7 @@ export function LiveChat({
                   {t("report.action", "Signaler")}
                 </button>
               )}
-              {moderation?.canModerate &&
+              {canModerateMsg(menuMsg) &&
                 !(menuMsg.userId && moderation?.mutedIds?.has(menuMsg.userId)) && (
                 <button
                   type="button"
@@ -245,19 +272,21 @@ export function LiveChat({
                   {t("moderator.muteInLive", "Couper les commentaires")}
                 </button>
               )}
-              <button
-                type="button"
-                className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-black/5"
-                onClick={() => {
-                  const id = menuMsg.userId!;
-                  const name = menuMsg.user;
-                  setMenuMsg(null);
-                  moderation?.onBlockUser?.(id, name);
-                }}
-              >
-                <Ban size={18} />
-                {t("moderator.blockUser", "Bloquer")}
-              </button>
+              {(canModerateMsg(menuMsg) || canReportMsg(menuMsg)) && menuMsg.userId && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-black/5"
+                  onClick={() => {
+                    const id = menuMsg.userId!;
+                    const name = menuMsg.user;
+                    setMenuMsg(null);
+                    moderation?.onBlockUser?.(id, name);
+                  }}
+                >
+                  <Ban size={18} />
+                  {t("moderator.blockUser", "Bloquer")}
+                </button>
+              )}
               <button
                 type="button"
                 className="w-full border-t px-4 py-3.5 text-[15px] font-semibold text-muted-foreground active:bg-black/5"
@@ -275,16 +304,25 @@ export function LiveChat({
 
 const ChatBubble = memo(function ChatBubble({
   msg,
-  canModerate,
+  interactive,
   alreadyMuted,
   onOpenMenu,
 }: {
   msg: ChatMsg;
-  canModerate?: boolean;
+  interactive?: boolean;
   alreadyMuted?: boolean;
   onOpenMenu?: () => void;
 }) {
+  const { t } = useTranslation();
+
   if (msg.system) {
+    const label =
+      msg.systemKind === "join"
+        ? t("live.userJoined", {
+            name: msg.text,
+            defaultValue: "{{name}} a rejoint",
+          })
+        : msg.text;
     return (
       <div
         className="self-start rounded-full px-2.5 py-1 text-[11px] font-semibold text-white"
@@ -295,22 +333,22 @@ const ChatBubble = memo(function ChatBubble({
           textShadow: "0 1px 3px rgba(0,0,0,0.6)",
         }}
       >
-        {msg.text}
+        {label}
       </div>
     );
   }
 
   const open = () => {
-    if (canModerate) onOpenMenu?.();
+    if (interactive) onOpenMenu?.();
   };
 
   return (
     <button
       type="button"
-      disabled={!canModerate}
+      disabled={!interactive}
       onClick={open}
       onContextMenu={(e) => {
-        if (!canModerate) return;
+        if (!interactive) return;
         e.preventDefault();
         open();
       }}
@@ -324,6 +362,12 @@ const ChatBubble = memo(function ChatBubble({
         {msg.user.slice(0, 1).toUpperCase()}
       </div>
       <div className="min-w-0 text-[13px] leading-snug">
+        {msg.replyTo ? (
+          <div className="mb-0.5 truncate text-[11px] font-medium text-white/65">
+            ↪ {msg.replyTo.user}
+            {msg.replyTo.text ? ` · ${msg.replyTo.text}` : ""}
+          </div>
+        ) : null}
         <span className="font-semibold" style={{ color: msg.color }}>
           {msg.user}
         </span>

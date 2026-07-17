@@ -33,6 +33,7 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { GiftComboFeed } from "./gift-combo-feed";
 import { BottomSheet } from "./bottom-sheet";
 import { WinnerReveal } from "./winner-reveal";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
@@ -818,6 +819,7 @@ function MockLiveViewerScreen() {
       </div>
 
       {/* Gift animations overlay */}
+      <GiftComboFeed trigger={giftEvt} />
       <GiftAnimationsLayer trigger={giftEvt} />
 
       {/* Floating hearts */}

@@ -5,12 +5,14 @@
 // Ephemeral events (broadcast):
 //   - chat  { user, color, text, ts }
 //   - heart { }
+//   - gift  { id, giftKey, senderId, senderName, ts }  (id = live_gifts.id)
 //   - auction:start { productId, deadlineMs, timerSec }
 //   - auction:end   { productId, winnerName, finalPrice }
 //
 // Durable events (postgres_changes):
 //   - live_products UPDATE — price / status / stock
 //   - live_bids     INSERT — bidder name + amount
+//   - live_gifts    INSERT — backup path for gift anim/chat if broadcast drops
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,18 +47,28 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export type ChatReplyTo = {
+  user: string;
+  userId?: string;
+  text: string;
+};
+
 export type ChatEvt = {
   id: string;
   user: string;
   color: string;
   text: string;
   system?: boolean;
+  /** Structured system lines — UI localizes (e.g. "{{name}} a rejoint"). */
+  systemKind?: "join";
   /** Profile UUID when identity is a signed-in user. */
   userId?: string;
   /** True when the sender is a live moderator (TikTok-style chat badge). */
   isModerator?: boolean;
   /** True when the sender is the live host. */
   isHost?: boolean;
+  /** Optional reply target (TikTok-style quote). */
+  replyTo?: ChatReplyTo;
 };
 
 export type AuctionStartEvt = {
@@ -88,6 +100,7 @@ export type AuctionExtendEvt = {
 };
 
 export type GiftEvt = {
+  /** Prefer the DB `live_gifts.id` so broadcast + postgres backup can dedupe. */
   id: string;
   giftKey: string;
   senderId: string;
@@ -123,9 +136,15 @@ export type LiveRoomState = {
     auctionRound: number;
   } | null;
   lastGift: GiftEvt | null;
-  sendChat: (text: string) => void;
+  sendChat: (text: string, replyTo?: ChatReplyTo) => void;
   sendHeart: () => void;
-  broadcastGift: (evt: Omit<GiftEvt, "ts" | "id">) => void;
+  /** Pass `id` = RPC `gift_id` so anim/chat stay in sync with the DB backup feed. */
+  broadcastGift: (evt: {
+    id?: string;
+    giftKey: string;
+    senderId: string;
+    senderName: string;
+  }) => void;
   broadcastAuctionStart: (evt: AuctionStartEvt) => void;
   broadcastAuctionEnd: (evt: AuctionEndEvt) => void;
   broadcastAuctionExtend: (evt: Omit<AuctionExtendEvt, "ts">) => void;
@@ -173,12 +192,31 @@ export function useLiveRoom(params: {
   const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const readyRef = useRef(false);
+  /** One "X joined" announcement per viewer session (not on every reconnect). */
+  const joinAnnouncedRef = useRef(false);
+  /** Deduplicate gift events across broadcast + postgres_changes. */
+  const seenGiftIdsRef = useRef<Set<string>>(new Set());
+  const ingestGiftRef = useRef<(evt: GiftEvt) => void>(() => {});
+  ingestGiftRef.current = (evt: GiftEvt) => {
+    if (!evt?.id || !evt.giftKey) return;
+    if (seenGiftIdsRef.current.has(evt.id)) return;
+    seenGiftIdsRef.current.add(evt.id);
+    if (seenGiftIdsRef.current.size > 200) {
+      const arr = Array.from(seenGiftIdsRef.current);
+      seenGiftIdsRef.current = new Set(arr.slice(arr.length - 100));
+    }
+    setLastGift(evt);
+  };
 
   // Drop ephemeral room state whenever the live changes — otherwise a prior
   // auction:end / bid / countdown can leak into the next live (or a re-open)
   // and replay confetti / winner reveal for late joiners.
   useEffect(() => {
     setReady(false);
+    readyRef.current = false;
+    joinAnnouncedRef.current = false;
+    seenGiftIdsRef.current = new Set();
     setViewerCount(1);
     setPresentViewers([]);
     setChat([]);
@@ -374,6 +412,25 @@ export function useLiveRoom(params: {
         return next.length > 60 ? next.slice(next.length - 60) : next;
       });
     });
+    ch.on("broadcast", { event: "join" }, ({ payload }) => {
+      const p = payload as { id?: string; name?: string; userId?: string };
+      const name = String(p?.name ?? "").trim();
+      if (!name) return;
+      const evt: ChatEvt = {
+        id: p.id || uid(),
+        user: "",
+        color: "",
+        text: name,
+        system: true,
+        systemKind: "join",
+        ...(p.userId ? { userId: p.userId } : {}),
+      };
+      setChat((prev) => {
+        if (prev.some((m) => m.id === evt.id)) return prev;
+        const next = [...prev, evt];
+        return next.length > 60 ? next.slice(next.length - 60) : next;
+      });
+    });
     ch.on("broadcast", { event: "heart" }, () => {
       setHeartTick((n) => n + 1);
     });
@@ -406,8 +463,49 @@ export function useLiveRoom(params: {
     });
     ch.on("broadcast", { event: "gift" }, ({ payload }) => {
       const p = payload as GiftEvt;
-      setLastGift(p);
+      ingestGiftRef.current(p);
     });
+
+    // Durable backup: if the ephemeral broadcast is dropped, every client
+    // still learns about the gift from the live_gifts INSERT (same gift id).
+    ch.on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "live_gifts",
+        filter: `live_id=eq.${liveId}`,
+      },
+      (payload) => {
+        const row = payload.new as {
+          id: string;
+          sender_id: string;
+          gift_key: string;
+          created_at?: string;
+        };
+        if (!row?.id || !row.gift_key) return;
+        void (async () => {
+          let senderName = "invité";
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("display_name, handle")
+              .eq("id", row.sender_id)
+              .maybeSingle();
+            senderName = data?.display_name || data?.handle || senderName;
+          } catch {
+            /* best-effort */
+          }
+          ingestGiftRef.current({
+            id: row.id,
+            giftKey: row.gift_key,
+            senderId: row.sender_id,
+            senderName,
+            ts: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+          });
+        })();
+      },
+    );
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
@@ -442,13 +540,38 @@ export function useLiveRoom(params: {
     ch.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         retryDelay = 1_000;
+        readyRef.current = true;
         await ch.track({ identity, name: displayName, host: isHost, joined_at: Date.now() });
         setReady(true);
+        // TikTok-style join line for viewers (not the host, once per session).
+        if (!isHost && !joinAnnouncedRef.current) {
+          joinAnnouncedRef.current = true;
+          const joinPayload = {
+            id: uid(),
+            name: displayName,
+            ...(UUID_RE.test(identity) ? { userId: identity } : {}),
+          };
+          const joinEvt: ChatEvt = {
+            id: joinPayload.id,
+            user: "",
+            color: "",
+            text: displayName,
+            system: true,
+            systemKind: "join",
+            ...(joinPayload.userId ? { userId: joinPayload.userId } : {}),
+          };
+          setChat((prev) => {
+            const next = [...prev, joinEvt];
+            return next.length > 60 ? next.slice(next.length - 60) : next;
+          });
+          void ch.send({ type: "broadcast", event: "join", payload: joinPayload });
+        }
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         // Supabase realtime doesn't auto-resubscribe on error/close — do it
         // ourselves with exponential backoff so a network blip during a
         // live doesn't kill chat/hearts/presence for the rest of the
         // session. 15s ceiling keeps recovery fast without stampeding.
+        readyRef.current = false;
         setReady(false);
         if (retryTimer != null) return;
         retryTimer = setTimeout(() => {
@@ -462,6 +585,7 @@ export function useLiveRoom(params: {
 
     return () => {
       if (retryTimer != null) clearTimeout(retryTimer);
+      readyRef.current = false;
       setReady(false);
       setPresentViewers([]);
       supabase.removeChannel(ch);
@@ -498,13 +622,45 @@ export function useLiveRoom(params: {
       lastBid,
       lastGift,
       broadcastGift: (evt) => {
-        const full: GiftEvt = { ...evt, id: uid(), ts: Date.now() };
-        setLastGift(full);
-        void channelRef.current?.send({ type: "broadcast", event: "gift", payload: full });
+        const full: GiftEvt = {
+          giftKey: evt.giftKey,
+          senderId: evt.senderId,
+          senderName: evt.senderName,
+          id: evt.id || uid(),
+          ts: Date.now(),
+        };
+        ingestGiftRef.current(full);
+        // Retry while the channel is reconnecting — money already moved via RPC;
+        // postgres_changes is the backup if every attempt still fails.
+        void (async () => {
+          for (let attempt = 0; attempt < 6; attempt++) {
+            const ch = channelRef.current;
+            if (ch && readyRef.current) {
+              try {
+                const status = await ch.send({
+                  type: "broadcast",
+                  event: "gift",
+                  payload: full,
+                });
+                if (status === "ok") return;
+              } catch {
+                /* retry */
+              }
+            }
+            await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+          }
+        })();
       },
-      sendChat: (text: string) => {
+      sendChat: (text: string, replyTo?: ChatReplyTo) => {
         const trimmed = text.trim();
         if (!trimmed) return;
+        const reply = replyTo
+          ? {
+              user: replyTo.user,
+              text: replyTo.text.trim().slice(0, 120),
+              ...(replyTo.userId ? { userId: replyTo.userId } : {}),
+            }
+          : undefined;
         const evt: ChatEvt = {
           id: uid(),
           user: displayName,
@@ -513,6 +669,7 @@ export function useLiveRoom(params: {
           ...(UUID_RE.test(identity) ? { userId: identity } : {}),
           ...(isModerator && !isHost ? { isModerator: true } : {}),
           ...(isHost ? { isHost: true } : {}),
+          ...(reply ? { replyTo: reply } : {}),
         };
         // Optimistic local echo + broadcast to others.
         setChat((prev) => [...prev, evt].slice(-60));

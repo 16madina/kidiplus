@@ -56,8 +56,9 @@ import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
 import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { GiftComboFeed } from "./gift-combo-feed";
 import { sendGiftRpc } from "@/lib/live-gifts-db";
-import { giftByKey, type GiftKey } from "@/lib/gifts";
+import type { GiftKey } from "@/lib/gifts";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { logLiveInteraction } from "@/lib/interactions-db";
 
@@ -322,9 +323,11 @@ export function RealLiveViewerScreen() {
           color: c.color,
           text: c.text,
           system: c.system,
+          systemKind: c.systemKind,
           userId: c.userId,
           isModerator: !!c.isModerator,
           isHost: !!c.isHost || (!!c.userId && c.userId === active?.sellerId),
+          replyTo: c.replyTo,
         })),
     ],
     [localMessages, room.chat, chatMutes, blockedIdsForChat, active?.sellerId],
@@ -353,21 +356,13 @@ export function RealLiveViewerScreen() {
       return;
     }
     haptic.success();
-    // Local echo + broadcast to everyone in the room. Also inserts a chat line.
-    room.broadcastGift({ giftKey: key, senderId: user.id, senderName: displayName });
-    const gDef = giftByKey(key);
-    const emoji = gDef?.emoji ?? "🎁";
-    const giftName = t(gDef?.nameKey ?? "gifts.name.rose");
-    setLocalMessages((prev) => [
-      ...prev,
-      {
-        id: `gift-${res.giftId}`,
-        user: "",
-        color: "",
-        text: `${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: displayName, gift: giftName })}`,
-        system: true,
-      },
-    ]);
+    // Use DB gift id so broadcast + postgres backup dedupe to one animation + chat.
+    room.broadcastGift({
+      id: res.giftId,
+      giftKey: key,
+      senderId: user.id,
+      senderName: displayName,
+    });
   };
 
 
@@ -719,6 +714,7 @@ export function RealLiveViewerScreen() {
 
   // Composer
   const [draft, setDraft] = useState("");
+  const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const send = () => {
     if (liveEnded) return;
     if (isGuest) { openAuth(); return; }
@@ -728,8 +724,18 @@ export function RealLiveViewerScreen() {
     }
     const txt = draft.trim();
     if (!txt) return;
-    room.sendChat(txt);
+    room.sendChat(
+      txt,
+      replyTo
+        ? {
+            user: replyTo.user,
+            text: replyTo.text,
+            ...(replyTo.userId ? { userId: replyTo.userId } : {}),
+          }
+        : undefined,
+    );
     setDraft("");
+    setReplyTo(null);
   };
 
 
@@ -927,6 +933,11 @@ export function RealLiveViewerScreen() {
             selfUserId: user?.id ?? null,
             hostUserId: active.sellerId ?? null,
             mutedIds: chatMutes,
+            onReply: (msg) => {
+              if (isGuest) { openAuth(); return; }
+              haptic.light();
+              setReplyTo(msg);
+            },
             onReportMessage: (messageId) => {
               requireAuth(() => setReportMessageId(messageId));
             },
@@ -1046,8 +1057,32 @@ export function RealLiveViewerScreen() {
         )
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-30 flex items-center gap-2 px-3 pb-safe"
+      <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 px-3 pb-safe"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
+        {replyTo && !isGuest && (
+          <div
+            className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-semibold">{t("live.replyingTo", { name: replyTo.user, defaultValue: "Réponse à {{name}}" })}</span>
+              <span className="text-white/65"> · {replyTo.text}</span>
+            </div>
+            <Press
+              onClick={() => setReplyTo(null)}
+              aria-label={t("common.cancel", "Annuler")}
+              className="!min-h-7 h-7 w-7 shrink-0 rounded-full text-white/80"
+            >
+              <X size={14} />
+            </Press>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
         {isGuest ? (
           // Guest composer: read-only chat + prompt-to-sign-in bar. Guests
           // physically cannot send chat data (canPublishData=false on the
@@ -1073,7 +1108,11 @@ export function RealLiveViewerScreen() {
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={t("live.chatPlaceholder")}
+                placeholder={
+                  replyTo
+                    ? t("live.replyPlaceholder", { name: replyTo.user, defaultValue: "Répondre à {{name}}…" })
+                    : t("live.chatPlaceholder")
+                }
                 disabled={liveEnded}
                 className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
                 style={{
@@ -1113,6 +1152,7 @@ export function RealLiveViewerScreen() {
           }}>
           <Gift size={17} />
         </Press>
+        </div>
       </div>
 
 
@@ -1184,6 +1224,7 @@ export function RealLiveViewerScreen() {
         onSend={(k) => doSendGift(k)}
         onTopUp={() => { setGiftTrayOpen(false); setTopupOpen(true); }}
       />
+      <GiftComboFeed trigger={room.lastGift} />
       <GiftAnimationsLayer trigger={room.lastGift} />
 
       {moreOpen && (
