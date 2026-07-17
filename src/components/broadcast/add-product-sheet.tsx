@@ -125,10 +125,10 @@ export function AddProductSheet({
       image: images[0] || PRODUCT_IMG_POOL[0],
       imageFile: imageFile ?? undefined,
       mode,
-      startPrice,
-      timerSec,
-      price,
-      stock,
+      startPrice: Math.max(1, startPrice || defaults.start),
+      timerSec: Math.max(10, timerSec || 45),
+      price: Math.max(1, price || defaults.price),
+      stock: Math.max(1, stock || 1),
     });
     reset();
     onClose();
@@ -371,6 +371,24 @@ function NumberField({
   step?: number;
   icon?: React.ReactNode;
 }) {
+  // Local draft so the user can clear the field while typing. Clamping to
+  // `min` on every keystroke made it impossible to erase the last digit
+  // (empty → 0 → Math.max(min, 0) snapped back to min).
+  const [text, setText] = useState(String(value));
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (focusedRef.current) return;
+    setText(String(value));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    const n = Number(raw);
+    const next = Number.isFinite(n) ? Math.max(min, n) : min;
+    onChange(next);
+    setText(String(next));
+  };
+
   return (
     <div
       className="flex flex-col rounded-xl border bg-muted px-3 py-2"
@@ -380,18 +398,35 @@ function NumberField({
       <div className="mt-1 flex items-center gap-2">
         {icon}
         <input
-          type="number"
-          value={value}
+          type="text"
+          inputMode="decimal"
+          value={text}
           min={min}
           step={step}
-          onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
+          onFocus={() => {
+            focusedRef.current = true;
+          }}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
+            setText(raw);
+            if (raw === "" || raw === ".") return;
+            const n = Number(raw);
+            if (Number.isFinite(n)) onChange(n);
+          }}
+          onBlur={() => {
+            focusedRef.current = false;
+            commit(text);
+          }}
           className="flex-1 bg-transparent text-[20px] font-semibold text-foreground outline-none"
-          inputMode="numeric"
         />
         <div className="flex flex-col text-muted-foreground">
           <button
             type="button"
-            onClick={() => onChange(value + step)}
+            onClick={() => {
+              const next = Math.max(min, (Number.isFinite(value) ? value : min) + step);
+              onChange(next);
+              setText(String(next));
+            }}
             className="p-0.5"
             aria-label="Augmenter"
           >
@@ -399,7 +434,11 @@ function NumberField({
           </button>
           <button
             type="button"
-            onClick={() => onChange(Math.max(min, value - step))}
+            onClick={() => {
+              const next = Math.max(min, (Number.isFinite(value) ? value : min) - step);
+              onChange(next);
+              setText(String(next));
+            }}
             className="p-0.5"
             aria-label="Diminuer"
           >
