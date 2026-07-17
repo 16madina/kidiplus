@@ -130,24 +130,31 @@ export function usePersonalizedRanking(): PersonalizedRanker {
         engagedSellers.size > 0 ||
         categoryAffinity.size > 0;
 
-      // Signed-out or no signal → sort by popularity as a sensible default.
+      const startedMs = (s: LiveStream) =>
+        s.startedAt ? Date.parse(s.startedAt) || 0 : 0;
+
+      // Default home order: newest live first (after the demo card in the UI).
       if (!hasSignal) {
-        return [...streams].sort((a, b) => b.viewers - a.viewers);
+        return [...streams].sort((a, b) => {
+          const dt = startedMs(b) - startedMs(a);
+          if (dt !== 0) return dt;
+          return b.viewers - a.viewers;
+        });
       }
+
+      // With affinity signals: still prefer recent goes-live, then personalization.
+      const now = Date.now();
       const scored = streams.map((s, i) => {
         let score = 0;
-        // Subscriptions get the biggest boost.
+        const ageMin = Math.max(0, (now - startedMs(s)) / 60_000);
+        // Strong recency so a brand-new live stays near the top.
+        score += Math.max(0, 200 - ageMin * 2);
         if (s.sellerId && followed.has(s.sellerId)) score += 100;
-        // Prior purchases from this seller.
         if (s.sellerId && purchased.has(s.sellerId)) score += 60;
-        // Recent likes / clicks on this seller.
         if (s.sellerId) score += (engagedSellers.get(s.sellerId) ?? 0) * 4;
-        // Past interactions in the same category.
         const affinity = categoryAffinity.get(s.category) ?? 0;
         score += affinity * 5;
-        // Mild popularity signal so cold categories aren't empty.
         score += Math.log10(Math.max(1, s.viewers)) * 2;
-        // Stable tiebreaker preserves original order.
         score -= i * 0.001;
         return { s, score };
       });

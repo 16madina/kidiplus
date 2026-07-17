@@ -49,6 +49,8 @@ export type LiveStream = {
   startsInMin?: number;
   /** Minutes remaining on a live in progress (optional realism timer). */
   endsInMin?: number;
+  /** ISO start time — used to keep newest lives at the top of the home feed. */
+  startedAt?: string;
 };
 
 export function isFictitiousSellerId(id: string | null | undefined): boolean {

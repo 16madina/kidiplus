@@ -307,13 +307,12 @@ type LivesRow = {
   } | null;
 };
 
+/** Last-resort card art when the live has no cover and the seller has no avatar. */
 const FALLBACK_COVER =
-  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70";
+  "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=70";
 
 /** Map a lives row + resolved cover URL into the shared LiveStream shape. */
 async function rowToStream(row: LivesRow): Promise<LiveStream> {
-  const cover =
-    (await resolveLiveImage("live-covers", row.cover_url)) ?? FALLBACK_COVER;
   const sellerName =
     row.seller?.display_name?.trim() ||
     row.seller?.handle ||
@@ -325,6 +324,11 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) ||
     `https://i.pravatar.cc/80?u=${encodeURIComponent(row.seller_id)}`;
 
+  // Thumbnail: live cover → seller photo → neutral marketplace fallback.
+  // Never use a random product (e.g. sneaker) as a stand-in for the host.
+  const coverFromLive = await resolveLiveImage("live-covers", row.cover_url);
+  const thumbnail = coverFromLive || avatar || FALLBACK_COVER;
+
   const category = (row.category as LiveStream["category"]) ?? "Fashion";
   const cur = (row.currency ?? "EUR").toUpperCase();
   return {
@@ -332,7 +336,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     seller: sellerName,
     avatar,
     title: row.title,
-    thumbnail: cover,
+    thumbnail,
     viewers: Math.max(1, row.viewer_count || 1),
     category,
     roomName: row.room_name,
@@ -340,6 +344,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     sellerId: row.seller_id,
     currency: (cur === "XOF" || cur === "CAD" || cur === "EUR" ? cur : "EUR") as
       LiveStream["currency"],
+    startedAt: row.started_at ?? undefined,
   };
 }
 
