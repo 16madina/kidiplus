@@ -52,7 +52,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const { activeLens } = useFilter();
+  const { activeLens, loadLenses } = useFilter();
+  // Prefetch Snap Camera Kit + lenses while the host prepares the live.
+  useEffect(() => {
+    loadLenses();
+  }, [loadLenses]);
   const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup

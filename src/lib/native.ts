@@ -65,8 +65,10 @@ export async function bootstrapNative(): Promise<void> {
   if (splashAlreadyShown) {
     void hideNativeSplash();
   } else {
-    // Watchdog: hide after 2.5s even if the video never fires 'playing'.
-    window.setTimeout(() => { void hideNativeSplash(); }, 2500);
+    // Keep native splash until the React intro paints (or this ceiling).
+    // Was 2.5s — too short on App Store cold start / cellular, so the
+    // navy shell vanished before the video could show.
+    window.setTimeout(() => { void hideNativeSplash(); }, 10_000);
   }
 
 

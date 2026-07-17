@@ -18,8 +18,13 @@
 
 import type { CameraKit, CameraKitSession, Lens as SnapLens } from "@snap/camera-kit";
 
+// Client-side Camera Kit tokens (public JWT, same model as native embeds).
 const STAGING_API_TOKEN =
   "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-U1RBR0lOR34zMDk5ZGFjNS01ZGNiLTQ0MzEtYjQ2Ni1kMGE1ZGJiMzhiNTAifQ.TJkEJQDegkU7PiogT3QoedmWYg4mPQsu-Jj60sGALgM";
+
+/** Production token — use after Snap Kit review approval (kit.snapchat.com). */
+const PRODUCTION_API_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4";
 
 function readEnv(key: string): string {
   try {
@@ -30,8 +35,25 @@ function readEnv(key: string): string {
   }
 }
 
+/**
+ * Prefer `VITE_SNAP_CAMERA_KIT_API_TOKEN`. In production builds, default to
+ * the production token so App Store / kidiplus.com are not stuck on staging
+ * (which often fails Trusted Origins / Camera Kit review gates).
+ */
 export function snapApiToken(): string {
-  return readEnv("VITE_SNAP_CAMERA_KIT_API_TOKEN") || STAGING_API_TOKEN;
+  const fromEnv = readEnv("VITE_SNAP_CAMERA_KIT_API_TOKEN");
+  if (fromEnv) return fromEnv;
+  try {
+    if (import.meta.env.PROD) return PRODUCTION_API_TOKEN;
+  } catch {
+    /* ignore */
+  }
+  return STAGING_API_TOKEN;
+}
+
+export function isSnapProductionToken(): boolean {
+  const t = snapApiToken();
+  return t === PRODUCTION_API_TOKEN || t.includes("~PRODUCTION~");
 }
 
 /** Groupe de lenses affiché dans le carrousel — groupe "test 1" de KIDI+.

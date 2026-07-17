@@ -35,6 +35,8 @@ type FilterContextValue = {
   /** Charge les vraies lenses Snap du groupe (no-op si déjà fait). */
   loadLenses: () => void;
   lensesLoading: boolean;
+  /** Last Snap load error message (for UI), cleared on success. */
+  lensesError: string | null;
 };
 
 const FilterContext = createContext<FilterContextValue | null>(null);
@@ -43,12 +45,18 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [activeLens, setActiveLens] = useState<Lens>(NONE_LENS);
   const [snapLenses, setSnapLenses] = useState<Lens[]>([]);
   const [lensesLoading, setLensesLoading] = useState(false);
+  const [lensesError, setLensesError] = useState<string | null>(null);
   const loadStartedRef = useRef(false);
 
   const loadLenses = useCallback(() => {
-    if (loadStartedRef.current || !isCameraKitSupported()) return;
+    if (loadStartedRef.current) return;
+    if (!isCameraKitSupported()) {
+      setLensesError("Camera Kit non supporté sur cet appareil");
+      return;
+    }
     loadStartedRef.current = true;
     setLensesLoading(true);
+    setLensesError(null);
     loadSnapLenses()
       .then((lenses) => {
         setSnapLenses(
@@ -63,10 +71,15 @@ export function FilterProvider({ children }: { children: ReactNode }) {
             isSnapLens: true,
           })),
         );
+        if (lenses.length === 0) {
+          setLensesError("Aucune lens Snap dans le groupe — vérifie my-lenses.snapchat.com");
+        }
       })
       .catch((e) => {
         console.warn("[filters] snap lenses load failed", e);
         loadStartedRef.current = false; // retry possible à la prochaine ouverture
+        const msg = e instanceof Error ? e.message : String(e);
+        setLensesError(msg || "Impossible de charger les filtres AR");
       })
       .finally(() => setLensesLoading(false));
   }, []);
@@ -81,8 +94,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       lenses: [NONE_LENS, ...snapLenses, ...LENSES.filter((l) => l.lensId !== "none")],
       loadLenses,
       lensesLoading,
+      lensesError,
     }),
-    [activeLens, snapLenses, loadLenses, lensesLoading],
+    [activeLens, snapLenses, loadLenses, lensesLoading, lensesError],
   );
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
@@ -101,6 +115,7 @@ export function useFilter(): FilterContextValue {
       lenses: LENSES,
       loadLenses: () => {},
       lensesLoading: false,
+      lensesError: null,
     };
   }
   return ctx;

@@ -8,6 +8,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { useFilter } from "@/lib/filters/filter-context";
@@ -21,12 +22,25 @@ export type FiltersCarouselProps = {
 };
 
 export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
-  const { lenses, activeLens, setActiveLens, loadLenses, lensesLoading } = useFilter();
+  const {
+    lenses,
+    activeLens,
+    setActiveLens,
+    loadLenses,
+    lensesLoading,
+    lensesError,
+  } = useFilter();
 
   // Charge les vraies lenses Snap (AR) à la première ouverture du carrousel.
   useEffect(() => {
     if (open) loadLenses();
   }, [open, loadLenses]);
+
+  useEffect(() => {
+    if (open && lensesError) {
+      toast.error(lensesError, { id: "snap-lenses-error" });
+    }
+  }, [open, lensesError]);
 
   return (
     <AnimatePresence>
