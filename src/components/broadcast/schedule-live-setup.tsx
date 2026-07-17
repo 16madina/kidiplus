@@ -426,7 +426,16 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
             aria-label={t("schedule.form.addCover", "Ajouter une image")}
           >
             {b.cover ? (
-              <img src={b.cover} alt="" className="h-full w-full object-cover" />
+              <img
+                key={b.cover}
+                src={b.cover}
+                alt=""
+                className="h-full w-full object-cover"
+                ref={(el) => {
+                  if (el?.complete) el.setAttribute("data-loaded", "true");
+                }}
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              />
             ) : (
               <div className="pointer-events-none flex flex-col items-center gap-3">
                 <ImageIcon size={36} color="rgba(255,255,255,0.35)" />
@@ -631,7 +640,16 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               >
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
                   {p.image ? (
-                    <img src={p.image} alt="" className="h-full w-full object-cover" />
+                    <img
+                      key={p.image || p.id}
+                      src={p.image}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      ref={(el) => {
+                        if (el?.complete) el.setAttribute("data-loaded", "true");
+                      }}
+                      onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                    />
                   ) : (
                     <div className="grid h-full w-full place-items-center bg-white/5">
                       <ImageIcon size={14} color="white" opacity={0.4} />

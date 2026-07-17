@@ -411,6 +411,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2, ease: EASE_IOS }}
                     className="h-full w-full object-cover"
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
@@ -591,7 +592,16 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   className="relative h-20 w-20 overflow-hidden rounded-2xl"
                   style={{ border: `1px solid ${GOLD_SOFT}` }}
                 >
-                  <img src={p.image} alt="" className="h-full w-full object-cover" />
+                  <img
+                    key={p.image || p.id}
+                    src={p.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    ref={(el) => {
+                      if (el?.complete) el.setAttribute("data-loaded", "true");
+                    }}
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  />
                   <Press
                     onClick={() => b.removeProduct(p.id)}
                     aria-label={t("common.remove")}

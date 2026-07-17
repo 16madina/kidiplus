@@ -892,6 +892,24 @@ export async function cancelScheduledLiveInDb(liveId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Start window: 15 min before → 60 min after the scheduled slot. */
+export const SCHEDULED_START_EARLY_MS = 15 * 60_000;
+export const SCHEDULED_START_LATE_MS = 60 * 60_000;
+
+export type ScheduledStartWindow = "upcoming" | "ready" | "expired" | "none";
+
+export function scheduledStartWindow(
+  scheduledAt: string | null | undefined,
+  nowMs: number = Date.now(),
+): ScheduledStartWindow {
+  if (!scheduledAt) return "none";
+  const t = new Date(scheduledAt).getTime();
+  if (!Number.isFinite(t)) return "none";
+  if (nowMs < t - SCHEDULED_START_EARLY_MS) return "upcoming";
+  if (nowMs <= t + SCHEDULED_START_LATE_MS) return "ready";
+  return "expired";
+}
+
 /** Flip a scheduled live to 'live' and return the row so the caller can broadcast. */
 export async function startScheduledLiveInDb(liveId: string): Promise<{
   ok: boolean;
@@ -899,6 +917,18 @@ export async function startScheduledLiveInDb(liveId: string): Promise<{
   productIds?: string[];
   error?: string;
 }> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from("lives")
+    .select("id, room_name, scheduled_at, status")
+    .eq("id", liveId)
+    .eq("status", "scheduled")
+    .maybeSingle();
+  if (fetchErr || !existing) return { ok: false, error: fetchErr?.message ?? "not_found" };
+
+  const window = scheduledStartWindow(existing.scheduled_at);
+  if (window === "upcoming") return { ok: false, error: "too_early" };
+  if (window === "expired") return { ok: false, error: "expired" };
+
   const { data, error } = await supabase
     .from("lives")
     .update({ status: "live", started_at: new Date().toISOString() })
@@ -980,9 +1010,9 @@ export async function fetchUpcomingScheduledLives(
   return resolved;
 }
 
-/** Opportunistic cleanup: cancel scheduled lives whose slot passed > 24h ago. */
+/** Opportunistic cleanup: delete scheduled lives past the start grace window. */
 export async function cancelStaleScheduledLives(): Promise<void> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - SCHEDULED_START_LATE_MS).toISOString();
   await supabase
     .from("lives")
     .delete()
