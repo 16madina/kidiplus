@@ -395,12 +395,17 @@
       "cover": "Cover",
       "changeCover": "Change cover",
       "addCover": "Add cover",
+      "addCoverShort": "Photo *",
       "category": "Category",
       "products": "Products",
       "addProduct": "Add product",
       "start": "Go live",
       "starting": "Starting…",
       "readyHelp": "Add at least one product to go live.",
+      "errors": {
+        "coverRequired": "Add a cover photo (you don't have a profile picture)",
+        "coverRequiredHint": "Cover photo required (no profile picture)"
+      },
       "productSheet": {
         "title": "Add product",
         "name": "Product name",

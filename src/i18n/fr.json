@@ -395,12 +395,17 @@
       "cover": "Couverture",
       "changeCover": "Changer la couverture",
       "addCover": "Ajouter une couverture",
+      "addCoverShort": "Photo *",
       "category": "Catégorie",
       "products": "Produits",
       "addProduct": "Ajouter un produit",
       "start": "Lancer le live",
       "starting": "Démarrage…",
       "readyHelp": "Ajoute au moins un produit pour lancer ton live.",
+      "errors": {
+        "coverRequired": "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        "coverRequiredHint": "Photo de couverture obligatoire (pas de photo de profil)"
+      },
       "productSheet": {
         "title": "Ajouter un produit",
         "name": "Nom du produit",
@@ -485,6 +490,7 @@
       "editTitle": "Modifier le live",
       "subtitle": "Prépare ton live, ajoute tes articles et annonce-le à ta communauté.",
       "coverTitle": "Image de couverture",
+      "coverTitleRequired": "Image de couverture *",
       "addCover": "Ajouter une image",
       "infoTitle": "Informations du live",
       "titleLabel": "Titre du live",

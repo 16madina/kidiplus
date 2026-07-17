@@ -145,7 +145,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
   const titleLen = b.title.trim().length;
   const titleTooShort = titleLen > 0 && titleLen < MIN_TITLE_LENGTH;
-  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0;
+  // Profile photo auto-fills the live thumbnail. Without one, a cover photo is required.
+  const hasProfileAvatar = !!profile?.avatar_url?.trim();
+  const hasCover = !!(b.coverFile || (b.cover && String(b.cover).trim()));
+  const coverRequired = !hasProfileAvatar;
+  const coverOk = !coverRequired || hasCover;
+  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0 && coverOk;
   const [launching, setLaunching] = useState(false);
 
 
@@ -209,6 +214,17 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       toast.error(
         t("broadcast.setup.errors.noProducts", "Ajoute au moins un produit à vendre"),
       );
+      return;
+    }
+    if (!coverOk) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.coverRequired",
+          "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        ),
+      );
+      pickCover();
       return;
     }
     if (!b.hostIdentity) {
@@ -397,7 +413,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                 className="!min-h-16 relative h-16 w-16 overflow-hidden rounded-2xl p-0"
                 style={{
                   backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
-                  border: `1.5px solid ${GOLD}`,
+                  border: `1.5px solid ${coverRequired && !hasCover ? "oklch(0.68 0.19 25)" : GOLD}`,
                   boxShadow: `0 0 16px ${GOLD_SOFT}`,
                 }}
                 aria-label={t("broadcast.setup.addCover", "Ajouter une photo")}
@@ -433,7 +449,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                 aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
               >
                 <Camera size={11} strokeWidth={2.4} />
-                <span>{t("common.edit", "Modifier")}</span>
+                <span>
+                  {coverRequired && !hasCover
+                    ? t("broadcast.setup.addCoverShort", "Photo *")
+                    : t("common.edit", "modifier")}
+                </span>
               </Press>
             </div>
             <input
@@ -461,6 +481,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               {t(
                 "broadcast.setup.errors.titleTooShort",
                 `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+              )}
+            </span>
+          )}
+          {coverRequired && !hasCover && (
+            <span className="px-1 text-[11px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.coverRequiredHint",
+                "Photo de couverture obligatoire (pas de photo de profil)",
               )}
             </span>
           )}

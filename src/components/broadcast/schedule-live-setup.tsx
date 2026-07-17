@@ -39,6 +39,8 @@ import {
 } from "@/lib/lives-db";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
+import { useAuth } from "@/lib/auth-context";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_DIM = "oklch(0.82 0.14 85 / 0.35)";
@@ -140,6 +142,7 @@ function Toggle({
 export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const { t, i18n } = useTranslation();
   const b = useBroadcast();
+  const { profile } = useAuth();
 
   const tabVisible = useContext(TabVisibilityContext);
   useImmersiveScope(tabVisible);
@@ -150,6 +153,20 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
     const tracker = urlTrackerRef.current;
     return () => tracker.disposeAll();
   }, []);
+
+  // Prefill cover from profile avatar when available (same as instant go-live).
+  useEffect(() => {
+    if (!profile?.avatar_url) return;
+    if (b.cover || b.coverFile) return;
+    let cancelled = false;
+    void resolveAvatarUrl(profile.avatar_url).then((url) => {
+      if (!cancelled && url && !b.cover && !b.coverFile) b.setCover(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.avatar_url]);
 
   // Local-only extras (not persisted server-side).
   const [description, setDescription] = useState("");
@@ -185,7 +202,12 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   
   const scheduleValid =
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
+  const hasProfileAvatar = !!profile?.avatar_url?.trim();
+  const hasCover = !!(b.coverFile || (b.cover && String(b.cover).trim()));
+  const coverRequired = !hasProfileAvatar;
+  const coverOk = !coverRequired || hasCover;
+  const canLaunch =
+    b.title.trim().length > 0 && b.products.length > 0 && scheduleValid && coverOk;
 
   
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -270,7 +292,19 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   };
 
   const launch = async () => {
-    if (!canLaunch || launching) return;
+    if (launching) return;
+    if (!coverOk) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.coverRequired",
+          "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        ),
+      );
+      coverInputRef.current?.click();
+      return;
+    }
+    if (!canLaunch) return;
     if (!b.hostIdentity) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
@@ -415,13 +449,20 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         </div>
 
         {/* 1 — Cover */}
-        <Card step={1} title={t("schedule.form.coverTitle", "Image de couverture")}>
+        <Card
+          step={1}
+          title={
+            coverRequired
+              ? t("schedule.form.coverTitleRequired", "Image de couverture *")
+              : t("schedule.form.coverTitle", "Image de couverture")
+          }
+        >
           <label
             htmlFor="schedule-cover-input"
             className="relative flex h-40 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl"
             style={{
               background: "rgba(255,255,255,0.03)",
-              border: `1.5px dashed ${GOLD_DIM}`,
+              border: `1.5px dashed ${coverRequired && !hasCover ? "oklch(0.68 0.19 25)" : GOLD_DIM}`,
             }}
             aria-label={t("schedule.form.addCover", "Ajouter une image")}
           >
@@ -461,6 +502,14 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               onChange={onCoverFile}
             />
           </label>
+          {coverRequired && !hasCover && (
+            <p className="mt-2 text-[12px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.coverRequiredHint",
+                "Photo de couverture obligatoire (pas de photo de profil)",
+              )}
+            </p>
+          )}
         </Card>
 
 
@@ -742,13 +791,15 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         <div className="flex flex-col items-center gap-2 pt-1">
           <Press
             onClick={launch}
-            disabled={!canLaunch || launching}
+            disabled={launching}
             hapticOnTap={false}
-            className="!min-h-14 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold disabled:opacity-40"
+            aria-disabled={!canLaunch || undefined}
+            className="!min-h-14 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold"
             style={{
               background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
               color: "black",
               boxShadow: "0 10px 30px oklch(0.82 0.14 85 / 0.35)",
+              opacity: launching ? 0.6 : canLaunch ? 1 : 0.45,
             }}
           >
             <CalendarIcon size={18} />
