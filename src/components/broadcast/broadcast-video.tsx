@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
-import { ensureCameraMicAccess } from "@/lib/media-permissions";
+import {
+  ensureCameraMicAccess,
+  ensureCameraMicPermission,
+} from "@/lib/media-permissions";
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
@@ -14,7 +17,7 @@ import {
   Room,
   RoomEvent,
   Track,
-  createLocalVideoTrack,
+  createHostLocalVideoTrack,
   facingModeFromLocalTrack,
   connectRoom,
   getToken,
@@ -342,14 +345,14 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (!roomShouldRun) return teardown();
         setState("connecting");
 
-        const preflight = await ensureCameraMicAccess({
+        // Permission only — do not open video here. Opening then stopping the
+        // camera before LiveKit createLocalVideoTrack causes NotReadableError
+        // on many Android OEMs (camera still busy).
+        const preflight = await ensureCameraMicPermission({
           video: { facingMode: facingRef.current },
           audio: micEnabled,
         });
-        if (cancelled) {
-          if (preflight.status === "granted") preflight.stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        if (cancelled) return;
         if (preflight.status !== "granted") {
           if (preflight.status === "denied_by_user") setState("denied");
           else if (preflight.status === "config_missing") setState("config_missing");
@@ -358,7 +361,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           else setState("error");
           return;
         }
-        preflight.stream.getTracks().forEach((t) => t.stop());
 
         let phase: "token" | "connect" | "camera" = "token";
         try {
@@ -414,9 +416,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             setState("granted");
             return;
           }
-          const track = await createLocalVideoTrack({
+          // 720p first; createHostLocalVideoTrack steps down only on failure.
+          const track = await createHostLocalVideoTrack({
             facingMode: desiredFacing,
-            resolution: { width: 1280, height: 720, frameRate: 30 },
           });
           if (cancelled) {
             track.stop();
@@ -445,9 +447,14 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               msg.includes("permission") ||
               msg.includes("denied") ||
               msg.includes("notallowed");
+            const isBusy =
+              msg.includes("notreadable") ||
+              msg.includes("could not start") ||
+              msg.includes("device in use");
             if (phase === "camera" && isPermission) setState("denied");
             else if (phase === "token") setState("token_failed");
             else if (phase === "connect") setState("connect_failed");
+            else if (phase === "camera" && isBusy) setState("unavailable");
             else if (phase === "camera") setState("error");
             else setState("error");
             await teardown();
@@ -540,9 +547,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 /* ignore */
               }
             }
-            track = await createLocalVideoTrack({
+            track = await createHostLocalVideoTrack({
               facingMode: desiredFacing,
-              resolution: { width: 1280, height: 720, frameRate: 30 },
             });
             await room.localParticipant.publishTrack(track, {
               simulcast: true,

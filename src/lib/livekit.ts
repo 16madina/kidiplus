@@ -19,6 +19,93 @@ export type CameraFacing = "user" | "environment";
 
 export type TokenResponse = { token: string; url: string };
 
+/** Prefer 720p; only step down when a phone rejects the constraint / busy camera. */
+export const HOST_VIDEO_RESOLUTION_CHAIN = [
+  { width: 1280, height: 720, frameRate: 30 },
+  { width: 960, height: 540, frameRate: 30 },
+  { width: 640, height: 480, frameRate: 24 },
+  { width: 640, height: 360, frameRate: 24 },
+] as const;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Open the host camera track. Always tries 1280×720@30 first so capable phones
+ * keep quality; falls back only after Overconstrained / NotReadable failures
+ * (common on mid-range Android after a prior getUserMedia release).
+ */
+export async function createHostLocalVideoTrack(opts: {
+  facingMode: CameraFacing;
+  deviceId?: string;
+}): Promise<LocalVideoTrack> {
+  let lastErr: unknown;
+  for (const resolution of HOST_VIDEO_RESOLUTION_CHAIN) {
+    try {
+      const track = await createLocalVideoTrack({
+        facingMode: opts.facingMode,
+        ...(opts.deviceId ? { deviceId: opts.deviceId } : {}),
+        resolution: { ...resolution },
+      });
+      if (resolution.width < 1280) {
+        console.info("[camera] fallback resolution", resolution);
+      }
+      return track;
+    } catch (e) {
+      lastErr = e;
+      console.warn("[camera] createLocalVideoTrack failed", resolution, e);
+      await sleep(280);
+    }
+  }
+  try {
+    return await createLocalVideoTrack({
+      facingMode: opts.facingMode,
+      ...(opts.deviceId ? { deviceId: opts.deviceId } : {}),
+    });
+  } catch (e) {
+    throw lastErr ?? e;
+  }
+}
+
+/** Same resolution ladder for restartTrack / flip paths. */
+export async function restartHostVideoTrack(
+  track: LocalVideoTrack,
+  opts: { facingMode: CameraFacing; deviceId?: string },
+): Promise<void> {
+  let lastErr: unknown;
+  for (const resolution of HOST_VIDEO_RESOLUTION_CHAIN) {
+    try {
+      await track.restartTrack(
+        opts.deviceId
+          ? {
+              deviceId: opts.deviceId,
+              facingMode: opts.facingMode,
+              resolution: { ...resolution },
+            }
+          : {
+              facingMode: opts.facingMode,
+              resolution: { ...resolution },
+            },
+      );
+      return;
+    } catch (e) {
+      lastErr = e;
+      console.warn("[camera] restartTrack failed", resolution, e);
+      await sleep(280);
+    }
+  }
+  try {
+    await track.restartTrack(
+      opts.deviceId
+        ? { deviceId: opts.deviceId, facingMode: opts.facingMode }
+        : { facingMode: opts.facingMode },
+    );
+  } catch (e) {
+    throw lastErr ?? e;
+  }
+}
+
 export async function getToken(
   room: string,
   identity: string,
@@ -163,18 +250,10 @@ export async function switchHostCameraFacing(args: {
 
   if (!switched) {
     // restartTrack is the most reliable path on Capacitor WKWebView / Chrome.
-    await track.restartTrack(
-      deviceId
-        ? {
-            deviceId,
-            facingMode: target,
-            resolution: { width: 1280, height: 720, frameRate: 30 },
-          }
-        : {
-            facingMode: target,
-            resolution: { width: 1280, height: 720, frameRate: 30 },
-          },
-    );
+    await restartHostVideoTrack(track, {
+      facingMode: target,
+      ...(deviceId ? { deviceId } : {}),
+    });
   }
 
   // Give the hardware a beat to settle before reading facingMode.

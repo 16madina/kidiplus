@@ -27,6 +27,18 @@ export type MediaRequest = {
   audio: boolean;
 };
 
+export type MediaPermissionOnlyResult =
+  | { status: "granted" }
+  | { status: "denied_by_user" }
+  | { status: "config_missing" }
+  | { status: "no_device" }
+  | { status: "unsupported" }
+  | { status: "error"; message: string };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 function isNative(): boolean {
   try {
     return Capacitor.isNativePlatform();
@@ -35,9 +47,103 @@ function isNative(): boolean {
   }
 }
 
+async function ensureNativeCameraPlugin(): Promise<MediaPermissionOnlyResult | null> {
+  if (!isNative()) return null;
+  try {
+    // Dynamic import so the web bundle doesn't pull the native module.
+    const { Camera } = await import("@capacitor/camera");
+    let perms = await Camera.checkPermissions();
+    // The plugin reports "prompt" when nothing has been asked yet, and
+    // "prompt-with-rationale" once denied but re-requestable.
+    if (perms.camera !== "granted") {
+      try {
+        perms = await Camera.requestPermissions({ permissions: ["camera"] });
+      } catch {
+        // A thrown error here on iOS almost always means NSCameraUsageDescription
+        // is missing from Info.plist — the OS refuses to even show the prompt.
+        return { status: "config_missing" };
+      }
+    }
+    if (perms.camera === "denied") {
+      return { status: "denied_by_user" };
+    }
+    if (perms.camera !== "granted") {
+      // Undetermined AND not promptable ⇒ build config problem.
+      return { status: "config_missing" };
+    }
+    return { status: "granted" };
+  } catch (err) {
+    // Plugin missing or bridge failure. On native this is a build issue.
+    return {
+      status: "error",
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+type MediaPermissionFailure = Exclude<
+  MediaPermissionOnlyResult,
+  { status: "granted" }
+>;
+
+function mapGetUserMediaError(err: unknown): MediaPermissionFailure {
+  const name = err instanceof DOMException ? err.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return { status: "denied_by_user" };
+  }
+  if (
+    name === "NotFoundError" ||
+    name === "OverconstrainedError" ||
+    name === "NotReadableError" ||
+    name === "AbortError"
+  ) {
+    return { status: "no_device" };
+  }
+  return {
+    status: "error",
+    message: err instanceof Error ? err.message : String(err),
+  };
+}
+
+/**
+ * Ask OS / webview for camera (+ optional mic) without holding a video stream.
+ * Use before LiveKit `createLocalVideoTrack` so Android cameras aren't
+ * double-opened (preflight getUserMedia → stop → LiveKit open race).
+ */
+export async function ensureCameraMicPermission(
+  req: MediaRequest = { video: true, audio: true },
+): Promise<MediaPermissionOnlyResult> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    return { status: "unsupported" };
+  }
+
+  if (req.video) {
+    const native = await ensureNativeCameraPlugin();
+    if (native && native.status !== "granted") return native;
+  }
+
+  // Probe mic only when needed — never open video here (LiveKit owns that).
+  if (req.audio) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+      stream.getTracks().forEach((t) => t.stop());
+      // Let OEM camera/mic stacks fully release before LiveKit opens devices.
+      await sleep(220);
+    } catch (err) {
+      return mapGetUserMediaError(err);
+    }
+  }
+
+  return { status: "granted" };
+}
+
 /**
  * Ask for camera (and optionally mic) access. On native we route the request
  * through the @capacitor/camera plugin first so the OS prompt fires.
+ * Returns a live MediaStream (preview / non-LiveKit paths).
  */
 export async function ensureCameraMicAccess(
   req: MediaRequest = { video: true, audio: true },
@@ -46,36 +152,9 @@ export async function ensureCameraMicAccess(
     return { status: "unsupported" };
   }
 
-  if (isNative() && req.video) {
-    try {
-      // Dynamic import so the web bundle doesn't pull the native module.
-      const { Camera } = await import("@capacitor/camera");
-      let perms = await Camera.checkPermissions();
-      // The plugin reports "prompt" when nothing has been asked yet, and
-      // "prompt-with-rationale" once denied but re-requestable.
-      if (perms.camera !== "granted") {
-        try {
-          perms = await Camera.requestPermissions({ permissions: ["camera"] });
-        } catch (err) {
-          // A thrown error here on iOS almost always means NSCameraUsageDescription
-          // is missing from Info.plist — the OS refuses to even show the prompt.
-          return { status: "config_missing" };
-        }
-      }
-      if (perms.camera === "denied") {
-        return { status: "denied_by_user" };
-      }
-      if (perms.camera !== "granted") {
-        // Undetermined AND not promptable ⇒ build config problem.
-        return { status: "config_missing" };
-      }
-    } catch (err) {
-      // Plugin missing or bridge failure. On native this is a build issue.
-      return {
-        status: "error",
-        message: err instanceof Error ? err.message : String(err),
-      };
-    }
+  if (req.video) {
+    const native = await ensureNativeCameraPlugin();
+    if (native && native.status !== "granted") return native;
   }
 
   // Now attempt the actual stream. On native, mic permission is handled by
@@ -83,32 +162,22 @@ export async function ensureCameraMicAccess(
   // — Capacitor's webview bridges the request to native once app-level entries exist.
   try {
     const constraints: MediaStreamConstraints = {
-      video: req.video === false ? false : typeof req.video === "object" ? { facingMode: req.video.facingMode ? { ideal: req.video.facingMode } : undefined } : true,
+      video:
+        req.video === false
+          ? false
+          : typeof req.video === "object"
+            ? {
+                facingMode: req.video.facingMode
+                  ? { ideal: req.video.facingMode }
+                  : undefined,
+              }
+            : true,
       audio: req.audio,
     };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     return { status: "granted", stream };
   } catch (err) {
-    const name = err instanceof DOMException ? err.name : "";
-    if (name === "NotAllowedError" || name === "SecurityError") {
-      // On native this typically means the user tapped "Don't allow" at the
-      // OS prompt OR that mic Info.plist entry is missing when audio:true.
-      // We already validated the video path above via the plugin, so treat
-      // this as user-denied by default.
-      return { status: "denied_by_user" };
-    }
-    if (
-      name === "NotFoundError" ||
-      name === "OverconstrainedError" ||
-      name === "NotReadableError" ||
-      name === "AbortError"
-    ) {
-      return { status: "no_device" };
-    }
-    return {
-      status: "error",
-      message: err instanceof Error ? err.message : String(err),
-    };
+    return mapGetUserMediaError(err);
   }
 }
 
