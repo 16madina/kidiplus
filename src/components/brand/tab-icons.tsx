@@ -1,9 +1,9 @@
 // Custom brand icons for the bottom tab bar.
 //
-// Reproduces the reference set: an arched doorway (Accueil), a compass rose
-// (Explorer), a wrapped gift box (Activité) and a portrait badge (Profil).
-// Each icon has an outline (inactive) and a filled (active) variant that swap
-// with a subtle spring.
+// Luxury maison set: boutique arch (Accueil), facet compass (Explorer),
+// refined bell (Activité), signet medallion (Profil). Outline when idle,
+// gold-filled when active. The raised Live badge is a separate PNG asset
+// and is never drawn here.
 import { motion, AnimatePresence } from "framer-motion";
 
 type IconProps = {
@@ -12,16 +12,18 @@ type IconProps = {
   className?: string;
 };
 
-const STROKE = 1.6;
+const STROKE = 1.45;
 
 function Svg({
   children,
   size = 24,
   className,
+  filled = false,
 }: {
   children: React.ReactNode;
   size?: number;
   className?: string;
+  filled?: boolean;
 }) {
   return (
     <svg
@@ -30,7 +32,7 @@ function Svg({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={STROKE}
+      strokeWidth={filled ? 1.2 : STROKE}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -40,6 +42,7 @@ function Svg({
     </svg>
   );
 }
+
 function IconWrap({
   active,
   outline,
@@ -80,110 +83,184 @@ function IconWrap({
   );
 }
 
-/* ---------- Accueil — arched doorway (rounded arch + inner frame) ---------- */
+/* ---------- Accueil — boutique maison (arched storefront + step) ---------- */
 export function HomeIcon({ active = false }: IconProps) {
-  // Outer arch: half-circle top on a rectangle base.
-  // Inner arch: same silhouette, inset — reads as a door within a frame.
-  const outerArch =
-    "M5 20 V11 A7 7 0 0 1 19 11 V20 Z";
-  const innerArch =
-    "M8 20 V11.5 A4 4 0 0 1 16 11.5 V20";
+  // Soft Roman arch with a thin inner reveal and a quiet threshold —
+  // reads as a boutique doorway, not a generic home glyph.
+  const outer =
+    "M4.5 20.5 V10.2 C4.5 6.2 7.6 3.4 12 3.4 C16.4 3.4 19.5 6.2 19.5 10.2 V20.5";
+  const inner =
+    "M7.6 20.5 V10.6 C7.6 7.85 9.5 5.9 12 5.9 C14.5 5.9 16.4 7.85 16.4 10.6 V20.5";
+  const step = "M3.2 20.5 H20.8";
   const outline = (
     <Svg>
-      <path d={outerArch} />
-      <path d={innerArch} />
-      {/* Door knob */}
-      <circle cx="14" cy="15.5" r="0.6" fill="currentColor" stroke="none" />
+      <path d={outer} />
+      <path d={inner} opacity={0.85} />
+      <path d={step} />
+      <circle cx="14.2" cy="14.2" r="0.55" fill="currentColor" stroke="none" />
     </Svg>
   );
   const filled = (
-    <Svg>
-      <path d={outerArch} fill="var(--accent)" stroke="var(--accent)" />
-      <path d={innerArch} fill="var(--background)" stroke="var(--accent)" />
-      <circle cx="14" cy="15.5" r="0.7" fill="var(--accent)" stroke="none" />
+    <Svg filled>
+      <path
+        d="M4.5 20.5 V10.2 C4.5 6.2 7.6 3.4 12 3.4 C16.4 3.4 19.5 6.2 19.5 10.2 V20.5 H4.5 Z"
+        fill="var(--accent)"
+        stroke="var(--accent)"
+      />
+      <path
+        d="M7.6 20.5 V10.6 C7.6 7.85 9.5 5.9 12 5.9 C14.5 5.9 16.4 7.85 16.4 10.6 V20.5"
+        fill="var(--background)"
+        stroke="var(--accent)"
+      />
+      <path d={step} stroke="var(--accent)" />
+      <circle cx="14.2" cy="14.2" r="0.65" fill="var(--accent)" stroke="none" />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Explorer — compass rose (circle + 4-point star) ---------- */
+/* ---------- Explorer — jewel compass (dial + north facet) ---------- */
 export function ExploreIcon({ active = false }: IconProps) {
-  // 4-point rhombus star centered in the dial.
-  const star = "M12 5.5 L13.6 12 L12 18.5 L10.4 12 Z M5.5 12 L12 10.4 L18.5 12 L12 13.6 Z";
+  // Circular dial with a diamond needle — discovery of pieces, not a map pin.
+  const needle = "M12 5.2 L13.55 12 L12 18.8 L10.45 12 Z";
+  const cross = "M5.2 12 L12 10.45 L18.8 12 L12 13.55 Z";
   const outline = (
     <Svg>
-      <circle cx="12" cy="12" r="7.5" />
-      {/* Cardinal ticks */}
-      <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" />
-      <path d={star} />
-      <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="8.1" />
+      <circle cx="12" cy="12" r="5.6" opacity={0.55} />
+      <path d={needle} />
+      <path d={cross} opacity={0.9} />
+      <circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none" />
+      {/* Tiny north tick */}
+      <path d="M12 2.6 V3.8" />
     </Svg>
   );
   const filled = (
-    <Svg>
-      <circle cx="12" cy="12" r="7.5" fill="var(--accent)" stroke="var(--accent)" />
-      <path d="M12 3.5 V5 M12 19 V20.5 M3.5 12 H5 M19 12 H20.5" stroke="var(--accent)" />
-      <path d={star} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.8} />
-      <circle cx="12" cy="12" r="0.9" fill="var(--accent)" stroke="none" />
+    <Svg filled>
+      <circle
+        cx="12"
+        cy="12"
+        r="8.1"
+        fill="var(--accent)"
+        stroke="var(--accent)"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="5.5"
+        fill="none"
+        stroke="var(--primary-foreground)"
+        strokeWidth={1}
+        opacity={0.35}
+      />
+      <path
+        d={needle}
+        fill="var(--primary-foreground)"
+        stroke="var(--primary-foreground)"
+        strokeWidth={0.7}
+      />
+      <path
+        d={cross}
+        fill="var(--primary-foreground)"
+        stroke="var(--primary-foreground)"
+        strokeWidth={0.7}
+        opacity={0.92}
+      />
+      <circle cx="12" cy="12" r="1.05" fill="var(--accent)" stroke="none" />
+      <path d="M12 2.6 V3.8" stroke="var(--accent)" />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Activité — wrapped gift box with bow ---------- */
-// Kept the BellIcon export name so existing imports (bottom-tab-bar) keep working.
+/* ---------- Activité — refined alert bell (kept export name BellIcon) ---------- */
 export function BellIcon({ active = false }: IconProps) {
-  // Box body + lid + vertical ribbon + bow loops on top.
-  const body = "M4.5 11 H19.5 V19 Q19.5 20 18.5 20 H5.5 Q4.5 20 4.5 19 Z";
-  const lid = "M3.8 8.5 H20.2 Q20.5 8.5 20.5 8.8 V10.7 Q20.5 11 20.2 11 H3.8 Q3.5 11 3.5 10.7 V8.8 Q3.5 8.5 3.8 8.5 Z";
-  const ribbon = "M12 8.5 V20";
-  // Two bow loops meeting at the ribbon top.
-  const bow =
-    "M12 8.5 C11 7 8.5 6.2 8 7.2 C7.5 8.2 9.5 8.5 12 8.5 Z M12 8.5 C13 7 15.5 6.2 16 7.2 C16.5 8.2 14.5 8.5 12 8.5 Z";
+  // Soft couture bell + gentle clapper — notifications without the loud
+  // emoji-style glyph. A quiet pearl marks the active state.
+  const dome =
+    "M7.2 10.2 C7.2 7.1 9.2 4.6 12 4.6 C14.8 4.6 16.8 7.1 16.8 10.2 V13.6 L18.4 16.2 H5.6 L7.2 13.6 Z";
+  const lip = "M8.4 16.2 H15.6";
   const outline = (
     <Svg>
-      <path d={body} />
-      <path d={lid} />
-      <path d={ribbon} />
-      <path d={bow} />
+      <path d={dome} />
+      <path d={lip} />
+      <path d="M10.6 18.2 Q12 19.4 13.4 18.2" />
+      <path d="M12 3.2 V4.4" />
     </Svg>
   );
   const filled = (
-    <Svg>
-      <path d={body} fill="var(--accent)" stroke="var(--accent)" />
-      <path d={lid} fill="var(--accent)" stroke="var(--accent)" />
-      <path d={ribbon} stroke="var(--primary-foreground)" strokeWidth={1.4} />
-      <path d={bow} fill="var(--accent)" stroke="var(--accent)" />
+    <Svg filled>
+      <path d={dome} fill="var(--accent)" stroke="var(--accent)" />
+      <path d={lip} stroke="var(--accent)" />
+      <path
+        d="M10.6 18.2 Q12 19.4 13.4 18.2"
+        fill="var(--accent)"
+        stroke="var(--accent)"
+      />
+      <path d="M12 3.2 V4.4" stroke="var(--accent)" />
+      <circle
+        cx="16.6"
+        cy="7.2"
+        r="2"
+        fill="var(--accent)"
+        stroke="var(--background)"
+        strokeWidth={1.2}
+      />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Profil — gold medallion with dark bust silhouette ---------- */
+/* ---------- Profil — signet medallion (double rim + bust) ---------- */
 export function PersonIcon({ active = false }: IconProps) {
-  // Head + shoulders silhouette clipped inside the medallion circle.
-  const head = "M12 10.2 m -2.4 0 a 2.4 2.4 0 1 0 4.8 0 a 2.4 2.4 0 1 0 -4.8 0";
-  const bust = "M6.6 18.4 Q7.6 13.8 12 13.8 Q16.4 13.8 17.4 18.4 Z";
+  // Jewelry-like signet: outer gold ring, inner rim, dark silhouette.
+  const head =
+    "M12 10.1 m -2.35 0 a 2.35 2.35 0 1 0 4.7 0 a 2.35 2.35 0 1 0 -4.7 0";
+  const bust = "M7 18.2 Q7.9 14.1 12 14.1 Q16.1 14.1 17 18.2 Z";
   const outline = (
     <Svg>
-      <circle cx="12" cy="12" r="8.5" fill="var(--accent)" stroke="var(--accent)" />
-      <path d={head} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
-      <path d={bust} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
+      <circle cx="12" cy="12" r="8.35" />
+      <circle cx="12" cy="12" r="6.7" opacity={0.55} />
+      <path d={head} fill="currentColor" stroke="none" />
+      <path d={bust} fill="currentColor" stroke="none" />
     </Svg>
   );
   const filled = (
-    <Svg>
-      <circle cx="12" cy="12" r="8.5" fill="var(--accent)" stroke="var(--accent)" />
-      <path d={head} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
-      <path d={bust} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.6} />
+    <Svg filled>
+      <circle
+        cx="12"
+        cy="12"
+        r="8.35"
+        fill="var(--accent)"
+        stroke="var(--accent)"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="6.55"
+        fill="none"
+        stroke="var(--primary-foreground)"
+        strokeWidth={0.9}
+        opacity={0.28}
+      />
+      <path
+        d={head}
+        fill="var(--primary-foreground)"
+        stroke="var(--primary-foreground)"
+        strokeWidth={0.4}
+      />
+      <path
+        d={bust}
+        fill="var(--primary-foreground)"
+        stroke="var(--primary-foreground)"
+        strokeWidth={0.4}
+      />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-
-
-/* ---------- Go Live — broadcast waves (used INSIDE the raised gold button) ---------- */
+/* ---------- Go Live — broadcast waves (unused by the raised logo badge) ---------- */
 export function BroadcastIcon({ size = 26 }: { size?: number }) {
   return (
     <svg
