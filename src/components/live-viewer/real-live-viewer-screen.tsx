@@ -68,9 +68,13 @@ const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?
 
 function SellerAvatar({ src, name, size }: { src: string; name: string; size: "md" | "lg" }) {
   const [failed, setFailed] = useState(false);
-  const initial = (name.trim()[0] || "?").toUpperCase();
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    parts.length >= 2
+      ? ((parts[0][0] || "") + (parts[1][0] || "")).toUpperCase()
+      : (parts[0]?.[0] || "?").toUpperCase();
   const box = size === "lg" ? "h-16 w-16 text-[24px]" : "h-10 w-10 text-[16px]";
-  if (!failed) {
+  if (src && !failed) {
     return (
       <img
         src={src}
@@ -86,7 +90,7 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "m
       className={`${box} grid shrink-0 place-items-center rounded-full font-black ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
       style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
     >
-      {initial}
+      {initials || "?"}
     </span>
   );
 }

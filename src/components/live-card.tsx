@@ -25,7 +25,13 @@ export function LiveCard({
     if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
   }, [stream.thumbnail, stream.avatar]);
 
-  const sellerInitial = (stream.seller.trim()[0] || "?").toUpperCase();
+  const sellerInitials = (() => {
+    const parts = stream.seller.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return (parts[0][0] || "?").toUpperCase();
+    return ((parts[0][0] || "") + (parts[1][0] || "")).toUpperCase() || "?";
+  })();
+  const showAvatar = !!stream.avatar && !avatarFailed;
 
   return (
     <motion.div
@@ -143,7 +149,7 @@ export function LiveCard({
           }}
         >
           <div className="flex items-center gap-1.5">
-            {!avatarFailed ? (
+            {showAvatar ? (
               <img
                 src={stream.avatar}
                 alt=""
@@ -155,10 +161,10 @@ export function LiveCard({
               />
             ) : (
               <span
-                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black ring-1 ring-white/90"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-black ring-1 ring-white/90"
                 style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
               >
-                {sellerInitial}
+                {sellerInitials}
               </span>
             )}
             <span className="min-w-0 truncate text-[13px] font-semibold text-white">

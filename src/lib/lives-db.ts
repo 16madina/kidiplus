@@ -320,12 +320,11 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
   // Avatars live in the `avatars` bucket (not `live-covers`). Route through
   // resolveAvatarUrl so both absolute URLs and bucket paths work, matching
   // the resolution used on the profile screen and elsewhere.
-  const avatar =
-    (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) ||
-    `https://i.pravatar.cc/80?u=${encodeURIComponent(row.seller_id)}`;
+  // Empty string when missing — UI shows seller initials (never a random face).
+  const avatar = (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) || "";
 
   // Thumbnail: live cover → seller photo → neutral marketplace fallback.
-  // Never use a random product (e.g. sneaker) as a stand-in for the host.
+  // Never use a random product (e.g. sneaker) or pravatar as a stand-in.
   const coverFromLive = await resolveLiveImage("live-covers", row.cover_url);
   const thumbnail = coverFromLive || avatar || FALLBACK_COVER;
 

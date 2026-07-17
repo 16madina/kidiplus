@@ -35,12 +35,21 @@ export function LivePeekSlide({
       <div className="absolute inset-0 bg-black/20" />
       <div className="absolute inset-x-0 top-0 pt-safe">
         <div className="flex items-center gap-2 px-3 pt-3">
-          <img
-            src={stream.avatar}
-            alt=""
-            className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
-            draggable={false}
-          />
+          {stream.avatar ? (
+            <img
+              src={stream.avatar}
+              alt=""
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/90"
+              draggable={false}
+            />
+          ) : (
+            <span
+              className="grid h-10 w-10 place-items-center rounded-full text-[16px] font-black ring-2 ring-white/90"
+              style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+            >
+              {(stream.seller.trim()[0] || "?").toUpperCase()}
+            </span>
+          )}
           <div className="min-w-0">
             <p
               className="truncate text-[14px] font-bold text-white"

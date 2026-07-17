@@ -44,11 +44,42 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
     cursorRef.current = withTarget.findIndex((s) => s.id === target.id);
   }, []);
 
-  const refreshPlaylistFromDb = useCallback(async (target: LiveStream) => {
+  /**
+   * Refresh real lives from DB without wiping the home-feed playlist.
+   * Previously we replaced the list with DB-only rows, so opening one real
+   * live dropped all demo/sample cards and left a single-item playlist
+   * (no vertical swipe). Keep seed order; update/drop ended real lives.
+   */
+  const refreshPlaylistFromDb = useCallback(async (
+    target: LiveStream,
+    seedList?: LiveStream[],
+  ) => {
     if (!target.liveId || !target.roomName) return;
     try {
       const rows = await fetchActiveLives(60);
-      setPlaylistFromList(rows, target);
+      if (!seedList?.length) {
+        setPlaylistFromList(rows, target);
+        return;
+      }
+      const byLiveId = new Map(
+        rows.filter((r) => r.liveId).map((r) => [r.liveId!, r]),
+      );
+      const merged: LiveStream[] = [];
+      const seen = new Set<string>();
+      for (const s of seedList) {
+        if (s.liveId) {
+          const fresh = byLiveId.get(s.liveId);
+          if (!fresh) continue;
+          merged.push(fresh);
+          seen.add(s.liveId);
+        } else {
+          merged.push(s);
+        }
+      }
+      for (const r of rows) {
+        if (r.liveId && !seen.has(r.liveId)) merged.push(r);
+      }
+      setPlaylistFromList(merged.length ? merged : rows, target);
     } catch (e) {
       console.debug("[pager] refreshPlaylistFromDb failed", e);
     }
@@ -79,9 +110,8 @@ export function LiveViewerProvider({ children }: { children: ReactNode }) {
     setPresentation("full");
     void logLiveInteraction(target, "click");
     setPlaylistFromList(list, target);
-    // Refresh with fresh DB data so the swipe list stays accurate even if
-    // the caller passed a stale filtered array.
-    if (target.liveId && target.roomName) void refreshPlaylistFromDb(target);
+    // Refresh real rows in place — keep samples so swipe next/prev still works.
+    if (target.liveId && target.roomName) void refreshPlaylistFromDb(target, list);
   }, [setPlaylistFromList, refreshPlaylistFromDb]);
 
   const close = useCallback(() => {
