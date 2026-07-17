@@ -490,6 +490,7 @@
       "editTitle": "Edit live",
       "subtitle": "Prepare your live, add your items and announce it to your community.",
       "coverTitle": "Cover image",
+      "coverTitleRequired": "Cover image *",
       "addCover": "Add an image",
       "infoTitle": "Live details",
       "titleLabel": "Live title",
