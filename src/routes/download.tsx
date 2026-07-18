@@ -4,8 +4,6 @@ import { EMAIL_CONFIG } from '@/lib/email/config'
 
 /**
  * Landing page for app download links (App Store + Play Store).
- * App Store URL stays disabled until YOUR_APP_STORE_ID is replaced in
- * EMAIL_CONFIG. Play Store uses the Android package id.
  */
 export const Route = createFileRoute('/download')({
   validateSearch: (search: Record<string, unknown>) => ({

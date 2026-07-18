@@ -9,6 +9,7 @@ import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
+import { liveShareUrl } from "@/lib/deep-links";
 import { logLiveInteraction } from "@/lib/interactions-db";
 import { useAppActive } from "@/lib/app-state";
 import { usePush } from "@/lib/push";
@@ -657,8 +658,9 @@ function MockLiveViewerScreen() {
               aria-label={t("live.share", "Partager")}
               onClick={async () => {
                 haptic.light();
-                const shareUrl =
-                  typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
+                const shareUrl = active.liveId
+                  ? liveShareUrl(active.liveId)
+                  : "https://kidiplus.com";
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", {
                   defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴",

@@ -32,6 +32,16 @@ export function SignUpScreen({
   const [promoCode, setPromoCode] = useState("");
   const [promoValid, setPromoValid] = useState<null | boolean>(null);
 
+  // Prefill from /join/CODE or /download?ref= (Universal Link / store fallback).
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("kidi.referral_code")?.trim();
+      if (stored) setPromoCode(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     const c = promoCode.trim();
     if (!c) { setPromoValid(null); return; }
