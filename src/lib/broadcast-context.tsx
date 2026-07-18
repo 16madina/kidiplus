@@ -9,8 +9,17 @@ import {
 
 export type BroadcastStage = "entry" | "setup" | "live" | "summary";
 export type BroadcastMode = "now" | "schedule" | "edit";
+/** How the host video is produced: phone camera vs Restream/OBS RTMP. */
+export type StreamSource = "camera" | "rtmp";
 
 export type SellMode = "auction" | "fixed";
+
+export type RtmpCreds = {
+  url: string;
+  streamKey: string;
+  ingressId: string;
+  participantIdentity: string;
+};
 
 export type BProduct = {
   id: string;
@@ -105,6 +114,12 @@ type Ctx = {
   allowGifts: boolean;
   setAllowGifts: (v: boolean) => void;
 
+  /** camera (default) or rtmp multi-platform via Restream/OBS. */
+  streamSource: StreamSource;
+  setStreamSource: (s: StreamSource) => void;
+  rtmpCreds: RtmpCreds | null;
+  setRtmpCreds: (c: RtmpCreds | null) => void;
+
   reset: () => void;
 };
 
@@ -141,6 +156,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [allowGifts, setAllowGifts] = useState<boolean>(true);
+  const [streamSource, setStreamSource] = useState<StreamSource>("camera");
+  const [rtmpCreds, setRtmpCreds] = useState<RtmpCreds | null>(null);
 
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
@@ -179,6 +196,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setLiveId(null);
     setCameraFacing("user");
     setAllowGifts(true);
+    setStreamSource("camera");
+    setRtmpCreds(null);
   }, []);
 
 
@@ -204,9 +223,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       currency, setCurrency,
       cameraFacing, setCameraFacing,
       allowGifts, setAllowGifts,
+      streamSource, setStreamSource,
+      rtmpCreds, setRtmpCreds,
       reset,
     }),
-    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, streamSource, rtmpCreds, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
 
   );
 

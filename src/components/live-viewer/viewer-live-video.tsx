@@ -44,6 +44,20 @@ function kickPlayback(
   void audio?.play()?.catch(() => {});
 }
 
+/** Prefer RTMP Ingress publisher (rtmp-host-*) when several remotes publish video. */
+function pickRemoteVideoTrack(room: Room): RemoteTrack | null {
+  let fallback: RemoteTrack | null = null;
+  for (const p of room.remoteParticipants.values()) {
+    for (const pub of p.trackPublications.values()) {
+      const track = pub.track;
+      if (!track || track.kind !== Track.Kind.Video) continue;
+      if (p.identity.startsWith("rtmp-host-")) return track;
+      if (!fallback) fallback = track;
+    }
+  }
+  return fallback;
+}
+
 /** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
 function reattachRemoteMedia(
   room: Room,
@@ -62,13 +76,7 @@ function reattachRemoteMedia(
       const track = pub.track;
       if (!track) return;
       try {
-        if (track.kind === Track.Kind.Video && video) {
-          if (hard) {
-            try { track.detach(video); } catch { /* ignore */ }
-          }
-          track.attach(video);
-          gotVideo = true;
-        } else if (track.kind === Track.Kind.Audio && audio) {
+        if (track.kind === Track.Kind.Audio && audio) {
           if (hard) {
             try { track.detach(audio); } catch { /* ignore */ }
           }
@@ -79,6 +87,18 @@ function reattachRemoteMedia(
       }
     });
   });
+  const videoTrack = pickRemoteVideoTrack(room);
+  if (videoTrack && video) {
+    try {
+      if (hard) {
+        try { videoTrack.detach(video); } catch { /* ignore */ }
+      }
+      videoTrack.attach(video);
+      gotVideo = true;
+    } catch {
+      /* ignore */
+    }
+  }
   if (hard && video?.srcObject) {
     const stream = video.srcObject;
     video.srcObject = null;
@@ -161,9 +181,29 @@ export function ViewerLiveVideo({
         }
         roomRef.current = r;
 
-        const attachTrack = (track: RemoteTrack) => {
+        const attachTrack = (
+          track: RemoteTrack,
+          participant?: RemoteParticipant,
+        ) => {
           if (cancelled) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
+            // Prefer RTMP Ingress publisher over other remote cameras.
+            if (
+              participant &&
+              !participant.identity.startsWith("rtmp-host-") &&
+              roomRef.current
+            ) {
+              const preferred = pickRemoteVideoTrack(roomRef.current);
+              if (
+                preferred &&
+                preferred !== track &&
+                [...roomRef.current.remoteParticipants.values()].some((p) =>
+                  p.identity.startsWith("rtmp-host-"),
+                )
+              ) {
+                return;
+              }
+            }
             const el = videoRef.current;
             track.attach(el);
             const kick = () => kickPlayback(el, audioRef.current);
@@ -190,10 +230,13 @@ export function ViewerLiveVideo({
           }
         };
 
-        r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-          if (cancelled) return;
-          attachTrack(track);
-        });
+        r.on(
+          RoomEvent.TrackSubscribed,
+          (track: RemoteTrack, _pub, participant: RemoteParticipant) => {
+            if (cancelled) return;
+            attachTrack(track, participant);
+          },
+        );
 
         r.on(
           RoomEvent.TrackUnsubscribed,
@@ -255,7 +298,7 @@ export function ViewerLiveVideo({
             } catch {
               /* ignore */
             }
-            if (pub.track) attachTrack(pub.track);
+            if (pub.track) attachTrack(pub.track, p);
           });
         });
 

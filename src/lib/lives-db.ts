@@ -97,6 +97,8 @@ export type CreateLiveInput = {
   currency?: string;
   /** Whether viewers can send virtual gifts during the live. */
   allowGifts?: boolean;
+  /** camera = in-app WebRTC; rtmp = Restream/OBS via LiveKit Ingress. */
+  broadcastMode?: "camera" | "rtmp";
 
   products: Array<{
     name: string;
@@ -130,6 +132,7 @@ export async function createLiveInDb(
       room_name: input.roomName,
       status: "live",
       host_last_seen_at: new Date().toISOString(),
+      broadcast_mode: input.broadcastMode ?? "camera",
       ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
@@ -170,7 +173,11 @@ export async function createLiveInDb(
 export async function endLiveInDb(liveId: string): Promise<void> {
   await supabase
     .from("lives")
-    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .update({
+      status: "ended",
+      ended_at: new Date().toISOString(),
+      ingress_id: null,
+    } as never)
     .eq("id", liveId);
 }
 

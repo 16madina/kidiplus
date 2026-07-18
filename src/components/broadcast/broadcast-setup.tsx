@@ -27,6 +27,7 @@ import {
   updateScheduledLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
+import { createLiveIngress } from "@/lib/livekit-ingress";
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
@@ -271,6 +272,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       // mode === "now"
       const seed = b.hostIdentity.slice(0, 8) || "seller";
       const room = makeRoomName(seed);
+      const useRtmp = b.streamSource === "rtmp";
       const { liveId, productIds } = await createLiveInDb({
         sellerId: b.hostIdentity,
         title: b.title.trim(),
@@ -278,12 +280,32 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         coverPath,
         roomName: room,
         currency: b.currency,
+        broadcastMode: useRtmp ? "rtmp" : "camera",
         products: productsForDb,
       });
 
       b.setRoomName(room);
       b.setLiveId(liveId);
       b.setProductDbIds(productIds);
+
+      if (useRtmp) {
+        try {
+          const creds = await createLiveIngress(liveId);
+          b.setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          setLaunching(false);
+          return;
+        }
+      } else {
+        b.setRtmpCreds(null);
+      }
+
       b.goLive();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -314,32 +336,61 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 55%, #05060a 100%)",
       }}
     >
-      {/* Camera preview area (top half) */}
+      {/* Camera preview area (top half) — skipped for RTMP multi-stream */}
       <div className="absolute inset-x-0 top-0 h-[52%] overflow-hidden">
-        <BroadcastVideo
-          key={previewRetryKey}
-          facing={facing}
-          enabled={true}
-          fallbackImage={b.cover}
-          onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
-        />
+        {b.streamSource === "rtmp" ? (
+          <div className="absolute inset-0 grid place-items-center bg-neutral-950 px-6 text-center">
+            {b.cover && (
+              <img
+                src={b.cover}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-40"
+                style={{ filter: "blur(8px)" }}
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              />
+            )}
+            <div className="relative z-10 max-w-sm">
+              <p className="text-[17px] font-bold text-white">
+                {t("broadcast.rtmp.previewTitle", "Mode Restream / OBS")}
+              </p>
+              <p className="mt-2 text-[13px] leading-snug text-white/75">
+                {t(
+                  "broadcast.rtmp.previewBody",
+                  "Après le lancement, tu recevras une URL RTMP et une clé à coller dans Restream. La vidéo viendra de Restream, pas de la caméra du téléphone.",
+                )}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <BroadcastVideo
+            key={previewRetryKey}
+            facing={facing}
+            enabled={true}
+            fallbackImage={b.cover}
+            onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
+          />
+        )}
         {/* Filters button — bottom-right of the preview */}
-        <Press
-          onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
-          aria-label="Filtres"
-          className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
-          style={{
-            bottom: 12,
-            backgroundColor: "rgba(10,12,20,0.55)",
-            border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
-            color: activeLens.lensId !== "none" ? GOLD : "white",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-        >
-          <Sparkles size={18} />
-        </Press>
-        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+        {b.streamSource !== "rtmp" && (
+          <>
+            <Press
+              onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
+              aria-label="Filtres"
+              className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
+              style={{
+                bottom: 12,
+                backgroundColor: "rgba(10,12,20,0.55)",
+                border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+                color: activeLens.lensId !== "none" ? GOLD : "white",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <Sparkles size={18} />
+            </Press>
+            <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+          </>
+        )}
       </div>
 
       {/* Top bar — X · KIDI+ · Refresh */}
@@ -596,6 +647,45 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           )}
         </div>
 
+
+        {/* Multi-platform (Restream / OBS) */}
+        <Press
+          onClick={() => {
+            haptic.selection();
+            b.setStreamSource(b.streamSource === "rtmp" ? "camera" : "rtmp");
+          }}
+          className="!min-h-12 flex w-full items-center justify-between rounded-2xl px-4 text-left"
+          style={{
+            border: `1px solid ${b.streamSource === "rtmp" ? GOLD : GOLD_SOFT}`,
+            background:
+              b.streamSource === "rtmp"
+                ? "oklch(0.82 0.14 85 / 0.12)"
+                : "oklch(0.13 0.03 260 / 0.7)",
+          }}
+        >
+          <div className="min-w-0 pr-3">
+            <p className="text-[14px] font-bold text-white">
+              {t("broadcast.rtmp.toggleTitle", "Multi-plateformes (Restream / OBS)")}
+            </p>
+            <p className="text-[11px] text-white/65">
+              {t(
+                "broadcast.rtmp.toggleHint",
+                "Diffuse aussi sur TikTok, Facebook, YouTube via Restream",
+              )}
+            </p>
+          </div>
+          <span
+            className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
+            style={{
+              background: b.streamSource === "rtmp" ? GOLD : "rgba(255,255,255,0.12)",
+              color: b.streamSource === "rtmp" ? "#0a0a12" : "white",
+            }}
+          >
+            {b.streamSource === "rtmp"
+              ? t("broadcast.rtmp.on", "ON")
+              : t("broadcast.rtmp.off", "OFF")}
+          </span>
+        </Press>
 
         {/* Products */}
         <div>

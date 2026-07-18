@@ -450,6 +450,31 @@
       "revenue": "Chiffre d'affaires",
       "newFollowers": "Nouveaux abonnés",
       "close": "Fermer"
+    },
+    "rtmp": {
+      "toggleTitle": "Multi-plateformes (Restream / OBS)",
+      "toggleHint": "Diffuse depuis Restream vers TikTok, Facebook, YouTube et KiDi+ en même temps.",
+      "on": "ON",
+      "off": "OFF",
+      "previewTitle": "Mode Restream / OBS",
+      "previewBody": "Pas de caméra dans KiDi+. Tu lances le live depuis Restream ; KiDi+ reçoit le flux RTMP.",
+      "createFailed": "Impossible de créer le lien RTMP",
+      "title": "Multi-plateformes",
+      "subtitle": "Colle ces infos dans Restream (destination Custom RTMP), puis lance le live depuis Restream.",
+      "step1": "Installe l’app Restream (téléphone ou ordi).",
+      "step2": "Connecte TikTok, Facebook, YouTube dans Restream.",
+      "step3": "Ajoute une destination Custom RTMP avec l’URL et la clé ci-dessous.",
+      "step4": "Lance le live dans Restream — la vidéo apparaît ici et chez les viewers KiDi+.",
+      "serverUrl": "URL RTMP (Server)",
+      "streamKey": "Clé de stream (Stream key)",
+      "copiedUrl": "URL copiée",
+      "copiedKey": "Clé copiée",
+      "show": "Voir",
+      "hide": "Masquer",
+      "securityNote": "Ne partage pas ta clé de stream. Elle donne le droit de publier sur ce live.",
+      "done": "J’ai configuré Restream",
+      "openCreds": "Clés RTMP",
+      "waiting": "En attente du flux Restream…"
     }
   },
   "golive": {

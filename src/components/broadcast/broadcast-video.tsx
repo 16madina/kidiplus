@@ -25,6 +25,7 @@ import {
   switchHostCameraFacing,
   syncFrontCameraMirror,
   type LocalVideoTrack,
+  type RemoteTrack,
   type CameraFacing,
 } from "@/lib/livekit";
 
@@ -54,6 +55,13 @@ export type BroadcastVideoProps = {
   /** When set, use LiveKit host publishing instead of local preview. */
   livekit?: BroadcastVideoLK;
   micEnabled?: boolean;
+  /**
+   * camera (default): publish local webcam.
+   * rtmp: host joins without camera; subscribe to Ingress participant video.
+   */
+  videoSource?: "camera" | "rtmp";
+  /** LiveKit identity of the RTMP Ingress publisher (rtmp-host-…). */
+  ingressIdentity?: string;
   /** Bump this to force a fresh token + reconnect (host retry). */
   retryKey?: number;
   onStatus?: (s: BroadcastStatus) => void;
@@ -92,7 +100,22 @@ export type BroadcastVideoHandle = {
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
   function BroadcastVideo(
-    { facing, enabled, fallbackImage, livekit, micEnabled = true, retryKey = 0, onStatus, onCanFlipChange, onRequestRetry, onFlipRevert, onFlipBusyChange, onFacingApplied },
+    {
+      facing,
+      enabled,
+      fallbackImage,
+      livekit,
+      micEnabled = true,
+      videoSource = "camera",
+      ingressIdentity,
+      retryKey = 0,
+      onStatus,
+      onCanFlipChange,
+      onRequestRetry,
+      onFlipRevert,
+      onFlipBusyChange,
+      onFacingApplied,
+    },
     ref,
   ) {
     const { t } = useTranslation();
@@ -340,26 +363,52 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (!livekit) return;
       let cancelled = false;
+      const isRtmp = videoSource === "rtmp";
+
+      function attachIngressVideo(room: Room) {
+        const wantId = ingressIdentity;
+        const tryAttach = (identity: string, track: RemoteTrack | undefined) => {
+          if (!track || track.kind !== Track.Kind.Video) return false;
+          if (wantId && identity !== wantId && !identity.startsWith("rtmp-host-")) {
+            return false;
+          }
+          if (!wantId && !identity.startsWith("rtmp-host-")) return false;
+          if (videoRef.current) {
+            track.attach(videoRef.current);
+            videoRef.current.play().catch(() => {});
+          }
+          if (!cancelled) setState("granted");
+          return true;
+        };
+        for (const p of room.remoteParticipants.values()) {
+          for (const pub of p.trackPublications.values()) {
+            if (tryAttach(p.identity, pub.track as RemoteTrack | undefined)) return true;
+          }
+        }
+        return false;
+      }
 
       async function start() {
         if (!roomShouldRun) return teardown();
         setState("connecting");
 
-        // Permission only — do not open video here. Opening then stopping the
-        // camera before LiveKit createLocalVideoTrack causes NotReadableError
-        // on many Android OEMs (camera still busy).
-        const preflight = await ensureCameraMicPermission({
-          video: { facingMode: facingRef.current },
-          audio: micEnabled,
-        });
-        if (cancelled) return;
-        if (preflight.status !== "granted") {
-          if (preflight.status === "denied_by_user") setState("denied");
-          else if (preflight.status === "config_missing") setState("config_missing");
-          else if (preflight.status === "no_device") setState("unavailable");
-          else if (preflight.status === "unsupported") setState("unsupported");
-          else setState("error");
-          return;
+        if (!isRtmp) {
+          // Permission only — do not open video here. Opening then stopping the
+          // camera before LiveKit createLocalVideoTrack causes NotReadableError
+          // on many Android OEMs (camera still busy).
+          const preflight = await ensureCameraMicPermission({
+            video: { facingMode: facingRef.current },
+            audio: micEnabled,
+          });
+          if (cancelled) return;
+          if (preflight.status !== "granted") {
+            if (preflight.status === "denied_by_user") setState("denied");
+            else if (preflight.status === "config_missing") setState("config_missing");
+            else if (preflight.status === "no_device") setState("unavailable");
+            else if (preflight.status === "unsupported") setState("unsupported");
+            else setState("error");
+            return;
+          }
         }
 
         let phase: "token" | "connect" | "camera" = "token";
@@ -384,6 +433,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           });
           room.on(RoomEvent.Reconnected, () => {
             if (cancelled) return;
+            if (isRtmp) {
+              if (!attachIngressVideo(room)) setState("connecting");
+              return;
+            }
             setState("granted");
             // After network reconnect LiveKit may replace the camera track —
             // refresh the ref and resync facing so flip stays accurate.
@@ -404,6 +457,42 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           room.on(RoomEvent.Disconnected, () => {
             if (!cancelled) setState("connect_failed");
           });
+
+          if (isRtmp) {
+            await room.localParticipant.setMicrophoneEnabled(false);
+            await room.localParticipant.setCameraEnabled(false);
+            localVideoTrackRef.current = null;
+            room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+              if (cancelled) return;
+              if (track.kind !== Track.Kind.Video) return;
+              const id = participant.identity;
+              if (
+                ingressIdentity
+                  ? id === ingressIdentity || id.startsWith("rtmp-host-")
+                  : id.startsWith("rtmp-host-")
+              ) {
+                if (videoRef.current) {
+                  track.attach(videoRef.current);
+                  videoRef.current.play().catch(() => {});
+                }
+                setState("granted");
+              }
+            });
+            room.on(RoomEvent.TrackUnsubscribed, (track) => {
+              if (track.kind === Track.Kind.Video && videoRef.current) {
+                try {
+                  track.detach(videoRef.current);
+                } catch {
+                  /* ignore */
+                }
+                if (!cancelled) setState("connecting");
+              }
+            });
+            if (!attachIngressVideo(room) && !cancelled) {
+              setState("connecting");
+            }
+            return;
+          }
 
           phase = "camera";
           await room.localParticipant.setMicrophoneEnabled(micEnabled);
@@ -481,7 +570,14 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         cancelled = true;
         void teardown();
       };
-    }, [livekit?.room, livekit?.identity, roomShouldRun, retryKey]);
+    }, [
+      livekit?.room,
+      livekit?.identity,
+      roomShouldRun,
+      retryKey,
+      videoSource,
+      ingressIdentity,
+    ]);
 
     // Toggle camera without reconnecting. When turning back ON, re-apply the
     // remembered facingMode — otherwise LiveKit defaults to front camera and
@@ -496,6 +592,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       else if (state === "connecting" || state === "idle") camToggleReadyRef.current = false;
     }, [state]);
     useEffect(() => {
+      if (videoSource === "rtmp") return;
       if (!livekit || !roomShouldRun || !camToggleReadyRef.current) {
         prevEnabledRef.current = enabled;
         return;
@@ -574,11 +671,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
     // Toggle mic without reconnecting.
     useEffect(() => {
-      if (!livekit) return;
+      if (!livekit || videoSource === "rtmp") return;
       const room = roomRef.current;
       if (!room) return;
       void room.localParticipant.setMicrophoneEnabled(micEnabled);
-    }, [micEnabled, livekit]);
+    }, [micEnabled, livekit, videoSource]);
 
     // Changement de filtre pendant le live : mettre à jour le pipeline de la
     // piste publiée (les viewers voient la nouvelle lens instantanément).
@@ -597,7 +694,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeLens.lensId, activeLens.isSnapLens, livekit, state, enabled]);
 
-    const showVideo = roomShouldRun && state === "granted" && enabled;
+    const showVideo =
+      roomShouldRun &&
+      state === "granted" &&
+      (videoSource === "rtmp" || enabled);
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
     const mirrored = !livekit && facing === "user";
@@ -640,7 +740,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               <Camera size={28} />
               <p className="max-w-[260px] text-center text-[13px] font-semibold">
                 {state === "connecting"
-                  ? t("broadcast.camera.connecting", "Connexion au live…")
+                  ? videoSource === "rtmp"
+                    ? t(
+                        "broadcast.rtmp.waiting",
+                        "En attente du flux Restream / OBS…",
+                      )
+                    : t("broadcast.camera.connecting", "Connexion au live…")
                   : state === "denied"
                     ? t(
                         "broadcast.camera.denied",

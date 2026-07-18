@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  Eye, Package, AlertTriangle, X, Shield, Trash2, Send,
+  Eye, Package, AlertTriangle, X, Shield, Trash2, Send, Radio,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
 import { FiltersCarousel } from "./filters-carousel";
+import { RtmpCredentialsSheet } from "./rtmp-credentials-sheet";
 import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
@@ -62,8 +63,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
+  const isRtmp = b.streamSource === "rtmp";
   const [cameraOn, setCameraOn] = useState(true);
-  const [micOn, setMicOn] = useState(true);
+  const [micOn, setMicOn] = useState(!isRtmp);
+  const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
@@ -549,6 +552,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         })),
     });
     if (b.liveId) {
+      if (isRtmp || b.rtmpCreds) {
+        const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
+        await deleteLiveIngress(b.liveId).catch(() => {});
+      }
       const { endLiveInDb } = await import("@/lib/lives-db");
       await endLiveInDb(b.liveId).catch(() => {});
     }
@@ -630,8 +637,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <BroadcastVideo
         ref={videoHandleRef}
         facing={facing}
-        enabled={cameraOn}
-        micEnabled={micOn}
+        enabled={isRtmp ? true : cameraOn}
+        micEnabled={isRtmp ? false : micOn}
+        videoSource={isRtmp ? "rtmp" : "camera"}
+        ingressIdentity={b.rtmpCreds?.participantIdentity}
         fallbackImage={b.cover}
         retryKey={retryKey}
         onStatus={setVideoStatus}
@@ -1101,31 +1110,58 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       {/* Bottom area is chat + featured card only. Mic / cam / flip /
           moderators / add live on the right tool rail. Filters removed. */}
       <HostToolRail
+        hideAV={isRtmp}
         micOn={micOn}
         camOn={cameraOn}
-        canFlip={canFlip && cameraOn}
+        canFlip={!isRtmp && canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
-        filtersActive={activeLens.lensId !== "none"}
-        onOpenFilters={() => setFiltersOpen((o) => !o)}
-        onToggleMic={() => setMicOn((m) => !m)}
-        onToggleCam={() => setCameraOn((c) => !c)}
-        onFlip={() => {
-          if (flipBusy || !cameraOn) return;
-          // Flip opposite of the *actual* camera — don't trust React facing
-          // state after leave/return (it can say "back" while hardware is front).
-          void videoHandleRef.current
-            ?.switchCamera()
-            .then((applied) => setFacing(applied))
-            .catch(() => {
-              /* toast + revert handled inside BroadcastVideo */
-            });
-        }}
+        filtersActive={!isRtmp && activeLens.lensId !== "none"}
+        onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+        onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
+        onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
+        onFlip={
+          isRtmp
+            ? undefined
+            : () => {
+                if (flipBusy || !cameraOn) return;
+                void videoHandleRef.current
+                  ?.switchCamera()
+                  .then((applied) => setFacing(applied))
+                  .catch(() => {
+                    /* toast + revert handled inside BroadcastVideo */
+                  });
+              }
+        }
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
       />
 
-      <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      {!isRtmp && (
+        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      )}
+
+      {isRtmp && b.rtmpCreds && (
+        <>
+          <Press
+            onClick={() => setRtmpSheetOpen(true)}
+            className="!min-h-9 absolute left-3 z-30 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-black"
+            style={{
+              top: "calc(env(safe-area-inset-top) + 52px)",
+              background:
+                "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+            }}
+          >
+            <Radio size={14} />
+            {t("broadcast.rtmp.openCreds", "Clés RTMP")}
+          </Press>
+          <RtmpCredentialsSheet
+            open={rtmpSheetOpen}
+            onClose={() => setRtmpSheetOpen(false)}
+            creds={b.rtmpCreds}
+          />
+        </>
+      )}
 
 
       <LiveViewersSheet
