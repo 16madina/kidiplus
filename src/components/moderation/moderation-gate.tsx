@@ -2,7 +2,7 @@
 // Rendered once inside AppShell, above tab content.
 
 import { useTranslation } from "react-i18next";
-import { AlertOctagon, ShieldAlert } from "lucide-react";
+import { AlertOctagon, ShieldAlert, Snowflake } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useMyModerationState } from "@/lib/moderation-admin";
 import { Press } from "@/components/press";
@@ -65,6 +65,32 @@ export function SuspensionBanner() {
           {end ? t("moderation.suspendedUntil", { date: end }) : t("moderation.suspendedIndefinite")}
         </p>
         <p className="mt-0.5 text-muted-foreground">{s.reason}</p>
+      </div>
+    </div>
+  );
+}
+
+// Frozen-account banner (non-blocking) — displays when an admin has paused
+// the account for anti-fraud review. Wallet actions, payouts and gifting
+// are blocked server-side; browsing still works.
+export function AccountFrozenBanner() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { state } = useMyModerationState(user?.id ?? null);
+  if (!state.is_frozen) return null;
+  return (
+    <div
+      className="mx-3 my-2 flex items-start gap-2 rounded-2xl border p-3 text-[12px]"
+      style={{ backgroundColor: "oklch(0.6 0.15 240 / 0.12)", borderColor: "oklch(0.6 0.15 240 / 0.4)" }}
+    >
+      <Snowflake size={16} className="mt-0.5 shrink-0" style={{ color: "oklch(0.45 0.15 240)" }} />
+      <div className="min-w-0">
+        <p className="font-semibold" style={{ color: "oklch(0.35 0.15 240)" }}>
+          {t("moderation.frozen.title", "Compte en vérification")}
+        </p>
+        <p className="mt-0.5 text-muted-foreground">
+          {state.frozen_reason || t("moderation.frozen.body", "Les retraits, achats via portefeuille et cadeaux sont temporairement bloqués. Contacte le support si besoin.")}
+        </p>
       </div>
     </div>
   );

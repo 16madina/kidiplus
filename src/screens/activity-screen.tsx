@@ -8,7 +8,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { formatRelative } from "@/lib/activity-mock";
 import { useAuth } from "@/lib/auth-context";
 import { AdminMessagesInbox } from "@/components/moderation/admin-messages-inbox";
-import { SuspensionBanner } from "@/components/moderation/moderation-gate";
+import { SuspensionBanner, AccountFrozenBanner } from "@/components/moderation/moderation-gate";
 import {
   fetchMyNotifications,
   markNotificationRead,

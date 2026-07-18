@@ -37,6 +37,8 @@ import {
 import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 import { OrderItemImage } from "@/components/orders/order-item-image";
+import { PayoutRiskBadge } from "./payout-risk-badge";
+
 
 
 type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral";
@@ -613,6 +615,10 @@ function PaymentsTab() {
                     <pre className="whitespace-pre-wrap break-all text-[11px] text-muted-foreground">{destText}</pre>
                     <Copy size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                   </button>
+                  {(p.status === "requested" || p.status === "processing") && (
+                    <PayoutRiskBadge payoutId={p.id} sellerId={p.seller_id} sellerHandle={p.seller_handle ?? null} />
+                  )}
+
 
                   {p.status === "paid" && p.proof_url && (
                     <ProofThumbnail path={p.proof_url} />
