@@ -1124,9 +1124,13 @@ export type Database = {
           email: string
           followers_count: number
           following_count: number
+          frozen_at: string | null
+          frozen_by: string | null
+          frozen_reason: string | null
           handle: string
           id: string
           is_admin: boolean
+          is_frozen: boolean
           is_referred: boolean
           is_seller: boolean
           is_verified: boolean
@@ -1150,9 +1154,13 @@ export type Database = {
           email: string
           followers_count?: number
           following_count?: number
+          frozen_at?: string | null
+          frozen_by?: string | null
+          frozen_reason?: string | null
           handle: string
           id: string
           is_admin?: boolean
+          is_frozen?: boolean
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
@@ -1176,9 +1184,13 @@ export type Database = {
           email?: string
           followers_count?: number
           following_count?: number
+          frozen_at?: string | null
+          frozen_by?: string | null
+          frozen_reason?: string | null
           handle?: string
           id?: string
           is_admin?: boolean
+          is_frozen?: boolean
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
@@ -2030,12 +2042,17 @@ export type Database = {
         Args: { _id: string; _owner_id: string }
         Returns: Json
       }
+      admin_compute_payout_risk: { Args: { _payout_id: string }; Returns: Json }
       admin_create_promo_code: {
         Args: { _code: string; _owner_id?: string; _reward_quota?: number }
         Returns: Json
       }
       admin_delete_promo_code: { Args: { _id: string }; Returns: Json }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
+      admin_freeze_user: {
+        Args: { _reason: string; _user_id: string }
+        Returns: Json
+      }
       admin_issue_sanction: {
         Args: {
           _expires_at?: string
@@ -2123,6 +2140,10 @@ export type Database = {
         Args: { _limit?: number; _q: string }
         Returns: Json
       }
+      admin_seller_recent_orders: {
+        Args: { _limit?: number; _user_id: string }
+        Returns: Json
+      }
       admin_send_message: {
         Args: { _body: string; _title: string; _user_id: string }
         Returns: Json
@@ -2135,6 +2156,7 @@ export type Database = {
         Args: { _user: string; _verified: boolean }
         Returns: Json
       }
+      admin_unfreeze_user: { Args: { _user_id: string }; Returns: Json }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       anonymize_my_account: { Args: never; Returns: Json }
       apply_promo_code: { Args: { _code: string }; Returns: Json }
@@ -2205,6 +2227,7 @@ export type Database = {
         Args: { _live_id: string; _user_id: string }
         Returns: boolean
       }
+      is_user_frozen: { Args: { _user_id: string }; Returns: boolean }
       leave_review: {
         Args: { _comment?: string; _order_id: string; _rating: number }
         Returns: Json

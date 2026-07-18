@@ -59,6 +59,19 @@ export const PAYOUT_MINIMUMS: Record<Currency, number> = {
   CAD: 15,
 };
 
+/**
+ * Anti-fraud / AML limits. Mirrored in the SQL functions
+ * `credit_wallet_topup` and `request_payout`. Update both together.
+ */
+export const MAX_WALLET_BALANCE: Record<Currency, number> = {
+  XOF: 1_000_000,
+  EUR: 2_000,
+  CAD: 3_000,
+};
+export const MAX_TOPUP_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;
+export const MAX_PAYOUT_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;
+
+
 export function payoutMinimumFor(currency: string | null | undefined): number {
   return PAYOUT_MINIMUMS[normalizeCurrency(currency)];
 }

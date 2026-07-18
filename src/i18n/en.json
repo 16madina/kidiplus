@@ -1025,6 +1025,10 @@
       "body": "Your account has been banned following a violation of KiDi+ community guidelines.",
       "support": "For any question, contact support@kidiplus.com"
     },
+    "frozen": {
+      "title": "Account under review",
+      "body": "Withdrawals, wallet purchases and gifts are temporarily blocked. Contact support if needed."
+    },
     "types": {
       "warning": "Warning",
       "suspension": "Suspension",

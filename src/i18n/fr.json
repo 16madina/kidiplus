@@ -1025,6 +1025,10 @@
       "body": "Ton compte a été suspendu suite à une violation des règles de la communauté KiDi+.",
       "support": "Pour toute question, contacte support@kidiplus.com"
     },
+    "frozen": {
+      "title": "Compte en vérification",
+      "body": "Les retraits, achats via portefeuille et cadeaux sont temporairement bloqués. Contacte le support si besoin."
+    },
     "types": {
       "warning": "Avertissement",
       "suspension": "Suspension",

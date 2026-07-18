@@ -102,6 +102,14 @@ export const LEGAL_FR: Bundle = {
         `Un compte banni ne peut plus accéder au service. Toute tentative de contournement (nouveau compte, changement d'identifiants) constitue une violation supplémentaire.`,
         `Tout Utilisateur peut signaler un contenu ou un compte via l'action « Signaler » disponible dans l'application. L'action « Bloquer » masque immédiatement le contenu du compte bloqué et transmet le signalement à l'équipe de modération.`,
       ]},
+      { h: "12 bis. Lutte contre la fraude et le blanchiment (AML/CFT)", p: [
+        `${APP_NAME} met en œuvre des mesures raisonnables de prévention de la fraude, du blanchiment de capitaux et du financement du terrorisme, en cohérence avec les standards applicables au ${OPERATOR_JURISDICTION}.`,
+        `Des plafonds opérationnels sont appliqués à titre préventif : solde maximal du Portefeuille de 1 000 000 XOF, 2 000 EUR ou 3 000 CAD ; recharges et retraits limités à ce même montant par période glissante de 24 heures. Ces plafonds peuvent être révisés à tout moment.`,
+        `${APP_NAME} peut, à titre conservatoire et sans préavis, geler temporairement un compte (blocage des retraits, des paiements par Portefeuille et des cadeaux virtuels) en présence d'indices raisonnables de fraude — notamment : compte récent avec activité anormalement élevée, concentration inhabituelle sur un même acheteur, cycle recharge→achat→retrait très court, premier retrait d'un montant inhabituel, coordonnées partagées entre acheteur et vendeur, litiges ou rétrofacturations, ou toute autre anomalie détectée par nos systèmes de contrôle.`,
+        `Le gel est une mesure de vérification, distincte de la suspension ou du bannissement. L'Utilisateur en est informé par message interne indiquant le motif et peut fournir tout justificatif utile au service support. Le compte est réactivé dès la fin de la vérification si aucune irrégularité n'est confirmée.`,
+        `${APP_NAME} peut refuser une transaction, exiger des informations complémentaires (identité, justificatif de provenance des fonds, justificatif de propriété du bien vendu), déclarer une opération suspecte aux autorités compétentes lorsque la loi l'exige, et coopérer avec toute réquisition judiciaire.`,
+        `Toute tentative de contournement de ces mesures (multi-comptes, transactions fractionnées, faux justificatifs) constitue un manquement grave et peut entraîner la fermeture définitive du ou des comptes concernés ainsi que la retenue des fonds jusqu'à résolution.`,
+      ]},
       { h: "13. Programme de parrainage", p: [
         `${APP_NAME} peut mettre à disposition un programme de parrainage récompensant les Utilisateurs pour l'inscription et l'activité de nouveaux membres. Les conditions détaillées (montants, plafonds, conditions de déclenchement, exclusions) sont décrites dans l'écran dédié à ce programme.`,
         `${APP_NAME} peut modifier, suspendre ou clôturer le programme à tout moment, moyennant un préavis raisonnable. Tout comportement frauduleux, notamment la création de faux comptes, l'auto-parrainage ou la manipulation des activités récompensées, entraîne l'annulation immédiate des gains, la fermeture du ou des comptes concernés et l'exclusion du programme.`,
@@ -369,6 +377,14 @@ export const LEGAL_EN: Bundle = {
         `${APP_NAME} may, at any time and in its reasonable discretion, remove content, end a live, restrict features, warn, temporarily suspend or permanently ban an account for breach of these Terms, the Community Guidelines or the law.`,
         `A banned account can no longer access the service. Any attempt to circumvent (new account, changed credentials) is an additional breach.`,
         `Any User may report content or an account via the "Report" action. The "Block" action instantly hides content from the blocked account and forwards a report to the moderation team.`,
+      ]},
+      { h: "12A. Anti-fraud, AML/CFT", p: [
+        `${APP_NAME} implements reasonable measures to prevent fraud, money laundering and terrorist financing, consistent with standards applicable in ${OPERATOR_JURISDICTION}.`,
+        `Operational caps apply as a preventive measure: maximum Wallet balance of 1,000,000 XOF, 2,000 EUR or 3,000 CAD; top-ups and withdrawals limited to the same amount per rolling 24-hour period. Caps may be revised at any time.`,
+        `${APP_NAME} may, as a precautionary measure and without prior notice, temporarily freeze an account (blocking withdrawals, wallet purchases and virtual gifts) upon reasonable indicators of fraud — including: recent account with abnormally high activity, unusual buyer concentration, very short recharge→purchase→withdrawal cycle, first withdrawal for an unusual amount, contact information shared between buyer and seller, disputes or chargebacks, or any other anomaly flagged by our control systems.`,
+        `A freeze is a verification measure, distinct from suspension or ban. The User is notified via in-app message stating the reason and may submit any relevant supporting document to support. The account is reactivated once verification is complete if no irregularity is confirmed.`,
+        `${APP_NAME} may refuse a transaction, require additional information (identity, source-of-funds evidence, proof of ownership of the sold item), file a suspicious-transaction report with competent authorities when required by law, and cooperate with any judicial request.`,
+        `Any attempt to circumvent these measures (multiple accounts, structuring, forged documents) is a material breach and may lead to permanent closure of the accounts involved and retention of funds until resolution.`,
       ]},
       { h: "13. Referral program", p: [
         `${APP_NAME} may offer a referral program. Detailed terms (amounts, caps, triggers, exclusions) are described in the dedicated screen.`,
