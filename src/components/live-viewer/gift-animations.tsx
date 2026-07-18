@@ -84,7 +84,8 @@ export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden" aria-hidden>
+    // Above gift tray (z-70) so the sender sees the animation while / after sending.
+    <div className="pointer-events-none absolute inset-0 z-[85] overflow-hidden" aria-hidden>
       <AnimatePresence>
         {active.map((item) => (
           <GiftAnim key={item.animId} item={item} onDone={() => dropItem(item.animId)} />

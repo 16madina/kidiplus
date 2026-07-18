@@ -350,12 +350,15 @@ export function RealLiveViewerScreen() {
     if (!active?.liveId) { toast.error(t("pay.errors.notSignedIn")); return; }
 
     if (liveEnded) return;
+    // Close the tray first so combo + full-screen anim aren't hidden behind it.
+    setGiftTrayOpen(false);
     setSendingGift(true);
     haptic.medium();
     const res = await sendGiftRpc(active.liveId, key);
     setSendingGift(false);
     if (!res.ok) {
       if (res.error === "insufficient_funds") setTopupOpen(true);
+      else setGiftTrayOpen(true);
       showGiftError(res.error);
       return;
     }

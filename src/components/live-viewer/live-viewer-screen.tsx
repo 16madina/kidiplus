@@ -102,7 +102,10 @@ function MockLiveViewerScreen() {
         const roll = Math.random();
         const nextMsg =
           roll < 0.12
-            ? systemMessage(`@${randomBidder()} a rejoint le live 👋`)
+            ? {
+                ...systemMessage(randomBidder()),
+                systemKind: "join" as const,
+              }
             : nextChatMessage();
         const next = [...prev, nextMsg];
         return next.length > 60 ? next.slice(next.length - 60) : next;

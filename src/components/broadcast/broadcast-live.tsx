@@ -804,7 +804,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       <FloatingHearts trigger={room.heartTick} />
       <Confetti trigger={confettiTrigger} />
-      <GiftComboFeed trigger={room.lastGift} bottomOffsetPx={180} />
+      <GiftComboFeed trigger={room.lastGift} />
       <GiftAnimationsLayer trigger={room.lastGift} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}

@@ -1,6 +1,6 @@
-// TikTok-style gift combo feed: stacked chips on the left showing
-// sender + gift emoji + xN. Same sender+gift within a short window
-// increments the combo instead of stacking a new row.
+// TikTok-style gift combo feed: stacked chips showing sender + gift + xN.
+// Same sender+gift within a short window increments the combo.
+// Placed mid-screen (above the gift tray) so the sender always sees it.
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,11 +23,8 @@ const MAX_ROWS = 3;
 
 export function GiftComboFeed({
   trigger,
-  bottomOffsetPx = 220,
 }: {
   trigger: GiftEvt | null;
-  /** Distance from the bottom safe area — sit above chat / product card. */
-  bottomOffsetPx?: number;
 }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState<ComboRow[]>([]);
@@ -37,7 +34,7 @@ export function GiftComboFeed({
 
   useEffect(() => {
     return () => {
-      for (const t of timersRef.current.values()) clearTimeout(t);
+      for (const timer of timersRef.current.values()) clearTimeout(timer);
       timersRef.current.clear();
     };
   }, []);
@@ -70,7 +67,6 @@ export function GiftComboFeed({
           count: cur.count + 1,
           bump: cur.bump + 1,
         };
-        // Move bumped combo to the top of the stack.
         const [row] = next.splice(existingIdx, 1);
         next = [row, ...next];
       } else {
@@ -104,8 +100,8 @@ export function GiftComboFeed({
 
   return (
     <div
-      className="pointer-events-none absolute left-3 z-[35] flex w-[min(72%,280px)] flex-col gap-1.5"
-      style={{ bottom: `calc(env(safe-area-inset-bottom) + ${bottomOffsetPx}px)` }}
+      className="pointer-events-none absolute left-3 z-[85] flex w-[min(72%,280px)] -translate-y-1/2 flex-col gap-1.5"
+      style={{ top: "42%" }}
       aria-hidden
     >
       <AnimatePresence initial={false}>

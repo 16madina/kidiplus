@@ -9,6 +9,8 @@ import { Press } from "@/components/press";
 // que Framer Motion `layout` déclenche un reflow O(n) sur chaque burst.
 const VISIBLE_MSGS = 40;
 const BURST_THRESHOLD_PER_SEC = 30;
+/** TikTok-style: "X a rejoint" flashes then leaves the chat. */
+const JOIN_TTL_MS = 3_000;
 
 export type LiveChatModeration = {
   /** True when the current viewer is host/moderator: shows the "Mute" action. */
@@ -42,6 +44,8 @@ export function LiveChat({
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
   const [menuMsg, setMenuMsg] = useState<ChatMsg | null>(null);
+  const [expiredJoins, setExpiredJoins] = useState<Set<string>>(() => new Set());
+  const joinTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const lastCountRef = useRef(messages.length);
   const lastTsRef = useRef(performance.now());
@@ -60,10 +64,40 @@ export function LiveChat({
     }
   }, [messages]);
 
-  const visible = useMemo(
-    () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
-    [messages],
-  );
+  // Expire join announcements after a few seconds so they don't clutter chat.
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.systemKind !== "join") continue;
+      if (expiredJoins.has(m.id) || joinTimersRef.current.has(m.id)) continue;
+      joinTimersRef.current.set(
+        m.id,
+        setTimeout(() => {
+          joinTimersRef.current.delete(m.id);
+          setExpiredJoins((prev) => {
+            if (prev.has(m.id)) return prev;
+            const next = new Set(prev);
+            next.add(m.id);
+            return next;
+          });
+        }, JOIN_TTL_MS),
+      );
+    }
+  }, [messages, expiredJoins]);
+
+  useEffect(() => {
+    return () => {
+      for (const t of joinTimersRef.current.values()) clearTimeout(t);
+      joinTimersRef.current.clear();
+    };
+  }, []);
+
+  const visible = useMemo(() => {
+    const base =
+      messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages;
+    return base.filter(
+      (m) => !(m.systemKind === "join" && expiredJoins.has(m.id)),
+    );
+  }, [messages, expiredJoins]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -164,7 +198,11 @@ export function LiveChat({
                     key={m.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
+                    exit={
+                      m.systemKind === "join"
+                        ? { opacity: 0, y: -6, transition: { duration: 0.35 } }
+                        : { opacity: 0 }
+                    }
                     transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
                   >
                     <ChatBubble
