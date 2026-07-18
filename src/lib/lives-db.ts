@@ -133,6 +133,7 @@ export async function createLiveInDb(
       status: "live",
       host_last_seen_at: new Date().toISOString(),
       broadcast_mode: input.broadcastMode ?? "camera",
+      ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
@@ -810,6 +811,8 @@ export async function createScheduledLiveInDb(
       room_name: input.roomName,
       status: "scheduled",
       scheduled_at: input.scheduledAt,
+      broadcast_mode: input.broadcastMode ?? "camera",
+      ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
       ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
     })

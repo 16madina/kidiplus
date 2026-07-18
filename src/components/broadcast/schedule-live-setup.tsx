@@ -334,6 +334,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           allowGifts,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),

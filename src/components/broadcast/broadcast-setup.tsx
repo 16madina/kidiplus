@@ -248,6 +248,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
