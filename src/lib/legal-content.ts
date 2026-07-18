@@ -378,6 +378,14 @@ export const LEGAL_EN: Bundle = {
         `A banned account can no longer access the service. Any attempt to circumvent (new account, changed credentials) is an additional breach.`,
         `Any User may report content or an account via the "Report" action. The "Block" action instantly hides content from the blocked account and forwards a report to the moderation team.`,
       ]},
+      { h: "12A. Anti-fraud, AML/CFT", p: [
+        `${APP_NAME} implements reasonable measures to prevent fraud, money laundering and terrorist financing, consistent with standards applicable in ${OPERATOR_JURISDICTION}.`,
+        `Operational caps apply as a preventive measure: maximum Wallet balance of 1,000,000 XOF, 2,000 EUR or 3,000 CAD; top-ups and withdrawals limited to the same amount per rolling 24-hour period. Caps may be revised at any time.`,
+        `${APP_NAME} may, as a precautionary measure and without prior notice, temporarily freeze an account (blocking withdrawals, wallet purchases and virtual gifts) upon reasonable indicators of fraud — including: recent account with abnormally high activity, unusual buyer concentration, very short recharge→purchase→withdrawal cycle, first withdrawal for an unusual amount, contact information shared between buyer and seller, disputes or chargebacks, or any other anomaly flagged by our control systems.`,
+        `A freeze is a verification measure, distinct from suspension or ban. The User is notified via in-app message stating the reason and may submit any relevant supporting document to support. The account is reactivated once verification is complete if no irregularity is confirmed.`,
+        `${APP_NAME} may refuse a transaction, require additional information (identity, source-of-funds evidence, proof of ownership of the sold item), file a suspicious-transaction report with competent authorities when required by law, and cooperate with any judicial request.`,
+        `Any attempt to circumvent these measures (multiple accounts, structuring, forged documents) is a material breach and may lead to permanent closure of the accounts involved and retention of funds until resolution.`,
+      ]},
       { h: "13. Referral program", p: [
         `${APP_NAME} may offer a referral program. Detailed terms (amounts, caps, triggers, exclusions) are described in the dedicated screen.`,
         `${APP_NAME} may modify, suspend or close the program at any time on reasonable notice. Fraudulent behaviour (fake accounts, self-referral, activity manipulation) results in immediate cancellation of earnings, closure of the accounts involved and exclusion.`,
