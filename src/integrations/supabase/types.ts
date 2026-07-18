@@ -742,14 +742,12 @@ export type Database = {
         Row: {
           abandon_push_sent_at: string | null
           allow_gifts: boolean
-          broadcast_mode: string
           category: string | null
           cover_url: string | null
           currency: string
           ended_at: string | null
           host_last_seen_at: string | null
           id: string
-          ingress_id: string | null
           reminder_buyer_15m_sent: boolean
           reminder_buyer_1h_sent: boolean
           reminder_buyer_24h_sent: boolean
@@ -766,14 +764,12 @@ export type Database = {
         Insert: {
           abandon_push_sent_at?: string | null
           allow_gifts?: boolean
-          broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
-          ingress_id?: string | null
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
@@ -790,14 +786,12 @@ export type Database = {
         Update: {
           abandon_push_sent_at?: string | null
           allow_gifts?: boolean
-          broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
-          ingress_id?: string | null
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
