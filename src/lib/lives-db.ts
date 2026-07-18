@@ -133,6 +133,7 @@ export async function createLiveInDb(
       status: "live",
       host_last_seen_at: new Date().toISOString(),
       broadcast_mode: input.broadcastMode ?? "camera",
+      ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
