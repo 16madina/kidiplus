@@ -141,6 +141,7 @@ function ActivityScreenAuthed() {
               className="pt-2"
             >
               <SuspensionBanner />
+              <AccountFrozenBanner />
               <AdminMessagesInbox />
               {notifs.some((n) => !n.read_at) && (
                 <div className="flex justify-end px-4 pb-1 pt-2">
