@@ -337,6 +337,15 @@ export function WithdrawSheet({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {t("payout.paypalHint")}
                   </p>
+                  {normalizeCurrency(currency) === "XOF" && amount > 0 && (
+                    <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                      {t("payout.paypalXofHint", {
+                        defaultValue:
+                          "Tu recevras ≈ {{eur}} sur ton PayPal (taux fixe officiel, sans marge).",
+                        eur: formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language),
+                      })}
+                    </p>
+                  )}
                 </>
               ) : (
                 <input
