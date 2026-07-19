@@ -57,18 +57,17 @@ export async function finalizePaypalTopupOrder(
     // Returning 502 makes Cloudflare log a proxy error and blank the UI.
     const raw = (cap as { raw?: unknown }).raw as any;
     const issue = raw?.details?.[0]?.issue as string | undefined;
-    const isBusiness =
-      /Erreur PayPal \(422\)/.test(cap.error) ||
-      /Erreur de validation PayPal/.test(cap.error) ||
-      issue === "ORDER_NOT_APPROVED" ||
-      issue === "PAYER_ACTION_REQUIRED" ||
-      issue === "ORDER_ALREADY_AUTHORIZED" ||
-      issue === "AGREEMENT_ALREADY_CANCELLED";
+    // Any PayPal 4xx (422 business-validation: not approved, transaction
+    // refused, instrument declined, payer/payee restricted, etc.) is a
+    // client-side failure — return 409 so Cloudflare doesn't blank the UI
+    // with a 502 proxy page. Only true upstream 5xx / network errors keep 502.
+    const errMsg = String(cap.error ?? "");
+    const isUpstream5xx = /Erreur PayPal \(5\d\d\)/.test(errMsg);
     return {
       ok: false,
-      error: isBusiness ? "not_approved" : "paypal_capture_failed",
-      message: cap.error,
-      status: isBusiness ? 409 : 502,
+      error: isUpstream5xx ? "paypal_capture_failed" : "not_approved",
+      message: issue ? `${issue}: ${errMsg}` : errMsg,
+      status: isUpstream5xx ? 502 : 409,
     };
   }
   if (String(cap.status).toUpperCase() !== "COMPLETED") {
