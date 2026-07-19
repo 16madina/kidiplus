@@ -635,16 +635,21 @@ function PaymentsTab() {
                   )}
 
                   {isActionable ? (
-                    <div className="mt-2 flex gap-2">
-                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "paid" }); }}
-                        className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
-                        style={{ backgroundColor: "oklch(0.62 0.16 155)" }}>
-                        <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
-                      </Press>
-                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "rejected" }); }}
-                        className="flex-1 rounded-xl border py-2 text-[13px] font-bold">
-                        <span className="inline-flex items-center gap-1"><X size={14} />{t("admin.reject")}</span>
-                      </Press>
+                    <div className="mt-2 space-y-2">
+                      {p.method === "paypal" && (
+                        <PaypalSendBlock payout={p} onDone={() => void loadPayouts()} />
+                      )}
+                      <div className="flex gap-2">
+                        <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "paid" }); }}
+                          className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
+                          style={{ backgroundColor: "oklch(0.62 0.16 155)" }}>
+                          <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
+                        </Press>
+                        <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "rejected" }); }}
+                          className="flex-1 rounded-xl border py-2 text-[13px] font-bold">
+                          <span className="inline-flex items-center gap-1"><X size={14} />{t("admin.reject")}</span>
+                        </Press>
+                      </div>
                     </div>
                   ) : (
                     <p className="mt-2 text-right text-[11px] font-semibold uppercase text-muted-foreground">{t(`payout.status.${p.status}`)}</p>
