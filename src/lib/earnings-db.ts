@@ -90,7 +90,15 @@ export function subscribeMyEarnings(userId: string, onChange: () => void): () =>
 
 export type RequestPayoutResult =
   | { ok: true; payoutId: string }
-  | { ok: false; error: string; min?: number; available?: number };
+  | {
+      ok: false;
+      error: string;
+      min?: number;
+      available?: number;
+      cap?: number;
+      used?: number;
+      tier?: string;
+    };
 
 export async function requestPayout(
   amount: number,
@@ -105,9 +113,17 @@ export async function requestPayout(
     _source: source,
   });
   if (error) return { ok: false, error: error.message };
-  const r = (data ?? {}) as any;
-  if (r.ok) return { ok: true, payoutId: r.payout_id as string };
-  return { ok: false, error: r.error as string, min: r.min, available: r.available };
+  const r = (data ?? {}) as Record<string, unknown>;
+  if (r.ok) return { ok: true, payoutId: String(r.payout_id) };
+  return {
+    ok: false,
+    error: String(r.error ?? "unknown"),
+    min: r.min != null ? Number(r.min) : undefined,
+    available: r.available != null ? Number(r.available) : undefined,
+    cap: r.cap != null ? Number(r.cap) : undefined,
+    used: r.used != null ? Number(r.used) : undefined,
+    tier: r.tier != null ? String(r.tier) : undefined,
+  };
 }
 
 // ---- Referral wallet ----

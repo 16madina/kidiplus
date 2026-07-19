@@ -6,9 +6,12 @@
       "banned": "Account banned — payments disabled.",
       "suspended": "Account suspended — payments disabled.",
       "verificationRequired": "Withdrawals are for verified accounts only.",
-      "sellerGiftLimit": "This seller has reached today’s gift limit."
+      "sellerGiftLimit": "This seller has reached today’s gift limit.",
+      "payoutDailyLimit": "Daily withdrawal limit reached (max {{cap}}).",
+      "payoutWeeklyLimit": "Weekly withdrawal limit reached (max {{cap}})."
     },
-    "payoutNeedsVerify": "To withdraw earnings, your account must be verified. Request certification from your seller profile."
+    "payoutNeedsVerify": "To withdraw earnings, your account must be verified. Request certification from your seller profile.",
+    "payoutLimitsHint": "Withdrawal caps: {{day}} / day · {{week}} / 7 days. Get certified (badge) or complete KYC to raise these limits."
   },
   "follow": {
     "follow": "Follow",

@@ -6,9 +6,12 @@
       "banned": "Compte banni — paiements impossibles.",
       "suspended": "Compte suspendu — paiements impossibles.",
       "verificationRequired": "Retrait réservé aux comptes certifiés.",
-      "sellerGiftLimit": "Ce vendeur a atteint sa limite de cadeaux du jour."
+      "sellerGiftLimit": "Ce vendeur a atteint sa limite de cadeaux du jour.",
+      "payoutDailyLimit": "Limite de retrait du jour atteinte (max {{cap}}).",
+      "payoutWeeklyLimit": "Limite de retrait de la semaine atteinte (max {{cap}})."
     },
-    "payoutNeedsVerify": "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur."
+    "payoutNeedsVerify": "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur.",
+    "payoutLimitsHint": "Plafonds retrait : {{day}} / jour · {{week}} / 7 jours. Certifie ton compte (badge) ou complète le KYC pour augmenter ces limites."
   },
   "follow": {
     "follow": "Suivre",
