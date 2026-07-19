@@ -107,6 +107,18 @@ function PaypalReturn() {
               +{state.amount.toFixed(2)} {state.currency}
             </p>
           </>
+        {state.kind === "pending" && (
+          <>
+            <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
+              <Check size={36} color="white" strokeWidth={3} />
+            </div>
+            <p className="text-lg font-bold">
+              {t("wallet.topup.paypalPendingTitle", { defaultValue: "Paiement reçu ✓" })}
+            </p>
+            <p className="max-w-[280px] text-sm text-muted-foreground">
+              {t("wallet.topup.paypalPendingHint", { defaultValue: "Ton portefeuille sera crédité dans quelques secondes. Retour à l'app…" })}
+            </p>
+          </>
         )}
         {state.kind === "cancelled" && (
           <>
