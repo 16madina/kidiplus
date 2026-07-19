@@ -152,15 +152,19 @@ export function WithdrawSheet({
           ? t("payout.errors.insufficient")
           : r.error === "below_minimum"
             ? t("payout.errors.belowMin", { min: formatMoney(r.min ?? min, currency, i18n.language) })
-            : r.error === "payout_daily_limit"
+          : r.error === "payout_daily_limit"
               ? t("risk.errors.payoutDailyLimit", {
-                  cap: formatMoney(r.cap ?? dayCap, currency, i18n.language),
-                  defaultValue: "Limite de retrait du jour atteinte (max {{cap}}).",
+                  used: formatMoney(r.used ?? 0, r.currency ?? currency, i18n.language),
+                  cap: formatMoney(r.cap ?? dayCap, r.currency ?? currency, i18n.language),
+                  defaultValue:
+                    "Limite journalière atteinte : {{used}} déjà retiré aujourd'hui sur {{cap}} autorisés.",
                 })
               : r.error === "payout_weekly_limit"
                 ? t("risk.errors.payoutWeeklyLimit", {
-                    cap: formatMoney(r.cap ?? weekCap, currency, i18n.language),
-                    defaultValue: "Limite de retrait de la semaine atteinte (max {{cap}}).",
+                    used: formatMoney(r.used ?? 0, r.currency ?? currency, i18n.language),
+                    cap: formatMoney(r.cap ?? weekCap, r.currency ?? currency, i18n.language),
+                    defaultValue:
+                      "Limite hebdomadaire atteinte : {{used}} déjà retiré ces 7 derniers jours sur {{cap}} autorisés.",
                   })
                 : r.error === "risk_restricted"
                   ? t(

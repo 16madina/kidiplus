@@ -98,6 +98,7 @@ export type RequestPayoutResult =
       cap?: number;
       used?: number;
       tier?: string;
+      currency?: string;
     };
 
 export async function requestPayout(
@@ -123,6 +124,7 @@ export async function requestPayout(
     cap: r.cap != null ? Number(r.cap) : undefined,
     used: r.used != null ? Number(r.used) : undefined,
     tier: r.tier != null ? String(r.tier) : undefined,
+    currency: r.currency != null ? String(r.currency) : undefined,
   };
 }
 
