@@ -71,6 +71,13 @@ function PaypalReturn() {
         if (!r.duplicate) toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
         setState({ kind: "success", amount: r.amount, currency: r.currency });
         setTimeout(() => navigate({ to: "/" }), 1400);
+      } else if (r.error === "not_signed_in" || r.error === "unauthorized") {
+        // Session absente dans ce contexte navigateur (in-app browser, domaine
+        // différent). Le webhook PayPal crédite le wallet côté serveur — on
+        // rassure l'utilisateur au lieu d'afficher une erreur trompeuse.
+        haptic.success();
+        setState({ kind: "pending" });
+        setTimeout(() => navigate({ to: "/" }), 2600);
       } else {
         haptic.warning();
         setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
