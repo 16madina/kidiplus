@@ -102,6 +102,19 @@ export function TopUpSheet({
           }
         })();
       }
+      // Recovery: a previously-created PayPal order that the user approved
+      // but whose /paypal-return capture never ran (killed app, bad network).
+      const pendingPp = readPendingPaypalOrder();
+      if (pendingPp) {
+        void (async () => {
+          const r = await capturePaypalTopup(pendingPp);
+          if (r.ok) {
+            clearPendingPaypalOrder();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cur]);
