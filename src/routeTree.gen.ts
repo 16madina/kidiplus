@@ -42,6 +42,7 @@ import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]w
 import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known.apple-app-site-association'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
+import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiPaypalTopupCreateRouteImport } from './routes/api/paypal-topup.create'
 import { Route as ApiPaypalTopupCaptureRouteImport } from './routes/api/paypal-topup.capture'
@@ -221,6 +222,11 @@ const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiWalletTopupRoute,
 } as any)
+const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
+  id: '/api/public/paypal-webhook',
+  path: '/api/public/paypal-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicNotificationsFanoutRoute =
   ApiPublicNotificationsFanoutRouteImport.update({
     id: '/api/public/notifications-fanout',
@@ -321,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
   '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
   '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -414,6 +422,7 @@ export interface FileRoutesById {
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
   '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -462,6 +471,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/capture'
     | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
+    | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/capture'
     | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
+    | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
@@ -554,6 +565,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/capture'
     | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
+    | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
     | '/lovable/email/queue/process'
@@ -598,6 +610,7 @@ export interface RootRouteChildren {
   ApiPaypalTopupCaptureRoute: typeof ApiPaypalTopupCaptureRoute
   ApiPaypalTopupCreateRoute: typeof ApiPaypalTopupCreateRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
+  ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -837,6 +850,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
       parentRoute: typeof ApiWalletTopupRoute
     }
+    '/api/public/paypal-webhook': {
+      id: '/api/public/paypal-webhook'
+      path: '/api/public/paypal-webhook'
+      fullPath: '/api/public/paypal-webhook'
+      preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/notifications-fanout': {
       id: '/api/public/notifications-fanout'
       path: '/api/public/notifications-fanout'
@@ -993,6 +1013,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaypalTopupCaptureRoute: ApiPaypalTopupCaptureRoute,
   ApiPaypalTopupCreateRoute: ApiPaypalTopupCreateRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
+  ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
@@ -1001,13 +1022,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
