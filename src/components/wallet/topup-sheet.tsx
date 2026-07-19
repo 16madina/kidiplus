@@ -39,8 +39,17 @@ import {
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
+import {
+  createPaypalTopup,
+  capturePaypalTopup,
+  markPendingPaypalOrder,
+  readPendingPaypalOrder,
+  clearPendingPaypalOrder,
+  mapPaypalTopupError,
+} from "@/lib/paypal-topup-client";
+import { isNative } from "@/lib/native";
 
-type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
 
 
