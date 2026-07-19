@@ -43,6 +43,7 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
+import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
@@ -223,6 +224,11 @@ const ApiPaypalPayoutStatusRoute = ApiPaypalPayoutStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => ApiPaypalPayoutRoute,
 } as any)
+const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => ApiPaypalPayoutRoute,
+} as any)
 const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
@@ -376,6 +384,7 @@ export interface FileRoutesById {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
@@ -793,6 +805,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaypalPayoutStatusRouteImport
       parentRoute: typeof ApiPaypalPayoutRoute
     }
+    '/api/paypal-payout/config': {
+      id: '/api/paypal-payout/config'
+      path: '/config'
+      fullPath: '/api/paypal-payout/config'
+      preLoaderRoute: typeof ApiPaypalPayoutConfigRouteImport
+      parentRoute: typeof ApiPaypalPayoutRoute
+    }
     '/api/checkout/confirm': {
       id: '/api/checkout/confirm'
       path: '/confirm'
@@ -851,10 +870,12 @@ const ApiCheckoutRouteWithChildren = ApiCheckoutRoute._addFileChildren(
 )
 
 interface ApiPaypalPayoutRouteChildren {
+  ApiPaypalPayoutConfigRoute: typeof ApiPaypalPayoutConfigRoute
   ApiPaypalPayoutStatusRoute: typeof ApiPaypalPayoutStatusRoute
 }
 
 const ApiPaypalPayoutRouteChildren: ApiPaypalPayoutRouteChildren = {
+  ApiPaypalPayoutConfigRoute: ApiPaypalPayoutConfigRoute,
   ApiPaypalPayoutStatusRoute: ApiPaypalPayoutStatusRoute,
 }
 
