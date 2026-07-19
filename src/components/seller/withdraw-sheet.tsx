@@ -213,7 +213,15 @@ export function WithdrawSheet({
                     <Row label={t("payout.holder")} value={holder} />
                   </>
                 ) : method === "paypal" ? (
-                  <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                  <>
+                    <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                    {normalizeCurrency(currency) === "XOF" && (
+                      <Row
+                        label={t("payout.paypalReceived", { defaultValue: "Reçu sur PayPal" })}
+                        value={`≈ ${formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language)}`}
+                      />
+                    )}
+                  </>
                 ) : (
                   <Row label={t("payout.phone")} value={phone} />
                 )}
