@@ -68,7 +68,7 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
             fill="#fff"
           >O</text>
         </svg>
-      ) : (
+      ) : brand === "djamo" ? (
         // Djamo — bold D
         <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40" fill="none">
           <text
@@ -79,6 +79,28 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
             fontSize={22}
             fill="#fff"
           >D</text>
+        </svg>
+      ) : (
+        // PayPal — stylized "PP" wordmark with a subtle second-P shadow tint.
+        <svg width={size * 0.78} height={size * 0.78} viewBox="0 0 40 40" fill="none">
+          <text
+            x="12" y="27"
+            textAnchor="middle"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fontWeight={900}
+            fontStyle="italic"
+            fontSize={20}
+            fill="#fff"
+          >P</text>
+          <text
+            x="24" y="27"
+            textAnchor="middle"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fontWeight={900}
+            fontStyle="italic"
+            fontSize={20}
+            fill="#009cde"
+          >P</text>
         </svg>
       )}
     </div>
