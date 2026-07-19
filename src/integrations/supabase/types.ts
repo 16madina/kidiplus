@@ -1136,7 +1136,6 @@ export type Database = {
           is_verified: boolean
           language: string
           moderation_status: string
-          risk_restricted: boolean
           rating_avg: number
           rating_count: number
           terms_accepted_at: string | null
@@ -1167,7 +1166,6 @@ export type Database = {
           is_verified?: boolean
           language?: string
           moderation_status?: string
-          risk_restricted?: boolean
           rating_avg?: number
           rating_count?: number
           terms_accepted_at?: string | null
@@ -1198,7 +1196,6 @@ export type Database = {
           is_verified?: boolean
           language?: string
           moderation_status?: string
-          risk_restricted?: boolean
           rating_avg?: number
           rating_count?: number
           terms_accepted_at?: string | null
