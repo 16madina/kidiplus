@@ -1088,7 +1088,8 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
   useEffect(() => { void fetchPaypalConfig().then(setCfg); }, []);
 
   const currency = (payout.currency ?? "").toUpperCase();
-  const unsupported = currency === "XOF" || currency === "XAF";
+  const isBridgedXof = currency === "XOF";
+  const eurEquivalent = isBridgedXof ? convertMoney(Number(payout.amount), "XOF", "EUR") : null;
   const email = (payout.destination?.paypalEmail ?? payout.destination?.email ?? "").toString().trim();
   const hasBatch = !!payout.paypal_batch_id;
 
