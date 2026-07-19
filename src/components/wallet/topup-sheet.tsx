@@ -359,6 +359,15 @@ export function TopUpSheet({
                     active={selectedMethod === "card"}
                     onClick={() => setSelectedMethod("card")}
                   />
+                  {cur !== "XOF" && (
+                    <MethodRow
+                      brand="paypal"
+                      label={t("pay.method.paypal", { defaultValue: "PayPal" })}
+                      subtitle={t("pay.method.paypalSub", { defaultValue: "Payer avec ton compte PayPal" })}
+                      active={selectedMethod === "paypal"}
+                      onClick={() => setSelectedMethod("paypal")}
+                    />
+                  )}
                   {cur === "XOF" && (
                     <>
                       <MethodRow
