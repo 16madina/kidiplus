@@ -52,7 +52,24 @@ export async function finalizePaypalTopupOrder(
   const cap = await capturePaypalOrder(cfg.cfg, tk.token, id);
   if (!cap.ok) {
     console.error("[paypal-topup/finalize] capture failed:", cap.error);
-    return { ok: false, error: "paypal_capture_failed", message: cap.error, status: 502 };
+    // PayPal business-validation failures (422: not approved, payer action
+    // required, order voided, etc.) are 4xx from our side — not upstream 5xx.
+    // Returning 502 makes Cloudflare log a proxy error and blank the UI.
+    const raw = (cap as { raw?: unknown }).raw as any;
+    const issue = raw?.details?.[0]?.issue as string | undefined;
+    const isBusiness =
+      /Erreur PayPal \(422\)/.test(cap.error) ||
+      /Erreur de validation PayPal/.test(cap.error) ||
+      issue === "ORDER_NOT_APPROVED" ||
+      issue === "PAYER_ACTION_REQUIRED" ||
+      issue === "ORDER_ALREADY_AUTHORIZED" ||
+      issue === "AGREEMENT_ALREADY_CANCELLED";
+    return {
+      ok: false,
+      error: isBusiness ? "not_approved" : "paypal_capture_failed",
+      message: cap.error,
+      status: isBusiness ? 409 : 502,
+    };
   }
   if (String(cap.status).toUpperCase() !== "COMPLETED") {
     return {
