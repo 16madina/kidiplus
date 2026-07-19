@@ -144,7 +144,7 @@ export const Route = createFileRoute("/api/paypal-topup/capture")({
             currency,
             captureId: cap.captureId,
             duplicate: !!result.already,
-            alreadyCaptured: !!cap.alreadyCaptured,
+            alreadyCaptured: !!(cap as { alreadyCaptured?: boolean }).alreadyCaptured,
           },
           200,
           origin,
