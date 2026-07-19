@@ -905,6 +905,8 @@
     "paypalEmail": "PayPal email address",
     "paypalEmailPlaceholder": "you@example.com",
     "paypalHint": "The email associated with your PayPal account.",
+    "paypalXofHint": "You'll receive ≈ {{eur}} on your PayPal (official fixed rate, no markup).",
+    "paypalReceived": "Received on PayPal",
     "submit": "Confirm request",
     "confirmTitle": "Confirm withdrawal",
     "successTitle": "Request sent ✅",
