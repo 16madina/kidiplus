@@ -1,11 +1,11 @@
 // PayPal return route. Reached when the buyer approves (or cancels) the
-// PayPal Order created by /api/paypal-topup/create. PayPal appends
-// `?token=<ORDER_ID>&PayerID=<PAYER_ID>` on success and
-// `?token=<ORDER_ID>&cancelled=1` on our cancel URL. This screen calls the
-// capture endpoint, animates the outcome, and closes / navigates home.
+// PayPal Order. PayPal appends `?token=<ORDER_ID>&PayerID=…` on success.
 //
-// On native, kidiplus.com is a Universal Link so PayPal's automatic redirect
-// re-opens the app straight into this route.
+// Important: the approve flow opens SFSafariViewController / Chrome Custom
+// Tab. That context is a *normal website* (Capacitor.isNativePlatform() ===
+// false), so Universal Links often do NOT reopen the app. We therefore:
+//   1) On mobile browser → hand off via custom scheme kidiplus://paypal-return
+//   2) Inside the Capacitor WebView → capture + open wallet section
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -22,6 +22,8 @@ import {
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import { isNative } from "@/lib/native";
+import { NATIVE_OAUTH_SCHEME } from "@/lib/social-login-config";
+import { dispatchOpenSection, stashSoftSection } from "@/lib/soft-profile-routes";
 
 export const Route = createFileRoute("/paypal-return")({
   ssr: false,
@@ -35,22 +37,49 @@ export const Route = createFileRoute("/paypal-return")({
 });
 
 type State =
+  | { kind: "handoff" }
   | { kind: "loading" }
   | { kind: "success"; amount: number; currency: string }
   | { kind: "cancelled" }
   | { kind: "error"; message: string }
   | { kind: "pending" };
 
+function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+}
+
+function nativeDeepLinkFromLocation(): string {
+  const qs = typeof window !== "undefined" ? window.location.search || "" : "";
+  return `${NATIVE_OAUTH_SCHEME}://paypal-return${qs}`;
+}
+
 function PaypalReturn() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const native = isNative();
+  const [state, setState] = useState<State>(() =>
+    !native && isMobileBrowser() ? { kind: "handoff" } : { kind: "loading" },
+  );
 
+  // Mobile Safari / SFSafariViewController / Chrome Custom Tab → bounce into app.
   useEffect(() => {
+    if (native || !isMobileBrowser()) return;
+    const deep = nativeDeepLinkFromLocation();
+    try {
+      window.location.href = deep;
+    } catch {
+      /* ignore */
+    }
+  }, [native]);
+
+  // Capacitor WebView (or desktop web) → capture payment.
+  useEffect(() => {
+    if (!native && isMobileBrowser()) return; // handoff page handles mobile browser
+
     let cancelled = false;
     (async () => {
-      // Close SFSafariViewController / Chrome Custom Tab if still open.
-      if (isNative()) {
+      if (native) {
         try {
           const { Browser } = await import("@capacitor/browser");
           await Browser.close();
@@ -67,7 +96,7 @@ function PaypalReturn() {
         clearPendingPaypalOrder();
         haptic.warning();
         setState({ kind: "cancelled" });
-        setTimeout(() => navigate({ to: "/" }), 1400);
+        setTimeout(() => finishInApp(false), 1200);
         return;
       }
       if (!orderId) {
@@ -78,7 +107,6 @@ function PaypalReturn() {
         return;
       }
 
-      // Give auth a short moment to hydrate; capture still works without session.
       for (let i = 0; i < 8; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session?.access_token) break;
@@ -91,18 +119,24 @@ function PaypalReturn() {
       if (r.ok) {
         clearPendingPaypalOrder();
         haptic.success();
+        try {
+          window.dispatchEvent(
+            new CustomEvent("kidi:paypal-topup-done", {
+              detail: { ok: true, amount: r.amount, currency: r.currency, duplicate: r.duplicate },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
         if (!r.duplicate) {
           toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
         }
         setState({ kind: "success", amount: r.amount, currency: r.currency });
-        setTimeout(() => navigate({ to: "/" }), 1400);
+        setTimeout(() => finishInApp(true), 1000);
       } else if (r.error === "not_signed_in" || r.error === "unauthorized") {
-        // Session absente dans ce contexte navigateur (in-app browser, domaine
-        // différent). Le webhook PayPal crédite le wallet côté serveur — on
-        // rassure l'utilisateur au lieu d'afficher une erreur trompeuse.
         haptic.success();
         setState({ kind: "pending" });
-        setTimeout(() => navigate({ to: "/" }), 2600);
+        setTimeout(() => finishInApp(true), 2000);
       } else {
         haptic.warning();
         setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
@@ -111,11 +145,47 @@ function PaypalReturn() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, t]);
+
+    function finishInApp(openWallet: boolean) {
+      if (openWallet) {
+        stashSoftSection("wallet");
+        dispatchOpenSection("wallet");
+      }
+      navigate({ to: "/" });
+    }
+  }, [native, navigate, t]);
+
+  const openApp = () => {
+    try {
+      window.location.href = nativeDeepLinkFromLocation();
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <div className="grid min-h-[100dvh] place-items-center bg-background px-6 text-center">
       <div className="flex flex-col items-center gap-3">
+        {state.kind === "handoff" && (
+          <>
+            <Loader2 className="animate-spin text-primary" size={40} />
+            <p className="text-[15px] font-semibold">
+              {t("wallet.topup.paypalOpenApp", { defaultValue: "Retour dans KiDi+…" })}
+            </p>
+            <p className="max-w-[280px] text-sm text-muted-foreground">
+              {t("wallet.topup.paypalOpenAppHint", {
+                defaultValue: "Si l'app ne s'ouvre pas, appuie sur le bouton ci-dessous.",
+              })}
+            </p>
+            <button
+              type="button"
+              onClick={openApp}
+              className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground"
+            >
+              {t("wallet.topup.paypalOpenAppCta", { defaultValue: "Ouvrir KiDi+" })}
+            </button>
+          </>
+        )}
         {state.kind === "loading" && (
           <>
             <Loader2 className="animate-spin text-primary" size={40} />
@@ -144,7 +214,9 @@ function PaypalReturn() {
               {t("wallet.topup.paypalPendingTitle", { defaultValue: "Paiement reçu ✓" })}
             </p>
             <p className="max-w-[280px] text-sm text-muted-foreground">
-              {t("wallet.topup.paypalPendingHint", { defaultValue: "Ton portefeuille sera crédité dans quelques secondes. Retour à l'app…" })}
+              {t("wallet.topup.paypalPendingHint", {
+                defaultValue: "Ton portefeuille sera crédité dans quelques secondes. Retour à l'app…",
+              })}
             </p>
           </>
         )}
@@ -170,7 +242,10 @@ function PaypalReturn() {
             <p className="max-w-[280px] text-sm text-muted-foreground">{state.message}</p>
             <button
               type="button"
-              onClick={() => navigate({ to: "/" })}
+              onClick={() => {
+                stashSoftSection("wallet");
+                navigate({ to: "/" });
+              }}
               className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground"
             >
               {t("common.close", { defaultValue: "Fermer" })}

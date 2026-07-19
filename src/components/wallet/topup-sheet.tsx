@@ -57,6 +57,7 @@ type Step =
   | { kind: "amount" }
   | { kind: "loading" }
   | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null>; amount: number }
+  | { kind: "paypal_waiting"; amount: number; orderId: string }
   | { kind: "verifying"; amount: number }
   | { kind: "done"; amount: number }
   | { kind: "not_configured" }
@@ -130,6 +131,61 @@ export function TopUpSheet({
     chosenAmount >= MIN_AMOUNT &&
     chosenAmount <= MAX_AMOUNT;
 
+  const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
+    clearPendingPaypalOrder();
+    await refresh();
+    haptic.success();
+    setConfettiKey((k) => k + 1);
+    setStep({ kind: "done", amount });
+    if (!duplicate) toast.success(t("wallet.topup.success"));
+    setTimeout(onClose, 1400);
+  };
+
+  const tryCapturePendingPaypal = async (orderId: string, amount: number) => {
+    setStep({ kind: "verifying", amount });
+    const r = await capturePaypalTopup(orderId);
+    if (r.ok) {
+      await finishPaypalSuccess(r.amount || amount, r.duplicate);
+      return;
+    }
+    // Still pending / user closed Safari early — keep waiting UI.
+    setStep({ kind: "paypal_waiting", amount, orderId });
+  };
+
+  // After PayPal returns into the app (deep link) or the in-app browser closes,
+  // finalize capture and close this sheet.
+  useEffect(() => {
+    if (!open) return;
+
+    const onDone = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ ok?: boolean; amount?: number; duplicate?: boolean }>).detail;
+      if (!detail?.ok) return;
+      void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+    };
+    window.addEventListener("kidi:paypal-topup-done", onDone);
+
+    let removeBrowserListener: (() => void) | undefined;
+    if (isNative()) {
+      void import("@capacitor/browser").then(({ Browser }) => {
+        const sub = Browser.addListener("browserFinished", () => {
+          const pending = readPendingPaypalOrder();
+          if (pending) void tryCapturePendingPaypal(pending, chosenAmount);
+        });
+        void sub.then((h) => {
+          removeBrowserListener = () => {
+            void h.remove();
+          };
+        });
+      });
+    }
+
+    return () => {
+      window.removeEventListener("kidi:paypal-topup-done", onDone);
+      removeBrowserListener?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, chosenAmount]);
+
   const startPaypal = async () => {
     setStep({ kind: "loading" });
     const created = await createPaypalTopup(chosenAmount);
@@ -142,14 +198,18 @@ export function TopUpSheet({
       return;
     }
     markPendingPaypalOrder(created.orderId);
-    // Native: open in the system browser (SFSafariViewController / Chrome
-    // Custom Tab). PayPal redirects to https://kidiplus.com/paypal-return —
-    // Universal Link brings the user back into the app on that route.
-    // Web: same-tab redirect; the user comes back to /paypal-return.
+    // Native: system browser. Return page hands off via kidiplus://paypal-return
+    // (Universal Links often fail inside SFSafariViewController).
+    // Web: same-tab redirect to /paypal-return.
     if (isNative()) {
       try {
         const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url: created.approveUrl, windowName: "_self", presentationStyle: "popover" });
+        setStep({ kind: "paypal_waiting", amount: chosenAmount, orderId: created.orderId });
+        await Browser.open({
+          url: created.approveUrl,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
       } catch {
         setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
       }
@@ -467,6 +527,37 @@ export function TopUpSheet({
                   amountLabel={formatMoney(step.amount, cur, i18n.language)}
                   onSuccess={(pi) => { void handleSuccess(step.amount, pi); }}
                 />
+              ) : step.kind === "paypal_waiting" ? (
+                <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <Loader2 className="animate-spin text-primary" size={28} />
+                  <p className="text-[15px] font-semibold">
+                    {t("wallet.topup.paypalWaiting", { defaultValue: "Paiement PayPal en cours…" })}
+                  </p>
+                  <p className="max-w-[280px] text-[12px] text-muted-foreground">
+                    {t("wallet.topup.paypalWaitingHint", {
+                      defaultValue:
+                        "Termine le paiement dans la fenêtre PayPal. Tu reviendras automatiquement dans KiDi+.",
+                    })}
+                  </p>
+                  <Press
+                    onClick={() => {
+                      void tryCapturePendingPaypal(step.orderId, step.amount);
+                    }}
+                    className="mt-1 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-bold text-primary-foreground"
+                  >
+                    {t("wallet.topup.paypalConfirmCta", { defaultValue: "J'ai payé — vérifier" })}
+                  </Press>
+                  <button
+                    type="button"
+                    className="text-[12px] text-muted-foreground underline"
+                    onClick={() => {
+                      clearPendingPaypalOrder();
+                      setStep({ kind: "amount" });
+                    }}
+                  >
+                    {t("common.cancel", { defaultValue: "Annuler" })}
+                  </button>
+                </div>
               ) : step.kind === "verifying" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
                   <Loader2 className="animate-spin" size={28} />

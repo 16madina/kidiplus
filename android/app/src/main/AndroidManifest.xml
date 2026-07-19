@@ -42,6 +42,7 @@
                 <data android:pathPrefix="/join/" />
                 <data android:pathPrefix="/live/" />
                 <data android:pathPrefix="/open" />
+                <data android:pathPrefix="/paypal-return" />
                 <data android:pathPrefix="/auth-callback" />
                 <data android:pathPrefix="/reset-password" />
             </intent-filter>

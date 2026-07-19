@@ -21,6 +21,7 @@ const AASA = {
           { '/': '/join/*', comment: 'Referral invite links' },
           { '/': '/live/*', comment: 'Shared live rooms' },
           { '/': '/open', comment: 'Email deep-link bridge' },
+          { '/': '/paypal-return', comment: 'PayPal wallet top-up return' },
           { '/': '/auth-callback', comment: 'OAuth return' },
           { '/': '/reset-password', comment: 'Password reset' },
         ],
