@@ -1136,10 +1136,9 @@ export type Database = {
           is_verified: boolean
           language: string
           moderation_status: string
-          risk_restricted: boolean
-          kyc_verified: boolean
           rating_avg: number
           rating_count: number
+          risk_restricted: boolean
           terms_accepted_at: string | null
           terms_version: string | null
           welcome_email_sent: boolean
@@ -1168,10 +1167,9 @@ export type Database = {
           is_verified?: boolean
           language?: string
           moderation_status?: string
-          risk_restricted?: boolean
-          kyc_verified?: boolean
           rating_avg?: number
           rating_count?: number
+          risk_restricted?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1200,10 +1198,9 @@ export type Database = {
           is_verified?: boolean
           language?: string
           moderation_status?: string
-          risk_restricted?: boolean
-          kyc_verified?: boolean
           rating_avg?: number
           rating_count?: number
+          risk_restricted?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1538,6 +1535,86 @@ export type Database = {
           {
             foreignKeyName: "reports_reporter_id_fkey"
             columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_alerts: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          kind: string
+          resolved_at: string | null
+          resolved_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_alerts_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risk_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_daily_usage: {
+        Row: {
+          currency: string
+          day: string
+          gift_received: number
+          spend: number
+          topup: number
+          user_id: string
+        }
+        Insert: {
+          currency: string
+          day: string
+          gift_received?: number
+          spend?: number
+          topup?: number
+          user_id: string
+        }
+        Update: {
+          currency?: string
+          day?: string
+          gift_received?: number
+          spend?: number
+          topup?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_daily_usage_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2090,6 +2167,10 @@ export type Database = {
         Args: { _limit?: number; _status?: string }
         Returns: Json
       }
+      admin_list_risk_alerts: {
+        Args: { _limit?: number; _offset?: number; _status?: string }
+        Returns: Json
+      }
       admin_list_sanctions: { Args: { _user_id: string }; Returns: Json }
       admin_list_users: {
         Args: { _limit?: number; _offset?: number; _search?: string }
@@ -2127,6 +2208,7 @@ export type Database = {
         Args: { _note?: string; _report_id: string; _status: string }
         Returns: Json
       }
+      admin_resolve_risk_alert: { Args: { _alert_id: string }; Returns: Json }
       admin_review_promo_code_request: {
         Args: {
           _action: string
@@ -2156,6 +2238,10 @@ export type Database = {
       }
       admin_set_promo_code_active: {
         Args: { _active: boolean; _id: string }
+        Returns: Json
+      }
+      admin_set_risk_restricted: {
+        Args: { _restricted: boolean; _user_id: string }
         Returns: Json
       }
       admin_set_verified: {
@@ -2330,6 +2416,45 @@ export type Database = {
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
+      risk_account_age_hours: { Args: { _user_id: string }; Returns: number }
+      risk_assert_can_topup: {
+        Args: { _amount: number; _currency: string; _user_id: string }
+        Returns: Json
+      }
+      risk_check_and_consume: {
+        Args: {
+          _amount: number
+          _consume?: boolean
+          _currency: string
+          _kind: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      risk_check_and_consume_self: {
+        Args: {
+          _amount: number
+          _consume?: boolean
+          _currency: string
+          _kind: string
+        }
+        Returns: Json
+      }
+      risk_daily_cap: {
+        Args: {
+          _account_age_hours?: number
+          _currency: string
+          _kind: string
+          _tier: string
+        }
+        Returns: number
+      }
+      risk_raise_alert: {
+        Args: { _detail?: Json; _kind: string; _user_id: string }
+        Returns: string
+      }
+      risk_user_tier: { Args: { _user_id: string }; Returns: string }
+      risk_utc_day: { Args: never; Returns: string }
       send_dm: { Args: { _body: string; _to: string }; Returns: Json }
       send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
