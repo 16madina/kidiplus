@@ -1134,6 +1134,7 @@ export type Database = {
           is_referred: boolean
           is_seller: boolean
           is_verified: boolean
+          kyc_verified: boolean
           language: string
           moderation_status: string
           rating_avg: number
@@ -1165,6 +1166,7 @@ export type Database = {
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
+          kyc_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
@@ -1196,6 +1198,7 @@ export type Database = {
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
+          kyc_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
@@ -2236,6 +2239,10 @@ export type Database = {
         Args: { _body: string; _title: string; _user_id: string }
         Returns: Json
       }
+      admin_set_kyc_verified: {
+        Args: { _user_id: string; _verified: boolean }
+        Returns: Json
+      }
       admin_set_promo_code_active: {
         Args: { _active: boolean; _id: string }
         Returns: Json
@@ -2447,6 +2454,14 @@ export type Database = {
           _kind: string
           _tier: string
         }
+        Returns: number
+      }
+      risk_payout_caps: {
+        Args: { _currency: string; _tier: string }
+        Returns: Json
+      }
+      risk_payout_usage: {
+        Args: { _currency: string; _since: string; _user_id: string }
         Returns: number
       }
       risk_raise_alert: {
