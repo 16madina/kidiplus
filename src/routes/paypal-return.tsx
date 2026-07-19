@@ -36,7 +36,8 @@ type State =
   | { kind: "loading" }
   | { kind: "success"; amount: number; currency: string }
   | { kind: "cancelled" }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "pending" };
 
 function PaypalReturn() {
   const navigate = useNavigate();
