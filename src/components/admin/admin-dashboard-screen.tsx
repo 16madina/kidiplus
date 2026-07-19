@@ -1206,7 +1206,7 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
   );
 }
 
-function mapErr(code: string, t: (k: string, d?: string) => any): string {
+function mapErr(code: string, t: any): string {
   switch (code) {
     case "unauthorized": return String(t("errors.unauthorized", "Non autorisé"));
     case "forbidden": return String(t("errors.forbidden", "Accès refusé"));
