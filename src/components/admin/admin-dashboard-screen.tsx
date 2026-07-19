@@ -17,7 +17,7 @@ import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { haptic } from "@/lib/haptics";
 import {
   fetchOverviewStats, fetchAdminUsers, fetchAdminUserDetail,
@@ -1088,7 +1088,8 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
   useEffect(() => { void fetchPaypalConfig().then(setCfg); }, []);
 
   const currency = (payout.currency ?? "").toUpperCase();
-  const unsupported = currency === "XOF" || currency === "XAF";
+  const isBridgedXof = currency === "XOF";
+  const eurEquivalent = isBridgedXof ? convertMoney(Number(payout.amount), "XOF", "EUR") : null;
   const email = (payout.destination?.paypalEmail ?? payout.destination?.email ?? "").toString().trim();
   const hasBatch = !!payout.paypal_batch_id;
 
@@ -1134,13 +1135,6 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
     );
   }
 
-  if (unsupported) {
-    return (
-      <div className="rounded-xl bg-muted p-2 text-center text-[11px] text-muted-foreground">
-        {t("admin.paypal.currencyUnsupported", "PayPal ne supporte pas le FCFA — utilise Wave/Orange Money.")}
-      </div>
-    );
-  }
 
   if (payout.status === "processing" || hasBatch) {
     return (
@@ -1186,6 +1180,9 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
             </p>
             <div className="mt-3 space-y-1 rounded-xl bg-muted p-3 text-[13px]">
               <div className="flex justify-between"><span className="text-muted-foreground">{t("common.amount", "Montant")}</span><span className="font-bold">{formatMoney(Number(payout.amount), normalizeCurrency(payout.currency))}</span></div>
+              {isBridgedXof && eurEquivalent !== null && (
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("admin.paypal.sentAsEur", "Envoyé (EUR)")}</span><span className="font-bold">≈ {formatMoney(eurEquivalent, "EUR")}</span></div>
+              )}
               <div className="flex justify-between gap-2"><span className="text-muted-foreground">Email</span><span className="truncate font-semibold">{email || "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-semibold uppercase">{cfg.mode}</span></div>
             </div>

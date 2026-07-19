@@ -14,7 +14,7 @@ import {
   createPaypalOrder,
   PAYPAL_TOPUP_CURRENCIES,
 } from "@/lib/paypal.server";
-import { normalizeCurrency, roundForCurrency, topUpLimits } from "@/lib/money";
+import { normalizeCurrency, roundForCurrency, topUpLimits, convertMoney, fxRate } from "@/lib/money";
 
 function corsHeaders(origin: string | null): HeadersInit {
   const h: Record<string, string> = {
@@ -72,7 +72,11 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           .eq("user_id", userId)
           .maybeSingle();
         const currency = normalizeCurrency(wallet?.currency ?? "EUR");
-        if (!PAYPAL_TOPUP_CURRENCIES.has(currency)) {
+        // XOF isn't a PayPal currency, but we bridge it: user picks an XOF
+        // amount, we charge the EUR equivalent at the fixed BCEAO peg (no
+        // margin) and credit the wallet with the original XOF amount.
+        const isBridgedXof = currency === "XOF";
+        if (!isBridgedXof && !PAYPAL_TOPUP_CURRENCIES.has(currency)) {
           return json(
             {
               error: "currency_not_supported",
@@ -115,9 +119,18 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           return json({ error: "paypal_oauth_failed", message: tk.error }, 502, origin);
         }
 
+        // Wire currency + amount that PayPal actually charges.
+        const wireCurrency = isBridgedXof ? "EUR" : currency;
+        const wireAmount = isBridgedXof ? convertMoney(amount, "XOF", "EUR") : amount;
+        const rate = isBridgedXof ? fxRate("XOF", "EUR") : 1;
+
         // Random invoice id for idempotency at PayPal + our own trail.
         const invoiceId = `t_${crypto.randomUUID()}`;
-        const customId = `topup:${userId}:${invoiceId}`;
+        // Encode the XOF native amount into custom_id so capture can trust it
+        // without any pending-record lookup.
+        const customId = isBridgedXof
+          ? `topup:${userId}:${invoiceId}:xof:${amount}`
+          : `topup:${userId}:${invoiceId}`;
 
         // Return URL: web-safe absolute URL. The /paypal-return route parses
         // ?token=<orderId> (PayPal appends `token` and `PayerID`) and triggers
@@ -128,13 +141,15 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
         const cancelUrl = `${reqOrigin}/paypal-return?cancelled=1`;
 
         const created = await createPaypalOrder(cfg.cfg, tk.token, {
-          amount: amount.toFixed(2),
-          currency,
+          amount: wireAmount.toFixed(2),
+          currency: wireCurrency,
           customId,
           invoiceId,
           returnUrl,
           cancelUrl,
-          description: `KiDi+ Recharge (${amount} ${currency})`,
+          description: isBridgedXof
+            ? `KiDi+ Recharge (${amount} XOF ≈ ${wireAmount.toFixed(2)} EUR)`
+            : `KiDi+ Recharge (${amount} ${currency})`,
         });
         if (!created.ok) {
           console.error("[paypal-topup] create failed:", created.error);
@@ -146,8 +161,11 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
             ok: true,
             orderId: created.orderId,
             approveUrl: created.approveUrl,
-            amount,
-            currency,
+            amount,                 // wallet-currency amount (what will be credited)
+            currency,               // wallet currency
+            chargedAmount: wireAmount,
+            chargedCurrency: wireCurrency,
+            fxRate: rate,
             mode: cfg.cfg.mode,
           },
           200,

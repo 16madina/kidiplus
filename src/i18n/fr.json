@@ -905,6 +905,8 @@
     "paypalEmail": "Adresse e-mail PayPal",
     "paypalEmailPlaceholder": "prenom@exemple.com",
     "paypalHint": "L'e-mail associé à ton compte PayPal.",
+    "paypalXofHint": "Tu recevras ≈ {{eur}} sur ton PayPal (taux fixe officiel, sans marge).",
+    "paypalReceived": "Reçu sur PayPal",
     "submit": "Confirmer la demande",
     "confirmTitle": "Confirmer le retrait",
     "successTitle": "Demande envoyée ✅",

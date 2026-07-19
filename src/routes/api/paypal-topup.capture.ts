@@ -14,6 +14,7 @@ import {
   getPaypalAccessToken,
   capturePaypalOrder,
 } from "@/lib/paypal.server";
+import { convertMoney } from "@/lib/money";
 
 function corsHeaders(origin: string | null): HeadersInit {
   const h: Record<string, string> = {
@@ -87,16 +88,21 @@ export const Route = createFileRoute("/api/paypal-topup/capture")({
         }
 
         // Verify the order was created for THIS user.
+        // custom_id shapes:
+        //   "topup:<userId>:<invoiceId>"                    → same-currency
+        //   "topup:<userId>:<invoiceId>:xof:<xofAmount>"    → bridged XOF→EUR
         const custom = String(cap.customId ?? "");
         const parts = custom.split(":");
         if (parts[0] !== "topup" || parts[1] !== userId) {
           console.error("[paypal-topup/capture] custom_id mismatch", { custom, userId });
           return json({ error: "forbidden", message: "Cette commande PayPal n'appartient pas à cet utilisateur." }, 403, origin);
         }
+        const isBridgedXof = parts[3] === "xof";
+        const bridgedXofAmount = isBridgedXof ? Number(parts[4]) : 0;
 
-        const amount = Number(cap.amount);
-        const currency = String(cap.currency ?? "").toUpperCase();
-        if (!Number.isFinite(amount) || amount <= 0) {
+        const capturedAmount = Number(cap.amount);
+        const capturedCurrency = String(cap.currency ?? "").toUpperCase();
+        if (!Number.isFinite(capturedAmount) || capturedAmount <= 0) {
           return json({ error: "invalid_amount" }, 400, origin);
         }
 
@@ -104,15 +110,35 @@ export const Route = createFileRoute("/api/paypal-topup/capture")({
           auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
         });
 
-        // Verify captured currency matches the wallet currency (defensive).
+        // Verify captured currency matches expected wire currency.
         const { data: wallet } = await admin
           .from("wallets")
           .select("currency")
           .eq("user_id", userId)
           .maybeSingle();
         const walletCur = String((wallet?.currency ?? "EUR")).toUpperCase();
-        if (walletCur !== currency) {
-          console.error("[paypal-topup/capture] currency mismatch", { walletCur, currency });
+        const expectedWireCurrency = isBridgedXof ? "EUR" : walletCur;
+        if (capturedCurrency !== expectedWireCurrency) {
+          console.error("[paypal-topup/capture] currency mismatch", { walletCur, capturedCurrency, isBridgedXof });
+          return json({ error: "currency_mismatch" }, 400, origin);
+        }
+
+        // Compute the amount to credit to the wallet, in wallet currency.
+        let creditAmount = capturedAmount;
+        let fxRateUsed = 1;
+        if (isBridgedXof) {
+          if (walletCur !== "XOF" || !Number.isFinite(bridgedXofAmount) || bridgedXofAmount <= 0) {
+            return json({ error: "bridge_mismatch" }, 400, origin);
+          }
+          // Recompute expected EUR from XOF at the fixed peg and tolerate 1-cent drift.
+          const expectedEur = convertMoney(bridgedXofAmount, "XOF", "EUR");
+          if (Math.abs(expectedEur - capturedAmount) > 0.02) {
+            console.error("[paypal-topup/capture] EUR mismatch", { expectedEur, capturedAmount, bridgedXofAmount });
+            return json({ error: "amount_mismatch" }, 400, origin);
+          }
+          creditAmount = bridgedXofAmount;
+          fxRateUsed = expectedEur / bridgedXofAmount;
+        } else if (walletCur !== capturedCurrency) {
           return json({ error: "currency_mismatch" }, 400, origin);
         }
 
@@ -122,7 +148,7 @@ export const Route = createFileRoute("/api/paypal-topup/capture")({
 
         const { data: rpcData, error: rpcErr } = await admin.rpc("credit_wallet_topup", {
           _user_id: userId,
-          _amount: amount,
+          _amount: creditAmount,
           _payment_intent_id: idKey,
         });
         if (rpcErr) return json({ error: rpcErr.message }, 500, origin);
@@ -140,8 +166,11 @@ export const Route = createFileRoute("/api/paypal-topup/capture")({
           {
             ok: true,
             balance,
-            amount,
-            currency,
+            amount: creditAmount,
+            currency: walletCur,
+            chargedAmount: capturedAmount,
+            chargedCurrency: capturedCurrency,
+            fxRate: fxRateUsed,
             captureId: cap.captureId,
             duplicate: !!result.already,
             alreadyCaptured: !!(cap as { alreadyCaptured?: boolean }).alreadyCaptured,

@@ -28,7 +28,7 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
-import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal } from "@/lib/money";
+import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal, convertMoney } from "@/lib/money";
 import {
   confirmWalletTopup,
   markPendingTopup,
@@ -359,14 +359,27 @@ export function TopUpSheet({
                     active={selectedMethod === "card"}
                     onClick={() => setSelectedMethod("card")}
                   />
-                  {cur !== "XOF" && (
-                    <MethodRow
-                      brand="paypal"
-                      label={t("pay.method.paypal", { defaultValue: "PayPal" })}
-                      subtitle={t("pay.method.paypalSub", { defaultValue: "Payer avec ton compte PayPal" })}
-                      active={selectedMethod === "paypal"}
-                      onClick={() => setSelectedMethod("paypal")}
-                    />
+                  <MethodRow
+                    brand="paypal"
+                    label={t("pay.method.paypal", { defaultValue: "PayPal" })}
+                    subtitle={
+                      cur === "XOF"
+                        ? t("wallet.topup.paypalXofSub", {
+                            defaultValue: "Débité en euros : ≈ {{eur}} (taux fixe officiel)",
+                            eur: formatMoney(convertMoney(chosenAmount, "XOF", "EUR"), "EUR", i18n.language),
+                          })
+                        : t("pay.method.paypalSub", { defaultValue: "Payer avec ton compte PayPal" })
+                    }
+                    active={selectedMethod === "paypal"}
+                    onClick={() => setSelectedMethod("paypal")}
+                  />
+                  {cur === "XOF" && selectedMethod === "paypal" && (
+                    <p className="mt-1 px-1 text-[11px] leading-snug text-muted-foreground">
+                      {t("wallet.topup.paypalXofHint", {
+                        defaultValue:
+                          "PayPal fonctionne en euros — ton solde reste en FCFA, la conversion est automatique (taux fixe officiel).",
+                      })}
+                    </p>
                   )}
                   {cur === "XOF" && (
                     <>
@@ -424,10 +437,16 @@ export function TopUpSheet({
                       {step.kind === "loading" ? (
                         <Loader2 className="mx-auto animate-spin" size={18} />
                       ) : selectedMethod === "paypal" ? (
-                        t("wallet.topup.paypalCta", {
-                          defaultValue: "Payer {{amount}} avec PayPal",
-                          amount: formatMoney(chosenAmount, cur, i18n.language),
-                        })
+                        cur === "XOF"
+                          ? t("wallet.topup.paypalCtaBridge", {
+                              defaultValue: "Payer {{amount}} (≈ {{eur}}) avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                              eur: formatMoney(convertMoney(chosenAmount, "XOF", "EUR"), "EUR", i18n.language),
+                            })
+                          : t("wallet.topup.paypalCta", {
+                              defaultValue: "Payer {{amount}} avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                            })
                       ) : (
                         t("wallet.topup.continueCta", {
                           amount: formatMoney(chosenAmount, cur, i18n.language),

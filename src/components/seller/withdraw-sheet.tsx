@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
 import { useAuth } from "@/lib/auth-context";
@@ -213,7 +213,15 @@ export function WithdrawSheet({
                     <Row label={t("payout.holder")} value={holder} />
                   </>
                 ) : method === "paypal" ? (
-                  <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                  <>
+                    <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                    {normalizeCurrency(currency) === "XOF" && (
+                      <Row
+                        label={t("payout.paypalReceived", { defaultValue: "Reçu sur PayPal" })}
+                        value={`≈ ${formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language)}`}
+                      />
+                    )}
+                  </>
                 ) : (
                   <Row label={t("payout.phone")} value={phone} />
                 )}
@@ -337,6 +345,15 @@ export function WithdrawSheet({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {t("payout.paypalHint")}
                   </p>
+                  {normalizeCurrency(currency) === "XOF" && amount > 0 && (
+                    <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                      {t("payout.paypalXofHint", {
+                        defaultValue:
+                          "Tu recevras ≈ {{eur}} sur ton PayPal (taux fixe officiel, sans marge).",
+                        eur: formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language),
+                      })}
+                    </p>
+                  )}
                 </>
               ) : (
                 <input
