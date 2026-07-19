@@ -42,6 +42,7 @@ import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './route
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
+import { Route as ApiPaypalTopupCreateRouteImport } from './routes/api/paypal-topup.create'
 import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
 import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
@@ -219,6 +220,11 @@ const ApiPublicNotificationsFanoutRoute =
     path: '/api/public/notifications-fanout',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPaypalTopupCreateRoute = ApiPaypalTopupCreateRouteImport.update({
+  id: '/api/paypal-topup/create',
+  path: '/api/paypal-topup/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaypalPayoutStatusRoute = ApiPaypalPayoutStatusRouteImport.update({
   id: '/status',
   path: '/status',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
+  '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -342,6 +349,7 @@ export interface FileRoutesByTo {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
+  '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
+  '/api/paypal-topup/create': typeof ApiPaypalTopupCreateRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -431,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
+    | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -474,6 +484,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
+    | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -517,6 +528,7 @@ export interface FileRouteTypes {
     | '/api/checkout/confirm'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
+    | '/api/paypal-topup/create'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -558,6 +570,7 @@ export interface RootRouteChildren {
   SellOnboardingRoute: typeof SellOnboardingRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
+  ApiPaypalTopupCreateRoute: typeof ApiPaypalTopupCreateRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paypal-topup/create': {
+      id: '/api/paypal-topup/create'
+      path: '/api/paypal-topup/create'
+      fullPath: '/api/paypal-topup/create'
+      preLoaderRoute: typeof ApiPaypalTopupCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paypal-payout/status': {
       id: '/api/paypal-payout/status'
       path: '/status'
@@ -929,6 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   SellOnboardingRoute: SellOnboardingRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
+  ApiPaypalTopupCreateRoute: ApiPaypalTopupCreateRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
