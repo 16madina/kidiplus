@@ -30,7 +30,8 @@ export const PAYPAL_SUPPORTED_CURRENCIES = new Set([
 export async function getPaypalAccessToken(cfg: PaypalConfig): Promise<
   { ok: true; token: string } | { ok: false; error: string }
 > {
-  const auth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString("base64");
+  // btoa is available on Workers; Buffer is not always polyfilled.
+  const auth = btoa(`${cfg.clientId}:${cfg.clientSecret}`);
   const res = await fetch(`${cfg.base}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -147,26 +148,55 @@ export async function getPaypalPayoutStatus(
   };
 }
 
+/** Extract PayPal `details[0].issue` from an error body. */
+export function paypalIssueCode(parsed: unknown): string {
+  const details = Array.isArray((parsed as { details?: unknown })?.details)
+    ? (parsed as { details: Array<{ issue?: string }> }).details
+    : [];
+  return (details[0]?.issue ?? "").toUpperCase();
+}
+
 /** Map a raw PayPal HTTP error to a French user-facing message. */
 export function mapPaypalError(status: number, parsed: any, raw: string): string {
   const name = parsed?.name as string | undefined;
   const details = Array.isArray(parsed?.details) ? parsed.details : [];
   const issue = (details[0]?.issue as string | undefined) ?? "";
+  const description = (details[0]?.description as string | undefined) ?? "";
   const msg = (parsed?.message as string | undefined) ?? raw.slice(0, 200);
+  const issueU = issue.toUpperCase();
 
   if (status === 401) return "Identifiants PayPal invalides (vérifier PAYPAL_CLIENT_ID / _SECRET / _MODE).";
-  if (status === 403) return "Compte PayPal non autorisé à effectuer des Payouts (activer Payouts sur le compte business).";
-  if (name === "INSUFFICIENT_FUNDS" || issue === "INSUFFICIENT_FUNDS" || /insufficient/i.test(msg)) {
+  if (status === 403) return "Compte PayPal non autorisé (vérifier les permissions de l'app REST).";
+  if (name === "INSUFFICIENT_FUNDS" || issueU === "INSUFFICIENT_FUNDS" || /insufficient/i.test(msg)) {
     return "Solde PayPal insuffisant sur le compte émetteur.";
   }
+  if (issueU === "ORDER_NOT_APPROVED") {
+    return "Le paiement n'a pas été approuvé sur PayPal. Recommence la recharge et valide jusqu'au bout.";
+  }
+  if (issueU === "ORDER_ALREADY_CAPTURED") {
+    return "Ce paiement PayPal a déjà été capturé.";
+  }
+  if (issueU === "DUPLICATE_INVOICE_ID") {
+    return "Identifiant de facture PayPal en doublon. Réessaie.";
+  }
+  if (issueU === "INSTRUMENT_DECLINED" || issueU === "PAYER_CANNOT_PAY") {
+    return "PayPal a refusé le moyen de paiement. Essaie un autre compte ou carte sandbox.";
+  }
+  if (issueU === "CURRENCY_NOT_SUPPORTED" || issueU === "CURRENCY_NOT_SUPPORTED_FOR_RECEIVER" || issueU === "CURRENCY_NOT_SUPPORTED_FOR_COUNTRY") {
+    return "Devise non supportée par ce compte PayPal (EUR/CAD requis en sandbox Business).";
+  }
+  if (issueU === "PAYEE_ACCOUNT_RESTRICTED" || issueU === "PAYEE_ACCOUNT_LOCKED_OR_CLOSED") {
+    return "Le compte Business PayPal destinataire est restreint. Vérifie le sandbox Business.";
+  }
   if (name === "VALIDATION_ERROR" || status === 400) {
-    if (/currency/i.test(msg) || issue === "CURRENCY_NOT_SUPPORTED_FOR_RECEIVER" || issue === "CURRENCY_NOT_SUPPORTED_FOR_COUNTRY") {
-      return "Devise non supportée par PayPal pour ce destinataire.";
-    }
-    if (/email/i.test(msg) || issue === "RECEIVER_UNREGISTERED" || issue === "RECEIVER_EMAIL_INVALID") {
+    if (/email/i.test(msg) || issueU === "RECEIVER_UNREGISTERED" || issueU === "RECEIVER_EMAIL_INVALID") {
       return "Email PayPal invalide.";
     }
-    return `Erreur de validation PayPal: ${msg}`;
+    return `Erreur de validation PayPal: ${description || msg}`;
+  }
+  if (status === 422 || name === "UNPROCESSABLE_ENTITY") {
+    const hint = description || issue || msg;
+    return `Erreur PayPal 422${issue ? ` (${issue})` : ""}: ${hint}`;
   }
   return `Erreur PayPal (${status}): ${msg}`;
 }
@@ -273,22 +303,70 @@ export type CapturePaypalOrderResult =
       customId: string | null;
       payerEmail: string | null;
       raw: unknown;
+      alreadyCaptured?: boolean;
     }
   | { ok: false; error: string; alreadyCaptured?: boolean; raw?: unknown };
 
+function parseCaptureFromOrder(parsed: any, alreadyCaptured = false): CapturePaypalOrderResult {
+  const pu = Array.isArray(parsed?.purchase_units) ? parsed.purchase_units[0] : null;
+  const cap = pu?.payments?.captures?.[0] ?? null;
+  const captureId = cap?.id as string | undefined;
+  if (!captureId) return { ok: false, error: "paypal_no_capture_id", raw: parsed };
+  return {
+    ok: true,
+    captureId,
+    status: (cap?.status as string | undefined) ?? (parsed?.status as string | undefined) ?? "COMPLETED",
+    amount: (cap?.amount?.value as string | undefined) ?? "",
+    currency: (cap?.amount?.currency_code as string | undefined) ?? "",
+    customId: (cap?.custom_id as string | undefined) ?? (pu?.custom_id as string | undefined) ?? null,
+    payerEmail: (parsed?.payer?.email_address as string | undefined) ?? null,
+    raw: parsed,
+    ...(alreadyCaptured ? { alreadyCaptured: true } : {}),
+  };
+}
+
+/**
+ * Capture a PayPal order safely:
+ * 1) GET status first — if already COMPLETED, reuse the capture (no 422).
+ * 2) Only POST /capture when status is APPROVED.
+ * 3) Do NOT send a sticky PayPal-Request-Id on capture: a prior failed capture
+ *    with the same id would keep returning the same 422 forever.
+ */
 export async function capturePaypalOrder(
   cfg: PaypalConfig,
   token: string,
   orderId: string,
 ): Promise<CapturePaypalOrderResult> {
+  const existing = await getPaypalOrderRaw(cfg, token, orderId);
+  if (!existing.ok) return existing;
+
+  const status = String(existing.orderStatus ?? "").toUpperCase();
+  if (status === "COMPLETED") {
+    const parsed = parseCaptureFromOrder(existing.raw, true);
+    if (parsed.ok) return parsed;
+  }
+  if (
+    status === "CREATED" ||
+    status === "PAYER_ACTION_REQUIRED" ||
+    status === "PENDING_APPROVAL"
+  ) {
+    return {
+      ok: false,
+      error: mapPaypalError(422, {
+        name: "UNPROCESSABLE_ENTITY",
+        message: "Order not approved",
+        details: [{ issue: "ORDER_NOT_APPROVED", description: `Statut ordre: ${status}` }],
+      }, ""),
+      raw: existing.raw,
+    };
+  }
+
   const res = await fetch(`${cfg.base}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      // Same request id → idempotent capture at PayPal.
-      "PayPal-Request-Id": `cap_${orderId}`,
       Prefer: "return=representation",
     },
     body: "{}",
@@ -298,34 +376,32 @@ export async function capturePaypalOrder(
   try { parsed = JSON.parse(text); } catch { /* keep raw */ }
 
   if (!res.ok) {
-    const name = parsed?.name as string | undefined;
-    const issue = (parsed?.details?.[0]?.issue as string | undefined) ?? "";
+    const issue = paypalIssueCode(parsed);
     // ORDER_ALREADY_CAPTURED → re-fetch the order to recover capture details.
-    if (name === "UNPROCESSABLE_ENTITY" && issue === "ORDER_ALREADY_CAPTURED") {
+    if (issue === "ORDER_ALREADY_CAPTURED") {
       const fetched = await getPaypalOrder(cfg, token, orderId);
-      if (fetched.ok) return { ...fetched, alreadyCaptured: true } as CapturePaypalOrderResult;
+      if (fetched.ok) return { ...fetched, alreadyCaptured: true };
     }
+    console.error("[paypal] capture_failed", {
+      orderId,
+      status: res.status,
+      issue,
+      body: text.slice(0, 800),
+    });
     return { ok: false, error: mapPaypalError(res.status, parsed, text), raw: parsed ?? text };
   }
 
-  const pu = Array.isArray(parsed?.purchase_units) ? parsed.purchase_units[0] : null;
-  const cap = pu?.payments?.captures?.[0] ?? null;
-  const captureId = cap?.id as string | undefined;
-  const status = (cap?.status as string | undefined) ?? (parsed?.status as string | undefined) ?? "PENDING";
-  const amount = (cap?.amount?.value as string | undefined) ?? "";
-  const currency = (cap?.amount?.currency_code as string | undefined) ?? "";
-  const customId = (cap?.custom_id as string | undefined) ?? (pu?.custom_id as string | undefined) ?? null;
-  const payerEmail = (parsed?.payer?.email_address as string | undefined) ?? null;
-  if (!captureId) return { ok: false, error: "paypal_no_capture_id", raw: parsed };
-  return { ok: true, captureId, status, amount, currency, customId, payerEmail, raw: parsed };
+  return parseCaptureFromOrder(parsed);
 }
 
-/** GET an existing order (used to recover if capture returns ORDER_ALREADY_CAPTURED). */
-export async function getPaypalOrder(
+type PaypalOrderRawOk = { ok: true; orderStatus: string; raw: unknown };
+type PaypalOrderRawErr = { ok: false; error: string; raw?: unknown };
+
+async function getPaypalOrderRaw(
   cfg: PaypalConfig,
   token: string,
   orderId: string,
-): Promise<CapturePaypalOrderResult> {
+): Promise<PaypalOrderRawOk | PaypalOrderRawErr> {
   const res = await fetch(`${cfg.base}/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
     method: "GET",
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
@@ -334,20 +410,21 @@ export async function getPaypalOrder(
   let parsed: any = null;
   try { parsed = JSON.parse(text); } catch { /* keep raw */ }
   if (!res.ok) return { ok: false, error: mapPaypalError(res.status, parsed, text), raw: parsed ?? text };
-
-  const pu = Array.isArray(parsed?.purchase_units) ? parsed.purchase_units[0] : null;
-  const cap = pu?.payments?.captures?.[0] ?? null;
-  const captureId = cap?.id as string | undefined;
-  if (!captureId) return { ok: false, error: "paypal_no_capture_id", raw: parsed };
   return {
     ok: true,
-    captureId,
-    status: (cap?.status as string | undefined) ?? "COMPLETED",
-    amount: (cap?.amount?.value as string | undefined) ?? "",
-    currency: (cap?.amount?.currency_code as string | undefined) ?? "",
-    customId: (cap?.custom_id as string | undefined) ?? (pu?.custom_id as string | undefined) ?? null,
-    payerEmail: (parsed?.payer?.email_address as string | undefined) ?? null,
+    orderStatus: String(parsed?.status ?? ""),
     raw: parsed,
   };
+}
+
+/** GET an existing order (used to recover if capture returns ORDER_ALREADY_CAPTURED). */
+export async function getPaypalOrder(
+  cfg: PaypalConfig,
+  token: string,
+  orderId: string,
+): Promise<CapturePaypalOrderResult> {
+  const raw = await getPaypalOrderRaw(cfg, token, orderId);
+  if (!raw.ok) return raw;
+  return parseCaptureFromOrder(raw.raw, true);
 }
 

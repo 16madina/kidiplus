@@ -140,19 +140,37 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
         const returnUrl = `${pubOrigin}/paypal-return`;
         const cancelUrl = `${pubOrigin}/paypal-return?cancelled=1`;
 
+        // PayPal rejects tiny / malformed amounts; keep 2-decimal EUR/CAD/USD.
+        const wireValue = Number(wireAmount.toFixed(2));
+        if (!(wireValue >= 0.01)) {
+          return json(
+            {
+              error: "invalid_amount",
+              message: "Montant trop faible après conversion pour PayPal (min 0,01).",
+            },
+            400,
+            origin,
+          );
+        }
+
         const created = await createPaypalOrder(cfg.cfg, tk.token, {
-          amount: wireAmount.toFixed(2),
+          amount: wireValue.toFixed(2),
           currency: wireCurrency,
           customId,
           invoiceId,
           returnUrl,
           cancelUrl,
           description: isBridgedXof
-            ? `KiDi+ Recharge (${amount} XOF ≈ ${wireAmount.toFixed(2)} EUR)`
-            : `KiDi+ Recharge (${amount} ${currency})`,
+            ? `KiDi+ top-up ${amount} XOF`
+            : `KiDi+ top-up ${amount} ${currency}`,
         });
         if (!created.ok) {
-          console.error("[paypal-topup] create failed:", created.error);
+          console.error("[paypal-topup] create failed:", created.error, {
+            wireValue,
+            wireCurrency,
+            returnUrl,
+            mode: cfg.cfg.mode,
+          });
           return json({ error: "paypal_create_failed", message: created.error }, 502, origin);
         }
 
