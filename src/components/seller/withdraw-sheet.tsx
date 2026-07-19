@@ -12,6 +12,7 @@ import { haptic } from "@/lib/haptics";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
+import { useAuth } from "@/lib/auth-context";
 
 const WAVE = "#1DC8FE";
 const ORANGE = "#FF6600";
@@ -65,6 +66,8 @@ export function WithdrawSheet({
   source?: PayoutSource;
 }) {
   const { t, i18n } = useTranslation();
+  const { profile } = useAuth();
+  const isVerified = profile?.is_verified === true;
   const min = payoutMinimumFor(currency);
   const availableMethods = useMemo(() => methodsForCurrency(currency), [currency]);
   const defaultMethod: PayoutMethod = availableMethods[0] ?? "paypal";
@@ -114,17 +117,23 @@ export function WithdrawSheet({
         : phone.trim().length >= 6;
   const belowMin = amount < min;
   const aboveAvailable = amount > available;
-  const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
+  const canContinue =
+    isVerified && !belowMin && !aboveAvailable && amount > 0 && destinationValid;
   const invalidEmail = method === "paypal" && emailTrimmed.length > 0 && !emailValid;
-  const disabledReason = belowMin
-    ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
-    : aboveAvailable
-      ? t("payout.errors.aboveAvailable")
-      : invalidEmail
-        ? t("payout.errors.invalidEmail")
-        : !destinationValid
-          ? t("payout.errors.missingDestination")
-          : null;
+  const disabledReason = !isVerified
+    ? t(
+        "risk.errors.verificationRequired",
+        "Retrait réservé aux comptes certifiés.",
+      )
+    : belowMin
+      ? t("payout.errors.belowMinInline", { min: formatMoney(min, currency, i18n.language) })
+      : aboveAvailable
+        ? t("payout.errors.aboveAvailable")
+        : invalidEmail
+          ? t("payout.errors.invalidEmail")
+          : !destinationValid
+            ? t("payout.errors.missingDestination")
+            : null;
 
   const submit = async () => {
     setBusy(true);
@@ -142,7 +151,17 @@ export function WithdrawSheet({
           ? t("payout.errors.insufficient")
           : r.error === "below_minimum"
             ? t("payout.errors.belowMin", { min: formatMoney(r.min ?? min, currency, i18n.language) })
-            : t("payout.errors.generic"),
+            : r.error === "verification_required"
+              ? t(
+                  "risk.errors.verificationRequired",
+                  "Retrait réservé aux comptes certifiés.",
+                )
+              : r.error === "risk_restricted"
+                ? t(
+                    "risk.errors.restricted",
+                    "Paiements temporairement bloqués. Contacte le support.",
+                  )
+                : t("payout.errors.generic"),
       );
     }
   };
@@ -208,6 +227,22 @@ export function WithdrawSheet({
               <p className="mt-1 text-[12px] text-muted-foreground">
                 {t("payout.available")}: <span className="font-semibold text-foreground">{formatMoney(available, currency, i18n.language)}</span>
               </p>
+
+              {!isVerified && (
+                <div
+                  className="mt-3 rounded-2xl px-3 py-2.5 text-[12px] leading-snug"
+                  style={{
+                    background: "oklch(0.95 0.04 85)",
+                    color: "oklch(0.35 0.06 70)",
+                    border: "1px solid oklch(0.85 0.1 85)",
+                  }}
+                >
+                  {t(
+                    "risk.payoutNeedsVerify",
+                    "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur.",
+                  )}
+                </div>
+              )}
 
               <label className="mt-4 block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("payout.amount")}

@@ -1,4 +1,15 @@
 {
+  "risk": {
+    "errors": {
+      "dailyLimit": "Daily limit reached. Try again tomorrow.",
+      "restricted": "Payments temporarily blocked. Contact support.",
+      "banned": "Account banned — payments disabled.",
+      "suspended": "Account suspended — payments disabled.",
+      "verificationRequired": "Withdrawals are for verified accounts only.",
+      "sellerGiftLimit": "This seller has reached today’s gift limit."
+    },
+    "payoutNeedsVerify": "To withdraw earnings, your account must be verified. Request certification from your seller profile."
+  },
   "follow": {
     "follow": "Follow",
     "following": "Following"
@@ -936,8 +947,27 @@
       "payments": "Payments",
       "lives": "Lives",
       "reports": "Reports",
+      "risk": "Risk",
       "verify": "Verify",
       "referral": "Referrals"
+    },
+    "risk": {
+      "title": "Risk alerts",
+      "empty": "No alerts.",
+      "count": "{{count}} alert(s)",
+      "resolve": "Resolve",
+      "resolved": "Alert resolved",
+      "resolveFail": "Failed",
+      "freeze": "Freeze",
+      "unfreeze": "Unfreeze",
+      "freezeOn": "Account frozen (payments)",
+      "freezeOff": "Freeze lifted",
+      "frozen": "frozen",
+      "filter": {
+        "open": "Open",
+        "resolved": "Resolved",
+        "all": "All"
+      }
     },
     "toDo": {
       "title": "To handle",

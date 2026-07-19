@@ -1,4 +1,15 @@
 {
+  "risk": {
+    "errors": {
+      "dailyLimit": "Limite journalière atteinte. Réessaie demain.",
+      "restricted": "Paiements temporairement bloqués. Contacte le support.",
+      "banned": "Compte banni — paiements impossibles.",
+      "suspended": "Compte suspendu — paiements impossibles.",
+      "verificationRequired": "Retrait réservé aux comptes certifiés.",
+      "sellerGiftLimit": "Ce vendeur a atteint sa limite de cadeaux du jour."
+    },
+    "payoutNeedsVerify": "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur."
+  },
   "follow": {
     "follow": "Suivre",
     "following": "Abonné"
@@ -936,8 +947,27 @@
       "payments": "Paiements",
       "lives": "Lives",
       "reports": "Signalements",
+      "risk": "Risque",
       "verify": "Certifs",
       "referral": "Parrainage"
+    },
+    "risk": {
+      "title": "Alertes risque",
+      "empty": "Aucune alerte.",
+      "count": "{{count}} alerte(s)",
+      "resolve": "Résoudre",
+      "resolved": "Alerte résolue",
+      "resolveFail": "Échec",
+      "freeze": "Geler",
+      "unfreeze": "Lever le gel",
+      "freezeOn": "Compte gelé (paiements)",
+      "freezeOff": "Gel levé",
+      "frozen": "gelé",
+      "filter": {
+        "open": "Ouvertes",
+        "resolved": "Résolues",
+        "all": "Toutes"
+      }
     },
     "toDo": {
       "title": "À traiter",

@@ -5,6 +5,7 @@
 //   - currency_not_supported  → devise non supportée
 //   - invalid_amount          → montant invalide
 //   - rate_limited            → trop de tentatives
+//   - daily_limit / risk_*    → anti-fraude V1
 //   - stripe_error / anything → erreur générique
 // Plus internal client-only ones:
 //   - "network"      → réseau
@@ -30,6 +31,27 @@ export function mapPayErrorToI18n(t: TFunction, code: string | undefined): strin
       return t("pay.errors.notSignedIn");
     case "unauthorized":
       return t("pay.errors.notSignedIn");
+    case "daily_limit":
+      return t("risk.errors.dailyLimit", "Limite journalière atteinte. Réessaie demain.");
+    case "risk_restricted":
+      return t(
+        "risk.errors.restricted",
+        "Paiements temporairement bloqués. Contacte le support.",
+      );
+    case "account_banned":
+      return t("risk.errors.banned", "Compte banni — paiements impossibles.");
+    case "account_suspended":
+      return t("risk.errors.suspended", "Compte suspendu — paiements impossibles.");
+    case "verification_required":
+      return t(
+        "risk.errors.verificationRequired",
+        "Retrait réservé aux comptes certifiés.",
+      );
+    case "seller_gift_limit":
+      return t(
+        "risk.errors.sellerGiftLimit",
+        "Ce vendeur a atteint sa limite de cadeaux du jour.",
+      );
     default:
       return t("pay.errors.generic");
   }

@@ -10,7 +10,7 @@ import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
   Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
-  HeartHandshake,
+  HeartHandshake, Shield,
 } from "lucide-react";
 import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
@@ -21,9 +21,10 @@ import { haptic } from "@/lib/haptics";
 import {
   fetchOverviewStats, fetchAdminUsers, fetchAdminUserDetail,
   fetchAdminPayouts, fetchAdminOrders, fetchAdminLives,
+  fetchAdminRiskAlerts, resolveAdminRiskAlert, setAdminRiskRestricted,
   approxEurTotal,
   type OverviewStats, type AdminUserRow, type AdminPayoutRow,
-  type AdminOrderRow, type AdminLiveRow, type CurrencyMap,
+  type AdminOrderRow, type AdminLiveRow, type AdminRiskAlertRow, type CurrencyMap,
 } from "@/lib/admin-db";
 import {
   adminProcessPayout, subscribeAllPayouts,
@@ -41,7 +42,7 @@ import { PayoutRiskBadge } from "./payout-risk-badge";
 
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -63,6 +64,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
+            {tab === "risk" && open && <RiskTab />}
             {tab === "verify" && open && <VerificationsTab />}
             {tab === "referral" && open && <AdminReferralPanel />}
           </div>
@@ -84,6 +86,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
     { id: "push",     icon: <Bell size={14} />,            label: "Push" },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
+    { id: "risk",     icon: <Shield size={14} />,          label: t("admin.tabs.risk", "Risque") },
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
@@ -867,6 +870,127 @@ function LivesTab() {
         </li>
       ))}
     </ul>
+  );
+}
+
+// ---------- Risk / anti-fraud ----------
+
+function RiskTab() {
+  const { t, i18n } = useTranslation();
+  const [rows, setRows] = useState<AdminRiskAlertRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"open" | "resolved" | "all">("open");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const r = await fetchAdminRiskAlerts(filter, 50, 0);
+    setRows(r.rows);
+    setTotal(r.total);
+    setLoading(false);
+  };
+  useEffect(() => {
+    void load();
+  }, [filter]);
+
+  return (
+    <Section title={t("admin.risk.title", "Alertes risque")}>
+      <div className="mb-3 flex gap-1">
+        {(["open", "resolved", "all"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              setFilter(k);
+            }}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+              filter === k ? "bg-foreground text-background" : "bg-muted"
+            }`}
+          >
+            {t(`admin.risk.filter.${k}`, k)}
+          </button>
+        ))}
+      </div>
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        {t("admin.risk.count", "{{count}} alerte(s)", { count: total })}
+      </p>
+      {loading ? (
+        <Loader2 className="mx-auto my-8 animate-spin" size={20} />
+      ) : rows.length === 0 ? (
+        <p className="py-8 text-center text-[13px] text-muted-foreground">
+          {t("admin.risk.empty", "Aucune alerte.")}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((a) => (
+            <li key={a.id} className="rounded-2xl border border-border p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold">{a.kind}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    @{a.user_handle ?? "?"} · {a.user_name ?? "—"}
+                    {a.is_verified ? " · ✓" : ""}
+                    {a.risk_restricted ? ` · ${t("admin.risk.frozen", "gelé")}` : ""}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    {new Date(a.created_at).toLocaleString(i18n.language)}
+                  </p>
+                  <pre className="mt-1 max-h-20 overflow-auto whitespace-pre-wrap break-all text-[10px] text-muted-foreground">
+                    {JSON.stringify(a.detail ?? {}, null, 0)}
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {!a.resolved_at && (
+                  <Press
+                    disabled={busyId === a.id}
+                    onClick={async () => {
+                      setBusyId(a.id);
+                      const ok = await resolveAdminRiskAlert(a.id);
+                      setBusyId(null);
+                      if (ok) {
+                        toast.success(t("admin.risk.resolved", "Alerte résolue"));
+                        void load();
+                      } else toast.error(t("admin.risk.resolveFail", "Échec"));
+                    }}
+                    className="!min-h-8 rounded-full bg-muted px-3 text-[11px] font-semibold"
+                  >
+                    {t("admin.risk.resolve", "Résoudre")}
+                  </Press>
+                )}
+                {a.user_id && (
+                  <Press
+                    disabled={busyId === a.id}
+                    onClick={async () => {
+                      setBusyId(a.id);
+                      const next = !a.risk_restricted;
+                      const ok = await setAdminRiskRestricted(a.user_id!, next);
+                      setBusyId(null);
+                      if (ok) {
+                        toast.success(
+                          next
+                            ? t("admin.risk.freezeOn", "Compte gelé (paiements)")
+                            : t("admin.risk.freezeOff", "Gel levé"),
+                        );
+                        void load();
+                      } else toast.error(t("admin.risk.resolveFail", "Échec"));
+                    }}
+                    className="!min-h-8 rounded-full px-3 text-[11px] font-semibold text-white"
+                    style={{ backgroundColor: a.risk_restricted ? "oklch(0.55 0.12 155)" : "oklch(0.55 0.2 25)" }}
+                  >
+                    {a.risk_restricted
+                      ? t("admin.risk.unfreeze", "Lever le gel")
+                      : t("admin.risk.freeze", "Geler")}
+                  </Press>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

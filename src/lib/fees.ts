@@ -50,11 +50,9 @@ export const AUCTION_EXTENSION_RESET_SECONDS = 10;
  * Minimum payout amount per currency. Single source of truth used by both
  * the withdraw sheet (UI validation + hint text) and mirrored in the
  * `request_payout` SQL function.
- *
- * TEST VALUE — restore XOF to 5000 before public launch.
  */
 export const PAYOUT_MINIMUMS: Record<Currency, number> = {
-  XOF: 100, // TEST VALUE — restore to 5000 before public launch
+  XOF: 5000,
   EUR: 10,
   CAD: 15,
 };

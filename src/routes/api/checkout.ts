@@ -113,6 +113,26 @@ export const Route = createFileRoute("/api/checkout")({
           return json({ error: "order_not_pending" }, 409, origin);
         }
 
+        // Anti-fraud: block card checkout for banned / suspended / risk-restricted.
+        const { data: buyerProfile } = await admin
+          .from("profiles")
+          .select("moderation_status, risk_restricted")
+          .eq("id", userId)
+          .maybeSingle();
+        const modStatus = (buyerProfile as { moderation_status?: string } | null)?.moderation_status;
+        const riskRestricted = Boolean(
+          (buyerProfile as { risk_restricted?: boolean } | null)?.risk_restricted,
+        );
+        if (modStatus === "banned") {
+          return json({ error: "account_banned" }, 403, origin);
+        }
+        if (modStatus === "suspended") {
+          return json({ error: "account_suspended" }, 403, origin);
+        }
+        if (riskRestricted) {
+          return json({ error: "risk_restricted" }, 403, origin);
+        }
+
         const currency = normalizeCurrency(order.currency).toLowerCase();
         const amountMinor = toStripeAmountFor(Number(order.total), currency);
         // Stripe requires a minimum charge of ~0.50 in the currency's *minor unit

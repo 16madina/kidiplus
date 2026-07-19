@@ -278,7 +278,16 @@ export function PaymentSheet({
                           toast.error(
                             r.error === "insufficient_funds"
                               ? t("wallet.insufficient")
-                              : t("pay.errors.generic"),
+                              : r.error === "daily_limit"
+                                ? t(
+                                    "risk.errors.dailyLimit",
+                                    "Limite journalière atteinte. Réessaie demain.",
+                                  )
+                                : r.error === "risk_restricted" ||
+                                    r.error === "account_banned" ||
+                                    r.error === "account_suspended"
+                                  ? mapPayErrorToI18n(t, r.error)
+                                  : t("pay.errors.generic"),
                           );
                         }
                       }}

@@ -26,6 +26,9 @@ export type SendGiftResult =
         | "insufficient_funds"
         | "conversion_unavailable"
         | "sanctioned"
+        | "daily_limit"
+        | "seller_gift_limit"
+        | "risk_restricted"
         | "unknown";
       balance?: number;
       price?: number;
