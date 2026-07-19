@@ -437,10 +437,16 @@ export function TopUpSheet({
                       {step.kind === "loading" ? (
                         <Loader2 className="mx-auto animate-spin" size={18} />
                       ) : selectedMethod === "paypal" ? (
-                        t("wallet.topup.paypalCta", {
-                          defaultValue: "Payer {{amount}} avec PayPal",
-                          amount: formatMoney(chosenAmount, cur, i18n.language),
-                        })
+                        cur === "XOF"
+                          ? t("wallet.topup.paypalCtaBridge", {
+                              defaultValue: "Payer {{amount}} (≈ {{eur}}) avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                              eur: formatMoney(convertMoney(chosenAmount, "XOF", "EUR"), "EUR", i18n.language),
+                            })
+                          : t("wallet.topup.paypalCta", {
+                              defaultValue: "Payer {{amount}} avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                            })
                       ) : (
                         t("wallet.topup.continueCta", {
                           amount: formatMoney(chosenAmount, cur, i18n.language),
