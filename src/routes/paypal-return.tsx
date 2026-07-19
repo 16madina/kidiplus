@@ -107,6 +107,7 @@ function PaypalReturn() {
               +{state.amount.toFixed(2)} {state.currency}
             </p>
           </>
+        )}
         {state.kind === "pending" && (
           <>
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
