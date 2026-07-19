@@ -39,8 +39,17 @@ import {
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
+import {
+  createPaypalTopup,
+  capturePaypalTopup,
+  markPendingPaypalOrder,
+  readPendingPaypalOrder,
+  clearPendingPaypalOrder,
+  mapPaypalTopupError,
+} from "@/lib/paypal-topup-client";
+import { isNative } from "@/lib/native";
 
-type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
 
 
@@ -93,6 +102,19 @@ export function TopUpSheet({
           }
         })();
       }
+      // Recovery: a previously-created PayPal order that the user approved
+      // but whose /paypal-return capture never ran (killed app, bad network).
+      const pendingPp = readPendingPaypalOrder();
+      if (pendingPp) {
+        void (async () => {
+          const r = await capturePaypalTopup(pendingPp);
+          if (r.ok) {
+            clearPendingPaypalOrder();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cur]);
@@ -108,8 +130,40 @@ export function TopUpSheet({
     chosenAmount >= MIN_AMOUNT &&
     chosenAmount <= MAX_AMOUNT;
 
+  const startPaypal = async () => {
+    setStep({ kind: "loading" });
+    const created = await createPaypalTopup(chosenAmount);
+    if (!created.ok) {
+      setStep({ kind: "error", message: mapPaypalTopupError(created.error, created.message) });
+      return;
+    }
+    if (!created.approveUrl) {
+      setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      return;
+    }
+    markPendingPaypalOrder(created.orderId);
+    // Native: open in the system browser (SFSafariViewController / Chrome
+    // Custom Tab). PayPal redirects to https://kidiplus.com/paypal-return —
+    // Universal Link brings the user back into the app on that route.
+    // Web: same-tab redirect; the user comes back to /paypal-return.
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: created.approveUrl, windowName: "_self", presentationStyle: "popover" });
+      } catch {
+        setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      }
+    } else {
+      window.location.assign(created.approveUrl);
+    }
+  };
+
   const startPayment = async () => {
     if (!valid) return;
+    if (selectedMethod === "paypal") {
+      void startPaypal();
+      return;
+    }
     setStep({ kind: "loading" });
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -305,6 +359,15 @@ export function TopUpSheet({
                     active={selectedMethod === "card"}
                     onClick={() => setSelectedMethod("card")}
                   />
+                  {cur !== "XOF" && (
+                    <MethodRow
+                      brand="paypal"
+                      label={t("pay.method.paypal", { defaultValue: "PayPal" })}
+                      subtitle={t("pay.method.paypalSub", { defaultValue: "Payer avec ton compte PayPal" })}
+                      active={selectedMethod === "paypal"}
+                      onClick={() => setSelectedMethod("paypal")}
+                    />
+                  )}
                   {cur === "XOF" && (
                     <>
                       <MethodRow
@@ -356,9 +419,15 @@ export function TopUpSheet({
                       onClick={startPayment}
                       disabled={!valid || step.kind === "loading"}
                       className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
+                      style={selectedMethod === "paypal" ? { backgroundColor: "#003087", color: "white" } : undefined}
                     >
                       {step.kind === "loading" ? (
                         <Loader2 className="mx-auto animate-spin" size={18} />
+                      ) : selectedMethod === "paypal" ? (
+                        t("wallet.topup.paypalCta", {
+                          defaultValue: "Payer {{amount}} avec PayPal",
+                          amount: formatMoney(chosenAmount, cur, i18n.language),
+                        })
                       ) : (
                         t("wallet.topup.continueCta", {
                           amount: formatMoney(chosenAmount, cur, i18n.language),

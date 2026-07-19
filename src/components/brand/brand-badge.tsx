@@ -6,7 +6,7 @@
 
 import type { CSSProperties } from "react";
 
-export type BrandKey = "wave" | "orange" | "djamo" | "card";
+export type BrandKey = "wave" | "orange" | "djamo" | "card" | "paypal";
 
 interface BrandBadgeProps {
   brand: BrandKey;
@@ -19,6 +19,7 @@ const BG: Record<BrandKey, string> = {
   orange: "#FF7900",   // Orange corporate
   djamo: "#4136F1",    // Djamo indigo
   card: "#0F172A",     // neutral slate for generic card
+  paypal: "#003087",   // PayPal blue
 };
 
 // White wordmark / letter — keeps consistent contrast on any background,
@@ -67,7 +68,7 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
             fill="#fff"
           >O</text>
         </svg>
-      ) : (
+      ) : brand === "djamo" ? (
         // Djamo — bold D
         <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40" fill="none">
           <text
@@ -78,6 +79,28 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
             fontSize={22}
             fill="#fff"
           >D</text>
+        </svg>
+      ) : (
+        // PayPal — stylized "PP" wordmark with a subtle second-P shadow tint.
+        <svg width={size * 0.78} height={size * 0.78} viewBox="0 0 40 40" fill="none">
+          <text
+            x="12" y="27"
+            textAnchor="middle"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fontWeight={900}
+            fontStyle="italic"
+            fontSize={20}
+            fill="#fff"
+          >P</text>
+          <text
+            x="24" y="27"
+            textAnchor="middle"
+            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            fontWeight={900}
+            fontStyle="italic"
+            fontSize={20}
+            fill="#009cde"
+          >P</text>
         </svg>
       )}
     </div>

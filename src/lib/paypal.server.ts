@@ -185,3 +185,169 @@ export function classifyItemStatus(itemStatus: string | null, batchStatus: strin
   }
   return { outcome: "processing", message: "En cours de traitement chez PayPal." };
 }
+
+// ============================================================================
+// PayPal Orders API v2 — used for BUYER top-ups (wallet recharge).
+// ============================================================================
+
+/** Currencies we support for PayPal top-ups. PayPal doesn't support XOF. */
+export const PAYPAL_TOPUP_CURRENCIES = new Set(["EUR", "CAD", "USD"]);
+
+export type CreatePaypalOrderResult =
+  | {
+      ok: true;
+      orderId: string;
+      approveUrl: string | null;
+      status: string;
+      raw: unknown;
+    }
+  | { ok: false; error: string; raw?: unknown };
+
+export async function createPaypalOrder(
+  cfg: PaypalConfig,
+  token: string,
+  args: {
+    amount: string;            // 2-decimal string
+    currency: string;          // EUR / CAD / USD
+    customId: string;          // e.g. "topup:<userId>:<uuid>"
+    returnUrl: string;
+    cancelUrl: string;
+    invoiceId?: string;        // idempotency at PayPal side
+    description?: string;
+  },
+): Promise<CreatePaypalOrderResult> {
+  const body = {
+    intent: "CAPTURE",
+    purchase_units: [
+      {
+        reference_id: "default",
+        custom_id: args.customId,
+        invoice_id: args.invoiceId ?? args.customId,
+        description: args.description ?? "KiDi+ Recharge portefeuille",
+        amount: { currency_code: args.currency, value: args.amount },
+      },
+    ],
+    application_context: {
+      brand_name: "KiDi+",
+      user_action: "PAY_NOW",
+      shipping_preference: "NO_SHIPPING",
+      return_url: args.returnUrl,
+      cancel_url: args.cancelUrl,
+    },
+  };
+
+  const res = await fetch(`${cfg.base}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      // PayPal-Request-Id enables idempotent retries on the create call.
+      "PayPal-Request-Id": args.invoiceId ?? args.customId,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+
+  if (!res.ok) {
+    return { ok: false, error: mapPaypalError(res.status, parsed, text), raw: parsed ?? text };
+  }
+  const orderId = parsed?.id as string | undefined;
+  const status = (parsed?.status as string | undefined) ?? "CREATED";
+  const links = Array.isArray(parsed?.links) ? parsed.links : [];
+  const approve = links.find((l: any) => l?.rel === "approve" || l?.rel === "payer-action");
+  const approveUrl = (approve?.href as string | undefined) ?? null;
+  if (!orderId) return { ok: false, error: "paypal_no_order_id", raw: parsed };
+  return { ok: true, orderId, approveUrl, status, raw: parsed };
+}
+
+export type CapturePaypalOrderResult =
+  | {
+      ok: true;
+      captureId: string;
+      status: string;          // COMPLETED expected
+      amount: string;
+      currency: string;
+      customId: string | null;
+      payerEmail: string | null;
+      raw: unknown;
+    }
+  | { ok: false; error: string; alreadyCaptured?: boolean; raw?: unknown };
+
+export async function capturePaypalOrder(
+  cfg: PaypalConfig,
+  token: string,
+  orderId: string,
+): Promise<CapturePaypalOrderResult> {
+  const res = await fetch(`${cfg.base}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      // Same request id → idempotent capture at PayPal.
+      "PayPal-Request-Id": `cap_${orderId}`,
+      Prefer: "return=representation",
+    },
+    body: "{}",
+  });
+  const text = await res.text();
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+
+  if (!res.ok) {
+    const name = parsed?.name as string | undefined;
+    const issue = (parsed?.details?.[0]?.issue as string | undefined) ?? "";
+    // ORDER_ALREADY_CAPTURED → re-fetch the order to recover capture details.
+    if (name === "UNPROCESSABLE_ENTITY" && issue === "ORDER_ALREADY_CAPTURED") {
+      const fetched = await getPaypalOrder(cfg, token, orderId);
+      if (fetched.ok) return { ...fetched, alreadyCaptured: true } as CapturePaypalOrderResult;
+    }
+    return { ok: false, error: mapPaypalError(res.status, parsed, text), raw: parsed ?? text };
+  }
+
+  const pu = Array.isArray(parsed?.purchase_units) ? parsed.purchase_units[0] : null;
+  const cap = pu?.payments?.captures?.[0] ?? null;
+  const captureId = cap?.id as string | undefined;
+  const status = (cap?.status as string | undefined) ?? (parsed?.status as string | undefined) ?? "PENDING";
+  const amount = (cap?.amount?.value as string | undefined) ?? "";
+  const currency = (cap?.amount?.currency_code as string | undefined) ?? "";
+  const customId = (cap?.custom_id as string | undefined) ?? (pu?.custom_id as string | undefined) ?? null;
+  const payerEmail = (parsed?.payer?.email_address as string | undefined) ?? null;
+  if (!captureId) return { ok: false, error: "paypal_no_capture_id", raw: parsed };
+  return { ok: true, captureId, status, amount, currency, customId, payerEmail, raw: parsed };
+}
+
+/** GET an existing order (used to recover if capture returns ORDER_ALREADY_CAPTURED). */
+export async function getPaypalOrder(
+  cfg: PaypalConfig,
+  token: string,
+  orderId: string,
+): Promise<CapturePaypalOrderResult> {
+  const res = await fetch(`${cfg.base}/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const text = await res.text();
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch { /* keep raw */ }
+  if (!res.ok) return { ok: false, error: mapPaypalError(res.status, parsed, text), raw: parsed ?? text };
+
+  const pu = Array.isArray(parsed?.purchase_units) ? parsed.purchase_units[0] : null;
+  const cap = pu?.payments?.captures?.[0] ?? null;
+  const captureId = cap?.id as string | undefined;
+  if (!captureId) return { ok: false, error: "paypal_no_capture_id", raw: parsed };
+  return {
+    ok: true,
+    captureId,
+    status: (cap?.status as string | undefined) ?? "COMPLETED",
+    amount: (cap?.amount?.value as string | undefined) ?? "",
+    currency: (cap?.amount?.currency_code as string | undefined) ?? "",
+    customId: (cap?.custom_id as string | undefined) ?? (pu?.custom_id as string | undefined) ?? null,
+    payerEmail: (parsed?.payer?.email_address as string | undefined) ?? null,
+    raw: parsed,
+  };
+}
+
