@@ -130,8 +130,40 @@ export function TopUpSheet({
     chosenAmount >= MIN_AMOUNT &&
     chosenAmount <= MAX_AMOUNT;
 
+  const startPaypal = async () => {
+    setStep({ kind: "loading" });
+    const created = await createPaypalTopup(chosenAmount);
+    if (!created.ok) {
+      setStep({ kind: "error", message: mapPaypalTopupError(created.error, created.message) });
+      return;
+    }
+    if (!created.approveUrl) {
+      setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      return;
+    }
+    markPendingPaypalOrder(created.orderId);
+    // Native: open in the system browser (SFSafariViewController / Chrome
+    // Custom Tab). PayPal redirects to https://kidiplus.com/paypal-return —
+    // Universal Link brings the user back into the app on that route.
+    // Web: same-tab redirect; the user comes back to /paypal-return.
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: created.approveUrl, windowName: "_self", presentationStyle: "popover" });
+      } catch {
+        setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      }
+    } else {
+      window.location.assign(created.approveUrl);
+    }
+  };
+
   const startPayment = async () => {
     if (!valid) return;
+    if (selectedMethod === "paypal") {
+      void startPaypal();
+      return;
+    }
     setStep({ kind: "loading" });
     try {
       const { data: sess } = await supabase.auth.getSession();
