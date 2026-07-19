@@ -1135,13 +1135,6 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
     );
   }
 
-  if (unsupported) {
-    return (
-      <div className="rounded-xl bg-muted p-2 text-center text-[11px] text-muted-foreground">
-        {t("admin.paypal.currencyUnsupported", "PayPal ne supporte pas le FCFA — utilise Wave/Orange Money.")}
-      </div>
-    );
-  }
 
   if (payout.status === "processing" || hasBatch) {
     return (
