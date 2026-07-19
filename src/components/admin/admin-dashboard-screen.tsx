@@ -17,7 +17,7 @@ import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { haptic } from "@/lib/haptics";
 import {
   fetchOverviewStats, fetchAdminUsers, fetchAdminUserDetail,
