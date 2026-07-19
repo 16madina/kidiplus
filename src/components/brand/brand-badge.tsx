@@ -6,7 +6,7 @@
 
 import type { CSSProperties } from "react";
 
-export type BrandKey = "wave" | "orange" | "djamo" | "card";
+export type BrandKey = "wave" | "orange" | "djamo" | "card" | "paypal";
 
 interface BrandBadgeProps {
   brand: BrandKey;
@@ -19,6 +19,7 @@ const BG: Record<BrandKey, string> = {
   orange: "#FF7900",   // Orange corporate
   djamo: "#4136F1",    // Djamo indigo
   card: "#0F172A",     // neutral slate for generic card
+  paypal: "#003087",   // PayPal blue
 };
 
 // White wordmark / letter — keeps consistent contrast on any background,
