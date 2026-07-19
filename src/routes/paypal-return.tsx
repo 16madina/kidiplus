@@ -5,10 +5,10 @@
 // Tab. That context is a *normal website* (Capacitor.isNativePlatform() ===
 // false), so Universal Links often do NOT reopen the app. We therefore:
 //   1) On mobile browser → hand off via custom scheme kidiplus://paypal-return
-//   2) Inside the Capacitor WebView → capture + open wallet section
+//   2) Inside the Capacitor WebView → capture once + leave this route for good
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -44,6 +44,8 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "pending" };
 
+const DONE_PREFIX = "kidi:paypal_return_done:";
+
 function isMobileBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
@@ -54,17 +56,45 @@ function nativeDeepLinkFromLocation(): string {
   return `${NATIVE_OAUTH_SCHEME}://paypal-return${qs}`;
 }
 
+function markOrderHandled(orderId: string) {
+  try {
+    sessionStorage.setItem(`${DONE_PREFIX}${orderId}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function wasOrderHandled(orderId: string): boolean {
+  try {
+    return sessionStorage.getItem(`${DONE_PREFIX}${orderId}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function stripReturnQuery() {
+  try {
+    window.history.replaceState(null, "", "/paypal-return");
+  } catch {
+    /* ignore */
+  }
+}
+
 function PaypalReturn() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const native = isNative();
+  const ranRef = useRef(false);
+  const handoffRef = useRef(false);
   const [state, setState] = useState<State>(() =>
     !native && isMobileBrowser() ? { kind: "handoff" } : { kind: "loading" },
   );
 
-  // Mobile Safari / SFSafariViewController / Chrome Custom Tab → bounce into app.
+  // Mobile Safari / SFSafariViewController / Chrome Custom Tab → bounce into app (once).
   useEffect(() => {
     if (native || !isMobileBrowser()) return;
+    if (handoffRef.current) return;
+    handoffRef.current = true;
     const deep = nativeDeepLinkFromLocation();
     try {
       window.location.href = deep;
@@ -73,12 +103,29 @@ function PaypalReturn() {
     }
   }, [native]);
 
-  // Capacitor WebView (or desktop web) → capture payment.
+  // Capacitor WebView (or desktop web) → capture payment exactly once.
   useEffect(() => {
-    if (!native && isMobileBrowser()) return; // handoff page handles mobile browser
+    if (!native && isMobileBrowser()) return;
+    if (ranRef.current) return;
+    ranRef.current = true;
 
-    let cancelled = false;
-    (async () => {
+    let leaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const leaveHome = (openWallet: boolean) => {
+      stripReturnQuery();
+      if (openWallet) {
+        stashSoftSection("wallet");
+        dispatchOpenSection("wallet");
+      }
+      // Hard replace avoids TanStack remounting this route with the same token.
+      try {
+        window.location.replace("/");
+      } catch {
+        navigate({ to: "/" });
+      }
+    };
+
+    void (async () => {
       if (native) {
         try {
           const { Browser } = await import("@capacitor/browser");
@@ -89,16 +136,20 @@ function PaypalReturn() {
       }
 
       const params = new URLSearchParams(window.location.search);
-      const orderId = params.get("token") ?? readPendingPaypalOrder();
+      const orderId = (params.get("token") ?? readPendingPaypalOrder() ?? "").trim();
       const wasCancelled = params.get("cancelled") === "1";
+
+      // Drop token from the URL immediately so remounts / UL re-entry can't loop.
+      stripReturnQuery();
 
       if (wasCancelled) {
         clearPendingPaypalOrder();
         haptic.warning();
         setState({ kind: "cancelled" });
-        setTimeout(() => finishInApp(false), 1200);
+        leaveTimer = setTimeout(() => leaveHome(false), 900);
         return;
       }
+
       if (!orderId) {
         setState({
           kind: "error",
@@ -107,17 +158,23 @@ function PaypalReturn() {
         return;
       }
 
+      if (wasOrderHandled(orderId)) {
+        clearPendingPaypalOrder();
+        leaveHome(true);
+        return;
+      }
+
       for (let i = 0; i < 8; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session?.access_token) break;
         await new Promise((r) => setTimeout(r, 150));
-        if (cancelled) return;
       }
 
       const r = await capturePaypalTopup(orderId);
-      if (cancelled) return;
+      markOrderHandled(orderId);
+      clearPendingPaypalOrder();
+
       if (r.ok) {
-        clearPendingPaypalOrder();
         haptic.success();
         try {
           window.dispatchEvent(
@@ -132,28 +189,27 @@ function PaypalReturn() {
           toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
         }
         setState({ kind: "success", amount: r.amount, currency: r.currency });
-        setTimeout(() => finishInApp(true), 1000);
-      } else if (r.error === "not_signed_in" || r.error === "unauthorized") {
+        leaveTimer = setTimeout(() => leaveHome(true), 900);
+        return;
+      }
+
+      if (r.error === "not_signed_in" || r.error === "unauthorized") {
         haptic.success();
         setState({ kind: "pending" });
-        setTimeout(() => finishInApp(true), 2000);
-      } else {
-        haptic.warning();
-        setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
+        leaveTimer = setTimeout(() => leaveHome(true), 1600);
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
 
-    function finishInApp(openWallet: boolean) {
-      if (openWallet) {
-        stashSoftSection("wallet");
-        dispatchOpenSection("wallet");
-      }
-      navigate({ to: "/" });
-    }
-  }, [native, navigate, t]);
+      haptic.warning();
+      setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
+    })();
+
+    return () => {
+      if (leaveTimer) clearTimeout(leaveTimer);
+    };
+    // Intentionally run once — do not re-run on `t` / navigate identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openApp = () => {
     try {
@@ -244,7 +300,11 @@ function PaypalReturn() {
               type="button"
               onClick={() => {
                 stashSoftSection("wallet");
-                navigate({ to: "/" });
+                try {
+                  window.location.replace("/");
+                } catch {
+                  navigate({ to: "/" });
+                }
               }}
               className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground"
             >

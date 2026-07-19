@@ -9,7 +9,7 @@
 //    Realtime subscription pushes the new balance to the pill — we just
 //    animate confetti + haptic and close.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wallet, AlertCircle, Loader2, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -131,7 +131,11 @@ export function TopUpSheet({
     chosenAmount >= MIN_AMOUNT &&
     chosenAmount <= MAX_AMOUNT;
 
+  const paypalFinishedRef = useRef(false);
+
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
+    if (paypalFinishedRef.current) return;
+    paypalFinishedRef.current = true;
     clearPendingPaypalOrder();
     await refresh();
     haptic.success();
@@ -142,24 +146,29 @@ export function TopUpSheet({
   };
 
   const tryCapturePendingPaypal = async (orderId: string, amount: number) => {
+    if (paypalFinishedRef.current) return;
     setStep({ kind: "verifying", amount });
     const r = await capturePaypalTopup(orderId);
     if (r.ok) {
       await finishPaypalSuccess(r.amount || amount, r.duplicate);
       return;
     }
+    if (paypalFinishedRef.current) return;
     // Still pending / user closed Safari early — keep waiting UI.
     setStep({ kind: "paypal_waiting", amount, orderId });
   };
 
   // After PayPal returns into the app (deep link) or the in-app browser closes,
-  // finalize capture and close this sheet.
+  // finalize capture and close this sheet (once).
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      paypalFinishedRef.current = false;
+      return;
+    }
 
     const onDone = (ev: Event) => {
       const detail = (ev as CustomEvent<{ ok?: boolean; amount?: number; duplicate?: boolean }>).detail;
-      if (!detail?.ok) return;
+      if (!detail?.ok || paypalFinishedRef.current) return;
       void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
     };
     window.addEventListener("kidi:paypal-topup-done", onDone);
@@ -168,6 +177,7 @@ export function TopUpSheet({
     if (isNative()) {
       void import("@capacitor/browser").then(({ Browser }) => {
         const sub = Browser.addListener("browserFinished", () => {
+          if (paypalFinishedRef.current) return;
           const pending = readPendingPaypalOrder();
           if (pending) void tryCapturePendingPaypal(pending, chosenAmount);
         });
