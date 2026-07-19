@@ -24,7 +24,17 @@ async function bearer(): Promise<string | null> {
 }
 
 export type CreatePaypalTopupResult =
-  | { ok: true; orderId: string; approveUrl: string | null; amount: number; currency: string; mode: "sandbox" | "live" }
+  | {
+      ok: true;
+      orderId: string;
+      approveUrl: string | null;
+      amount: number;             // wallet currency amount (what gets credited)
+      currency: string;           // wallet currency
+      chargedAmount: number;      // amount PayPal charges
+      chargedCurrency: string;    // currency PayPal charges (EUR bridge for XOF)
+      fxRate: number;             // wallet → wire rate (1 when same currency)
+      mode: "sandbox" | "live";
+    }
   | { ok: false; error: string; message?: string };
 
 export async function createPaypalTopup(amount: number): Promise<CreatePaypalTopupResult> {
@@ -46,6 +56,9 @@ export async function createPaypalTopup(amount: number): Promise<CreatePaypalTop
       approveUrl: body.approveUrl ?? null,
       amount: Number(body.amount),
       currency: String(body.currency),
+      chargedAmount: Number(body.chargedAmount ?? body.amount),
+      chargedCurrency: String(body.chargedCurrency ?? body.currency),
+      fxRate: Number(body.fxRate ?? 1),
       mode: body.mode === "live" ? "live" : "sandbox",
     };
   } catch {
