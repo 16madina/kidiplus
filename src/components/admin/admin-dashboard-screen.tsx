@@ -1206,14 +1206,14 @@ function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: (
   );
 }
 
-function mapErr(code: string, t: (k: string, d?: string) => string): string {
+function mapErr(code: string, t: (k: string, d?: string) => any): string {
   switch (code) {
-    case "unauthorized": return t("errors.unauthorized", "Non autorisé");
-    case "forbidden": return t("errors.forbidden", "Accès refusé");
-    case "paypal_not_configured": return t("admin.paypal.notConfigured", "API PayPal non configurée");
-    case "currency_not_supported": return t("admin.paypal.currencyUnsupported", "Devise non supportée par PayPal.");
-    case "invalid_email": return t("admin.paypal.noEmail", "Email PayPal invalide.");
-    case "already_processed": return t("admin.paypal.alreadyProcessed", "Ce retrait est déjà traité.");
+    case "unauthorized": return String(t("errors.unauthorized", "Non autorisé"));
+    case "forbidden": return String(t("errors.forbidden", "Accès refusé"));
+    case "paypal_not_configured": return String(t("admin.paypal.notConfigured", "API PayPal non configurée"));
+    case "currency_not_supported": return String(t("admin.paypal.currencyUnsupported", "Devise non supportée par PayPal."));
+    case "invalid_email": return String(t("admin.paypal.noEmail", "Email PayPal invalide."));
+    case "already_processed": return String(t("admin.paypal.alreadyProcessed", "Ce retrait est déjà traité."));
     default: return code;
   }
 }
