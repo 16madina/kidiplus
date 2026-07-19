@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
 import { useAuth } from "@/lib/auth-context";
