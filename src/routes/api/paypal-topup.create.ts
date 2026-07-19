@@ -15,6 +15,7 @@ import {
   PAYPAL_TOPUP_CURRENCIES,
 } from "@/lib/paypal.server";
 import { normalizeCurrency, roundForCurrency, topUpLimits, convertMoney, fxRate } from "@/lib/money";
+import { publicAppOrigin } from "@/lib/paypal-public-origin";
 
 function corsHeaders(origin: string | null): HeadersInit {
   const h: Record<string, string> = {
@@ -132,13 +133,12 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           ? `topup:${userId}:${invoiceId}:xof:${amount}`
           : `topup:${userId}:${invoiceId}`;
 
-        // Return URL: web-safe absolute URL. The /paypal-return route parses
-        // ?token=<orderId> (PayPal appends `token` and `PayerID`) and triggers
-        // the capture call. Same origin on web; kidiplus.com Universal Link
-        // on native (deep-link listener catches it).
-        const reqOrigin = origin ?? new URL(request.url).origin;
-        const returnUrl = `${reqOrigin}/paypal-return`;
-        const cancelUrl = `${reqOrigin}/paypal-return?cancelled=1`;
+        // Return URL must be a public https host (prefer APP_URL / kidiplus.com).
+        // capacitor://localhost or https://localhost break PayPal + lose the
+        // Supabase session when the page opens in Safari outside the WebView.
+        const pubOrigin = publicAppOrigin(request);
+        const returnUrl = `${pubOrigin}/paypal-return`;
+        const cancelUrl = `${pubOrigin}/paypal-return?cancelled=1`;
 
         const created = await createPaypalOrder(cfg.cfg, tk.token, {
           amount: wireAmount.toFixed(2),

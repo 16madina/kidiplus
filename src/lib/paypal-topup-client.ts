@@ -71,12 +71,16 @@ export type CapturePaypalTopupResult =
   | { ok: false; error: string; message?: string };
 
 export async function capturePaypalTopup(orderId: string): Promise<CapturePaypalTopupResult> {
+  // Session is optional: after PayPal redirect the browser often has no
+  // Supabase session (Safari / Universal Link). The server credits from
+  // PayPal custom_id when Authorization is missing.
   const token = await bearer();
-  if (!token) return { ok: false, error: "not_signed_in" };
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch("/api/paypal-topup/capture", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers,
       body: JSON.stringify({ orderId }),
     });
     const body = (await res.json().catch(() => ({}))) as any;
@@ -99,7 +103,9 @@ export async function capturePaypalTopup(orderId: string): Promise<CapturePaypal
 /** Map a raw error code from the topup endpoints to a French user-facing message. */
 export function mapPaypalTopupError(code: string, fallback?: string): string {
   switch (code) {
-    case "not_signed_in": return "Connecte-toi pour recharger ton portefeuille.";
+    case "not_signed_in":
+    case "unauthorized":
+      return "Connecte-toi pour recharger ton portefeuille.";
     case "paypal_not_configured": return "PayPal n'est pas encore configuré côté serveur.";
     case "currency_not_supported": return "PayPal ne supporte pas cette devise — utilise la carte bancaire.";
     case "invalid_amount": return "Montant invalide.";

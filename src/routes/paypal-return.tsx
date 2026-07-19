@@ -20,6 +20,8 @@ import {
   readPendingPaypalOrder,
 } from "@/lib/paypal-topup-client";
 import { haptic } from "@/lib/haptics";
+import { supabase } from "@/integrations/supabase/client";
+import { isNative } from "@/lib/native";
 
 export const Route = createFileRoute("/paypal-return")({
   ssr: false,
@@ -47,6 +49,16 @@ function PaypalReturn() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Close SFSafariViewController / Chrome Custom Tab if still open.
+      if (isNative()) {
+        try {
+          const { Browser } = await import("@capacitor/browser");
+          await Browser.close();
+        } catch {
+          /* ignore */
+        }
+      }
+
       const params = new URLSearchParams(window.location.search);
       const orderId = params.get("token") ?? readPendingPaypalOrder();
       const wasCancelled = params.get("cancelled") === "1";
@@ -59,8 +71,19 @@ function PaypalReturn() {
         return;
       }
       if (!orderId) {
-        setState({ kind: "error", message: t("wallet.topup.paypalNoOrder", { defaultValue: "Session PayPal introuvable." }) });
+        setState({
+          kind: "error",
+          message: t("wallet.topup.paypalNoOrder", { defaultValue: "Session PayPal introuvable." }),
+        });
         return;
+      }
+
+      // Give auth a short moment to hydrate; capture still works without session.
+      for (let i = 0; i < 8; i++) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.access_token) break;
+        await new Promise((r) => setTimeout(r, 150));
+        if (cancelled) return;
       }
 
       const r = await capturePaypalTopup(orderId);
@@ -68,7 +91,9 @@ function PaypalReturn() {
       if (r.ok) {
         clearPendingPaypalOrder();
         haptic.success();
-        if (!r.duplicate) toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
+        if (!r.duplicate) {
+          toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
+        }
         setState({ kind: "success", amount: r.amount, currency: r.currency });
         setTimeout(() => navigate({ to: "/" }), 1400);
       } else if (r.error === "not_signed_in" || r.error === "unauthorized") {
@@ -83,7 +108,9 @@ function PaypalReturn() {
         setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, t]);
 
   return (
