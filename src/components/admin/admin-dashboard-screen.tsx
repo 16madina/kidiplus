@@ -1077,3 +1077,144 @@ function VerificationsTab() {
   );
 }
 
+// ---------- PayPal send block (per payout row, admin-only) ----------
+
+function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [cfg, setCfg] = useState<{ configured: boolean; mode: "sandbox" | "live" | null } | null>(null);
+  const [busy, setBusy] = useState<"send" | "check" | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  useEffect(() => { void fetchPaypalConfig().then(setCfg); }, []);
+
+  const currency = (payout.currency ?? "").toUpperCase();
+  const unsupported = currency === "XOF" || currency === "XAF";
+  const email = (payout.destination?.paypalEmail ?? payout.destination?.email ?? "").toString().trim();
+  const hasBatch = !!payout.paypal_batch_id;
+
+  const doSend = async () => {
+    setBusy("send");
+    haptic.medium();
+    const r = await sendPaypalPayout(payout.id);
+    setBusy(null);
+    setConfirmOpen(false);
+    if (r.ok) {
+      haptic.success();
+      toast.success(r.alreadySent ? t("admin.paypal.alreadySent", "Déjà envoyé — vérification du statut…") : t("admin.paypal.sent", "Envoyé via PayPal — vérification du statut…"));
+      // Kick off a status check after a moment
+      setTimeout(() => void doCheck(true), 2500);
+      onDone();
+    } else {
+      haptic.warning();
+      toast.error(r.message ?? mapErr(r.error, t));
+    }
+  };
+
+  const doCheck = async (silent = false) => {
+    setBusy("check");
+    const r = await checkPaypalPayoutStatus(payout.id);
+    setBusy(null);
+    if (r.ok) {
+      if (r.outcome === "success") { haptic.success(); toast.success(t("admin.paypal.paid", "Payé via PayPal ✓")); onDone(); return; }
+      if (r.outcome === "unclaimed") { haptic.warning(); toast.error(t("admin.paypal.unclaimed", "Cet email n'a pas de compte PayPal.")); onDone(); return; }
+      if (r.outcome === "failed") { haptic.warning(); toast.error(r.errors ?? t("admin.paypal.failed", "Échec du paiement PayPal.")); onDone(); return; }
+      if (!silent) toast.message(t("admin.paypal.processing", "En cours de traitement chez PayPal…"));
+    } else if (!silent) {
+      toast.error(r.message ?? mapErr(r.error, t));
+    }
+  };
+
+  if (!cfg) return null;
+
+  if (!cfg.configured) {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-2 text-center text-[11px] text-muted-foreground" title="Configurer PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET / PAYPAL_MODE dans les secrets.">
+        {t("admin.paypal.notConfigured", "API PayPal non configurée")}
+      </div>
+    );
+  }
+
+  if (unsupported) {
+    return (
+      <div className="rounded-xl bg-muted p-2 text-center text-[11px] text-muted-foreground">
+        {t("admin.paypal.currencyUnsupported", "PayPal ne supporte pas le FCFA — utilise Wave/Orange Money.")}
+      </div>
+    );
+  }
+
+  if (payout.status === "processing" || hasBatch) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 p-2">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold">{t("admin.paypal.pending", "PayPal — en cours")}</p>
+          {payout.paypal_batch_id && (
+            <p className="truncate text-[10px] text-muted-foreground">Batch: {payout.paypal_batch_id}</p>
+          )}
+          {payout.paypal_error && (
+            <p className="mt-0.5 text-[10px] text-destructive">{payout.paypal_error}</p>
+          )}
+        </div>
+        <Press onClick={() => void doCheck(false)} disabled={busy !== null}
+          className="rounded-full border px-3 py-1 text-[12px] font-semibold">
+          {busy === "check" ? <Loader2 size={12} className="animate-spin" /> : (
+            <span className="inline-flex items-center gap-1"><RefreshCw size={12} />{t("admin.paypal.refresh", "Vérifier")}</span>
+          )}
+        </Press>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Press onClick={() => { if (!email) { toast.error(t("admin.paypal.noEmail", "Email PayPal manquant sur ce retrait.")); return; } setConfirmOpen(true); }}
+        disabled={busy !== null}
+        className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
+        style={{ backgroundColor: "oklch(0.55 0.18 260)" }}>
+        <span className="inline-flex items-center justify-center gap-1.5">
+          <Send size={14} />
+          {t("admin.paypal.send", "💸 Envoyer via PayPal")}
+          {cfg.mode === "sandbox" && <span className="ml-1 rounded bg-white/25 px-1.5 py-0.5 text-[9px] uppercase">sandbox</span>}
+        </span>
+      </Press>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/50 p-4" onClick={() => setConfirmOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-background p-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-[15px] font-bold">{t("admin.paypal.confirmTitle", "Envoyer via PayPal ?")}</h4>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {t("admin.paypal.confirmBody", "Confirme l'envoi immédiat vers le compte PayPal du vendeur.")}
+            </p>
+            <div className="mt-3 space-y-1 rounded-xl bg-muted p-3 text-[13px]">
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("common.amount", "Montant")}</span><span className="font-bold">{formatMoney(Number(payout.amount), normalizeCurrency(payout.currency))}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Email</span><span className="truncate font-semibold">{email || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-semibold uppercase">{cfg.mode}</span></div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Press onClick={() => setConfirmOpen(false)} className="flex-1 rounded-xl border py-2 text-[13px] font-semibold">
+                {t("common.cancel", "Annuler")}
+              </Press>
+              <Press onClick={() => void doSend()} disabled={busy === "send"}
+                className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
+                style={{ backgroundColor: "oklch(0.55 0.18 260)" }}>
+                {busy === "send" ? <Loader2 size={14} className="inline animate-spin" /> : t("admin.paypal.confirm", "Confirmer l'envoi")}
+              </Press>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function mapErr(code: string, t: (k: string, d?: string) => string): string {
+  switch (code) {
+    case "unauthorized": return t("errors.unauthorized", "Non autorisé");
+    case "forbidden": return t("errors.forbidden", "Accès refusé");
+    case "paypal_not_configured": return t("admin.paypal.notConfigured", "API PayPal non configurée");
+    case "currency_not_supported": return t("admin.paypal.currencyUnsupported", "Devise non supportée par PayPal.");
+    case "invalid_email": return t("admin.paypal.noEmail", "Email PayPal invalide.");
+    case "already_processed": return t("admin.paypal.alreadyProcessed", "Ce retrait est déjà traité.");
+    default: return code;
+  }
+}
+
