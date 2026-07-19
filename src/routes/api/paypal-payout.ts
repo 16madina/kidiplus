@@ -103,14 +103,10 @@ export const Route = createFileRoute("/api/paypal-payout")({
         }
 
         const currency = String(p.currency ?? "").toUpperCase();
-        if (currency === "XOF" || currency === "XAF") {
-          return json(
-            { error: "currency_not_supported", message: "PayPal ne supporte pas le FCFA — utilise Wave/Orange Money." },
-            400,
-            origin,
-          );
-        }
-        if (!PAYPAL_SUPPORTED_CURRENCIES.has(currency)) {
+        // XOF isn't a PayPal currency — bridge it to EUR at the fixed peg.
+        const isBridgedXof = currency === "XOF";
+        const wireCurrency = isBridgedXof ? "EUR" : currency;
+        if (!isBridgedXof && !PAYPAL_SUPPORTED_CURRENCIES.has(currency)) {
           return json(
             { error: "currency_not_supported", message: `PayPal ne supporte pas la devise ${currency}.` },
             400,
@@ -131,42 +127,57 @@ export const Route = createFileRoute("/api/paypal-payout")({
           return json({ error: "paypal_oauth_failed", message: tk.error }, 502, origin);
         }
 
-        const amountStr = Number(p.amount).toFixed(2);
+        // Compute wire amount (what PayPal actually sends).
+        const nativeAmount = Number(p.amount);
+        const wireAmount = isBridgedXof
+          ? convertMoney(nativeAmount, "XOF", "EUR")
+          : nativeAmount;
+        const rate = isBridgedXof ? fxRate("XOF", "EUR") : 1;
+        const amountStr = wireAmount.toFixed(2);
 
         const created = await createPaypalPayout(cfg.cfg, tk.token, {
           senderBatchId: p.id,
           receiverEmail: email,
           amount: amountStr,
-          currency,
-          note: "Retrait KiDi+",
+          currency: wireCurrency,
+          note: isBridgedXof
+            ? `Retrait KiDi+ (${nativeAmount} XOF ≈ ${amountStr} EUR)`
+            : "Retrait KiDi+",
         });
         if (!created.ok) {
           console.error("[paypal-payout] Create error:", created.error, JSON.stringify(created.raw).slice(0, 500));
-          // Persist error for admin visibility, do NOT mark rejected — keep as 'requested' so admin can retry.
-          await supaAdmin
-            .from("payouts")
+          await (supaAdmin.from("payouts") as any)
             .update({ paypal_error: created.error })
             .eq("id", p.id);
           return json({ error: "paypal_create_failed", message: created.error }, 502, origin);
         }
 
-        // Persist batch id and flip to processing
-        const { error: upErr } = await supaAdmin
-          .from("payouts")
+        // Persist batch id, FX metadata, and flip to processing
+        const { error: upErr } = await (supaAdmin.from("payouts") as any)
           .update({
             paypal_batch_id: created.batchId,
             paypal_error: null,
+            paypal_amount: wireAmount,
+            paypal_currency: wireCurrency,
+            paypal_fx_rate: rate,
             status: "processing",
           })
           .eq("id", p.id)
           .in("status", ["requested", "processing"]);
         if (upErr) {
           console.error("[paypal-payout] Update failed after batch created:", upErr.message);
-          // The money order is out — still return ok so the admin sees the batch id.
         }
 
         return json(
-          { ok: true, batchId: created.batchId, batchStatus: created.batchStatus, mode: cfg.cfg.mode },
+          {
+            ok: true,
+            batchId: created.batchId,
+            batchStatus: created.batchStatus,
+            mode: cfg.cfg.mode,
+            paypalAmount: wireAmount,
+            paypalCurrency: wireCurrency,
+            fxRate: rate,
+          },
           200,
           origin,
         );
