@@ -33,6 +33,7 @@ import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
+import { Route as ApiPaypalPayoutRouteImport } from './routes/api/paypal-payout'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
@@ -168,6 +169,11 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaypalPayoutRoute = ApiPaypalPayoutRouteImport.update({
+  id: '/api/paypal-payout',
+  path: '/api/paypal-payout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
   id: '/api/livekit-token',
   path: '/api/livekit-token',
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -391,6 +400,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -431,6 +441,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -512,6 +524,7 @@ export interface RootRouteChildren {
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitIngressRoute: typeof ApiLivekitIngressRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
+  ApiPaypalPayoutRoute: typeof ApiPaypalPayoutRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -698,6 +711,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paypal-payout': {
+      id: '/api/paypal-payout'
+      path: '/api/paypal-payout'
+      fullPath: '/api/paypal-payout'
+      preLoaderRoute: typeof ApiPaypalPayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/livekit-token': {
       id: '/api/livekit-token'
       path: '/api/livekit-token'
@@ -847,6 +867,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitIngressRoute: ApiLivekitIngressRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
+  ApiPaypalPayoutRoute: ApiPaypalPayoutRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
