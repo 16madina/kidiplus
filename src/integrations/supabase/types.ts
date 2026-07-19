@@ -1061,6 +1061,8 @@ export type Database = {
           id: string
           method: string
           note: string | null
+          paypal_batch_id: string | null
+          paypal_error: string | null
           processed_at: string | null
           processed_by: string | null
           proof_url: string | null
@@ -1077,6 +1079,8 @@ export type Database = {
           id?: string
           method: string
           note?: string | null
+          paypal_batch_id?: string | null
+          paypal_error?: string | null
           processed_at?: string | null
           processed_by?: string | null
           proof_url?: string | null
@@ -1093,6 +1097,8 @@ export type Database = {
           id?: string
           method?: string
           note?: string | null
+          paypal_batch_id?: string | null
+          paypal_error?: string | null
           processed_at?: string | null
           processed_by?: string | null
           proof_url?: string | null

@@ -88,6 +88,8 @@ export type AdminPayoutRow = {
   requested_at: string;
   processed_at: string | null;
   source?: "seller" | "referral";
+  paypal_batch_id?: string | null;
+  paypal_error?: string | null;
 };
 
 

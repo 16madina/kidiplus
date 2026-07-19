@@ -33,6 +33,7 @@ import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
+import { Route as ApiPaypalPayoutRouteImport } from './routes/api/paypal-payout'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
 import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
@@ -41,6 +42,8 @@ import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './route
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
+import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
+import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
@@ -168,6 +171,11 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaypalPayoutRoute = ApiPaypalPayoutRouteImport.update({
+  id: '/api/paypal-payout',
+  path: '/api/paypal-payout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
   id: '/api/livekit-token',
   path: '/api/livekit-token',
@@ -211,6 +219,16 @@ const ApiPublicNotificationsFanoutRoute =
     path: '/api/public/notifications-fanout',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPaypalPayoutStatusRoute = ApiPaypalPayoutStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => ApiPaypalPayoutRoute,
+} as any)
+const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => ApiPaypalPayoutRoute,
+} as any)
 const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
@@ -268,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -278,6 +297,8 @@ export interface FileRoutesByFullPath {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
+  '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -308,6 +329,7 @@ export interface FileRoutesByTo {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -318,6 +340,8 @@ export interface FileRoutesByTo {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
+  '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -349,6 +373,7 @@ export interface FileRoutesById {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -359,6 +384,8 @@ export interface FileRoutesById {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
+  '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -391,6 +418,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -401,6 +429,8 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
+    | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -431,6 +461,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -441,6 +472,8 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
+    | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -471,6 +504,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
@@ -481,6 +515,8 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/paypal-payout/config'
+    | '/api/paypal-payout/status'
     | '/api/public/notifications-fanout'
     | '/api/wallet-topup/confirm'
     | '/lovable/email/suppression'
@@ -512,6 +548,7 @@ export interface RootRouteChildren {
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitIngressRoute: typeof ApiLivekitIngressRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
+  ApiPaypalPayoutRoute: typeof ApiPaypalPayoutRouteWithChildren
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -698,6 +735,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paypal-payout': {
+      id: '/api/paypal-payout'
+      path: '/api/paypal-payout'
+      fullPath: '/api/paypal-payout'
+      preLoaderRoute: typeof ApiPaypalPayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/livekit-token': {
       id: '/api/livekit-token'
       path: '/api/livekit-token'
@@ -753,6 +797,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/notifications-fanout'
       preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-payout/status': {
+      id: '/api/paypal-payout/status'
+      path: '/status'
+      fullPath: '/api/paypal-payout/status'
+      preLoaderRoute: typeof ApiPaypalPayoutStatusRouteImport
+      parentRoute: typeof ApiPaypalPayoutRoute
+    }
+    '/api/paypal-payout/config': {
+      id: '/api/paypal-payout/config'
+      path: '/config'
+      fullPath: '/api/paypal-payout/config'
+      preLoaderRoute: typeof ApiPaypalPayoutConfigRouteImport
+      parentRoute: typeof ApiPaypalPayoutRoute
     }
     '/api/checkout/confirm': {
       id: '/api/checkout/confirm'
@@ -811,6 +869,20 @@ const ApiCheckoutRouteWithChildren = ApiCheckoutRoute._addFileChildren(
   ApiCheckoutRouteChildren,
 )
 
+interface ApiPaypalPayoutRouteChildren {
+  ApiPaypalPayoutConfigRoute: typeof ApiPaypalPayoutConfigRoute
+  ApiPaypalPayoutStatusRoute: typeof ApiPaypalPayoutStatusRoute
+}
+
+const ApiPaypalPayoutRouteChildren: ApiPaypalPayoutRouteChildren = {
+  ApiPaypalPayoutConfigRoute: ApiPaypalPayoutConfigRoute,
+  ApiPaypalPayoutStatusRoute: ApiPaypalPayoutStatusRoute,
+}
+
+const ApiPaypalPayoutRouteWithChildren = ApiPaypalPayoutRoute._addFileChildren(
+  ApiPaypalPayoutRouteChildren,
+)
+
 interface ApiWalletTopupRouteChildren {
   ApiWalletTopupConfirmRoute: typeof ApiWalletTopupConfirmRoute
 }
@@ -847,6 +919,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitIngressRoute: ApiLivekitIngressRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
+  ApiPaypalPayoutRoute: ApiPaypalPayoutRouteWithChildren,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
