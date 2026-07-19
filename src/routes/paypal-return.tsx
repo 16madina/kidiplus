@@ -36,7 +36,8 @@ type State =
   | { kind: "loading" }
   | { kind: "success"; amount: number; currency: string }
   | { kind: "cancelled" }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "pending" };
 
 function PaypalReturn() {
   const navigate = useNavigate();
@@ -70,6 +71,13 @@ function PaypalReturn() {
         if (!r.duplicate) toast.success(t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" }));
         setState({ kind: "success", amount: r.amount, currency: r.currency });
         setTimeout(() => navigate({ to: "/" }), 1400);
+      } else if (r.error === "not_signed_in" || r.error === "unauthorized") {
+        // Session absente dans ce contexte navigateur (in-app browser, domaine
+        // différent). Le webhook PayPal crédite le wallet côté serveur — on
+        // rassure l'utilisateur au lieu d'afficher une erreur trompeuse.
+        haptic.success();
+        setState({ kind: "pending" });
+        setTimeout(() => navigate({ to: "/" }), 2600);
       } else {
         haptic.warning();
         setState({ kind: "error", message: mapPaypalTopupError(r.error, r.message) });
@@ -97,6 +105,19 @@ function PaypalReturn() {
             <p className="text-lg font-bold">{t("wallet.topup.success", { defaultValue: "Portefeuille rechargé ✓" })}</p>
             <p className="text-sm text-muted-foreground">
               +{state.amount.toFixed(2)} {state.currency}
+            </p>
+          </>
+        )}
+        {state.kind === "pending" && (
+          <>
+            <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
+              <Check size={36} color="white" strokeWidth={3} />
+            </div>
+            <p className="text-lg font-bold">
+              {t("wallet.topup.paypalPendingTitle", { defaultValue: "Paiement reçu ✓" })}
+            </p>
+            <p className="max-w-[280px] text-sm text-muted-foreground">
+              {t("wallet.topup.paypalPendingHint", { defaultValue: "Ton portefeuille sera crédité dans quelques secondes. Retour à l'app…" })}
             </p>
           </>
         )}
