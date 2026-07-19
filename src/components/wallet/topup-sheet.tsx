@@ -419,9 +419,15 @@ export function TopUpSheet({
                       onClick={startPayment}
                       disabled={!valid || step.kind === "loading"}
                       className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
+                      style={selectedMethod === "paypal" ? { backgroundColor: "#003087", color: "white" } : undefined}
                     >
                       {step.kind === "loading" ? (
                         <Loader2 className="mx-auto animate-spin" size={18} />
+                      ) : selectedMethod === "paypal" ? (
+                        t("wallet.topup.paypalCta", {
+                          defaultValue: "Payer {{amount}} avec PayPal",
+                          amount: formatMoney(chosenAmount, cur, i18n.language),
+                        })
                       ) : (
                         t("wallet.topup.continueCta", {
                           amount: formatMoney(chosenAmount, cur, i18n.language),
