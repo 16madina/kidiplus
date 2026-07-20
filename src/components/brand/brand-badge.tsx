@@ -1,8 +1,10 @@
-// BrandBadge — payment-brand icons as INLINE React SVG (not <img data:>).
-// Lovable/Cloudflare CSP often blocks data: image URLs, which left empty or
-// black squares in the payment method list.
+// BrandBadge — payment-brand icons.
+// Wave: opaque PNG via Vite import (same pattern as Live tab badge) — tests
+// whether a solid-background image loads when transparent/data: URIs failed.
+// Others: inline React SVG (CSP-safe, no <img data:>).
 
 import type { ReactNode } from "react";
+import waveOpaqueUrl from "@/assets/img/brands/wave-opaque.png";
 
 export type BrandKey = "wave" | "orange" | "djamo" | "card" | "paypal";
 
@@ -24,7 +26,14 @@ function Shell({
   return (
     <div
       className={className}
-      style={{ width: size, height: size, flexShrink: 0, lineHeight: 0 }}
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        lineHeight: 0,
+        borderRadius: Math.round(size * 0.26),
+        overflow: "hidden",
+      }}
       aria-hidden="true"
     >
       {children}
@@ -33,21 +42,22 @@ function Shell({
 }
 
 function WaveMark({ size }: { size: number }) {
+  // Solid cyan background PNG (no transparency) — Vite hashed /assets/… URL.
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="12" fill="#1DC8FF" />
-      <ellipse cx="24" cy="26" rx="11" ry="13" fill="#101820" />
-      <ellipse cx="24" cy="28" rx="7" ry="8.5" fill="#FFFFFF" />
-      <circle cx="20.5" cy="22" r="2.2" fill="#FFFFFF" />
-      <circle cx="27.5" cy="22" r="2.2" fill="#FFFFFF" />
-      <path d="M22.5 25.5 24 27.2 25.5 25.5Z" fill="#FF8A00" />
-      <ellipse cx="19.5" cy="38.5" rx="3.2" ry="1.6" fill="#FF8A00" />
-      <ellipse cx="28.5" cy="38.5" rx="3.2" ry="1.6" fill="#FF8A00" />
-      <path
-        d="M13 24c-2.5-1-4.2-3.2-4.5-5.5-.2-1.2.8-1.6 1.5-.8 1.4 1.6 3.2 3.2 5.5 4.2"
-        fill="#101820"
-      />
-    </svg>
+    <img
+      src={waveOpaqueUrl}
+      alt=""
+      width={size}
+      height={size}
+      draggable={false}
+      style={{
+        width: size,
+        height: size,
+        objectFit: "cover",
+        display: "block",
+        backgroundColor: "#1DC8FF",
+      }}
+    />
   );
 }
 
