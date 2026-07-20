@@ -236,7 +236,7 @@ export async function createYoutubeLiveBroadcast(opts: {
 }): Promise<{ ok: true; live: YoutubeLiveBundle } | { ok: false; error: string }> {
   const title = opts.title.trim().slice(0, 100) || "KiDi+ Live";
   const privacyStatus = opts.privacyStatus ?? "public";
-  const scheduledStartTime = new Date(Date.now() + 60_000).toISOString();
+  const scheduledStartTime = new Date().toISOString();
 
   const broadcastRes = await fetch(
     `${YT_API}/liveBroadcasts?part=snippet,status,contentDetails`,
@@ -360,6 +360,62 @@ export async function completeYoutubeBroadcast(
   } catch (e) {
     console.warn("[youtube] complete broadcast failed", e);
   }
+}
+
+/**
+ * Wait until the bound liveStream is active, then transition broadcast → live.
+ * enableAutoStart usually does this, but we force it so viewers don't stay on "À venir".
+ */
+export async function promoteYoutubeBroadcastWhenStreamActive(opts: {
+  accessToken: string;
+  broadcastId: string;
+  streamId: string;
+  maxWaitMs?: number;
+}): Promise<void> {
+  const maxWaitMs = opts.maxWaitMs ?? 90_000;
+  const started = Date.now();
+
+  while (Date.now() - started < maxWaitMs) {
+    try {
+      const u = new URL(`${YT_API}/liveStreams`);
+      u.searchParams.set("part", "status");
+      u.searchParams.set("id", opts.streamId);
+      const res = await fetch(u.toString(), {
+        headers: { Authorization: `Bearer ${opts.accessToken}` },
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        items?: Array<{ status?: { streamStatus?: string } }>;
+      };
+      const streamStatus = data.items?.[0]?.status?.streamStatus;
+      if (streamStatus === "active" || streamStatus === "good") {
+        // testing → live (YouTube requires testing first for some accounts)
+        for (const status of ["testing", "live"] as const) {
+          const tr = await fetch(
+            `${YT_API}/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(opts.broadcastId)}&part=status`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${opts.accessToken}` },
+            },
+          );
+          if (!tr.ok) {
+            const err = (await tr.json().catch(() => ({}))) as {
+              error?: { message?: string };
+            };
+            console.warn(
+              `[youtube] transition ${status} failed`,
+              err.error?.message || tr.status,
+            );
+          }
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        return;
+      }
+    } catch (e) {
+      console.warn("[youtube] stream status poll failed", e);
+    }
+    await new Promise((r) => setTimeout(r, 3_000));
+  }
+  console.warn("[youtube] stream never became active within wait window");
 }
 
 /** Load connection + ensure a valid access token (refresh if needed). */

@@ -8,6 +8,7 @@ import { useLiveRoom } from "@/lib/live-room";
 import { normalizeCurrency } from "@/lib/money";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import type { LiveProductRow } from "@/lib/lives-db";
+import { signalLivekitEgressStartRecording } from "@/lib/broadcast-egress-signal";
 import { LiveChat } from "@/components/live-viewer/live-chat";
 import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { AuctionCard } from "@/components/live-viewer/auction-card";
@@ -74,6 +75,14 @@ export function BroadcastComposition({
     isHost: false,
     silent: true,
   });
+
+  // Page-level safety net: if video signal never fires, still unlock egress.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      signalLivekitEgressStartRecording();
+    }, 10_000);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const [videoStatus, setVideoStatus] =
     useState<BroadcastEgressVideoStatus>("connecting");

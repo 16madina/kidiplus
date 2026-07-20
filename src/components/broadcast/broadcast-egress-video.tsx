@@ -1,6 +1,6 @@
 // LiveKit video for the /broadcast/$liveId Web Egress composition.
-// Uses a pre-issued token (no user session) and signals window.startRecording()
-// once the host video is attached so LiveKit can begin RTMP capture.
+// Uses a pre-issued token (no user session) and signals START_RECORDING
+// (Chrome console log) once the host video is attached so RTMP can begin.
 
 import { useEffect, useRef, useState } from "react";
 import { Room } from "livekit-client";
@@ -12,6 +12,10 @@ import {
   type RemoteTrack,
   type RemoteParticipant,
 } from "@/lib/livekit";
+import {
+  signalLivekitEgressEndRecording,
+  signalLivekitEgressStartRecording,
+} from "@/lib/broadcast-egress-signal";
 
 export type BroadcastEgressVideoStatus =
   | "connecting"
@@ -38,12 +42,6 @@ function kickPlayback(
 ) {
   void video?.play()?.catch(() => {});
   void audio?.play()?.catch(() => {});
-}
-
-declare global {
-  interface Window {
-    startRecording?: () => void;
-  }
 }
 
 export function BroadcastEgressVideo({
@@ -74,19 +72,16 @@ export function BroadcastEgressVideo({
     let cancelled = false;
     let readyTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const signalReady = () => {
+    const signalReady = (reason: string) => {
       if (cancelled || signaledRef.current) return;
       signaledRef.current = true;
+      console.info("[broadcast-egress] signaling START_RECORDING", reason);
       onReadyToRecord?.();
-      try {
-        window.startRecording?.();
-      } catch (e) {
-        console.warn("[broadcast-egress] startRecording failed", e);
-      }
+      signalLivekitEgressStartRecording();
     };
 
-    // Fallback: start egress even if host video is slow, so RTMP doesn't hang.
-    readyTimer = setTimeout(signalReady, 12_000);
+    // Fallback: never leave egress hanging on awaitStartSignal.
+    readyTimer = setTimeout(() => signalReady("timeout_8s"), 8_000);
 
     async function start() {
       setStatus("connecting");
@@ -124,7 +119,8 @@ export function BroadcastEgressVideo({
             track.attach(el);
             kickPlayback(el, audioRef.current);
             setStatus("live");
-            signalReady();
+            // Give the decoder a beat so the first captured frame isn't black.
+            window.setTimeout(() => signalReady("video_attached"), 400);
           } else if (track.kind === Track.Kind.Audio && audioRef.current) {
             track.attach(audioRef.current);
             void audioRef.current.play().catch(() => {});
@@ -151,7 +147,7 @@ export function BroadcastEgressVideo({
         console.error("[broadcast-egress] connect failed", err);
         if (!cancelled) {
           setStatus("error");
-          signalReady();
+          signalReady("connect_error");
         }
       }
     }
@@ -160,6 +156,7 @@ export function BroadcastEgressVideo({
     return () => {
       cancelled = true;
       if (readyTimer) clearTimeout(readyTimer);
+      signalLivekitEgressEndRecording();
       const r = roomRef.current;
       roomRef.current = null;
       void disconnectRoom(r);

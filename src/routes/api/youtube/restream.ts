@@ -9,7 +9,7 @@ import {
   StreamProtocol,
 } from "livekit-server-sdk";
 import { signBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
-import { publicAppOrigin } from "@/lib/paypal-public-origin";
+import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
 import {
   requireYoutubeApiUser,
   youtubeCorsHeaders,
@@ -19,6 +19,7 @@ import {
   completeYoutubeBroadcast,
   createYoutubeLiveBroadcast,
   getValidYoutubeAccessToken,
+  promoteYoutubeBroadcastWhenStreamActive,
 } from "@/lib/youtube.server";
 
 function livekitHttpHost(url: string): string {
@@ -207,12 +208,14 @@ export const Route = createFileRoute("/api/youtube/restream")({
           );
         }
 
-        const appOrigin = publicAppOrigin(request);
+        const appOrigin = broadcastEgressOrigin();
         const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}`;
+        console.info("[youtube-restream] web egress url", appOrigin + `/broadcast/${liveId}`);
 
         let egressInfo;
         try {
           // Web Egress captures the full KiDi+ shopping UI (video + auctions + chat).
+          // awaitStartSignal waits for console.log("START_RECORDING") on the page.
           egressInfo = await egress.startWebEgress(
             compositionUrl,
             new StreamOutput({
@@ -283,6 +286,13 @@ export const Route = createFileRoute("/api/youtube/restream")({
             origin,
           );
         }
+
+        // Don't block the host UI — promote YouTube from "upcoming" → live in background.
+        void promoteYoutubeBroadcastWhenStreamActive({
+          accessToken: tok.accessToken,
+          broadcastId: created.live.broadcastId,
+          streamId: created.live.streamId,
+        });
 
         return youtubeJson(
           {
