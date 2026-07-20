@@ -220,11 +220,20 @@ function PaypalReturn() {
     }
   };
 
+  const logoBadge = (
+    <img
+      src={kidiLogoBadge.url}
+      alt="KiDi+"
+      className="h-16 w-auto object-contain drop-shadow-sm"
+    />
+  );
+
   return (
     <div className="grid min-h-[100dvh] place-items-center bg-background px-6 text-center">
       <div className="flex flex-col items-center gap-3">
         {state.kind === "handoff" && (
           <>
+            {logoBadge}
             <Loader2 className="animate-spin text-primary" size={40} />
             <p className="text-[15px] font-semibold">
               {t("wallet.topup.paypalOpenApp", { defaultValue: "Retour dans KiDi+…" })}
@@ -245,6 +254,7 @@ function PaypalReturn() {
         )}
         {state.kind === "loading" && (
           <>
+            {logoBadge}
             <Loader2 className="animate-spin text-primary" size={40} />
             <p className="text-[15px] font-semibold">
               {t("wallet.topup.paypalConfirming", { defaultValue: "Confirmation du paiement PayPal…" })}
@@ -253,11 +263,7 @@ function PaypalReturn() {
         )}
         {state.kind === "success" && (
           <>
-            <img
-              src={kidiLogoBadge.url}
-              alt="KiDi+"
-              className="mb-2 h-14 w-auto object-contain"
-            />
+            {logoBadge}
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
@@ -269,11 +275,7 @@ function PaypalReturn() {
         )}
         {state.kind === "pending" && (
           <>
-            <img
-              src={kidiLogoBadge.url}
-              alt="KiDi+"
-              className="mb-2 h-14 w-auto object-contain"
-            />
+            {logoBadge}
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
@@ -289,6 +291,7 @@ function PaypalReturn() {
         )}
         {state.kind === "cancelled" && (
           <>
+            {logoBadge}
             <div className="grid h-16 w-16 place-items-center rounded-full bg-muted">
               <X size={32} className="text-muted-foreground" />
             </div>
@@ -302,6 +305,7 @@ function PaypalReturn() {
         )}
         {state.kind === "error" && (
           <>
+            {logoBadge}
             <div className="grid h-16 w-16 place-items-center rounded-full bg-destructive/15">
               <X size={32} className="text-destructive" />
             </div>

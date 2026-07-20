@@ -416,6 +416,14 @@ export function TopUpSheet({
     }
   };
 
+  const logoBadge = (
+    <img
+      src={kidiLogoBadge.url}
+      alt="KiDi+"
+      className="h-16 w-auto object-contain drop-shadow-sm"
+    />
+  );
+
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={82}>
       <div className="relative flex h-full flex-col px-5 pb-5 pt-2">
@@ -429,14 +437,13 @@ export function TopUpSheet({
               exit={{ opacity: 0 }}
               className="flex flex-1 flex-col items-center justify-center gap-3"
             >
-              <motion.img
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05, duration: 0.25 }}
-                src={kidiLogoBadge.url}
-                alt="KiDi+"
-                className="mb-1 h-16 w-auto object-contain"
-              />
+              >
+                {logoBadge}
+              </motion.div>
               <motion.div
                 initial={{ scale: 0.4 }}
                 animate={{ scale: 1 }}
@@ -485,6 +492,16 @@ export function TopUpSheet({
 
               {step.kind === "amount" || step.kind === "error" || step.kind === "not_configured" || step.kind === "loading" ? (
                 <>
+                  {step.kind !== "amount" && (
+                    <div className="mb-4 flex flex-col items-center gap-2">
+                      {logoBadge}
+                      {step.kind === "loading" && (
+                        <p className="text-[13px] font-semibold text-muted-foreground">
+                          {t("wallet.topup.preparing", { defaultValue: "Préparation du paiement…" })}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {/* Preset amounts */}
                   <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("wallet.topup.chooseAmount")}
@@ -648,6 +665,7 @@ export function TopUpSheet({
                 />
               ) : step.kind === "paypal_waiting" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
                   <Loader2 className="animate-spin text-primary" size={28} />
                   <p className="text-[15px] font-semibold">
                     {t("wallet.topup.paypalWaiting", { defaultValue: "Paiement PayPal en cours…" })}
@@ -680,6 +698,7 @@ export function TopUpSheet({
                 </div>
               ) : step.kind === "verifying" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
                   <Loader2 className="animate-spin" size={28} />
                   <p className="text-[15px] font-semibold">
                     {t("wallet.topup.verifying", { defaultValue: "Vérification du paiement…" })}
