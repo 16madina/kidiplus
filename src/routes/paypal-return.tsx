@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isNative } from "@/lib/native";
 import { NATIVE_OAUTH_SCHEME } from "@/lib/social-login-config";
 import { dispatchOpenSection, stashSoftSection } from "@/lib/soft-profile-routes";
+import kidiLogoBadge from "@/assets/kidi-logo-badge.png.asset.json";
 
 export const Route = createFileRoute("/paypal-return")({
   ssr: false,
