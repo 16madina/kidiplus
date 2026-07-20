@@ -48,6 +48,7 @@ import {
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
 import { isNative } from "@/lib/native";
+import kidiLogoBadge from "@/assets/kidi-logo-badge.png.asset.json";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
