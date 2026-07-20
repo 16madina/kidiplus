@@ -665,6 +665,7 @@ export function TopUpSheet({
                 />
               ) : step.kind === "paypal_waiting" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
                   <Loader2 className="animate-spin text-primary" size={28} />
                   <p className="text-[15px] font-semibold">
                     {t("wallet.topup.paypalWaiting", { defaultValue: "Paiement PayPal en cours…" })}
@@ -697,6 +698,7 @@ export function TopUpSheet({
                 </div>
               ) : step.kind === "verifying" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
                   <Loader2 className="animate-spin" size={28} />
                   <p className="text-[15px] font-semibold">
                     {t("wallet.topup.verifying", { defaultValue: "Vérification du paiement…" })}
