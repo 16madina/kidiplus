@@ -44,6 +44,10 @@ import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
+import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
+import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
+import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
 import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
 import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
 import { Route as ApiPaypalTopupCaptureRouteImport } from './routes/api/paypal-topup.capture'
@@ -57,6 +61,8 @@ import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/d
 import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
 import { Route as ApiYoutubeStatusRouteImport } from './routes/api/youtube/status'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiFacebookOauthCallbackRouteImport } from './routes/api/facebook/oauth.callback'
+import { Route as ApiFacebookOauthStartRouteImport } from './routes/api/facebook/oauth.start'
 import { Route as ApiYoutubeOauthCallbackRouteImport } from './routes/api/youtube/oauth.callback'
 import { Route as ApiYoutubeOauthStartRouteImport } from './routes/api/youtube/oauth.start'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -241,6 +247,26 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
+  id: '/api/facebook/disconnect',
+  path: '/api/facebook/disconnect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookPagesRoute = ApiFacebookPagesRouteImport.update({
+  id: '/api/facebook/pages',
+  path: '/api/facebook/pages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookRestreamRoute = ApiFacebookRestreamRouteImport.update({
+  id: '/api/facebook/restream',
+  path: '/api/facebook/restream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
+  id: '/api/facebook/status',
+  path: '/api/facebook/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
   id: '/config',
   path: '/config',
@@ -305,6 +331,17 @@ const ApiYoutubeStatusRoute = ApiYoutubeStatusRouteImport.update({
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookOauthCallbackRoute =
+  ApiFacebookOauthCallbackRouteImport.update({
+    id: '/api/facebook/oauth/callback',
+    path: '/api/facebook/oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiFacebookOauthStartRoute = ApiFacebookOauthStartRouteImport.update({
+  id: '/api/facebook/oauth/start',
+  path: '/api/facebook/oauth/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiYoutubeOauthCallbackRoute = ApiYoutubeOauthCallbackRouteImport.update({
@@ -372,6 +409,10 @@ export interface FileRoutesByFullPath {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
+  '/api/facebook/pages': typeof ApiFacebookPagesRoute
+  '/api/facebook/restream': typeof ApiFacebookRestreamRoute
+  '/api/facebook/status': typeof ApiFacebookStatusRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -385,6 +426,8 @@ export interface FileRoutesByFullPath {
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
   '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/facebook/oauth/callback': typeof ApiFacebookOauthCallbackRoute
+  '/api/facebook/oauth/start': typeof ApiFacebookOauthStartRoute
   '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
   '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -427,6 +470,10 @@ export interface FileRoutesByTo {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
+  '/api/facebook/pages': typeof ApiFacebookPagesRoute
+  '/api/facebook/restream': typeof ApiFacebookRestreamRoute
+  '/api/facebook/status': typeof ApiFacebookStatusRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -440,6 +487,8 @@ export interface FileRoutesByTo {
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
   '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/facebook/oauth/callback': typeof ApiFacebookOauthCallbackRoute
+  '/api/facebook/oauth/start': typeof ApiFacebookOauthStartRoute
   '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
   '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -483,6 +532,10 @@ export interface FileRoutesById {
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
+  '/api/facebook/pages': typeof ApiFacebookPagesRoute
+  '/api/facebook/restream': typeof ApiFacebookRestreamRoute
+  '/api/facebook/status': typeof ApiFacebookStatusRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -496,6 +549,8 @@ export interface FileRoutesById {
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
   '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/facebook/oauth/callback': typeof ApiFacebookOauthCallbackRoute
+  '/api/facebook/oauth/start': typeof ApiFacebookOauthStartRoute
   '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
   '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -540,6 +595,10 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/facebook/disconnect'
+    | '/api/facebook/pages'
+    | '/api/facebook/restream'
+    | '/api/facebook/status'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -553,6 +612,8 @@ export interface FileRouteTypes {
     | '/api/youtube/restream'
     | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/facebook/oauth/callback'
+    | '/api/facebook/oauth/start'
     | '/api/youtube/oauth/callback'
     | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
@@ -595,6 +656,10 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/facebook/disconnect'
+    | '/api/facebook/pages'
+    | '/api/facebook/restream'
+    | '/api/facebook/status'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -608,6 +673,8 @@ export interface FileRouteTypes {
     | '/api/youtube/restream'
     | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/facebook/oauth/callback'
+    | '/api/facebook/oauth/start'
     | '/api/youtube/oauth/callback'
     | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
@@ -650,6 +717,10 @@ export interface FileRouteTypes {
     | '/api/account/delete'
     | '/api/admin/test-push'
     | '/api/checkout/confirm'
+    | '/api/facebook/disconnect'
+    | '/api/facebook/pages'
+    | '/api/facebook/restream'
+    | '/api/facebook/status'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -663,6 +734,8 @@ export interface FileRouteTypes {
     | '/api/youtube/restream'
     | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/facebook/oauth/callback'
+    | '/api/facebook/oauth/start'
     | '/api/youtube/oauth/callback'
     | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
@@ -705,6 +778,10 @@ export interface RootRouteChildren {
   SellOnboardingRoute: typeof SellOnboardingRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
+  ApiFacebookDisconnectRoute: typeof ApiFacebookDisconnectRoute
+  ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
+  ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
+  ApiFacebookStatusRoute: typeof ApiFacebookStatusRoute
   ApiPaypalTopupCaptureRoute: typeof ApiPaypalTopupCaptureRoute
   ApiPaypalTopupCreateRoute: typeof ApiPaypalTopupCreateRoute
   ApiPaypalTopupReturnRoute: typeof ApiPaypalTopupReturnRoute
@@ -715,6 +792,8 @@ export interface RootRouteChildren {
   ApiYoutubeRestreamRoute: typeof ApiYoutubeRestreamRoute
   ApiYoutubeStatusRoute: typeof ApiYoutubeStatusRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiFacebookOauthCallbackRoute: typeof ApiFacebookOauthCallbackRoute
+  ApiFacebookOauthStartRoute: typeof ApiFacebookOauthStartRoute
   ApiYoutubeOauthCallbackRoute: typeof ApiYoutubeOauthCallbackRoute
   ApiYoutubeOauthStartRoute: typeof ApiYoutubeOauthStartRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -969,6 +1048,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
     }
+    '/api/facebook/disconnect': {
+      id: '/api/facebook/disconnect'
+      path: '/api/facebook/disconnect'
+      fullPath: '/api/facebook/disconnect'
+      preLoaderRoute: typeof ApiFacebookDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/pages': {
+      id: '/api/facebook/pages'
+      path: '/api/facebook/pages'
+      fullPath: '/api/facebook/pages'
+      preLoaderRoute: typeof ApiFacebookPagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/restream': {
+      id: '/api/facebook/restream'
+      path: '/api/facebook/restream'
+      fullPath: '/api/facebook/restream'
+      preLoaderRoute: typeof ApiFacebookRestreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/status': {
+      id: '/api/facebook/status'
+      path: '/api/facebook/status'
+      fullPath: '/api/facebook/status'
+      preLoaderRoute: typeof ApiFacebookStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paypal-payout/config': {
       id: '/api/paypal-payout/config'
       path: '/config'
@@ -1058,6 +1165,20 @@ declare module '@tanstack/react-router' {
       path: '/lovable/email/suppression'
       fullPath: '/lovable/email/suppression'
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/oauth/callback': {
+      id: '/api/facebook/oauth/callback'
+      path: '/api/facebook/oauth/callback'
+      fullPath: '/api/facebook/oauth/callback'
+      preLoaderRoute: typeof ApiFacebookOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/oauth/start': {
+      id: '/api/facebook/oauth/start'
+      path: '/api/facebook/oauth/start'
+      fullPath: '/api/facebook/oauth/start'
+      preLoaderRoute: typeof ApiFacebookOauthStartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/youtube/oauth/callback': {
@@ -1172,6 +1293,10 @@ const rootRouteChildren: RootRouteChildren = {
   SellOnboardingRoute: SellOnboardingRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
+  ApiFacebookDisconnectRoute: ApiFacebookDisconnectRoute,
+  ApiFacebookPagesRoute: ApiFacebookPagesRoute,
+  ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
+  ApiFacebookStatusRoute: ApiFacebookStatusRoute,
   ApiPaypalTopupCaptureRoute: ApiPaypalTopupCaptureRoute,
   ApiPaypalTopupCreateRoute: ApiPaypalTopupCreateRoute,
   ApiPaypalTopupReturnRoute: ApiPaypalTopupReturnRoute,
@@ -1182,6 +1307,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiYoutubeRestreamRoute: ApiYoutubeRestreamRoute,
   ApiYoutubeStatusRoute: ApiYoutubeStatusRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiFacebookOauthCallbackRoute: ApiFacebookOauthCallbackRoute,
+  ApiFacebookOauthStartRoute: ApiFacebookOauthStartRoute,
   ApiYoutubeOauthCallbackRoute: ApiYoutubeOauthCallbackRoute,
   ApiYoutubeOauthStartRoute: ApiYoutubeOauthStartRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,

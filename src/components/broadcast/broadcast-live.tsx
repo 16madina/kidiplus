@@ -11,6 +11,11 @@ import {
   startYoutubeRestream,
   stopYoutubeRestream,
 } from "@/lib/youtube-restream";
+import {
+  fetchFacebookStatus,
+  startFacebookRestream,
+  stopFacebookRestream,
+} from "@/lib/facebook-restream";
 import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
@@ -76,6 +81,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [ytRestreaming, setYtRestreaming] = useState(false);
   const [ytBusy, setYtBusy] = useState(false);
   const [ytWatchUrl, setYtWatchUrl] = useState<string | null>(null);
+  const [fbReady, setFbReady] = useState(false);
+  const [fbRestreaming, setFbRestreaming] = useState(false);
+  const [fbBusy, setFbBusy] = useState(false);
+  const [fbWatchUrl, setFbWatchUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
@@ -103,7 +112,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
 
-  // YouTube connect status (camera live only).
+  // YouTube / Facebook connect status (camera live only).
   useEffect(() => {
     if (isRtmp) return;
     let cancelled = false;
@@ -113,6 +122,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       })
       .catch(() => {
         if (!cancelled) setYtConnected(false);
+      });
+    void fetchFacebookStatus()
+      .then((s) => {
+        if (!cancelled) {
+          setFbReady(!!s.connected && !s.needsPageSelection && !!s.pageId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFbReady(false);
       });
     return () => {
       cancelled = true;
@@ -598,6 +616,46 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
   };
 
+  const toggleFacebookRestream = async () => {
+    if (!b.liveId || isRtmp || fbBusy) return;
+    if (!fbReady) {
+      toast.error(
+        t(
+          "broadcast.facebook.needConnect",
+          "Connecte une Page Facebook dans le setup avant de diffuser",
+        ),
+      );
+      return;
+    }
+    setFbBusy(true);
+    haptic.selection();
+    try {
+      if (fbRestreaming) {
+        await stopFacebookRestream(b.liveId);
+        setFbRestreaming(false);
+        setFbWatchUrl(null);
+        toast.success(
+          t("broadcast.facebook.stopped", "Diffusion Facebook arrêtée"),
+        );
+      } else {
+        const started = await startFacebookRestream(b.liveId);
+        setFbRestreaming(true);
+        setFbWatchUrl(started.watchUrl);
+        toast.success(
+          t("broadcast.facebook.started", "En direct aussi sur Facebook"),
+        );
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.facebook.startFailed", "Impossible de diffuser sur Facebook"),
+      );
+    } finally {
+      setFbBusy(false);
+    }
+  };
+
   const endLive = async () => {
     haptic.success();
     b.setSession({
@@ -619,6 +677,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (b.liveId) {
       if (ytRestreaming || ytWatchUrl) {
         await stopYoutubeRestream(b.liveId).catch(() => {});
+      }
+      if (fbRestreaming || fbWatchUrl) {
+        await stopFacebookRestream(b.liveId).catch(() => {});
       }
       if (isRtmp || b.rtmpCreds) {
         const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
@@ -1232,30 +1293,57 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       )}
 
       {!isRtmp && (
-        <Press
-          disabled={ytBusy}
-          onClick={() => void toggleYoutubeRestream()}
-          className="!min-h-9 absolute left-3 z-30 inline-flex max-w-[70%] items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
-          style={{
-            top: "calc(env(safe-area-inset-top) + 52px)",
-            background: ytRestreaming
-              ? "linear-gradient(135deg, #ff0033, #cc0000)"
-              : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
-            color: ytRestreaming ? "#fff" : "#0a0a12",
-            opacity: ytBusy ? 0.7 : 1,
-          }}
+        <div
+          className="absolute left-3 z-30 flex max-w-[75%] flex-col gap-1.5"
+          style={{ top: "calc(env(safe-area-inset-top) + 52px)" }}
         >
-          <Radio size={14} />
-          <span className="truncate">
-            {ytBusy
-              ? t("broadcast.youtube.working", "YouTube…")
-              : ytRestreaming
-                ? t("broadcast.youtube.liveBadge", "YouTube ON")
-                : ytConnected
-                  ? t("broadcast.youtube.goLive", "Diffuser sur YouTube")
-                  : t("broadcast.youtube.notConnected", "YouTube")}
-          </span>
-        </Press>
+          <Press
+            disabled={ytBusy}
+            onClick={() => void toggleYoutubeRestream()}
+            className="!min-h-9 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
+            style={{
+              background: ytRestreaming
+                ? "linear-gradient(135deg, #ff0033, #cc0000)"
+                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+              color: ytRestreaming ? "#fff" : "#0a0a12",
+              opacity: ytBusy ? 0.7 : 1,
+            }}
+          >
+            <Radio size={14} />
+            <span className="truncate">
+              {ytBusy
+                ? t("broadcast.youtube.working", "YouTube…")
+                : ytRestreaming
+                  ? t("broadcast.youtube.liveBadge", "YouTube ON")
+                  : ytConnected
+                    ? t("broadcast.youtube.goLive", "Diffuser sur YouTube")
+                    : t("broadcast.youtube.notConnected", "YouTube")}
+            </span>
+          </Press>
+          <Press
+            disabled={fbBusy}
+            onClick={() => void toggleFacebookRestream()}
+            className="!min-h-9 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
+            style={{
+              background: fbRestreaming
+                ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
+                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+              color: fbRestreaming ? "#fff" : "#0a0a12",
+              opacity: fbBusy ? 0.7 : 1,
+            }}
+          >
+            <Radio size={14} />
+            <span className="truncate">
+              {fbBusy
+                ? t("broadcast.facebook.working", "Facebook…")
+                : fbRestreaming
+                  ? t("broadcast.facebook.liveBadge", "Facebook ON")
+                  : fbReady
+                    ? t("broadcast.facebook.goLive", "Diffuser sur Facebook")
+                    : t("broadcast.facebook.notConnected", "Facebook")}
+            </span>
+          </Press>
+        </div>
       )}
 
 

@@ -507,6 +507,32 @@
       "started": "Also live on YouTube",
       "stopped": "YouTube stream stopped",
       "startFailed": "Could not stream to YouTube"
+    },
+    "facebook": {
+      "connectTitle": "Facebook",
+      "connectHint": "Connect a Page to also stream on Facebook",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connectedAs": "Page · {{page}}",
+      "needPage": "Account linked — pick your Page",
+      "choosePage": "Page",
+      "changePage": "Change",
+      "pickPageTitle": "Which Facebook Page?",
+      "pickPageHint": "Your KiDi+ live will stream to this Page.",
+      "pickPageToast": "Pick your Facebook Page",
+      "pageSelected": "Page “{{page}}” selected",
+      "noPages": "No Pages found…",
+      "connectedToast": "Facebook connected",
+      "disconnectedToast": "Facebook disconnected",
+      "connectFailed": "Facebook connection failed",
+      "needConnect": "Connect a Facebook Page in setup before streaming",
+      "goLive": "Stream to Facebook",
+      "liveBadge": "Facebook ON",
+      "notConnected": "Facebook",
+      "working": "Facebook…",
+      "started": "Also live on Facebook",
+      "stopped": "Facebook stream stopped",
+      "startFailed": "Could not stream to Facebook"
     }
   },
   "golive": {

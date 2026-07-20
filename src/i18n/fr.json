@@ -507,6 +507,32 @@
       "started": "En direct aussi sur YouTube",
       "stopped": "Diffusion YouTube arrêtée",
       "startFailed": "Impossible de diffuser sur YouTube"
+    },
+    "facebook": {
+      "connectTitle": "Facebook",
+      "connectHint": "Connecte une Page pour diffuser aussi sur Facebook",
+      "connect": "Connecter",
+      "disconnect": "Déconnecter",
+      "connectedAs": "Page · {{page}}",
+      "needPage": "Compte lié — choisis ta Page",
+      "choosePage": "Page",
+      "changePage": "Changer",
+      "pickPageTitle": "Quelle Page Facebook ?",
+      "pickPageHint": "Le live KiDi+ sera diffusé sur cette Page.",
+      "pickPageToast": "Choisis ta Page Facebook",
+      "pageSelected": "Page « {{page}} » sélectionnée",
+      "noPages": "Aucune Page trouvée…",
+      "connectedToast": "Facebook connecté",
+      "disconnectedToast": "Facebook déconnecté",
+      "connectFailed": "Connexion Facebook échouée",
+      "needConnect": "Connecte une Page Facebook dans le setup avant de diffuser",
+      "goLive": "Diffuser sur Facebook",
+      "liveBadge": "Facebook ON",
+      "notConnected": "Facebook",
+      "working": "Facebook…",
+      "started": "En direct aussi sur Facebook",
+      "stopped": "Diffusion Facebook arrêtée",
+      "startFailed": "Impossible de diffuser sur Facebook"
     }
   },
   "golive": {

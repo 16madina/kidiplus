@@ -133,6 +133,27 @@ export async function bootstrapNative(): Promise<void> {
         return true;
       }
 
+      // Facebook OAuth return — stay on current page, refresh connect UI.
+      if (path.startsWith("/facebook-connected")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const page = u.searchParams.get("page");
+          window.dispatchEvent(
+            new CustomEvent("kidi:facebook-connected", {
+              detail: {
+                ok: status === "ok" || status === "select_page",
+                status,
+                page: page ?? undefined,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
       // PayPal server return — stay on the current WebView page (no reload).
       if (path.startsWith("/paypal-done")) {
         try {
