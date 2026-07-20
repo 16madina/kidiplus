@@ -24,7 +24,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { isNative } from "@/lib/native";
 import { NATIVE_OAUTH_SCHEME } from "@/lib/social-login-config";
 import { dispatchOpenSection, stashSoftSection } from "@/lib/soft-profile-routes";
-import kidiLogoBadge from "@/assets/kidi-logo-badge.png.asset.json";
 
 export const Route = createFileRoute("/paypal-return")({
   ssr: false,
@@ -222,9 +221,10 @@ function PaypalReturn() {
 
   const logoBadge = (
     <img
-      src={kidiLogoBadge.url}
+      src="/kidi-plus-logo.png"
       alt="KiDi+"
-      className="h-16 w-auto object-contain drop-shadow-sm"
+      className="h-14 w-auto max-w-[240px] object-contain drop-shadow-sm"
+      draggable={false}
     />
   );
 
@@ -264,6 +264,11 @@ function PaypalReturn() {
         {state.kind === "success" && (
           <>
             {logoBadge}
+            <div
+              className="h-1.5 w-28 rounded-full"
+              style={{ backgroundColor: "oklch(0.72 0.2 155)", boxShadow: "0 0 16px oklch(0.72 0.2 155 / 0.45)" }}
+              aria-hidden
+            />
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
@@ -276,6 +281,11 @@ function PaypalReturn() {
         {state.kind === "pending" && (
           <>
             {logoBadge}
+            <div
+              className="h-1.5 w-28 rounded-full"
+              style={{ backgroundColor: "oklch(0.72 0.2 155)", boxShadow: "0 0 16px oklch(0.72 0.2 155 / 0.45)" }}
+              aria-hidden
+            />
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
@@ -292,6 +302,7 @@ function PaypalReturn() {
         {state.kind === "cancelled" && (
           <>
             {logoBadge}
+            <div className="h-1.5 w-28 rounded-full bg-destructive" aria-hidden />
             <div className="grid h-16 w-16 place-items-center rounded-full bg-muted">
               <X size={32} className="text-muted-foreground" />
             </div>
@@ -306,6 +317,7 @@ function PaypalReturn() {
         {state.kind === "error" && (
           <>
             {logoBadge}
+            <div className="h-1.5 w-28 rounded-full bg-destructive" aria-hidden />
             <div className="grid h-16 w-16 place-items-center rounded-full bg-destructive/15">
               <X size={32} className="text-destructive" />
             </div>

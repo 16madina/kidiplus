@@ -48,7 +48,6 @@ import {
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
 import { isNative } from "@/lib/native";
-import kidiLogoBadge from "@/assets/kidi-logo-badge.png.asset.json";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
@@ -416,11 +415,13 @@ export function TopUpSheet({
     }
   };
 
+  // Served from /public — works on production + Capacitor (unlike Lovable /__l5e/ assets).
   const logoBadge = (
     <img
-      src={kidiLogoBadge.url}
+      src="/kidi-plus-logo.png"
       alt="KiDi+"
-      className="h-16 w-auto object-contain drop-shadow-sm"
+      className="h-14 w-auto max-w-[220px] object-contain drop-shadow-sm"
+      draggable={false}
     />
   );
 
@@ -441,8 +442,14 @@ export function TopUpSheet({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05, duration: 0.25 }}
+                className="flex flex-col items-center gap-3"
               >
                 {logoBadge}
+                <div
+                  className="h-1.5 w-28 rounded-full"
+                  style={{ backgroundColor: "oklch(0.72 0.2 155)", boxShadow: "0 0 16px oklch(0.72 0.2 155 / 0.45)" }}
+                  aria-hidden
+                />
               </motion.div>
               <motion.div
                 initial={{ scale: 0.4 }}
