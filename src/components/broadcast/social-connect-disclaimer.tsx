@@ -68,7 +68,7 @@ export function SocialConnectDisclaimerDialog({
             <span className="block text-white/55">
               {t(
                 "broadcast.social.disclaimerBody3",
-                "Les viewers sur ces plateformes verront le flux vidéo ; les enchères cliquables restent sur KiDi+.",
+                "Les viewers verront l’interface KiDi+ (vidéo, enchères, chat). Pour enchérir ou commenter dans l’app, il faut KiDi+.",
               )}
             </span>
           </AlertDialogDescription>

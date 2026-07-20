@@ -602,7 +602,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         setYtRestreaming(true);
         setYtWatchUrl(started.watchUrl);
         toast.success(
-          t("broadcast.youtube.started", "En direct aussi sur YouTube"),
+          t("broadcast.youtube.started", "En direct sur YouTube (interface KiDi+)"),
         );
       }
     } catch (e) {

@@ -176,8 +176,20 @@ export function useLiveRoom(params: {
   isHost: boolean;
   /** Stamp chat messages with a moderator badge when true. */
   isModerator?: boolean;
+  /**
+   * Silent observer (e.g. YouTube Web Egress Chrome): still receives chat /
+   * auctions / gifts, but does not announce a join or inflate presence UX.
+   */
+  silent?: boolean;
 }): LiveRoomState {
-  const { liveId, identity, displayName, isHost, isModerator = false } = params;
+  const {
+    liveId,
+    identity,
+    displayName,
+    isHost,
+    isModerator = false,
+    silent = false,
+  } = params;
   const [ready, setReady] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
   const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
@@ -541,10 +553,17 @@ export function useLiveRoom(params: {
       if (status === "SUBSCRIBED") {
         retryDelay = 1_000;
         readyRef.current = true;
-        await ch.track({ identity, name: displayName, host: isHost, joined_at: Date.now() });
+        if (!silent) {
+          await ch.track({
+            identity,
+            name: displayName,
+            host: isHost,
+            joined_at: Date.now(),
+          });
+        }
         setReady(true);
         // TikTok-style join line for viewers (not the host, once per session).
-        if (!isHost && !joinAnnouncedRef.current) {
+        if (!silent && !isHost && !joinAnnouncedRef.current) {
           joinAnnouncedRef.current = true;
           const joinPayload = {
             id: uid(),
@@ -592,7 +611,7 @@ export function useLiveRoom(params: {
       channelRef.current = null;
     };
 
-  }, [liveId, identity, displayName, isHost]);
+  }, [liveId, identity, displayName, isHost, silent]);
 
   // Host: periodically persist viewer_count so feed cards reflect reality.
   useEffect(() => {

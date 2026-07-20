@@ -1,8 +1,15 @@
 // POST /api/youtube/restream
-// Orchestrates YouTube Live create + LiveKit RTMP Egress (start / stop).
+// Orchestrates YouTube Live create + LiveKit Web Egress (full KiDi+ UI → RTMP).
 
 import { createFileRoute } from "@tanstack/react-router";
-import { EgressClient, StreamOutput, StreamProtocol } from "livekit-server-sdk";
+import {
+  EgressClient,
+  EncodingOptionsPreset,
+  StreamOutput,
+  StreamProtocol,
+} from "livekit-server-sdk";
+import { signBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
+import { publicAppOrigin } from "@/lib/paypal-public-origin";
 import {
   requireYoutubeApiUser,
   youtubeCorsHeaders,
@@ -179,17 +186,46 @@ export const Route = createFileRoute("/api/youtube/restream")({
           );
         }
 
+        const ticket = signBroadcastEgressTicket({
+          liveId,
+          roomName: liveRow.room_name,
+          ttlSec: 5 * 3600,
+        });
+        if (!ticket) {
+          await completeYoutubeBroadcast(
+            tok.accessToken,
+            created.live.broadcastId,
+          );
+          return youtubeJson(
+            {
+              error: "egress_ticket_failed",
+              message:
+                "Impossible de signer le ticket broadcast (secret manquant).",
+            },
+            500,
+            origin,
+          );
+        }
+
+        const appOrigin = publicAppOrigin(request);
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}`;
+
         let egressInfo;
         try {
-          egressInfo = await egress.startRoomCompositeEgress(
-            liveRow.room_name,
+          // Web Egress captures the full KiDi+ shopping UI (video + auctions + chat).
+          egressInfo = await egress.startWebEgress(
+            compositionUrl,
             new StreamOutput({
               protocol: StreamProtocol.RTMP,
               urls: [created.live.rtmpUrl],
             }),
+            {
+              awaitStartSignal: true,
+              encodingOptions: EncodingOptionsPreset.PORTRAIT_H264_720P_30,
+            },
           );
         } catch (e) {
-          console.error("[youtube-restream] startRoomCompositeEgress failed", e);
+          console.error("[youtube-restream] startWebEgress failed", e);
           const msg = e instanceof Error ? e.message : String(e);
           await completeYoutubeBroadcast(
             tok.accessToken,
@@ -201,7 +237,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
               message:
                 msg.includes("egress") || msg.includes("Egress")
                   ? msg
-                  : "Impossible de démarrer l’Egress LiveKit — Egress est-il activé ?",
+                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
             },
             502,
             origin,
@@ -255,6 +291,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
             broadcastId: created.live.broadcastId,
             watchUrl: created.live.watchUrl,
             channelTitle: tok.channelTitle,
+            compositionUrl: `${appOrigin}/broadcast/${liveId}`,
           },
           200,
           origin,
