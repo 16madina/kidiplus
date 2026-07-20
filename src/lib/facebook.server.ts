@@ -1,6 +1,7 @@
 /**
  * Facebook OAuth + Live Video API helpers (server-only).
- * Env: FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_OAUTH_REDIRECT_URI
+ * Env: FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_OAUTH_REDIRECT_URI,
+ *      FACEBOOK_LOGIN_CONFIG_ID (required for Facebook Login for Business)
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -8,7 +9,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const GRAPH = "https://graph.facebook.com/v21.0";
 const FB_DIALOG = "https://www.facebook.com/v21.0/dialog/oauth";
 
-/** Scopes for Page list + Live Video create. */
+/** Scopes for Page list + Live Video create (used when no Login config_id). */
 export const FACEBOOK_OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
@@ -20,6 +21,8 @@ export type FacebookOAuthConfig = {
   appId: string;
   appSecret: string;
   redirectUri: string;
+  /** Facebook Login for Business configuration id — unlocks Page/Live permissions. */
+  configId: string | null;
 };
 
 export function getFacebookOAuthConfig(): FacebookOAuthConfig | null {
@@ -29,8 +32,9 @@ export function getFacebookOAuthConfig(): FacebookOAuthConfig | null {
     process.env.FACEBOOK_OAUTH_REDIRECT_URI ??
     "https://kidiplus.com/api/facebook/oauth/callback"
   ).trim();
+  const configId = (process.env.FACEBOOK_LOGIN_CONFIG_ID ?? "").trim() || null;
   if (!appId || !appSecret) return null;
-  return { appId, appSecret, redirectUri };
+  return { appId, appSecret, redirectUri, configId };
 }
 
 export type FacebookOAuthState = {
@@ -94,7 +98,13 @@ export function buildFacebookAuthUrl(opts: {
   u.searchParams.set("redirect_uri", opts.cfg.redirectUri);
   u.searchParams.set("state", opts.state);
   u.searchParams.set("response_type", "code");
-  u.searchParams.set("scope", FACEBOOK_OAUTH_SCOPES);
+  // Login for Business: permissions come from the Configuration, not only `scope`.
+  if (opts.cfg.configId) {
+    u.searchParams.set("config_id", opts.cfg.configId);
+    u.searchParams.set("override_default_response_type", "true");
+  } else {
+    u.searchParams.set("scope", FACEBOOK_OAUTH_SCOPES);
+  }
   return u.toString();
 }
 
