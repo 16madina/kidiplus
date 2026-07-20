@@ -492,6 +492,16 @@ export function TopUpSheet({
 
               {step.kind === "amount" || step.kind === "error" || step.kind === "not_configured" || step.kind === "loading" ? (
                 <>
+                  {step.kind !== "amount" && (
+                    <div className="mb-4 flex flex-col items-center gap-2">
+                      {logoBadge}
+                      {step.kind === "loading" && (
+                        <p className="text-[13px] font-semibold text-muted-foreground">
+                          {t("wallet.topup.preparing", { defaultValue: "Préparation du paiement…" })}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {/* Preset amounts */}
                   <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("wallet.topup.chooseAmount")}
