@@ -48,6 +48,7 @@ import {
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
 import { isNative } from "@/lib/native";
+import kidiLogoBadge from "@/assets/kidi-logo-badge.png.asset.json";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
@@ -428,6 +429,14 @@ export function TopUpSheet({
               exit={{ opacity: 0 }}
               className="flex flex-1 flex-col items-center justify-center gap-3"
             >
+              <motion.img
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05, duration: 0.25 }}
+                src={kidiLogoBadge.url}
+                alt="KiDi+"
+                className="mb-1 h-16 w-auto object-contain"
+              />
               <motion.div
                 initial={{ scale: 0.4 }}
                 animate={{ scale: 1 }}
