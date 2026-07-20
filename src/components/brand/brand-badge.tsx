@@ -1,8 +1,11 @@
 // BrandBadge — payment-brand icons for TopUpSheet / PaymentSheet.
-// Wave, Orange Money and Djamo use real logo assets in /public/brands.
-// Card / PayPal keep compact inline SVG marks.
+// Logos are Vite-imported from src/assets/img (hashed same-origin URLs).
+// Paths under /public often 403 on Lovable/Cloudflare and break in Capacitor.
 
 import type { CSSProperties } from "react";
+import waveLogo from "@/assets/img/brands/wave.png";
+import orangeMoneyLogo from "@/assets/img/brands/orange-money.png";
+import djamoLogo from "@/assets/img/brands/djamo.png";
 
 export type BrandKey = "wave" | "orange" | "djamo" | "card" | "paypal";
 
@@ -14,16 +17,16 @@ interface BrandBadgeProps {
 
 const BG: Record<BrandKey, string> = {
   wave: "transparent",
-  orange: "#0B0B0B", // Orange Money mark sits on black
-  djamo: "#4136F1", // Djamo indigo
+  orange: "#0B0B0B",
+  djamo: "#4136F1",
   card: "#0F172A",
   paypal: "#003087",
 };
 
 const LOGO_SRC: Partial<Record<BrandKey, string>> = {
-  wave: "/brands/wave.png",
-  orange: "/brands/orange-money.png",
-  djamo: "/brands/djamo.png",
+  wave: waveLogo,
+  orange: orangeMoneyLogo,
+  djamo: djamoLogo,
 };
 
 export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
@@ -71,7 +74,6 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
           <path d="M2.5 10h19" />
         </svg>
       ) : (
-        // PayPal — stylized "PP"
         <svg width={size * 0.78} height={size * 0.78} viewBox="0 0 40 40" fill="none">
           <text
             x="12" y="27"
