@@ -2,6 +2,29 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 const SUPPORT_EMAIL = "support@kidiplus.com";
 
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "Comment devenir vendeur ?",
+    a: "Ouvrez votre profil, puis « Devenir vendeur ». Vous pourrez créer votre boutique et lancer des lives.",
+  },
+  {
+    q: "Comment recharger mon portefeuille ?",
+    a: "Depuis Profil → Portefeuille, choisissez un montant. Les paiements sont sécurisés par Stripe.",
+  },
+  {
+    q: "Quand suis-je payé pour mes ventes ?",
+    a: "Les fonds sont libérés après confirmation de réception par l'acheteur (ou automatiquement après le délai prévu). Retirez-les depuis Gains.",
+  },
+  {
+    q: "Un problème avec une commande ?",
+    a: "Ouvrez la commande dans Activité, puis « Signaler un problème ». Notre équipe intervient sous 48 h.",
+  },
+  {
+    q: "Comment supprimer mon compte ?",
+    a: "Dans l'app : Profil → Compte → Supprimer mon compte. Ou consultez la page Suppression de compte ci-dessous.",
+  },
+];
+
 export const Route = createFileRoute("/support")({
   component: SupportPage,
   head: () => ({
@@ -23,6 +46,20 @@ export const Route = createFileRoute("/support")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/support" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_ITEMS.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        }),
+      },
+    ],
   }),
 });
 
@@ -60,26 +97,9 @@ function SupportPage() {
         </Section>
 
         <Section title="Questions fréquentes">
-          <Faq
-            q="Comment devenir vendeur ?"
-            a="Ouvrez votre profil, puis « Devenir vendeur ». Vous pourrez créer votre boutique et lancer des lives."
-          />
-          <Faq
-            q="Comment recharger mon portefeuille ?"
-            a="Depuis Profil → Portefeuille, choisissez un montant. Les paiements sont sécurisés par Stripe."
-          />
-          <Faq
-            q="Quand suis-je payé pour mes ventes ?"
-            a="Les fonds sont libérés après confirmation de réception par l'acheteur (ou automatiquement après le délai prévu). Retirez-les depuis Gains."
-          />
-          <Faq
-            q="Un problème avec une commande ?"
-            a="Ouvrez la commande dans Activité, puis « Signaler un problème ». Notre équipe intervient sous 48 h."
-          />
-          <Faq
-            q="Comment supprimer mon compte ?"
-            a="Dans l'app : Profil → Compte → Supprimer mon compte. Ou consultez la page Suppression de compte ci-dessous."
-          />
+          {FAQ_ITEMS.map((item) => (
+            <Faq key={item.q} q={item.q} a={item.a} />
+          ))}
         </Section>
 
         <Section title="Ressources utiles">

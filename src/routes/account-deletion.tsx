@@ -20,6 +20,34 @@ export const Route = createFileRoute("/account-deletion")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/account-deletion" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "Suppression de compte — KiDi+",
+          description:
+            "Comment demander la suppression de votre compte KiDi+ et des données associées.",
+          inLanguage: "fr",
+          mainEntityOfPage: "https://kidiplus.com/account-deletion",
+          image: "https://kidiplus.com/icon-512.png",
+          datePublished: "2025-01-01",
+          dateModified: "2026-07-10",
+          author: { "@type": "Organization", name: "KiDi+", url: "https://kidiplus.com" },
+          publisher: {
+            "@type": "Organization",
+            name: "KiDi+",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://kidiplus.com/icon-512.png",
+              width: 512,
+              height: 512,
+            },
+          },
+        }),
+      },
+    ],
   }),
 });
 
