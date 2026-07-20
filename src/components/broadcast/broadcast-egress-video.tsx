@@ -50,6 +50,7 @@ export function BroadcastEgressVideo({
   posterImage,
   onStatus,
   onReadyToRecord,
+  brighten = false,
 }: {
   url: string;
   token: string;
@@ -57,6 +58,8 @@ export function BroadcastEgressVideo({
   onStatus?: (s: BroadcastEgressVideoStatus) => void;
   /** Fired once when first host video frame is attached (or after timeout). */
   onReadyToRecord?: () => void;
+  /** Slight lift for social restream (egress encode often looks darker). */
+  brighten?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -175,6 +178,11 @@ export function BroadcastEgressVideo({
         autoPlay
         muted
         className="absolute inset-0 h-full w-full object-cover"
+        style={
+          brighten
+            ? { filter: "brightness(1.18) contrast(1.06) saturate(1.05)" }
+            : undefined
+        }
       />
       <audio ref={audioRef} autoPlay playsInline />
       {posterImage && (
@@ -186,6 +194,9 @@ export function BroadcastEgressVideo({
             opacity: showPoster ? 1 : 0,
             transition: "opacity 200ms ease",
             pointerEvents: "none",
+            ...(brighten && showPoster
+              ? { filter: "brightness(1.12)" }
+              : null),
           }}
           draggable={false}
         />
