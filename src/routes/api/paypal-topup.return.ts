@@ -1,23 +1,25 @@
 // GET /api/paypal-topup/return
 // -----------------------------
 // PayPal redirects here after approve/cancel (inside SFSafariViewController /
-// Chrome Custom Tab). We capture + credit on the server, then bounce into the
-// native app via kidiplus://paypal-done — no React page flash / loop.
+// Chrome Custom Tab). We capture + credit on the server.
+//
+// CRITICAL for native: never auto-redirect to https://kidiplus.com — that
+// loads the full SPA inside the Custom Tab and traps the user in a flash
+// loop ("Paiement PayPal en cours…"). The Capacitor WebView underneath polls
+// capture and calls Browser.close() when credit succeeds.
 
 import { createFileRoute } from "@tanstack/react-router";
 import { finalizePaypalTopupOrder } from "@/lib/paypal-topup-finalize.server";
 import { publicAppOrigin } from "@/lib/paypal-public-origin";
 
-function bounceHtml(opts: {
+function nativeDoneHtml(opts: {
   deepLink: string;
-  packageName?: string;
-  webFallback: string;
+  title: string;
+  body: string;
 }): Response {
   const deep = JSON.stringify(opts.deepLink);
-  const web = JSON.stringify(opts.webFallback);
-  const pkg = JSON.stringify(opts.packageName ?? "com.kidiplus.app");
-  // Intentionally minimal — no "success" headline (that was flashing in the
-  // Custom Tab before the app reclaimed focus).
+  const title = opts.title.replace(/</g, "");
+  const body = opts.body.replace(/</g, "");
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -27,46 +29,29 @@ function bounceHtml(opts: {
   <title>KiDi+</title>
   <style>
     body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#10162B;color:#fff;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;text-align:center;padding:24px}
-    .spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.25);border-top-color:#c8a24a;
-      border-radius:50%;animation:r .7s linear infinite;margin:0 auto 16px}
-    @keyframes r{to{transform:rotate(360deg)}}
-    p{opacity:.7;font-size:13px;margin:0 0 18px;max-width:260px;line-height:1.4}
-    a{display:inline-block;background:#c8a24a;color:#10162B;padding:12px 22px;border-radius:999px;
-      font-weight:800;text-decoration:none;font-size:14px}
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;text-align:center;padding:28px}
+    h1{font-size:22px;margin:0 0 10px;font-weight:800}
+    p{opacity:.85;font-size:14px;margin:0 0 8px;max-width:300px;line-height:1.45}
+    .hint{opacity:.55;font-size:12px;margin:0 0 22px}
+    a{display:inline-block;background:#c8a24a;color:#10162B;padding:14px 26px;border-radius:999px;
+      font-weight:800;text-decoration:none;font-size:15px}
   </style>
   <script>
     (function () {
+      // One soft handoff only — never loop, never open the website in this tab.
       var deep = ${deep};
-      var web = ${web};
-      var pkg = ${pkg};
-      var ua = navigator.userAgent || "";
-      var isAndroid = /Android/i.test(ua);
-      function goDeep() {
-        try {
-          if (isAndroid) {
-            var path = deep.replace(/^kidiplus:\\/\\//, "");
-            var intent = "intent://" + path + "#Intent;scheme=kidiplus;package=" + pkg + ";end";
-            window.location.replace(intent);
-            return;
-          }
-          window.location.replace(deep);
-        } catch (e) {}
-      }
-      goDeep();
-      setTimeout(function () { try { window.location.href = deep; } catch (e) {} }, 350);
-      // If the custom scheme never leaves this tab (desktop / no app), fall back to web.
       setTimeout(function () {
-        try { window.location.replace(web); } catch (e) {}
-      }, 1600);
+        try { window.location.href = deep; } catch (e) {}
+      }, 250);
     })();
   </script>
 </head>
 <body>
   <div>
-    <div class="spin" aria-hidden="true"></div>
-    <p>Retour dans KiDi+…</p>
-    <a href=${deep}>Ouvrir KiDi+</a>
+    <h1>${title}</h1>
+    <p>${body}</p>
+    <p class="hint">Ou ferme cette fenêtre (Done / ✕) pour revenir dans KiDi+.</p>
+    <a href=${deep}>Revenir dans KiDi+</a>
   </div>
 </body>
 </html>`;
@@ -96,22 +81,23 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
         const origin = publicAppOrigin(request);
         const cancelled = url.searchParams.get("cancelled") === "1";
         const token = (url.searchParams.get("token") ?? "").trim();
-        // Client passes native=1 when opening PayPal via Capacitor Browser.
         const preferNative = url.searchParams.get("native") === "1";
 
         if (cancelled) {
           if (!preferNative) return webRedirect(origin, { status: "cancelled" });
-          return bounceHtml({
+          return nativeDoneHtml({
             deepLink: "kidiplus://paypal-done?status=cancelled",
-            webFallback: `${origin}/?paypal_done=1&status=cancelled`,
+            title: "Paiement annulé",
+            body: "Aucun montant n'a été prélevé.",
           });
         }
 
         if (!token) {
           if (!preferNative) return webRedirect(origin, { status: "error" });
-          return bounceHtml({
+          return nativeDoneHtml({
             deepLink: "kidiplus://paypal-done?status=error",
-            webFallback: `${origin}/?paypal_done=1&status=error`,
+            title: "Session introuvable",
+            body: "Ferme cette fenêtre et réessaie depuis KiDi+.",
           });
         }
 
@@ -125,9 +111,10 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
           };
           if (!preferNative) return webRedirect(origin, params);
           const q = new URLSearchParams(params);
-          return bounceHtml({
+          return nativeDoneHtml({
             deepLink: `kidiplus://paypal-done?${q.toString()}`,
-            webFallback: `${origin}/?paypal_done=1&${q.toString()}`,
+            title: "Paiement confirmé",
+            body: "Ton portefeuille est crédité. Reviens dans KiDi+.",
           });
         }
 
@@ -137,9 +124,10 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
         };
         if (!preferNative) return webRedirect(origin, params);
         const q = new URLSearchParams(params);
-        return bounceHtml({
+        return nativeDoneHtml({
           deepLink: `kidiplus://paypal-done?${q.toString()}`,
-          webFallback: `${origin}/?paypal_done=1&${q.toString()}`,
+          title: "Presque terminé",
+          body: "Le paiement est en cours de confirmation. Reviens dans KiDi+.",
         });
       },
     },

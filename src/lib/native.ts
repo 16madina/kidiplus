@@ -105,10 +105,14 @@ export async function bootstrapNative(): Promise<void> {
       const path = pathFromDeepLinkUrl(rawUrl);
       if (!path) return false;
       // Close SFSafariViewController / Chrome Custom Tab if OAuth / PayPal left it open.
-      void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
+      void import("@capacitor/browser").then(({ Browser }) => {
+        void Browser.close().catch(() => {});
+        setTimeout(() => {
+          void Browser.close().catch(() => {});
+        }, 350);
+      });
 
       // PayPal server return — stay on the current WebView page (no reload).
-      // Reloading "/" was the "hard reconnect" flash after a successful payment.
       if (path.startsWith("/paypal-done")) {
         try {
           const u = new URL(path, "https://kidiplus.com");

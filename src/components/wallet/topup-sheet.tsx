@@ -132,6 +132,7 @@ export function TopUpSheet({
     chosenAmount <= MAX_AMOUNT;
 
   const paypalFinishedRef = useRef(false);
+  const paypalPollBusyRef = useRef(false);
 
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
     if (paypalFinishedRef.current) return;
@@ -145,21 +146,43 @@ export function TopUpSheet({
     setTimeout(onClose, 1400);
   };
 
-  const tryCapturePendingPaypal = async (orderId: string, amount: number) => {
-    if (paypalFinishedRef.current) return;
-    setStep({ kind: "verifying", amount });
-    const r = await capturePaypalTopup(orderId);
-    if (r.ok) {
-      await finishPaypalSuccess(r.amount || amount, r.duplicate);
-      return;
-    }
-    if (paypalFinishedRef.current) return;
-    // Still pending / user closed Safari early — keep waiting UI.
-    setStep({ kind: "paypal_waiting", amount, orderId });
+  const closePaypalBrowser = () => {
+    if (!isNative()) return;
+    void import("@capacitor/browser").then(({ Browser }) => {
+      void Browser.close().catch(() => {});
+      // SFSafariViewController sometimes ignores the first close.
+      setTimeout(() => {
+        void Browser.close().catch(() => {});
+      }, 400);
+    });
   };
 
-  // After PayPal returns into the app (deep link) or the in-app browser closes,
-  // finalize capture and close this sheet (once).
+  const tryCapturePendingPaypal = async (
+    orderId: string,
+    amount: number,
+    opts?: { silent?: boolean },
+  ) => {
+    if (paypalFinishedRef.current) return;
+    if (opts?.silent && paypalPollBusyRef.current) return;
+    if (opts?.silent) paypalPollBusyRef.current = true;
+    try {
+      if (!opts?.silent) setStep({ kind: "verifying", amount });
+      const r = await capturePaypalTopup(orderId);
+      if (r.ok) {
+        closePaypalBrowser();
+        await finishPaypalSuccess(r.amount || amount, r.duplicate);
+        return;
+      }
+      if (paypalFinishedRef.current) return;
+      // Still pending — keep waiting UI without thrashing state on silent polls.
+      if (!opts?.silent) setStep({ kind: "paypal_waiting", amount, orderId });
+    } finally {
+      if (opts?.silent) paypalPollBusyRef.current = false;
+    }
+  };
+
+  // After PayPal returns: deep link, browser close, OR polling (server already
+  // credited on /api/paypal-topup/return — we just need to dismiss the overlay).
   useEffect(() => {
     if (!open) {
       paypalFinishedRef.current = false;
@@ -176,6 +199,7 @@ export function TopUpSheet({
       }>).detail;
       if (!detail) return;
       try { sessionStorage.removeItem("kidi:paypal_done"); } catch { /* ignore */ }
+      closePaypalBrowser();
       if (detail.ok || detail.status === "ok") {
         void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
         return;
@@ -199,23 +223,43 @@ export function TopUpSheet({
     window.addEventListener("kidi:paypal-topup-done", onDone);
 
     let removeBrowserListener: (() => void) | undefined;
+    let removeAppState: (() => void) | undefined;
+    let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+    const resumeFromPending = () => {
+      if (paypalFinishedRef.current) return;
+      try {
+        const raw = sessionStorage.getItem("kidi:paypal_done");
+        if (raw) {
+          const done = JSON.parse(raw) as {
+            status?: string;
+            amount?: string | null;
+            duplicate?: boolean;
+          };
+          sessionStorage.removeItem("kidi:paypal_done");
+          closePaypalBrowser();
+          if (done.status === "ok") {
+            void finishPaypalSuccess(Number(done.amount ?? chosenAmount), !!done.duplicate);
+            return;
+          }
+          if (done.status === "cancelled" || done.status === "error") {
+            paypalFinishedRef.current = true;
+            clearPendingPaypalOrder();
+            onClose();
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const pending = readPendingPaypalOrder();
+      if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+    };
+
     if (isNative()) {
       void import("@capacitor/browser").then(({ Browser }) => {
         const sub = Browser.addListener("browserFinished", () => {
-          if (paypalFinishedRef.current) return;
-          // Prefer the server-return deep link result if already stored.
-          try {
-            if (sessionStorage.getItem("kidi:paypal_done")) {
-              clearPendingPaypalOrder();
-              paypalFinishedRef.current = true;
-              void refresh().then(() => onClose());
-              return;
-            }
-          } catch {
-            /* ignore */
-          }
-          const pending = readPendingPaypalOrder();
-          if (pending) void tryCapturePendingPaypal(pending, chosenAmount);
+          resumeFromPending();
         });
         void sub.then((h) => {
           removeBrowserListener = () => {
@@ -223,11 +267,31 @@ export function TopUpSheet({
           };
         });
       });
+      void import("@capacitor/app").then(({ App }) => {
+        const sub = App.addListener("appStateChange", (s: { isActive: boolean }) => {
+          if (s.isActive) resumeFromPending();
+        });
+        void sub.then((h) => {
+          removeAppState = () => {
+            void h.remove();
+          };
+        });
+      });
+
+      // While SFSafariViewController is open, the WebView keeps running.
+      // Server credits on return URL → poll until capture is ok, then close the overlay.
+      pollTimer = setInterval(() => {
+        if (paypalFinishedRef.current) return;
+        const pending = readPendingPaypalOrder();
+        if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+      }, 1600);
     }
 
     return () => {
       window.removeEventListener("kidi:paypal-topup-done", onDone);
       removeBrowserListener?.();
+      removeAppState?.();
+      if (pollTimer) clearInterval(pollTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, chosenAmount]);
@@ -582,16 +646,17 @@ export function TopUpSheet({
                   <p className="max-w-[280px] text-[12px] text-muted-foreground">
                     {t("wallet.topup.paypalWaitingHint", {
                       defaultValue:
-                        "Termine le paiement dans la fenêtre PayPal. Tu reviendras automatiquement dans KiDi+.",
+                        "Termine le paiement dans PayPal. Dès qu'il est confirmé, ferme la fenêtre (Done / ✕) — KiDi+ se met à jour tout seul.",
                     })}
                   </p>
                   <Press
                     onClick={() => {
+                      closePaypalBrowser();
                       void tryCapturePendingPaypal(step.orderId, step.amount);
                     }}
                     className="mt-1 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-bold text-primary-foreground"
                   >
-                    {t("wallet.topup.paypalConfirmCta", { defaultValue: "J'ai payé — vérifier" })}
+                    {t("wallet.topup.paypalConfirmCta", { defaultValue: "J'ai payé — revenir" })}
                   </Press>
                   <button
                     type="button"
