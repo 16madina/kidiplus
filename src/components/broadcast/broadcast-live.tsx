@@ -642,7 +642,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         setFbRestreaming(true);
         setFbWatchUrl(started.watchUrl);
         toast.success(
-          t("broadcast.facebook.started", "En direct aussi sur Facebook"),
+          t("broadcast.facebook.started", "En direct sur Facebook (interface KiDi+)"),
         );
       }
     } catch (e) {

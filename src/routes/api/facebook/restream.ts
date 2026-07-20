@@ -1,7 +1,15 @@
-// POST /api/facebook/restream — start/stop Facebook Live + LiveKit Egress
+// POST /api/facebook/restream
+// Facebook Live + LiveKit Web Egress (full KiDi+ UI → RTMP), same path as YouTube.
 
 import { createFileRoute } from "@tanstack/react-router";
-import { EgressClient, StreamOutput, StreamProtocol } from "livekit-server-sdk";
+import {
+  EgressClient,
+  EncodingOptionsPreset,
+  StreamOutput,
+  StreamProtocol,
+} from "livekit-server-sdk";
+import { signBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
+import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
 import {
   facebookCorsHeaders,
   facebookJson,
@@ -225,17 +233,50 @@ export const Route = createFileRoute("/api/facebook/restream")({
           );
         }
 
+        const ticket = signBroadcastEgressTicket({
+          liveId,
+          roomName: liveRow.room_name,
+          ttlSec: 5 * 3600,
+        });
+        if (!ticket) {
+          await endFacebookLiveVideo(
+            created.live.liveVideoId,
+            refreshed.pageAccessToken,
+          );
+          return facebookJson(
+            {
+              error: "egress_ticket_failed",
+              message:
+                "Impossible de signer le ticket broadcast (secret manquant).",
+            },
+            500,
+            origin,
+          );
+        }
+
+        const appOrigin = broadcastEgressOrigin();
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}`;
+        console.info(
+          "[facebook-restream] web egress url",
+          `${appOrigin}/broadcast/${liveId}`,
+        );
+
         let egressInfo;
         try {
-          egressInfo = await egress.startRoomCompositeEgress(
-            liveRow.room_name,
+          // Same Web Egress composition as YouTube (video + auctions + KiDi+ chat).
+          egressInfo = await egress.startWebEgress(
+            compositionUrl,
             new StreamOutput({
               protocol: StreamProtocol.RTMP,
               urls: [created.live.rtmpUrl],
             }),
+            {
+              awaitStartSignal: true,
+              encodingOptions: EncodingOptionsPreset.PORTRAIT_H264_720P_30,
+            },
           );
         } catch (e) {
-          console.error("[facebook-restream] egress failed", e);
+          console.error("[facebook-restream] startWebEgress failed", e);
           const msg = e instanceof Error ? e.message : String(e);
           await endFacebookLiveVideo(
             created.live.liveVideoId,
@@ -247,7 +288,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
               message:
                 msg.includes("egress") || msg.includes("Egress")
                   ? msg
-                  : "Impossible de démarrer l’Egress LiveKit — Egress est-il activé ?",
+                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
             },
             502,
             origin,
@@ -300,6 +341,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
             liveVideoId: created.live.liveVideoId,
             watchUrl: created.live.watchUrl,
             pageName: conn.pageName,
+            compositionUrl: `${appOrigin}/broadcast/${liveId}`,
           },
           200,
           origin,
