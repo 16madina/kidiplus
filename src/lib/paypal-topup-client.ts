@@ -37,14 +37,17 @@ export type CreatePaypalTopupResult =
     }
   | { ok: false; error: string; message?: string };
 
-export async function createPaypalTopup(amount: number): Promise<CreatePaypalTopupResult> {
+export async function createPaypalTopup(
+  amount: number,
+  opts?: { native?: boolean },
+): Promise<CreatePaypalTopupResult> {
   const token = await bearer();
   if (!token) return { ok: false, error: "not_signed_in" };
   try {
     const res = await fetch("/api/paypal-topup/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, native: !!opts?.native }),
     });
     const body = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || !body?.ok) {

@@ -188,6 +188,7 @@ function AppShellInner() {
 
   // Soft profile URLs (/wallet, /orders, …) stash a section then redirect here.
   // Also resume `kidi.pending_path` on web (native bootstrap already handles Capacitor).
+  // Web PayPal return lands on /?paypal_done=1&status=…
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
@@ -199,6 +200,31 @@ function AppShellInner() {
           window.localStorage.removeItem("kidi.pending_path");
           const mapped = softSectionFromPath(pending.split("?")[0] ?? pending);
           if (mapped) stashSoftSection(mapped);
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const u = new URL(window.location.href);
+        if (u.searchParams.get("paypal_done") === "1") {
+          const status = u.searchParams.get("status") ?? "ok";
+          sessionStorage.setItem(
+            "kidi:paypal_done",
+            JSON.stringify({
+              status,
+              amount: u.searchParams.get("amount"),
+              currency: u.searchParams.get("currency"),
+              duplicate: u.searchParams.get("duplicate") === "1",
+            }),
+          );
+          stashSoftSection("wallet");
+          u.searchParams.delete("paypal_done");
+          u.searchParams.delete("status");
+          u.searchParams.delete("amount");
+          u.searchParams.delete("currency");
+          u.searchParams.delete("duplicate");
+          u.searchParams.delete("reason");
+          window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}` || "/");
         }
       } catch {
         /* ignore */

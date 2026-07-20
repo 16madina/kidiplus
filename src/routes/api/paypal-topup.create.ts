@@ -89,8 +89,9 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           );
         }
 
-        let body: { amount?: unknown };
+        let body: { amount?: unknown; native?: unknown };
         try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+        const nativeFlag = body.native === true || body.native === 1 || body.native === "1";
         const raw = Number(body.amount);
         const { min: MIN, max: MAX } = topUpLimits(currency);
         if (!Number.isFinite(raw) || raw < MIN || raw > MAX) {
@@ -133,12 +134,14 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           ? `topup:${userId}:${invoiceId}:xof:${amount}`
           : `topup:${userId}:${invoiceId}`;
 
-        // Return URL must be a public https host (prefer APP_URL / kidiplus.com).
-        // capacitor://localhost or https://localhost break PayPal + lose the
-        // Supabase session when the page opens in Safari outside the WebView.
+        // Lightweight server HTML return (capture + kidiplus://paypal-done).
+        // Avoids React flash / loops inside SFSafariViewController.
+        // `native=1` tells the return handler to bounce via custom scheme
+        // instead of a plain web redirect.
         const pubOrigin = publicAppOrigin(request);
-        const returnUrl = `${pubOrigin}/paypal-return`;
-        const cancelUrl = `${pubOrigin}/paypal-return?cancelled=1`;
+        const nativeQs = nativeFlag ? "?native=1" : "";
+        const returnUrl = `${pubOrigin}/api/paypal-topup/return${nativeQs}`;
+        const cancelUrl = `${pubOrigin}/api/paypal-topup/return?cancelled=1${nativeFlag ? "&native=1" : ""}`;
 
         // PayPal rejects tiny / malformed amounts; keep 2-decimal EUR/CAD/USD.
         const wireValue = Number(wireAmount.toFixed(2));

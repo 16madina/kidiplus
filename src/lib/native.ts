@@ -104,8 +104,46 @@ export async function bootstrapNative(): Promise<void> {
     const openDeepLink = (rawUrl: string) => {
       const path = pathFromDeepLinkUrl(rawUrl);
       if (!path) return false;
-      // Close SFSafariViewController / Chrome Custom Tab if OAuth left it open.
+      // Close SFSafariViewController / Chrome Custom Tab if OAuth / PayPal left it open.
       void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
+
+      // PayPal server return — stay on the current WebView page (no reload).
+      // Reloading "/" was the "hard reconnect" flash after a successful payment.
+      if (path.startsWith("/paypal-done")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const amount = u.searchParams.get("amount");
+          const currency = u.searchParams.get("currency");
+          const duplicate = u.searchParams.get("duplicate") === "1";
+          sessionStorage.setItem(
+            "kidi:paypal_done",
+            JSON.stringify({ status, amount, currency, duplicate }),
+          );
+          void import("@/lib/paypal-topup-client").then(({ clearPendingPaypalOrder }) => {
+            clearPendingPaypalOrder();
+          });
+          void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
+            stashSoftSection("wallet");
+            dispatchOpenSection("wallet");
+          });
+          window.dispatchEvent(
+            new CustomEvent("kidi:paypal-topup-done", {
+              detail: {
+                ok: status === "ok",
+                status,
+                amount: amount != null ? Number(amount) : undefined,
+                currency: currency ?? undefined,
+                duplicate,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
       navigateInApp(path);
       return true;
     };

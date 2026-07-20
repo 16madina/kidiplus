@@ -167,9 +167,34 @@ export function TopUpSheet({
     }
 
     const onDone = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ ok?: boolean; amount?: number; duplicate?: boolean }>).detail;
-      if (!detail?.ok || paypalFinishedRef.current) return;
-      void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+      if (paypalFinishedRef.current) return;
+      const detail = (ev as CustomEvent<{
+        ok?: boolean;
+        status?: string;
+        amount?: number;
+        duplicate?: boolean;
+      }>).detail;
+      if (!detail) return;
+      try { sessionStorage.removeItem("kidi:paypal_done"); } catch { /* ignore */ }
+      if (detail.ok || detail.status === "ok") {
+        void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+        return;
+      }
+      paypalFinishedRef.current = true;
+      clearPendingPaypalOrder();
+      if (detail.status === "cancelled") {
+        toast.message(
+          t("wallet.topup.paypalCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+        );
+      } else if (detail.status === "pending") {
+        toast.message(
+          t("wallet.topup.paypalPendingHint", {
+            defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+          }),
+        );
+        void refresh();
+      }
+      onClose();
     };
     window.addEventListener("kidi:paypal-topup-done", onDone);
 
@@ -178,6 +203,17 @@ export function TopUpSheet({
       void import("@capacitor/browser").then(({ Browser }) => {
         const sub = Browser.addListener("browserFinished", () => {
           if (paypalFinishedRef.current) return;
+          // Prefer the server-return deep link result if already stored.
+          try {
+            if (sessionStorage.getItem("kidi:paypal_done")) {
+              clearPendingPaypalOrder();
+              paypalFinishedRef.current = true;
+              void refresh().then(() => onClose());
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
           const pending = readPendingPaypalOrder();
           if (pending) void tryCapturePendingPaypal(pending, chosenAmount);
         });
@@ -198,7 +234,7 @@ export function TopUpSheet({
 
   const startPaypal = async () => {
     setStep({ kind: "loading" });
-    const created = await createPaypalTopup(chosenAmount);
+    const created = await createPaypalTopup(chosenAmount, { native: isNative() });
     if (!created.ok) {
       setStep({ kind: "error", message: mapPaypalTopupError(created.error, created.message) });
       return;
@@ -208,9 +244,9 @@ export function TopUpSheet({
       return;
     }
     markPendingPaypalOrder(created.orderId);
-    // Native: system browser. Return page hands off via kidiplus://paypal-return
+    // Native: system browser. Server return hands off via kidiplus://paypal-done
     // (Universal Links often fail inside SFSafariViewController).
-    // Web: same-tab redirect to /paypal-return.
+    // Web: PayPal returns to /api/paypal-topup/return then redirects home.
     if (isNative()) {
       try {
         const { Browser } = await import("@capacitor/browser");

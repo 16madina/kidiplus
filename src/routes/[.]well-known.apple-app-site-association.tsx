@@ -21,7 +21,9 @@ const AASA = {
           { '/': '/join/*', comment: 'Referral invite links' },
           { '/': '/live/*', comment: 'Shared live rooms' },
           { '/': '/open', comment: 'Email deep-link bridge' },
-          { '/': '/paypal-return', comment: 'PayPal wallet top-up return' },
+          // Do NOT claim /api/paypal-topup/return — it must stay in the
+          // system browser so the HTML can bounce via kidiplus://paypal-done.
+          { '/': '/paypal-return', comment: 'Legacy PayPal return (SPA)' },
           { '/': '/auth-callback', comment: 'OAuth return' },
           { '/': '/reset-password', comment: 'Password reset' },
         ],
