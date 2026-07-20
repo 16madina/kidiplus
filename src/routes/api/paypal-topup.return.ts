@@ -11,8 +11,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { finalizePaypalTopupOrder } from "@/lib/paypal-topup-finalize.server";
 import { publicAppOrigin } from "@/lib/paypal-public-origin";
-// Bundled URL so the Custom Tab can load the logo ( /public paths 403 on Lovable ).
-import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
+import { KIDI_LOGO_URI } from "@/components/brand/brand-logos";
 
 type DoneTone = "ok" | "warn" | "error";
 
@@ -94,10 +93,8 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const origin = publicAppOrigin(request);
-        // Vite may emit an absolute path (/assets/…) or a full URL — normalize.
-        const logoUrl = kidiPlusLogo.startsWith("http")
-          ? kidiPlusLogo
-          : `${origin}${kidiPlusLogo.startsWith("/") ? "" : "/"}${kidiPlusLogo}`;
+        // Data URI — works inside SFSafariViewController with no extra request.
+        const logoUrl = KIDI_LOGO_URI;
         const cancelled = url.searchParams.get("cancelled") === "1";
         const token = (url.searchParams.get("token") ?? "").trim();
         const preferNative = url.searchParams.get("native") === "1";

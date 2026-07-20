@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { EMAIL_CONFIG } from '@/lib/email/config'
-import kidiPlusLogo from '@/assets/img/brands/kidi-plus-logo.png'
+import { KIDI_LOGO_URI } from '@/components/brand/brand-logos'
 
 /**
  * Landing page for app download links (App Store + Play Store).
@@ -70,7 +70,7 @@ function DownloadPage() {
       }}
     >
       <img
-        src={kidiPlusLogo}
+        src={KIDI_LOGO_URI}
         alt="KIDI+"
         style={{ width: 120, height: 'auto' }}
       />

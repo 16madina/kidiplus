@@ -48,7 +48,7 @@ import {
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
 import { isNative } from "@/lib/native";
-import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
+import { KIDI_LOGO_URI } from "@/components/brand/brand-logos";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
@@ -416,10 +416,9 @@ export function TopUpSheet({
     }
   };
 
-  // Vite-bundled asset (same pattern as Live tab badge) — /public URLs 403 on Lovable.
   const logoBadge = (
     <img
-      src={kidiPlusLogo}
+      src={KIDI_LOGO_URI}
       alt="KiDi+"
       className="h-14 w-auto max-w-[220px] object-contain drop-shadow-sm"
       draggable={false}
