@@ -746,7 +746,6 @@ export type Database = {
           category: string | null
           cover_url: string | null
           currency: string
-          egress_id: string | null
           ended_at: string | null
           host_last_seen_at: string | null
           id: string
@@ -763,9 +762,6 @@ export type Database = {
           status: string
           title: string
           viewer_count: number
-          youtube_broadcast_id: string | null
-          youtube_stream_id: string | null
-          youtube_watch_url: string | null
         }
         Insert: {
           abandon_push_sent_at?: string | null
@@ -774,7 +770,6 @@ export type Database = {
           category?: string | null
           cover_url?: string | null
           currency?: string
-          egress_id?: string | null
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
@@ -791,9 +786,6 @@ export type Database = {
           status?: string
           title: string
           viewer_count?: number
-          youtube_broadcast_id?: string | null
-          youtube_stream_id?: string | null
-          youtube_watch_url?: string | null
         }
         Update: {
           abandon_push_sent_at?: string | null
@@ -802,7 +794,6 @@ export type Database = {
           category?: string | null
           cover_url?: string | null
           currency?: string
-          egress_id?: string | null
           ended_at?: string | null
           host_last_seen_at?: string | null
           id?: string
@@ -819,9 +810,6 @@ export type Database = {
           status?: string
           title?: string
           viewer_count?: number
-          youtube_broadcast_id?: string | null
-          youtube_stream_id?: string | null
-          youtube_watch_url?: string | null
         }
         Relationships: [
           {
@@ -1827,39 +1815,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      seller_youtube_connections: {
-        Row: {
-          access_token: string | null
-          access_token_expires_at: string | null
-          channel_id: string | null
-          channel_title: string | null
-          connected_at: string
-          refresh_token: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token?: string | null
-          access_token_expires_at?: string | null
-          channel_id?: string | null
-          channel_title?: string | null
-          connected_at?: string
-          refresh_token: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token?: string | null
-          access_token_expires_at?: string | null
-          channel_id?: string | null
-          channel_title?: string | null
-          connected_at?: string
-          refresh_token?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       shop_products: {
         Row: {
