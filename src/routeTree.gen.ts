@@ -31,6 +31,7 @@ import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
+import { Route as GuideReussirSesEncheresEnLiveRouteImport } from './routes/guide/reussir-ses-encheres-en-live'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
@@ -166,6 +167,12 @@ const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
   path: '/guide/what-is-live-shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuideReussirSesEncheresEnLiveRoute =
+  GuideReussirSesEncheresEnLiveRouteImport.update({
+    id: '/guide/reussir-ses-encheres-en-live',
+    path: '/guide/reussir-ses-encheres-en-live',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
@@ -321,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/guide/reussir-ses-encheres-en-live': typeof GuideReussirSesEncheresEnLiveRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
@@ -369,6 +377,7 @@ export interface FileRoutesByTo {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/guide/reussir-ses-encheres-en-live': typeof GuideReussirSesEncheresEnLiveRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
@@ -418,6 +427,7 @@ export interface FileRoutesById {
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/guide/reussir-ses-encheres-en-live': typeof GuideReussirSesEncheresEnLiveRoute
   '/guide/what-is-live-shopping': typeof GuideWhatIsLiveShoppingRoute
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
+    | '/guide/reussir-ses-encheres-en-live'
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
+    | '/guide/reussir-ses-encheres-en-live'
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
@@ -564,6 +576,7 @@ export interface FileRouteTypes {
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
     | '/email/unsubscribe'
+    | '/guide/reussir-ses-encheres-en-live'
     | '/guide/what-is-live-shopping'
     | '/join/$code'
     | '/live/$id'
@@ -613,6 +626,7 @@ export interface RootRouteChildren {
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  GuideReussirSesEncheresEnLiveRoute: typeof GuideReussirSesEncheresEnLiveRoute
   GuideWhatIsLiveShoppingRoute: typeof GuideWhatIsLiveShoppingRoute
   JoinCodeRoute: typeof JoinCodeRoute
   LiveIdRoute: typeof LiveIdRoute
@@ -784,6 +798,13 @@ declare module '@tanstack/react-router' {
       path: '/guide/what-is-live-shopping'
       fullPath: '/guide/what-is-live-shopping'
       preLoaderRoute: typeof GuideWhatIsLiveShoppingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide/reussir-ses-encheres-en-live': {
+      id: '/guide/reussir-ses-encheres-en-live'
+      path: '/guide/reussir-ses-encheres-en-live'
+      fullPath: '/guide/reussir-ses-encheres-en-live'
+      preLoaderRoute: typeof GuideReussirSesEncheresEnLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/email/unsubscribe': {
@@ -1024,6 +1045,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  GuideReussirSesEncheresEnLiveRoute: GuideReussirSesEncheresEnLiveRoute,
   GuideWhatIsLiveShoppingRoute: GuideWhatIsLiveShoppingRoute,
   JoinCodeRoute: JoinCodeRoute,
   LiveIdRoute: LiveIdRoute,
