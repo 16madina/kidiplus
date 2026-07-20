@@ -506,7 +506,10 @@
       "working": "YouTube…",
       "started": "Also live on YouTube",
       "stopped": "YouTube stream stopped",
-      "startFailed": "Could not stream to YouTube"
+      "startFailed": "Could not stream to YouTube",
+      "disclaimerTitle": "Before connecting YouTube",
+      "disclaimerBody1": "KiDi+ streams to your YouTube channel. YouTube may refuse a live based on its rules (verification, history, account restrictions).",
+      "disclaimerBody2": "If YouTube blocks the live, that is usually not a KiDi+ bug — it is a limit of the YouTube account."
     },
     "facebook": {
       "connectTitle": "Facebook",
@@ -532,7 +535,15 @@
       "working": "Facebook…",
       "started": "Also live on Facebook",
       "stopped": "Facebook stream stopped",
-      "startFailed": "Could not stream to Facebook"
+      "startFailed": "Could not stream to Facebook",
+      "disclaimerTitle": "Before connecting Facebook",
+      "disclaimerBody1": "KiDi+ streams to a Facebook Page. The Page must be allowed to go live (Meta rules: Live eligibility, account in good standing, etc.).",
+      "disclaimerBody2": "If the Page is not eligible, connection may succeed but streaming will fail. That is not a KiDi+ bug — it is a Meta limit on your Page."
+    },
+    "social": {
+      "disclaimerBody3": "Viewers on those platforms will see the video feed; clickable auctions stay on KiDi+.",
+      "disclaimerContinue": "Continue",
+      "disclaimerCancel": "Cancel"
     }
   },
   "golive": {

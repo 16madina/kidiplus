@@ -378,6 +378,69 @@ function BroadcastFlow() {
     }
   }, [user, profile, setHost, setCurrency]);
 
+  // After Facebook/YouTube OAuth, restore setup screen (SPA remounts on `/`).
+  useEffect(() => {
+    let cancelled = false;
+    void import("@/lib/broadcast-oauth-return").then(
+      ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+        if (cancelled) return;
+        let shouldRestore = false;
+        try {
+          const u = new URL(window.location.href);
+          if (u.searchParams.get("golive") === "setup") {
+            shouldRestore = true;
+            u.searchParams.delete("golive");
+            // Keep facebook=/youtube= flags for connect cards to toast.
+            window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+          }
+        } catch {
+          /* ignore */
+        }
+        const stashed = takeBroadcastOAuthReturn();
+        if (stashed?.stage === "setup" || stashed?.stage === "live" || shouldRestore) {
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // Only on mount after OAuth return
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Native deep-link return while the Live tab is already mounted.
+  useEffect(() => {
+    const onFb = () => {
+      void import("@/lib/broadcast-oauth-return").then(
+        ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+          const stashed = takeBroadcastOAuthReturn();
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        },
+      );
+    };
+    const onYt = () => {
+      void import("@/lib/broadcast-oauth-return").then(
+        ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+          const stashed = takeBroadcastOAuthReturn();
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        },
+      );
+    };
+    window.addEventListener("kidi:facebook-connected", onFb);
+    window.addEventListener("kidi:youtube-connected", onYt);
+    return () => {
+      window.removeEventListener("kidi:facebook-connected", onFb);
+      window.removeEventListener("kidi:youtube-connected", onYt);
+    };
+  }, [goSetup, goLive]);
+
   const endAllOpen = async () => {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");

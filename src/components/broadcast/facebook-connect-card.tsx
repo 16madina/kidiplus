@@ -3,7 +3,15 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import {
+  SocialConnectDisclaimerDialog,
+  useSocialConnectDisclaimer,
+} from "@/components/broadcast/social-connect-disclaimer";
 import { haptic } from "@/lib/haptics";
+import {
+  broadcastOAuthReturnPath,
+  stashBroadcastOAuthReturn,
+} from "@/lib/broadcast-oauth-return";
 import {
   connectFacebook,
   disconnectFacebook,
@@ -23,6 +31,7 @@ export function FacebookConnectCard() {
   const [busy, setBusy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pages, setPages] = useState<FacebookPageOption[]>([]);
+  const disclaimer = useSocialConnectDisclaimer();
 
   const refresh = useCallback(async () => {
     try {
@@ -102,12 +111,13 @@ export function FacebookConnectCard() {
     };
   }, [pickerOpen]);
 
-  const onConnect = async () => {
+  const runConnect = async () => {
     if (busy) return;
     setBusy(true);
     haptic.selection();
+    stashBroadcastOAuthReturn("setup");
     try {
-      await connectFacebook(window.location.pathname || "/");
+      await connectFacebook(broadcastOAuthReturnPath("facebook"));
     } catch (e) {
       toast.error(
         e instanceof Error
@@ -117,6 +127,13 @@ export function FacebookConnectCard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onConnect = () => {
+    if (busy) return;
+    disclaimer.requestConnect(() => {
+      void runConnect();
+    });
   };
 
   const onDisconnect = async () => {
@@ -230,7 +247,7 @@ export function FacebookConnectCard() {
             disabled={busy || status === null}
             onClick={() => {
               if (connected) void onDisconnect();
-              else void onConnect();
+              else onConnect();
             }}
             className="!min-h-8 shrink-0 rounded-full px-3 text-[11px] font-bold"
             style={{
@@ -247,6 +264,13 @@ export function FacebookConnectCard() {
           </Press>
         </div>
       </div>
+
+      <SocialConnectDisclaimerDialog
+        open={disclaimer.open}
+        provider="facebook"
+        onConfirm={disclaimer.confirm}
+        onCancel={disclaimer.cancel}
+      />
 
       <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)} heightPercent={55}>
         <div className="flex h-full min-h-0 flex-col px-4 pb-6">

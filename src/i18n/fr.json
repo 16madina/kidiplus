@@ -506,7 +506,10 @@
       "working": "YouTube…",
       "started": "En direct aussi sur YouTube",
       "stopped": "Diffusion YouTube arrêtée",
-      "startFailed": "Impossible de diffuser sur YouTube"
+      "startFailed": "Impossible de diffuser sur YouTube",
+      "disclaimerTitle": "Avant de connecter YouTube",
+      "disclaimerBody1": "KiDi+ diffuse vers ta chaîne YouTube. YouTube peut refuser un live selon ses règles (vérification, historique, restrictions du compte).",
+      "disclaimerBody2": "Si YouTube bloque le live, ce n’est en général pas un bug KiDi+ — c’est une limite du compte YouTube."
     },
     "facebook": {
       "connectTitle": "Facebook",
@@ -532,7 +535,15 @@
       "working": "Facebook…",
       "started": "En direct aussi sur Facebook",
       "stopped": "Diffusion Facebook arrêtée",
-      "startFailed": "Impossible de diffuser sur Facebook"
+      "startFailed": "Impossible de diffuser sur Facebook",
+      "disclaimerTitle": "Avant de connecter Facebook",
+      "disclaimerBody1": "KiDi+ diffuse vers une Page Facebook. La Page doit être autorisée à faire des lives (règles Meta : éligibilité Live, compte en règle, etc.).",
+      "disclaimerBody2": "Si la Page n’est pas éligible, la connexion peut réussir mais la diffusion échouera. Ce n’est pas un bug KiDi+ — c’est une limite Meta sur ta Page."
+    },
+    "social": {
+      "disclaimerBody3": "Les viewers sur ces plateformes verront le flux vidéo ; les enchères cliquables restent sur KiDi+.",
+      "disclaimerContinue": "Continuer",
+      "disclaimerCancel": "Annuler"
     }
   },
   "golive": {

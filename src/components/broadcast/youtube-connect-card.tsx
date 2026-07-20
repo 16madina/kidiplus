@@ -2,7 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
+import {
+  SocialConnectDisclaimerDialog,
+  useSocialConnectDisclaimer,
+} from "@/components/broadcast/social-connect-disclaimer";
 import { haptic } from "@/lib/haptics";
+import {
+  broadcastOAuthReturnPath,
+  stashBroadcastOAuthReturn,
+} from "@/lib/broadcast-oauth-return";
 import {
   connectYoutube,
   disconnectYoutube,
@@ -17,6 +25,7 @@ export function YoutubeConnectCard() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<YoutubeStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const disclaimer = useSocialConnectDisclaimer();
 
   const refresh = useCallback(async () => {
     try {
@@ -66,12 +75,13 @@ export function YoutubeConnectCard() {
     }
   }, [refresh, t]);
 
-  const onConnect = async () => {
+  const runConnect = async () => {
     if (busy) return;
     setBusy(true);
     haptic.selection();
+    stashBroadcastOAuthReturn("setup");
     try {
-      await connectYoutube(window.location.pathname || "/");
+      await connectYoutube(broadcastOAuthReturnPath("youtube"));
     } catch (e) {
       toast.error(
         e instanceof Error
@@ -81,6 +91,13 @@ export function YoutubeConnectCard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onConnect = () => {
+    if (busy) return;
+    disclaimer.requestConnect(() => {
+      void runConnect();
+    });
   };
 
   const onDisconnect = async () => {
@@ -107,6 +124,7 @@ export function YoutubeConnectCard() {
   const connected = !!status?.connected;
 
   return (
+    <>
     <div
       className="flex w-full items-center justify-between rounded-2xl px-4 py-3"
       style={{
@@ -136,7 +154,7 @@ export function YoutubeConnectCard() {
         disabled={busy || status === null}
         onClick={() => {
           if (connected) void onDisconnect();
-          else void onConnect();
+          else onConnect();
         }}
         className="!min-h-8 shrink-0 rounded-full px-3 text-[11px] font-bold"
         style={{
@@ -152,5 +170,12 @@ export function YoutubeConnectCard() {
             : t("broadcast.youtube.connect", "Connecter")}
       </Press>
     </div>
+    <SocialConnectDisclaimerDialog
+      open={disclaimer.open}
+      provider="youtube"
+      onConfirm={disclaimer.confirm}
+      onCancel={disclaimer.cancel}
+    />
+    </>
   );
 }
