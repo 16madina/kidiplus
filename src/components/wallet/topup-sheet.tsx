@@ -416,6 +416,14 @@ export function TopUpSheet({
     }
   };
 
+  const logoBadge = (
+    <img
+      src={kidiLogoBadge.url}
+      alt="KiDi+"
+      className="h-16 w-auto object-contain drop-shadow-sm"
+    />
+  );
+
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={82}>
       <div className="relative flex h-full flex-col px-5 pb-5 pt-2">
@@ -429,14 +437,13 @@ export function TopUpSheet({
               exit={{ opacity: 0 }}
               className="flex flex-1 flex-col items-center justify-center gap-3"
             >
-              <motion.img
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05, duration: 0.25 }}
-                src={kidiLogoBadge.url}
-                alt="KiDi+"
-                className="mb-1 h-16 w-auto object-contain"
-              />
+              >
+                {logoBadge}
+              </motion.div>
               <motion.div
                 initial={{ scale: 0.4 }}
                 animate={{ scale: 1 }}
