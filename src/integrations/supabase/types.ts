@@ -748,6 +748,9 @@ export type Database = {
           currency: string
           egress_id: string | null
           ended_at: string | null
+          facebook_egress_id: string | null
+          facebook_live_video_id: string | null
+          facebook_watch_url: string | null
           host_last_seen_at: string | null
           id: string
           ingress_id: string | null
@@ -776,6 +779,9 @@ export type Database = {
           currency?: string
           egress_id?: string | null
           ended_at?: string | null
+          facebook_egress_id?: string | null
+          facebook_live_video_id?: string | null
+          facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
           ingress_id?: string | null
@@ -804,6 +810,9 @@ export type Database = {
           currency?: string
           egress_id?: string | null
           ended_at?: string | null
+          facebook_egress_id?: string | null
+          facebook_live_video_id?: string | null
+          facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
           ingress_id?: string | null
@@ -1775,6 +1784,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seller_facebook_connections: {
+        Row: {
+          connected_at: string
+          page_access_token: string | null
+          page_id: string | null
+          page_name: string | null
+          updated_at: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at: string | null
+        }
+        Insert: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at?: string | null
+        }
+        Update: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token?: string
+          user_id?: string
+          user_token_expires_at?: string | null
+        }
+        Relationships: []
       }
       seller_reviews: {
         Row: {
