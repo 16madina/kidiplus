@@ -46,6 +46,20 @@ export const Route = createFileRoute("/support")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/support" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_ITEMS.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        }),
+      },
+    ],
   }),
 });
 
