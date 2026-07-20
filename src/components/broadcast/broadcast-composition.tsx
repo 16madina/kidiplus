@@ -323,10 +323,23 @@ export function BroadcastComposition({
                       className="font-bold"
                       style={{ color: c.color || "oklch(0.85 0.12 85)" }}
                     >
-                      {c.isHost
-                        ? `${c.user} [HOST]`
-                        : c.user}
-                    </span>{" "}
+                      {c.isHost ? `${c.user} [HOST]` : c.user}
+                    </span>
+                    {c.source === "youtube" ? (
+                      <span
+                        className="ml-1 inline-flex rounded px-1 py-px text-[9px] font-black text-white"
+                        style={{ background: "oklch(0.55 0.22 25)" }}
+                      >
+                        YT
+                      </span>
+                    ) : c.source === "facebook" ? (
+                      <span
+                        className="ml-1 inline-flex rounded px-1 py-px text-[9px] font-black text-white"
+                        style={{ background: "oklch(0.5 0.14 260)" }}
+                      >
+                        FB
+                      </span>
+                    ) : null}{" "}
                     <span className="text-white/95">{c.text}</span>
                   </p>
                 )}

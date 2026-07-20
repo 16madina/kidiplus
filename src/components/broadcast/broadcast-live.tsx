@@ -63,6 +63,10 @@ import { AUCTION_EXTENSION_WINDOW_SECONDS, AUCTION_EXTENSION_RESET_SECONDS } fro
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
+import {
+  replyOnSocialPlatforms,
+  useSocialChatBridge,
+} from "@/lib/social-chat-bridge";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const { t, i18n } = useTranslation();
@@ -717,6 +721,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.success();
     toast.success(t("live.productAdded", "Produit ajouté"));
   };
+  useSocialChatBridge({
+    liveId: b.liveId,
+    enabledYoutube: ytRestreaming,
+    enabledFacebook: fbRestreaming,
+    room,
+  });
+
   const chatMessages: ChatMsg[] = room.chat
     .filter((c) => !c.userId || !chatMutes.has(c.userId))
     .map((c) => ({
@@ -728,6 +739,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       systemKind: c.systemKind,
       userId: c.userId,
       replyTo: c.replyTo,
+      source: c.source,
+      externalId: c.externalId,
       isModerator:
         !!c.isModerator ||
         (!!c.userId && moderators.some((m) => m.userId === c.userId)),
@@ -739,16 +752,33 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const sendHostChat = () => {
     const txt = hostDraft.trim();
     if (!txt) return;
+    const replyTarget = hostReplyTo;
     room.sendChat(
       txt,
-      hostReplyTo
+      replyTarget
         ? {
-            user: hostReplyTo.user,
-            text: hostReplyTo.text,
-            ...(hostReplyTo.userId ? { userId: hostReplyTo.userId } : {}),
+            user: replyTarget.user,
+            text: replyTarget.text,
+            ...(replyTarget.userId ? { userId: replyTarget.userId } : {}),
           }
         : undefined,
     );
+    // Mirror host replies onto active social restreams so YT/FB viewers see them.
+    if (b.liveId && (ytRestreaming || fbRestreaming)) {
+      const src = replyTarget?.source;
+      void replyOnSocialPlatforms({
+        liveId: b.liveId,
+        text: txt,
+        source:
+          src === "youtube" || src === "facebook"
+            ? src
+            : "all",
+        parentExternalId:
+          src === "facebook" ? replyTarget?.externalId : undefined,
+      }).catch((e) => {
+        console.warn("[social-chat] mirror reply failed", e);
+      });
+    }
     setHostDraft("");
     setHostReplyTo(null);
     haptic.light();

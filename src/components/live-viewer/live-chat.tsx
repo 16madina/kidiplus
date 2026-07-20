@@ -409,6 +409,21 @@ const ChatBubble = memo(function ChatBubble({
         <span className="font-semibold" style={{ color: msg.color }}>
           {msg.user}
         </span>
+        {msg.source === "youtube" ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-white"
+            style={{ backgroundColor: "oklch(0.55 0.22 25)" }}
+          >
+            YT
+          </span>
+        ) : msg.source === "facebook" ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-white"
+            style={{ backgroundColor: "oklch(0.5 0.14 260)" }}
+          >
+            FB
+          </span>
+        ) : null}
         {msg.isHost ? (
           <span
             className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-black"

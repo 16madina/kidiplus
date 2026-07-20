@@ -53,6 +53,8 @@ export type ChatReplyTo = {
   text: string;
 };
 
+export type ChatSource = "kidi" | "youtube" | "facebook";
+
 export type ChatEvt = {
   id: string;
   user: string;
@@ -67,6 +69,10 @@ export type ChatEvt = {
   isModerator?: boolean;
   /** True when the sender is the live host. */
   isHost?: boolean;
+  /** Origin when repatriated from YouTube / Facebook live chat. */
+  source?: ChatSource;
+  /** Stable platform message id for dedupe + reply. */
+  externalId?: string;
   /** Optional reply target (TikTok-style quote). */
   replyTo?: ChatReplyTo;
 };
@@ -137,6 +143,11 @@ export type LiveRoomState = {
   } | null;
   lastGift: GiftEvt | null;
   sendChat: (text: string, replyTo?: ChatReplyTo) => void;
+  /**
+   * Inject a repatriated YouTube/Facebook comment into the room chat
+   * (host bridge). Dedupes by `id` / `externalId`.
+   */
+  ingestExternalChat: (evt: ChatEvt) => void;
   sendHeart: () => void;
   /** Pass `id` = RPC `gift_id` so anim/chat stay in sync with the DB backup feed. */
   broadcastGift: (evt: {
@@ -419,9 +430,13 @@ export function useLiveRoom(params: {
 
     ch.on("broadcast", { event: "chat" }, ({ payload }) => {
       const p = payload as ChatEvt;
+      if (!p?.id || !p.text) return;
       setChat((prev) => {
+        if (prev.some((m) => m.id === p.id || (p.externalId && m.externalId === p.externalId))) {
+          return prev;
+        }
         const next = [...prev, p];
-        return next.length > 60 ? next.slice(next.length - 60) : next;
+        return next.length > 80 ? next.slice(next.length - 80) : next;
       });
     });
     ch.on("broadcast", { event: "join" }, ({ payload }) => {
@@ -685,14 +700,36 @@ export function useLiveRoom(params: {
           user: displayName,
           color: colorFor(identity),
           text: trimmed,
+          source: "kidi",
           ...(UUID_RE.test(identity) ? { userId: identity } : {}),
           ...(isModerator && !isHost ? { isModerator: true } : {}),
           ...(isHost ? { isHost: true } : {}),
           ...(reply ? { replyTo: reply } : {}),
         };
         // Optimistic local echo + broadcast to others.
-        setChat((prev) => [...prev, evt].slice(-60));
+        setChat((prev) => [...prev, evt].slice(-80));
         void channelRef.current?.send({ type: "broadcast", event: "chat", payload: evt });
+      },
+      ingestExternalChat: (evt: ChatEvt) => {
+        if (!evt?.id || !evt.text?.trim()) return;
+        setChat((prev) => {
+          if (
+            prev.some(
+              (m) =>
+                m.id === evt.id ||
+                (!!evt.externalId && m.externalId === evt.externalId),
+            )
+          ) {
+            return prev;
+          }
+          const next = [...prev, evt];
+          return next.length > 80 ? next.slice(next.length - 80) : next;
+        });
+        void channelRef.current?.send({
+          type: "broadcast",
+          event: "chat",
+          payload: evt,
+        });
       },
       sendHeart: () => {
         setHeartTick((n) => n + 1); // local

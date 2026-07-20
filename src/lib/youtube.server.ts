@@ -418,6 +418,141 @@ export async function promoteYoutubeBroadcastWhenStreamActive(opts: {
   console.warn("[youtube] stream never became active within wait window");
 }
 
+export type YoutubeChatMessage = {
+  id: string;
+  authorName: string;
+  text: string;
+  publishedAt: string;
+};
+
+export async function fetchYoutubeLiveChatId(
+  accessToken: string,
+  broadcastId: string,
+): Promise<string | null> {
+  const u = new URL(`${YT_API}/liveBroadcasts`);
+  u.searchParams.set("part", "snippet");
+  u.searchParams.set("id", broadcastId);
+  const res = await fetch(u.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    items?: Array<{ snippet?: { liveChatId?: string } }>;
+  };
+  return data.items?.[0]?.snippet?.liveChatId ?? null;
+}
+
+export async function pollYoutubeLiveChat(opts: {
+  accessToken: string;
+  liveChatId: string;
+  pageToken?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      messages: YoutubeChatMessage[];
+      nextPageToken: string | null;
+      pollingIntervalMs: number;
+    }
+  | { ok: false; error: string }
+> {
+  const u = new URL(`${YT_API}/liveChat/messages`);
+  u.searchParams.set("liveChatId", opts.liveChatId);
+  u.searchParams.set("part", "snippet,authorDetails");
+  u.searchParams.set("maxResults", "50");
+  if (opts.pageToken) u.searchParams.set("pageToken", opts.pageToken);
+
+  const res = await fetch(u.toString(), {
+    headers: { Authorization: `Bearer ${opts.accessToken}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    items?: Array<{
+      id?: string;
+      snippet?: {
+        type?: string;
+        displayMessage?: string;
+        publishedAt?: string;
+        textMessageDetails?: { messageText?: string };
+      };
+      authorDetails?: { displayName?: string };
+    }>;
+    nextPageToken?: string;
+    pollingIntervalMillis?: number;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.error?.message || `youtube_chat_${res.status}`,
+    };
+  }
+
+  const messages: YoutubeChatMessage[] = [];
+  for (const item of data.items ?? []) {
+    if (!item.id) continue;
+    const type = item.snippet?.type;
+    // Keep plain text (+ treat missing type as text); skip stickers / memberships.
+    if (type && type !== "textMessageEvent" && type !== "superChatEvent") {
+      continue;
+    }
+    const text = (
+      item.snippet?.textMessageDetails?.messageText ||
+      item.snippet?.displayMessage ||
+      ""
+    ).trim();
+    if (!text) continue;
+    messages.push({
+      id: item.id,
+      authorName: item.authorDetails?.displayName?.trim() || "YouTube",
+      text: text.slice(0, 500),
+      publishedAt: item.snippet?.publishedAt || new Date().toISOString(),
+    });
+  }
+
+  return {
+    ok: true,
+    messages,
+    nextPageToken: data.nextPageToken ?? null,
+    pollingIntervalMs:
+      typeof data.pollingIntervalMillis === "number"
+        ? Math.max(3000, data.pollingIntervalMillis)
+        : 5000,
+  };
+}
+
+export async function postYoutubeLiveChatMessage(opts: {
+  accessToken: string;
+  liveChatId: string;
+  text: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const text = opts.text.trim().slice(0, 200);
+  if (!text) return { ok: false, error: "empty_message" };
+
+  const res = await fetch(`${YT_API}/liveChat/messages?part=snippet`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      snippet: {
+        liveChatId: opts.liveChatId,
+        type: "textMessageEvent",
+        textMessageDetails: { messageText: text },
+      },
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string };
+  };
+  if (!res.ok || !data.id) {
+    return {
+      ok: false,
+      error: data.error?.message || `youtube_chat_post_${res.status}`,
+    };
+  }
+  return { ok: true, id: data.id };
+}
+
 /** Load connection + ensure a valid access token (refresh if needed). */
 export async function getValidYoutubeAccessToken(
   userId: string,

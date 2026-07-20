@@ -58,6 +58,8 @@ import { Route as ApiPaypalTopupReturnRouteImport } from './routes/api/paypal-to
 import { Route as ApiPublicAppVersionRouteImport } from './routes/api/public/app-version'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
+import { Route as ApiSocialChatPollRouteImport } from './routes/api/social-chat/poll'
+import { Route as ApiSocialChatReplyRouteImport } from './routes/api/social-chat/reply'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/disconnect'
 import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
@@ -321,6 +323,16 @@ const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   path: '/api/public/paypal-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSocialChatPollRoute = ApiSocialChatPollRouteImport.update({
+  id: '/api/social-chat/poll',
+  path: '/api/social-chat/poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSocialChatReplyRoute = ApiSocialChatReplyRouteImport.update({
+  id: '/api/social-chat/reply',
+  path: '/api/social-chat/reply',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
@@ -436,6 +448,8 @@ export interface FileRoutesByFullPath {
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
+  '/api/social-chat/poll': typeof ApiSocialChatPollRoute
+  '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -499,6 +513,8 @@ export interface FileRoutesByTo {
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
+  '/api/social-chat/poll': typeof ApiSocialChatPollRoute
+  '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -563,6 +579,8 @@ export interface FileRoutesById {
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
+  '/api/social-chat/poll': typeof ApiSocialChatPollRoute
+  '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -628,6 +646,8 @@ export interface FileRouteTypes {
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
+    | '/api/social-chat/poll'
+    | '/api/social-chat/reply'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -691,6 +711,8 @@ export interface FileRouteTypes {
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
+    | '/api/social-chat/poll'
+    | '/api/social-chat/reply'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -754,6 +776,8 @@ export interface FileRouteTypes {
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
+    | '/api/social-chat/poll'
+    | '/api/social-chat/reply'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -815,6 +839,8 @@ export interface RootRouteChildren {
   ApiPublicAppVersionRoute: typeof ApiPublicAppVersionRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
+  ApiSocialChatPollRoute: typeof ApiSocialChatPollRoute
+  ApiSocialChatReplyRoute: typeof ApiSocialChatReplyRoute
   ApiYoutubeDisconnectRoute: typeof ApiYoutubeDisconnectRoute
   ApiYoutubeRestreamRoute: typeof ApiYoutubeRestreamRoute
   ApiYoutubeStatusRoute: typeof ApiYoutubeStatusRoute
@@ -1173,6 +1199,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/social-chat/poll': {
+      id: '/api/social-chat/poll'
+      path: '/api/social-chat/poll'
+      fullPath: '/api/social-chat/poll'
+      preLoaderRoute: typeof ApiSocialChatPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social-chat/reply': {
+      id: '/api/social-chat/reply'
+      path: '/api/social-chat/reply'
+      fullPath: '/api/social-chat/reply'
+      preLoaderRoute: typeof ApiSocialChatReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/wallet-topup/confirm': {
       id: '/api/wallet-topup/confirm'
       path: '/confirm'
@@ -1346,6 +1386,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAppVersionRoute: ApiPublicAppVersionRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
+  ApiSocialChatPollRoute: ApiSocialChatPollRoute,
+  ApiSocialChatReplyRoute: ApiSocialChatReplyRoute,
   ApiYoutubeDisconnectRoute: ApiYoutubeDisconnectRoute,
   ApiYoutubeRestreamRoute: ApiYoutubeRestreamRoute,
   ApiYoutubeStatusRoute: ApiYoutubeStatusRoute,

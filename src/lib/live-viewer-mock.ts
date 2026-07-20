@@ -32,6 +32,8 @@ const MESSAGES = [
 
 const rand = (n: number) => Math.floor(Math.random() * n);
 
+export type ChatSource = "kidi" | "youtube" | "facebook";
+
 export type ChatMsg = {
   id: string;
   user: string;
@@ -44,6 +46,10 @@ export type ChatMsg = {
   userId?: string;
   isModerator?: boolean;
   isHost?: boolean;
+  /** Origin platform when the line was repatriated from social restream. */
+  source?: ChatSource;
+  /** Platform message id (YouTube / Facebook) for reply + dedupe. */
+  externalId?: string;
   replyTo?: {
     user: string;
     userId?: string;

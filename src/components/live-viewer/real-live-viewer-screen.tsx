@@ -326,6 +326,8 @@ export function RealLiveViewerScreen() {
           user: c.user,
           color: c.color,
           text: c.text,
+          source: c.source,
+          externalId: c.externalId,
           system: c.system,
           systemKind: c.systemKind,
           userId: c.userId,

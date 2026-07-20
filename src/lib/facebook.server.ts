@@ -341,6 +341,96 @@ export async function endFacebookLiveVideo(
   }
 }
 
+export type FacebookChatMessage = {
+  id: string;
+  authorName: string;
+  text: string;
+  createdTime: string;
+};
+
+/** Newest-first comments on a Live Video; client dedupes by id. */
+export async function pollFacebookLiveComments(opts: {
+  liveVideoId: string;
+  pageAccessToken: string;
+}): Promise<
+  | { ok: true; messages: FacebookChatMessage[] }
+  | { ok: false; error: string }
+> {
+  const u = new URL(
+    `${GRAPH}/${encodeURIComponent(opts.liveVideoId)}/comments`,
+  );
+  u.searchParams.set("order", "reverse_chronological");
+  u.searchParams.set("filter", "stream");
+  u.searchParams.set("fields", "id,from,message,created_time");
+  u.searchParams.set("limit", "30");
+  u.searchParams.set("access_token", opts.pageAccessToken);
+
+  const res = await fetch(u.toString());
+  const data = (await res.json().catch(() => ({}))) as {
+    data?: Array<{
+      id?: string;
+      message?: string;
+      created_time?: string;
+      from?: { name?: string; id?: string };
+    }>;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.error?.message || `facebook_comments_${res.status}`,
+    };
+  }
+
+  const messages: FacebookChatMessage[] = [];
+  for (const row of data.data ?? []) {
+    const text = (row.message ?? "").trim();
+    if (!row.id || !text) continue;
+    messages.push({
+      id: row.id,
+      authorName: row.from?.name?.trim() || "Facebook",
+      text: text.slice(0, 500),
+      createdTime: row.created_time || new Date().toISOString(),
+    });
+  }
+  // Return chronological (oldest → newest) for stable ingest order.
+  messages.reverse();
+  return { ok: true, messages };
+}
+
+export async function postFacebookLiveComment(opts: {
+  /** Live video id, or a parent comment id to reply. */
+  objectId: string;
+  pageAccessToken: string;
+  text: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const text = opts.text.trim().slice(0, 8000);
+  if (!text) return { ok: false, error: "empty_message" };
+
+  const res = await fetch(
+    `${GRAPH}/${encodeURIComponent(opts.objectId)}/comments`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        message: text,
+        access_token: opts.pageAccessToken,
+      }),
+    },
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string };
+  };
+  if (!res.ok || !data.id) {
+    return {
+      ok: false,
+      error: data.error?.message || `facebook_comment_post_${res.status}`,
+    };
+  }
+  return { ok: true, id: data.id };
+}
+
 export async function getFacebookConnection(userId: string): Promise<
   | {
       ok: true;
