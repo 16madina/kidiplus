@@ -1,10 +1,8 @@
-// BrandBadge — payment-brand icons.
-// Wave: opaque PNG via Vite import (same pattern as Live tab badge) — tests
-// whether a solid-background image loads when transparent/data: URIs failed.
-// Others: inline React SVG (CSP-safe, no <img data:>).
+// BrandBadge — payment-brand icons as INLINE React SVG only.
+// PNG / data: <img> URLs fail on Lovable (Wave stayed a black square).
+// Orange arrow + Djamo wordmark already work this way — Wave matches that.
 
 import type { ReactNode } from "react";
-import waveOpaqueUrl from "@/assets/img/brands/wave-opaque.png";
 
 export type BrandKey = "wave" | "orange" | "djamo" | "card" | "paypal";
 
@@ -33,6 +31,7 @@ function Shell({
         lineHeight: 0,
         borderRadius: Math.round(size * 0.26),
         overflow: "hidden",
+        backgroundColor: "transparent",
       }}
       aria-hidden="true"
     >
@@ -41,37 +40,52 @@ function Shell({
   );
 }
 
+/** Wave — solid cyan plate + penguin (same technique as Djamo, which works). */
 function WaveMark({ size }: { size: number }) {
-  // Solid cyan background PNG (no transparency) — Vite hashed /assets/… URL.
   return (
-    <img
-      src={waveOpaqueUrl}
-      alt=""
+    <svg
       width={size}
       height={size}
-      draggable={false}
-      style={{
-        width: size,
-        height: size,
-        objectFit: "cover",
-        display: "block",
-        backgroundColor: "#1DC8FF",
-      }}
-    />
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: "block", backgroundColor: "#1DC8FF" }}
+    >
+      <rect width="48" height="48" rx="12" fill="#1DC8FF" />
+      {/* body */}
+      <ellipse cx="24" cy="25.5" rx="12" ry="14" fill="#0B1220" />
+      {/* belly */}
+      <ellipse cx="24" cy="28" rx="7.5" ry="9" fill="#FFFFFF" />
+      {/* eyes */}
+      <circle cx="19.8" cy="21.5" r="2.6" fill="#FFFFFF" />
+      <circle cx="28.2" cy="21.5" r="2.6" fill="#FFFFFF" />
+      {/* beak */}
+      <path d="M22.2 25.2h3.6L24 27.6 22.2 25.2Z" fill="#FF8A00" />
+      {/* feet */}
+      <ellipse cx="18.8" cy="38.8" rx="3.6" ry="1.8" fill="#FF8A00" />
+      <ellipse cx="29.2" cy="38.8" rx="3.6" ry="1.8" fill="#FF8A00" />
+      {/* waving wing (left) */}
+      <path
+        d="M12.5 23c-3.2-1.4-5.2-4-5.5-6.8-.2-1.4 1-1.9 1.8-1 1.8 2 4 4 6.8 5.2L12.5 23Z"
+        fill="#0B1220"
+      />
+      {/* wing tip highlight */}
+      <circle cx="8.2" cy="16.2" r="1.4" fill="#0B1220" />
+    </svg>
   );
 }
 
 function OrangeMark({ size }: { size: number }) {
+  // Light warm plate so the badge reads as a square (white on white looked like “only an arrow”).
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="12" fill="#FFFFFF" />
-      <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#EEEEEE" />
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ display: "block" }}>
+      <rect width="48" height="48" rx="12" fill="#FFF4E8" />
       <g transform="translate(24 24) rotate(-135) translate(-24 -24)">
-        <path d="M24 11v20" stroke="#FF7900" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M24 11v20" stroke="#FF7900" strokeWidth="6" strokeLinecap="round" />
         <path
-          d="M15.5 22.5 24 31l8.5-8.5"
+          d="M15 22.5 24 31.5 33 22.5"
           stroke="#FF7900"
-          strokeWidth="5.5"
+          strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
