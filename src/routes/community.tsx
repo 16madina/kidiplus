@@ -16,6 +16,34 @@ export const Route = createFileRoute("/community")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://kidiplus.com/community" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "Directives de la communauté — KiDi+",
+          description:
+            "Directives de la communauté KiDi+ : interdits, bonnes pratiques, conséquences, signalements.",
+          inLanguage: "fr",
+          mainEntityOfPage: "https://kidiplus.com/community",
+          image: "https://kidiplus.com/icon-512.png",
+          datePublished: "2025-01-01",
+          dateModified: "2026-07-10",
+          author: { "@type": "Organization", name: "KiDi+", url: "https://kidiplus.com" },
+          publisher: {
+            "@type": "Organization",
+            name: "KiDi+",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://kidiplus.com/icon-512.png",
+              width: 512,
+              height: 512,
+            },
+          },
+        }),
+      },
+    ],
   }),
 });
 
