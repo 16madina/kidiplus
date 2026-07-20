@@ -13,7 +13,6 @@ export const FACEBOOK_OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
   "publish_video",
-  "pages_manage_posts",
 ].join(",");
 
 export type FacebookOAuthConfig = {
