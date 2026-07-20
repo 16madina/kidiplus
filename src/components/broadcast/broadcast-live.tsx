@@ -6,6 +6,11 @@ import {
 import { HostToolRail } from "./host-tool-rail";
 import { FiltersCarousel } from "./filters-carousel";
 import { RtmpCredentialsSheet } from "./rtmp-credentials-sheet";
+import {
+  fetchYoutubeStatus,
+  startYoutubeRestream,
+  stopYoutubeRestream,
+} from "@/lib/youtube-restream";
 import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
@@ -67,6 +72,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(!isRtmp);
   const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytRestreaming, setYtRestreaming] = useState(false);
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytWatchUrl, setYtWatchUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
@@ -93,6 +102,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
+
+  // YouTube connect status (camera live only).
+  useEffect(() => {
+    if (isRtmp) return;
+    let cancelled = false;
+    void fetchYoutubeStatus()
+      .then((s) => {
+        if (!cancelled) setYtConnected(!!s.connected);
+      })
+      .catch(() => {
+        if (!cancelled) setYtConnected(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRtmp]);
 
   // Local image fallback: if signing the storage path fails on the host, we
   // still have the original File (or absolute URL) in the broadcast context.
@@ -533,6 +558,46 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
   };
 
+  const toggleYoutubeRestream = async () => {
+    if (!b.liveId || isRtmp || ytBusy) return;
+    if (!ytConnected) {
+      toast.error(
+        t(
+          "broadcast.youtube.needConnect",
+          "Connecte YouTube dans le setup avant de diffuser",
+        ),
+      );
+      return;
+    }
+    setYtBusy(true);
+    haptic.selection();
+    try {
+      if (ytRestreaming) {
+        await stopYoutubeRestream(b.liveId);
+        setYtRestreaming(false);
+        setYtWatchUrl(null);
+        toast.success(
+          t("broadcast.youtube.stopped", "Diffusion YouTube arrêtée"),
+        );
+      } else {
+        const started = await startYoutubeRestream(b.liveId);
+        setYtRestreaming(true);
+        setYtWatchUrl(started.watchUrl);
+        toast.success(
+          t("broadcast.youtube.started", "En direct aussi sur YouTube"),
+        );
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.youtube.startFailed", "Impossible de diffuser sur YouTube"),
+      );
+    } finally {
+      setYtBusy(false);
+    }
+  };
+
   const endLive = async () => {
     haptic.success();
     b.setSession({
@@ -552,6 +617,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         })),
     });
     if (b.liveId) {
+      if (ytRestreaming || ytWatchUrl) {
+        await stopYoutubeRestream(b.liveId).catch(() => {});
+      }
       if (isRtmp || b.rtmpCreds) {
         const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
         await deleteLiveIngress(b.liveId).catch(() => {});
@@ -1162,6 +1230,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           />
         </>
       )}
+
+      {!isRtmp && (
+        <Press
+          disabled={ytBusy}
+          onClick={() => void toggleYoutubeRestream()}
+          className="!min-h-9 absolute left-3 z-30 inline-flex max-w-[70%] items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 52px)",
+            background: ytRestreaming
+              ? "linear-gradient(135deg, #ff0033, #cc0000)"
+              : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+            color: ytRestreaming ? "#fff" : "#0a0a12",
+            opacity: ytBusy ? 0.7 : 1,
+          }}
+        >
+          <Radio size={14} />
+          <span className="truncate">
+            {ytBusy
+              ? t("broadcast.youtube.working", "YouTube…")
+              : ytRestreaming
+                ? t("broadcast.youtube.liveBadge", "YouTube ON")
+                : ytConnected
+                  ? t("broadcast.youtube.goLive", "Diffuser sur YouTube")
+                  : t("broadcast.youtube.notConnected", "YouTube")}
+          </span>
+        </Press>
+      )}
+
 
 
       <LiveViewersSheet

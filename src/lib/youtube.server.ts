@@ -1,0 +1,429 @@
+/**
+ * YouTube OAuth + Live Streaming API helpers (server-only).
+ * Env: GOOGLE_YOUTUBE_CLIENT_ID, GOOGLE_YOUTUBE_CLIENT_SECRET,
+ *      YOUTUBE_OAUTH_REDIRECT_URI (optional, defaults to kidiplus.com callback).
+ */
+
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+const YT_AUTH = "https://accounts.google.com/o/oauth2/v2/auth";
+const YT_TOKEN = "https://oauth2.googleapis.com/token";
+const YT_API = "https://www.googleapis.com/youtube/v3";
+
+/** Full YouTube scope — required for Live Streaming API. */
+export const YOUTUBE_OAUTH_SCOPE = "https://www.googleapis.com/auth/youtube";
+
+export type YoutubeOAuthConfig = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+};
+
+export function getYoutubeOAuthConfig(): YoutubeOAuthConfig | null {
+  const clientId = (process.env.GOOGLE_YOUTUBE_CLIENT_ID ?? "").trim();
+  const clientSecret = (process.env.GOOGLE_YOUTUBE_CLIENT_SECRET ?? "").trim();
+  const redirectUri = (
+    process.env.YOUTUBE_OAUTH_REDIRECT_URI ??
+    "https://kidiplus.com/api/youtube/oauth/callback"
+  ).trim();
+  if (!clientId || !clientSecret) return null;
+  return { clientId, clientSecret, redirectUri };
+}
+
+export type YoutubeOAuthState = {
+  userId: string;
+  native: boolean;
+  returnPath: string;
+  exp: number;
+};
+
+function stateSecret(cfg: YoutubeOAuthConfig): string {
+  return cfg.clientSecret;
+}
+
+export function signYoutubeOAuthState(
+  payload: YoutubeOAuthState,
+  cfg: YoutubeOAuthConfig,
+): string {
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = createHmac("sha256", stateSecret(cfg)).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+export function verifyYoutubeOAuthState(
+  state: string,
+  cfg: YoutubeOAuthConfig,
+): YoutubeOAuthState | null {
+  const parts = state.split(".");
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
+  if (!body || !sig) return null;
+  const expected = createHmac("sha256", stateSecret(cfg)).update(body).digest("base64url");
+  try {
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as YoutubeOAuthState;
+    if (!parsed?.userId || typeof parsed.exp !== "number") return null;
+    if (Date.now() > parsed.exp) return null;
+    return {
+      userId: String(parsed.userId),
+      native: !!parsed.native,
+      returnPath:
+        typeof parsed.returnPath === "string" && parsed.returnPath.startsWith("/")
+          ? parsed.returnPath
+          : "/",
+      exp: parsed.exp,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function buildYoutubeAuthUrl(opts: {
+  cfg: YoutubeOAuthConfig;
+  state: string;
+}): string {
+  const u = new URL(YT_AUTH);
+  u.searchParams.set("client_id", opts.cfg.clientId);
+  u.searchParams.set("redirect_uri", opts.cfg.redirectUri);
+  u.searchParams.set("response_type", "code");
+  u.searchParams.set("scope", YOUTUBE_OAUTH_SCOPE);
+  u.searchParams.set("access_type", "offline");
+  u.searchParams.set("prompt", "consent");
+  u.searchParams.set("include_granted_scopes", "true");
+  u.searchParams.set("state", opts.state);
+  return u.toString();
+}
+
+export type YoutubeTokenSet = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn: number;
+};
+
+export async function exchangeYoutubeCode(
+  code: string,
+  cfg: YoutubeOAuthConfig,
+): Promise<{ ok: true; tokens: YoutubeTokenSet } | { ok: false; error: string }> {
+  const res = await fetch(YT_TOKEN, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: cfg.clientId,
+      client_secret: cfg.clientSecret,
+      redirect_uri: cfg.redirectUri,
+      grant_type: "authorization_code",
+    }),
+  });
+  const text = await res.text();
+  let data: {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    return { ok: false, error: `youtube_token_bad_json_${res.status}` };
+  }
+  if (!res.ok || !data.access_token) {
+    return {
+      ok: false,
+      error: data.error_description || data.error || `youtube_token_${res.status}`,
+    };
+  }
+  return {
+    ok: true,
+    tokens: {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: typeof data.expires_in === "number" ? data.expires_in : 3600,
+    },
+  };
+}
+
+export async function refreshYoutubeAccessToken(
+  refreshToken: string,
+  cfg: YoutubeOAuthConfig,
+): Promise<{ ok: true; tokens: YoutubeTokenSet } | { ok: false; error: string }> {
+  const res = await fetch(YT_TOKEN, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: cfg.clientId,
+      client_secret: cfg.clientSecret,
+      grant_type: "refresh_token",
+    }),
+  });
+  const text = await res.text();
+  let data: {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+  try {
+    data = JSON.parse(text) as typeof data;
+  } catch {
+    return { ok: false, error: `youtube_refresh_bad_json_${res.status}` };
+  }
+  if (!res.ok || !data.access_token) {
+    return {
+      ok: false,
+      error: data.error_description || data.error || `youtube_refresh_${res.status}`,
+    };
+  }
+  return {
+    ok: true,
+    tokens: {
+      accessToken: data.access_token,
+      expiresIn: typeof data.expires_in === "number" ? data.expires_in : 3600,
+    },
+  };
+}
+
+export async function fetchYoutubeChannel(
+  accessToken: string,
+): Promise<
+  | { ok: true; channelId: string; channelTitle: string }
+  | { ok: false; error: string }
+> {
+  const u = new URL(`${YT_API}/channels`);
+  u.searchParams.set("part", "snippet");
+  u.searchParams.set("mine", "true");
+  const res = await fetch(u.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    items?: Array<{ id?: string; snippet?: { title?: string } }>;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    return { ok: false, error: data.error?.message || `youtube_channels_${res.status}` };
+  }
+  const item = data.items?.[0];
+  if (!item?.id) return { ok: false, error: "youtube_no_channel" };
+  return {
+    ok: true,
+    channelId: item.id,
+    channelTitle: item.snippet?.title?.trim() || "YouTube",
+  };
+}
+
+export type YoutubeLiveBundle = {
+  broadcastId: string;
+  streamId: string;
+  watchUrl: string;
+  rtmpUrl: string;
+};
+
+/**
+ * Create a YouTube live broadcast + RTMP stream, bind them, enable auto-start.
+ */
+export async function createYoutubeLiveBroadcast(opts: {
+  accessToken: string;
+  title: string;
+  privacyStatus?: "public" | "unlisted" | "private";
+}): Promise<{ ok: true; live: YoutubeLiveBundle } | { ok: false; error: string }> {
+  const title = opts.title.trim().slice(0, 100) || "KiDi+ Live";
+  const privacyStatus = opts.privacyStatus ?? "public";
+  const scheduledStartTime = new Date(Date.now() + 60_000).toISOString();
+
+  const broadcastRes = await fetch(
+    `${YT_API}/liveBroadcasts?part=snippet,status,contentDetails`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        snippet: {
+          title,
+          scheduledStartTime,
+          description: "Live shopping on KiDi+",
+        },
+        status: {
+          privacyStatus,
+          selfDeclaredMadeForKids: false,
+        },
+        contentDetails: {
+          enableAutoStart: true,
+          enableAutoStop: true,
+          monitorStream: { enableMonitorStream: false },
+        },
+      }),
+    },
+  );
+  const broadcast = (await broadcastRes.json().catch(() => ({}))) as {
+    id?: string;
+    error?: { message?: string };
+  };
+  if (!broadcastRes.ok || !broadcast.id) {
+    return {
+      ok: false,
+      error: broadcast.error?.message || `youtube_broadcast_${broadcastRes.status}`,
+    };
+  }
+
+  const streamRes = await fetch(`${YT_API}/liveStreams?part=snippet,cdn`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      snippet: { title: `${title} · stream` },
+      cdn: {
+        frameRate: "variable",
+        ingestionType: "rtmp",
+        resolution: "variable",
+      },
+    }),
+  });
+  const stream = (await streamRes.json().catch(() => ({}))) as {
+    id?: string;
+    cdn?: {
+      ingestionInfo?: {
+        ingestionAddress?: string;
+        streamName?: string;
+      };
+    };
+    error?: { message?: string };
+  };
+  if (!streamRes.ok || !stream.id) {
+    return {
+      ok: false,
+      error: stream.error?.message || `youtube_stream_${streamRes.status}`,
+    };
+  }
+
+  const ingestionAddress = stream.cdn?.ingestionInfo?.ingestionAddress ?? "";
+  const streamName = stream.cdn?.ingestionInfo?.streamName ?? "";
+  if (!ingestionAddress || !streamName) {
+    return { ok: false, error: "youtube_stream_missing_rtmp" };
+  }
+
+  const bindRes = await fetch(
+    `${YT_API}/liveBroadcasts/bind?id=${encodeURIComponent(broadcast.id)}&part=id,contentDetails&streamId=${encodeURIComponent(stream.id)}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${opts.accessToken}` },
+    },
+  );
+  if (!bindRes.ok) {
+    const bindErr = (await bindRes.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    return {
+      ok: false,
+      error: bindErr.error?.message || `youtube_bind_${bindRes.status}`,
+    };
+  }
+
+  const base = ingestionAddress.replace(/\/$/, "");
+  const rtmpUrl = `${base}/${streamName}`;
+
+  return {
+    ok: true,
+    live: {
+      broadcastId: broadcast.id,
+      streamId: stream.id,
+      watchUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
+      rtmpUrl,
+    },
+  };
+}
+
+export async function completeYoutubeBroadcast(
+  accessToken: string,
+  broadcastId: string,
+): Promise<void> {
+  if (!broadcastId) return;
+  try {
+    await fetch(
+      `${YT_API}/liveBroadcasts/transition?broadcastStatus=complete&id=${encodeURIComponent(broadcastId)}&part=status`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+  } catch (e) {
+    console.warn("[youtube] complete broadcast failed", e);
+  }
+}
+
+/** Load connection + ensure a valid access token (refresh if needed). */
+export async function getValidYoutubeAccessToken(
+  userId: string,
+): Promise<
+  | {
+      ok: true;
+      accessToken: string;
+      channelTitle: string | null;
+      refreshToken: string;
+    }
+  | { ok: false; error: string }
+> {
+  const cfg = getYoutubeOAuthConfig();
+  if (!cfg) return { ok: false, error: "youtube_not_configured" };
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: row, error } = await supabaseAdmin
+    .from("seller_youtube_connections")
+    .select(
+      "refresh_token, access_token, access_token_expires_at, channel_title",
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !row) {
+    return { ok: false, error: "youtube_not_connected" };
+  }
+
+  const expiresAt = row.access_token_expires_at
+    ? new Date(row.access_token_expires_at).getTime()
+    : 0;
+  const stillValid =
+    !!row.access_token && expiresAt > Date.now() + 60_000;
+
+  if (stillValid && row.access_token) {
+    return {
+      ok: true,
+      accessToken: row.access_token,
+      channelTitle: row.channel_title,
+      refreshToken: row.refresh_token,
+    };
+  }
+
+  const refreshed = await refreshYoutubeAccessToken(row.refresh_token, cfg);
+  if (!refreshed.ok) return { ok: false, error: refreshed.error };
+
+  const newExpires = new Date(
+    Date.now() + refreshed.tokens.expiresIn * 1000,
+  ).toISOString();
+  await supabaseAdmin
+    .from("seller_youtube_connections")
+    .update({
+      access_token: refreshed.tokens.accessToken,
+      access_token_expires_at: newExpires,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+
+  return {
+    ok: true,
+    accessToken: refreshed.tokens.accessToken,
+    channelTitle: row.channel_title,
+    refreshToken: row.refresh_token,
+  };
+}

@@ -489,6 +489,24 @@
       "done": "I’ve set up Restream",
       "openCreds": "RTMP keys",
       "waiting": "Waiting for Restream feed…"
+    },
+    "youtube": {
+      "connectTitle": "YouTube",
+      "connectHint": "Connect your account to also stream on YouTube",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connectedAs": "Connected · {{channel}}",
+      "connectedToast": "YouTube connected",
+      "disconnectedToast": "YouTube disconnected",
+      "connectFailed": "YouTube connection failed",
+      "needConnect": "Connect YouTube in setup before streaming",
+      "goLive": "Stream to YouTube",
+      "liveBadge": "YouTube ON",
+      "notConnected": "YouTube",
+      "working": "YouTube…",
+      "started": "Also live on YouTube",
+      "stopped": "YouTube stream stopped",
+      "startFailed": "Could not stream to YouTube"
     }
   },
   "golive": {

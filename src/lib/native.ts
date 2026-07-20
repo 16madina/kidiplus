@@ -112,6 +112,27 @@ export async function bootstrapNative(): Promise<void> {
         }, 350);
       });
 
+      // YouTube OAuth return — stay on current page, refresh connect UI.
+      if (path.startsWith("/youtube-connected")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const channel = u.searchParams.get("channel");
+          window.dispatchEvent(
+            new CustomEvent("kidi:youtube-connected", {
+              detail: {
+                ok: status === "ok",
+                status,
+                channel: channel ?? undefined,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
       // PayPal server return — stay on the current WebView page (no reload).
       if (path.startsWith("/paypal-done")) {
         try {

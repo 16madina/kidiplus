@@ -489,6 +489,24 @@
       "done": "J’ai configuré Restream",
       "openCreds": "Clés RTMP",
       "waiting": "En attente du flux Restream…"
+    },
+    "youtube": {
+      "connectTitle": "YouTube",
+      "connectHint": "Connecte ton compte pour diffuser aussi sur YouTube",
+      "connect": "Connecter",
+      "disconnect": "Déconnecter",
+      "connectedAs": "Connecté · {{channel}}",
+      "connectedToast": "YouTube connecté",
+      "disconnectedToast": "YouTube déconnecté",
+      "connectFailed": "Connexion YouTube échouée",
+      "needConnect": "Connecte YouTube dans le setup avant de diffuser",
+      "goLive": "Diffuser sur YouTube",
+      "liveBadge": "YouTube ON",
+      "notConnected": "YouTube",
+      "working": "YouTube…",
+      "started": "En direct aussi sur YouTube",
+      "stopped": "Diffusion YouTube arrêtée",
+      "startFailed": "Impossible de diffuser sur YouTube"
     }
   },
   "golive": {

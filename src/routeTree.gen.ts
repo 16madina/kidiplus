@@ -53,7 +53,12 @@ import { Route as ApiPublicAppVersionRouteImport } from './routes/api/public/app
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
+import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/disconnect'
+import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
+import { Route as ApiYoutubeStatusRouteImport } from './routes/api/youtube/status'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiYoutubeOauthCallbackRouteImport } from './routes/api/youtube/oauth.callback'
+import { Route as ApiYoutubeOauthStartRouteImport } from './routes/api/youtube/oauth.start'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -282,9 +287,34 @@ const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiWalletTopupRoute,
 } as any)
+const ApiYoutubeDisconnectRoute = ApiYoutubeDisconnectRouteImport.update({
+  id: '/api/youtube/disconnect',
+  path: '/api/youtube/disconnect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiYoutubeRestreamRoute = ApiYoutubeRestreamRouteImport.update({
+  id: '/api/youtube/restream',
+  path: '/api/youtube/restream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiYoutubeStatusRoute = ApiYoutubeStatusRouteImport.update({
+  id: '/api/youtube/status',
+  path: '/api/youtube/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiYoutubeOauthCallbackRoute = ApiYoutubeOauthCallbackRouteImport.update({
+  id: '/api/youtube/oauth/callback',
+  path: '/api/youtube/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiYoutubeOauthStartRoute = ApiYoutubeOauthStartRouteImport.update({
+  id: '/api/youtube/oauth/start',
+  path: '/api/youtube/oauth/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LovableEmailQueueProcessRoute =
@@ -351,7 +381,12 @@ export interface FileRoutesByFullPath {
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
+  '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
+  '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
+  '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -401,7 +436,12 @@ export interface FileRoutesByTo {
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
+  '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
+  '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
+  '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -452,7 +492,12 @@ export interface FileRoutesById {
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
+  '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
+  '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
+  '/api/youtube/status': typeof ApiYoutubeStatusRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/youtube/oauth/callback': typeof ApiYoutubeOauthCallbackRoute
+  '/api/youtube/oauth/start': typeof ApiYoutubeOauthStartRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -504,7 +549,12 @@ export interface FileRouteTypes {
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
+    | '/api/youtube/disconnect'
+    | '/api/youtube/restream'
+    | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/youtube/oauth/callback'
+    | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -554,7 +604,12 @@ export interface FileRouteTypes {
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
+    | '/api/youtube/disconnect'
+    | '/api/youtube/restream'
+    | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/youtube/oauth/callback'
+    | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -604,7 +659,12 @@ export interface FileRouteTypes {
     | '/api/public/notifications-fanout'
     | '/api/public/paypal-webhook'
     | '/api/wallet-topup/confirm'
+    | '/api/youtube/disconnect'
+    | '/api/youtube/restream'
+    | '/api/youtube/status'
     | '/lovable/email/suppression'
+    | '/api/youtube/oauth/callback'
+    | '/api/youtube/oauth/start'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -651,7 +711,12 @@ export interface RootRouteChildren {
   ApiPublicAppVersionRoute: typeof ApiPublicAppVersionRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
+  ApiYoutubeDisconnectRoute: typeof ApiYoutubeDisconnectRoute
+  ApiYoutubeRestreamRoute: typeof ApiYoutubeRestreamRoute
+  ApiYoutubeStatusRoute: typeof ApiYoutubeStatusRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiYoutubeOauthCallbackRoute: typeof ApiYoutubeOauthCallbackRoute
+  ApiYoutubeOauthStartRoute: typeof ApiYoutubeOauthStartRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -967,11 +1032,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
       parentRoute: typeof ApiWalletTopupRoute
     }
+    '/api/youtube/disconnect': {
+      id: '/api/youtube/disconnect'
+      path: '/api/youtube/disconnect'
+      fullPath: '/api/youtube/disconnect'
+      preLoaderRoute: typeof ApiYoutubeDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/restream': {
+      id: '/api/youtube/restream'
+      path: '/api/youtube/restream'
+      fullPath: '/api/youtube/restream'
+      preLoaderRoute: typeof ApiYoutubeRestreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/status': {
+      id: '/api/youtube/status'
+      path: '/api/youtube/status'
+      fullPath: '/api/youtube/status'
+      preLoaderRoute: typeof ApiYoutubeStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
       fullPath: '/lovable/email/suppression'
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/oauth/callback': {
+      id: '/api/youtube/oauth/callback'
+      path: '/api/youtube/oauth/callback'
+      fullPath: '/api/youtube/oauth/callback'
+      preLoaderRoute: typeof ApiYoutubeOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/oauth/start': {
+      id: '/api/youtube/oauth/start'
+      path: '/api/youtube/oauth/start'
+      fullPath: '/api/youtube/oauth/start'
+      preLoaderRoute: typeof ApiYoutubeOauthStartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
@@ -1078,7 +1178,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAppVersionRoute: ApiPublicAppVersionRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
+  ApiYoutubeDisconnectRoute: ApiYoutubeDisconnectRoute,
+  ApiYoutubeRestreamRoute: ApiYoutubeRestreamRoute,
+  ApiYoutubeStatusRoute: ApiYoutubeStatusRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiYoutubeOauthCallbackRoute: ApiYoutubeOauthCallbackRoute,
+  ApiYoutubeOauthStartRoute: ApiYoutubeOauthStartRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,

@@ -18,6 +18,7 @@ export function isAllowedDeepLinkPath(pathname: string): boolean {
   if (pathname === "/auth-callback" || pathname.startsWith("/auth-callback/")) return true;
   if (pathname === "/reset-password" || pathname.startsWith("/reset-password/")) return true;
   if (pathname === "/download" || pathname.startsWith("/download/")) return true;
+  if (pathname === "/youtube-connected" || pathname.startsWith("/youtube-connected/")) return true;
   return false;
 }
 

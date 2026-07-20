@@ -35,6 +35,7 @@ import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { CoverCropperSheet } from "./cover-cropper-sheet";
+import { YoutubeConnectCard } from "./youtube-connect-card";
 
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 80;
@@ -648,6 +649,9 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           )}
         </div>
 
+
+        {/* YouTube OAuth (KiDi+ camera → YouTube) — only in camera mode */}
+        {b.streamSource !== "rtmp" && <YoutubeConnectCard />}
 
         {/* Multi-platform (Restream / OBS) */}
         <Press
