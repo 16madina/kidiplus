@@ -26,12 +26,32 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://kidiplus.com/support</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://kidiplus.com/help</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://kidiplus.com/download</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://kidiplus.com/account-deletion</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://kidiplus.com/guide/what-is-live-shopping</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://kidiplus.com/guide/reussir-ses-encheres-en-live</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
