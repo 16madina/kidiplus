@@ -1785,6 +1785,39 @@ export type Database = {
           },
         ]
       }
+      seller_facebook_connections: {
+        Row: {
+          connected_at: string
+          page_access_token: string | null
+          page_id: string | null
+          page_name: string | null
+          updated_at: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at: string | null
+        }
+        Insert: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at?: string | null
+        }
+        Update: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token?: string
+          user_id?: string
+          user_token_expires_at?: string | null
+        }
+        Relationships: []
+      }
       seller_reviews: {
         Row: {
           comment: string | null
@@ -1836,39 +1869,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      seller_facebook_connections: {
-        Row: {
-          connected_at: string
-          page_access_token: string | null
-          page_id: string | null
-          page_name: string | null
-          updated_at: string
-          user_access_token: string
-          user_id: string
-          user_token_expires_at: string | null
-        }
-        Insert: {
-          connected_at?: string
-          page_access_token?: string | null
-          page_id?: string | null
-          page_name?: string | null
-          updated_at?: string
-          user_access_token: string
-          user_id: string
-          user_token_expires_at?: string | null
-        }
-        Update: {
-          connected_at?: string
-          page_access_token?: string | null
-          page_id?: string | null
-          page_name?: string | null
-          updated_at?: string
-          user_access_token?: string
-          user_id?: string
-          user_token_expires_at?: string | null
-        }
-        Relationships: []
       }
       seller_youtube_connections: {
         Row: {
