@@ -1,8 +1,6 @@
-// BrandBadge — self-contained payment-brand icons with brand-accurate colors
-// and inline SVG marks. No external image files → guaranteed to render in
-// every context (Vite dev, published web, Capacitor iOS/Android, dark mode).
-//
-// Used in TopUpSheet and PaymentSheet method rows.
+// BrandBadge — payment-brand icons for TopUpSheet / PaymentSheet.
+// Wave, Orange Money and Djamo use real logo assets in /public/brands.
+// Card / PayPal keep compact inline SVG marks.
 
 import type { CSSProperties } from "react";
 
@@ -15,15 +13,19 @@ interface BrandBadgeProps {
 }
 
 const BG: Record<BrandKey, string> = {
-  wave: "#1DC8FF",     // Wave cyan
-  orange: "#FF7900",   // Orange corporate
-  djamo: "#4136F1",    // Djamo indigo
-  card: "#0F172A",     // neutral slate for generic card
-  paypal: "#003087",   // PayPal blue
+  wave: "transparent",
+  orange: "#0B0B0B", // Orange Money mark sits on black
+  djamo: "#4136F1", // Djamo indigo
+  card: "#0F172A",
+  paypal: "#003087",
 };
 
-// White wordmark / letter — keeps consistent contrast on any background,
-// works identically in light and dark mode.
+const LOGO_SRC: Partial<Record<BrandKey, string>> = {
+  wave: "/brands/wave.png",
+  orange: "/brands/orange-money.png",
+  djamo: "/brands/djamo.png",
+};
+
 export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
   const style: CSSProperties = {
     width: size,
@@ -31,6 +33,31 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
     backgroundColor: BG[brand],
     borderRadius: Math.round(size * 0.26),
   };
+
+  const logo = LOGO_SRC[brand];
+  if (logo) {
+    const pad =
+      brand === "wave" ? 0 : brand === "djamo" ? Math.round(size * 0.14) : Math.round(size * 0.16);
+    return (
+      <div
+        className={`grid shrink-0 place-items-center overflow-hidden ${className ?? ""}`}
+        style={style}
+        aria-hidden="true"
+      >
+        <img
+          src={logo}
+          alt=""
+          draggable={false}
+          style={{
+            width: size - pad * 2,
+            height: size - pad * 2,
+            objectFit: brand === "wave" ? "cover" : "contain",
+            display: "block",
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -43,45 +70,8 @@ export function BrandBadge({ brand, size = 48, className }: BrandBadgeProps) {
           <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
           <path d="M2.5 10h19" />
         </svg>
-      ) : brand === "wave" ? (
-        // Stylized "wave" wordmark: bold W with a subtle wave underline curve.
-        <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40" fill="none">
-          <text
-            x="20" y="24"
-            textAnchor="middle"
-            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
-            fontWeight={900}
-            fontSize={20}
-            fill="#fff"
-            letterSpacing="-0.5"
-          >W</text>
-          <path d="M8 30 Q14 26 20 30 T32 30" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" fill="none" />
-        </svg>
-      ) : brand === "orange" ? (
-        <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40" fill="none">
-          <text
-            x="20" y="27"
-            textAnchor="middle"
-            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
-            fontWeight={900}
-            fontSize={22}
-            fill="#fff"
-          >O</text>
-        </svg>
-      ) : brand === "djamo" ? (
-        // Djamo — bold D
-        <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40" fill="none">
-          <text
-            x="20" y="27"
-            textAnchor="middle"
-            fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
-            fontWeight={900}
-            fontSize={22}
-            fill="#fff"
-          >D</text>
-        </svg>
       ) : (
-        // PayPal — stylized "PP" wordmark with a subtle second-P shadow tint.
+        // PayPal — stylized "PP"
         <svg width={size * 0.78} height={size * 0.78} viewBox="0 0 40 40" fill="none">
           <text
             x="12" y="27"

@@ -18,9 +18,8 @@ import {
   payoutWeeklyCap,
   riskTierFromProfile,
 } from "@/lib/risk-limits";
+import { BrandBadge } from "@/components/brand/brand-badge";
 
-const WAVE = "#1DC8FE";
-const ORANGE = "#FF6600";
 const PAYPAL_BLUE = "#003087";
 const PAYPAL_BLUE_LIGHT = "#0070BA";
 
@@ -296,11 +295,13 @@ export function WithdrawSheet({
                 {availableMethods.map((m) => {
                   if (m === "wave") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
-                      color={WAVE} label="Wave" />
+                      color="transparent" label="Wave"
+                      icon={<BrandBadge brand="wave" size={36} />} />
                   );
                   if (m === "orange_money") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
-                      color={ORANGE} label="Orange Money" />
+                      color="transparent" label="Orange Money"
+                      icon={<BrandBadge brand="orange" size={36} />} />
                   );
                   if (m === "paypal") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
@@ -416,8 +417,8 @@ function MethodPick({
       }`}
     >
       <div
-        className="grid h-9 w-9 place-items-center rounded-xl text-white text-[13px] font-bold"
-        style={{ backgroundColor: color }}
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl text-white text-[13px] font-bold"
+        style={{ backgroundColor: color === "transparent" ? "transparent" : color }}
       >
         {icon ?? label[0]}
       </div>
