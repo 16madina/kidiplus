@@ -726,8 +726,23 @@ export function useLiveRoom(params: {
         void channelRef.current?.send({ type: "broadcast", event: "auction:extend", payload: full });
       },
       systemMessage: (text: string) => {
-        const evt: ChatEvt = { id: uid(), user: "", color: "", text, system: true };
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const evt: ChatEvt = {
+          id: uid(),
+          user: "",
+          color: "",
+          text: trimmed,
+          system: true,
+        };
         setChat((prev) => [...prev, evt].slice(-60));
+        // Broadcast so viewers + social egress see host system lines
+        // (e.g. "Mettre en vente — …"), not only the host's local chat.
+        void channelRef.current?.send({
+          type: "broadcast",
+          event: "chat",
+          payload: evt,
+        });
       },
     }),
     [
