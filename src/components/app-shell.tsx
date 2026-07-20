@@ -28,6 +28,7 @@ import { LanguageProvider } from "@/i18n/language-context";
 import { WalletProvider } from "@/lib/wallet-context";
 
 import { bootstrapNative } from "@/lib/native";
+import { NativeUpdateGate } from "@/components/native-update-gate";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { LivePipController } from "./live-viewer/live-pip-controller";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
@@ -72,6 +73,7 @@ export function AppShell() {
               <SellerProfileProvider>
                 <LiveViewerProvider>
                   <PushDeniedBanner />
+                  <NativeUpdateGate />
                   <AuthGate />
                   <AnimatePresence>
                     {!splashDone && (
