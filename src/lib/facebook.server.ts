@@ -192,6 +192,60 @@ export async function fetchFacebookPages(
   return { ok: true, pages };
 }
 
+export async function fetchFacebookTokenPermissions(
+  accessToken: string,
+): Promise<{ ok: true; granted: string[] } | { ok: false; error: string }> {
+  const u = new URL(`${GRAPH}/me/permissions`);
+  u.searchParams.set("access_token", accessToken);
+  const res = await fetch(u.toString());
+  const data = (await res.json().catch(() => ({}))) as {
+    data?: Array<{ permission?: string; status?: string }>;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.error?.message || `facebook_permissions_${res.status}`,
+    };
+  }
+  const granted = (data.data ?? [])
+    .filter((p) => p.status === "granted" && p.permission)
+    .map((p) => p.permission!);
+  return { ok: true, granted };
+}
+
+const REQUIRED_LIVE_PERMISSIONS = [
+  "pages_read_engagement",
+  "pages_manage_posts",
+  "publish_video",
+] as const;
+
+export function missingLivePermissions(granted: string[]): string[] {
+  const set = new Set(granted);
+  return REQUIRED_LIVE_PERMISSIONS.filter((p) => !set.has(p));
+}
+
+/** Refresh Page token from /me/accounts (needed after reconnect / new scopes). */
+export async function refreshPageAccessToken(opts: {
+  userAccessToken: string;
+  pageId: string;
+}): Promise<
+  | { ok: true; pageAccessToken: string; pageName: string }
+  | { ok: false; error: string }
+> {
+  const pagesRes = await fetchFacebookPages(opts.userAccessToken);
+  if (!pagesRes.ok) return { ok: false, error: pagesRes.error };
+  const page = pagesRes.pages.find((p) => p.id === opts.pageId);
+  if (!page) {
+    return { ok: false, error: "page_not_found_or_no_access" };
+  }
+  return {
+    ok: true,
+    pageAccessToken: page.accessToken,
+    pageName: page.name,
+  };
+}
+
 export type FacebookLiveBundle = {
   liveVideoId: string;
   watchUrl: string;
@@ -220,13 +274,24 @@ export async function createFacebookLiveVideo(opts: {
     stream_url?: string;
     secure_stream_url?: string;
     permalink_url?: string;
-    error?: { message?: string };
+    error?: { message?: string; code?: number; error_subcode?: number };
   };
   if (!res.ok || !data.id) {
-    return {
-      ok: false,
-      error: data.error?.message || `facebook_live_${res.status}`,
-    };
+    const raw = data.error?.message || `facebook_live_${res.status}`;
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes("permission") ||
+      lower.includes("pages_manage_posts") ||
+      lower.includes("pages_read_engagement") ||
+      data.error?.code === 200
+    ) {
+      return {
+        ok: false,
+        error:
+          `${raw} — Déconnecte Facebook dans KiDi+, reconnecte en acceptant toutes les permissions (pages_manage_posts, pages_read_engagement, publish_video), puis réessaie.`,
+      };
+    }
+    return { ok: false, error: raw };
   }
   const rtmpUrl = (data.secure_stream_url || data.stream_url || "").trim();
   if (!rtmpUrl) {

@@ -10,7 +10,10 @@ import {
 import {
   createFacebookLiveVideo,
   endFacebookLiveVideo,
+  fetchFacebookTokenPermissions,
   getFacebookConnection,
+  missingLivePermissions,
+  refreshPageAccessToken,
 } from "@/lib/facebook.server";
 
 function livekitHttpHost(url: string): string {
@@ -162,10 +165,56 @@ export const Route = createFileRoute("/api/facebook/restream")({
           );
         }
 
+        const perms = await fetchFacebookTokenPermissions(conn.userAccessToken);
+        if (perms.ok) {
+          const missing = missingLivePermissions(perms.granted);
+          if (missing.length > 0) {
+            return facebookJson(
+              {
+                error: "facebook_missing_permissions",
+                message:
+                  `Permissions Facebook manquantes : ${missing.join(", ")}. ` +
+                  `Dans Meta (KiDi+2), ajoute-les en Ready for testing, puis Déconnecte / Connecte Facebook dans KiDi+ en acceptant tout.`,
+                missing,
+              },
+              400,
+              origin,
+            );
+          }
+        }
+
+        // Always refresh Page token so new OAuth scopes apply.
+        const refreshed = await refreshPageAccessToken({
+          userAccessToken: conn.userAccessToken,
+          pageId: conn.pageId,
+        });
+        if (!refreshed.ok) {
+          return facebookJson(
+            {
+              error: "facebook_page_token_refresh_failed",
+              message:
+                refreshed.error === "page_not_found_or_no_access"
+                  ? "Cette Page n’est plus accessible avec ton compte. Reconnecte Facebook et choisis la Page."
+                  : refreshed.error,
+            },
+            400,
+            origin,
+          );
+        }
+
+        await supabaseAdmin
+          .from("seller_facebook_connections")
+          .update({
+            page_access_token: refreshed.pageAccessToken,
+            page_name: refreshed.pageName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
+
         const title = liveRow.title?.trim() || "KiDi+ Live";
         const created = await createFacebookLiveVideo({
           pageId: conn.pageId,
-          pageAccessToken: conn.pageAccessToken,
+          pageAccessToken: refreshed.pageAccessToken,
           title,
         });
         if (!created.ok) {
@@ -190,7 +239,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
           const msg = e instanceof Error ? e.message : String(e);
           await endFacebookLiveVideo(
             created.live.liveVideoId,
-            conn.pageAccessToken,
+            refreshed.pageAccessToken,
           );
           return facebookJson(
             {
@@ -209,7 +258,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
         if (!egressId) {
           await endFacebookLiveVideo(
             created.live.liveVideoId,
-            conn.pageAccessToken,
+            refreshed.pageAccessToken,
           );
           return facebookJson(
             { error: "egress_no_id", message: "Egress sans identifiant" },
@@ -235,7 +284,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
           }
           await endFacebookLiveVideo(
             created.live.liveVideoId,
-            conn.pageAccessToken,
+            refreshed.pageAccessToken,
           );
           return facebookJson(
             { error: "Failed to save restream on live" },
