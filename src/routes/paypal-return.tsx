@@ -253,6 +253,11 @@ function PaypalReturn() {
         )}
         {state.kind === "success" && (
           <>
+            <img
+              src={kidiLogoBadge.url}
+              alt="KiDi+"
+              className="mb-2 h-14 w-auto object-contain"
+            />
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
@@ -264,6 +269,11 @@ function PaypalReturn() {
         )}
         {state.kind === "pending" && (
           <>
+            <img
+              src={kidiLogoBadge.url}
+              alt="KiDi+"
+              className="mb-2 h-14 w-auto object-contain"
+            />
             <div className="grid h-16 w-16 place-items-center rounded-full" style={{ backgroundColor: "oklch(0.72 0.2 155)" }}>
               <Check size={36} color="white" strokeWidth={3} />
             </div>
