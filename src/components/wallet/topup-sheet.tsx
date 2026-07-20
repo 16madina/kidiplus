@@ -48,7 +48,7 @@ import {
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
 import { isNative } from "@/lib/native";
-import { KIDI_LOGO_URI } from "@/components/brand/brand-logos";
+import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
 type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
@@ -416,9 +416,10 @@ export function TopUpSheet({
     }
   };
 
+  // Vite hashed same-origin URL (CSP-safe). Do NOT use data: URIs — blocked on Lovable.
   const logoBadge = (
     <img
-      src={KIDI_LOGO_URI}
+      src={kidiPlusLogo}
       alt="KiDi+"
       className="h-14 w-auto max-w-[220px] object-contain drop-shadow-sm"
       draggable={false}

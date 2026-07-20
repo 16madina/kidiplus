@@ -11,7 +11,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { finalizePaypalTopupOrder } from "@/lib/paypal-topup-finalize.server";
 import { publicAppOrigin } from "@/lib/paypal-public-origin";
-import { KIDI_LOGO_URI } from "@/components/brand/brand-logos";
+import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
 type DoneTone = "ok" | "warn" | "error";
 
@@ -93,8 +93,10 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const origin = publicAppOrigin(request);
-        // Data URI — works inside SFSafariViewController with no extra request.
-        const logoUrl = KIDI_LOGO_URI;
+        // Vite hashed asset (same-origin https) — CSP blocks data: image URLs.
+        const logoUrl = kidiPlusLogo.startsWith("http")
+          ? kidiPlusLogo
+          : `${origin}${kidiPlusLogo.startsWith("/") ? "" : "/"}${kidiPlusLogo}`;
         const cancelled = url.searchParams.get("cancelled") === "1";
         const token = (url.searchParams.get("token") ?? "").trim();
         const preferNative = url.searchParams.get("native") === "1";

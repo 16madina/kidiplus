@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isNative } from "@/lib/native";
 import { NATIVE_OAUTH_SCHEME } from "@/lib/social-login-config";
 import { dispatchOpenSection, stashSoftSection } from "@/lib/soft-profile-routes";
-import { KIDI_LOGO_URI } from "@/components/brand/brand-logos";
+import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
 export const Route = createFileRoute("/paypal-return")({
   ssr: false,
@@ -222,7 +222,7 @@ function PaypalReturn() {
 
   const logoBadge = (
     <img
-      src={KIDI_LOGO_URI}
+      src={kidiPlusLogo}
       alt="KiDi+"
       className="h-14 w-auto max-w-[240px] object-contain drop-shadow-sm"
       draggable={false}
