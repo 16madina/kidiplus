@@ -12,6 +12,7 @@ const FB_DIALOG = "https://www.facebook.com/v21.0/dialog/oauth";
 export const FACEBOOK_OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
+  "pages_manage_posts",
   "publish_video",
 ].join(",");
 
