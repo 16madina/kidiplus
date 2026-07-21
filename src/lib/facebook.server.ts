@@ -99,12 +99,12 @@ export function buildFacebookAuthUrl(opts: {
   u.searchParams.set("redirect_uri", opts.cfg.redirectUri);
   u.searchParams.set("state", opts.state);
   u.searchParams.set("response_type", "code");
-  // Login for Business: permissions come from the Configuration, not only `scope`.
+  // Always request comment-read scopes. Login for Business still needs the same
+  // permissions listed on the Meta Configuration (config_id).
+  u.searchParams.set("scope", FACEBOOK_OAUTH_SCOPES);
   if (opts.cfg.configId) {
     u.searchParams.set("config_id", opts.cfg.configId);
     u.searchParams.set("override_default_response_type", "true");
-  } else {
-    u.searchParams.set("scope", FACEBOOK_OAUTH_SCOPES);
   }
   return u.toString();
 }
@@ -349,57 +349,16 @@ export type FacebookChatMessage = {
   createdTime: string;
 };
 
-/**
- * Comments on a Live Video. Meta defaults to live_filter=filter_low_quality
- * which often hides short test comments — we force no_filter.
- * Client dedupes by id.
- */
-export async function pollFacebookLiveComments(opts: {
-  liveVideoId: string;
-  pageAccessToken: string;
-}): Promise<
-  | { ok: true; messages: FacebookChatMessage[] }
-  | { ok: false; error: string }
-> {
-  const u = new URL(
-    `${GRAPH}/${encodeURIComponent(opts.liveVideoId)}/comments`,
-  );
-  u.searchParams.set("order", "reverse_chronological");
-  u.searchParams.set("live_filter", "no_filter");
-  u.searchParams.set("filter", "toplevel");
-  u.searchParams.set("fields", "id,from{name,id},message,created_time");
-  u.searchParams.set("limit", "50");
-  u.searchParams.set("access_token", opts.pageAccessToken);
+type FbCommentRow = {
+  id?: string;
+  message?: string;
+  created_time?: string;
+  from?: { name?: string; id?: string };
+};
 
-  const res = await fetch(u.toString());
-  const data = (await res.json().catch(() => ({}))) as {
-    data?: Array<{
-      id?: string;
-      message?: string;
-      created_time?: string;
-      from?: { name?: string; id?: string };
-    }>;
-    error?: { message?: string; code?: number };
-  };
-  if (!res.ok) {
-    const raw = data.error?.message || `facebook_comments_${res.status}`;
-    // Hint when Meta needs a reconnect for comment read scopes.
-    if (
-      data.error?.code === 200 ||
-      raw.toLowerCase().includes("permission") ||
-      raw.toLowerCase().includes("pages_read")
-    ) {
-      return {
-        ok: false,
-        error:
-          `${raw} — Déconnecte / reconnecte Facebook dans KiDi+ en acceptant pages_read_user_content.`,
-      };
-    }
-    return { ok: false, error: raw };
-  }
-
+function mapFbCommentRows(rows: FbCommentRow[] | undefined): FacebookChatMessage[] {
   const messages: FacebookChatMessage[] = [];
-  for (const row of data.data ?? []) {
+  for (const row of rows ?? []) {
     const text = (row.message ?? "").trim();
     if (!row.id || !text) continue;
     messages.push({
@@ -409,9 +368,148 @@ export async function pollFacebookLiveComments(opts: {
       createdTime: row.created_time || new Date().toISOString(),
     });
   }
-  // Return chronological (oldest → newest) for stable ingest order.
-  messages.reverse();
-  return { ok: true, messages };
+  return messages;
+}
+
+function facebookPermissionError(raw: string, code?: number): string {
+  const lower = raw.toLowerCase();
+  if (
+    code === 200 ||
+    code === 283 ||
+    lower.includes("permission") ||
+    lower.includes("pages_read") ||
+    lower.includes("(#10)")
+  ) {
+    return (
+      `${raw} — Dans Meta (app KiDi+), ajoute pages_read_user_content à la Login Configuration, ` +
+      `puis déconnecte / reconnecte Facebook dans KiDi+. En mode Dev, le commentateur doit être ` +
+      `Admin/Développeur/Testeur de l'app Meta.`
+    );
+  }
+  return raw;
+}
+
+async function fetchCommentsOnObject(opts: {
+  objectId: string;
+  pageAccessToken: string;
+  includeFrom: boolean;
+}): Promise<
+  | { ok: true; messages: FacebookChatMessage[] }
+  | { ok: false; error: string; code?: number }
+> {
+  const u = new URL(
+    `${GRAPH}/${encodeURIComponent(opts.objectId)}/comments`,
+  );
+  u.searchParams.set("order", "reverse_chronological");
+  u.searchParams.set("live_filter", "no_filter");
+  u.searchParams.set("filter", "toplevel");
+  u.searchParams.set(
+    "fields",
+    opts.includeFrom
+      ? "id,from{name,id},message,created_time"
+      : "id,message,created_time",
+  );
+  u.searchParams.set("limit", "50");
+  u.searchParams.set("summary", "true");
+  u.searchParams.set("access_token", opts.pageAccessToken);
+
+  const res = await fetch(u.toString());
+  const data = (await res.json().catch(() => ({}))) as {
+    data?: FbCommentRow[];
+    summary?: { total_count?: number };
+    error?: { message?: string; code?: number };
+  };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.error?.message || `facebook_comments_${res.status}`,
+      code: data.error?.code,
+    };
+  }
+  return { ok: true, messages: mapFbCommentRows(data.data) };
+}
+
+async function resolveFacebookCommentTargets(
+  liveVideoId: string,
+  pageAccessToken: string,
+): Promise<string[]> {
+  const ids = [liveVideoId];
+  try {
+    const u = new URL(`${GRAPH}/${encodeURIComponent(liveVideoId)}`);
+    u.searchParams.set("fields", "id,video");
+    u.searchParams.set("access_token", pageAccessToken);
+    const res = await fetch(u.toString());
+    const data = (await res.json().catch(() => ({}))) as {
+      video?: { id?: string } | string;
+    };
+    const videoId =
+      typeof data.video === "string"
+        ? data.video
+        : data.video?.id?.trim() || "";
+    if (videoId && videoId !== liveVideoId) ids.push(videoId);
+  } catch (e) {
+    console.warn("[facebook] resolve video id failed", e);
+  }
+  return ids;
+}
+
+/**
+ * Comments on a Live Video (+ underlying Video when different).
+ * Meta defaults to live_filter=filter_low_quality which hides short tests.
+ * Client dedupes by id.
+ */
+export async function pollFacebookLiveComments(opts: {
+  liveVideoId: string;
+  pageAccessToken: string;
+}): Promise<
+  | { ok: true; messages: FacebookChatMessage[]; hint?: string }
+  | { ok: false; error: string }
+> {
+  const targets = await resolveFacebookCommentTargets(
+    opts.liveVideoId,
+    opts.pageAccessToken,
+  );
+  const byId = new Map<string, FacebookChatMessage>();
+  let lastError: string | null = null;
+
+  for (const objectId of targets) {
+    let polled = await fetchCommentsOnObject({
+      objectId,
+      pageAccessToken: opts.pageAccessToken,
+      includeFrom: true,
+    });
+    // Some Page tokens can list messages but not `from` — retry without it.
+    if (!polled.ok) {
+      const retry = await fetchCommentsOnObject({
+        objectId,
+        pageAccessToken: opts.pageAccessToken,
+        includeFrom: false,
+      });
+      if (retry.ok) {
+        polled = retry;
+      } else {
+        lastError = facebookPermissionError(polled.error, polled.code);
+        continue;
+      }
+    }
+    for (const m of polled.messages) byId.set(m.id, m);
+  }
+
+  if (byId.size === 0 && lastError) {
+    return { ok: false, error: lastError };
+  }
+
+  const messages = Array.from(byId.values()).sort((a, b) =>
+    a.createdTime.localeCompare(b.createdTime),
+  );
+
+  // Empty but successful: often Dev-mode / missing Advanced Access.
+  const hint =
+    messages.length === 0
+      ? "Aucun commentaire Graph. Vérifie pages_read_user_content + rôles Meta (Admin/Testeur), et commente bien sur CE live Facebook."
+      : undefined;
+
+  return { ok: true, messages, hint };
 }
 
 export async function postFacebookLiveComment(opts: {

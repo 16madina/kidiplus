@@ -158,6 +158,7 @@ export const Route = createFileRoute("/api/social-chat/poll")({
               createdTime: string;
             }>;
             error?: string;
+            hint?: string;
           } | null;
         } = { youtube: null, facebook: null };
 
@@ -228,7 +229,10 @@ export const Route = createFileRoute("/api/social-chat/poll")({
               if (!polled.ok) {
                 out.facebook = { messages: [], error: polled.error };
               } else {
-                out.facebook = { messages: polled.messages };
+                out.facebook = {
+                  messages: polled.messages,
+                  ...(polled.hint ? { hint: polled.hint } : {}),
+                };
               }
             }
           }

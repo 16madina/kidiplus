@@ -1090,13 +1090,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Clear HostToolRail (right-3 + w-11) so EN VEDETTE isn't clipped.
+              // Just left of HostToolRail (right-3 + w-11), not mid-screen.
               top: "calc(env(safe-area-inset-top) + 110px)",
-              right: "calc(0.75rem + 2.75rem + 0.5rem)",
+              right: "3.5rem",
             }}
           >
             <div
-              className="w-[6.75rem] rounded-2xl p-1.5 text-white"
+              className="w-36 rounded-2xl p-2 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
@@ -1106,14 +1106,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               <div className="relative mb-1">
                 <LiveProductImage
                   src={imgFor(featured)}
-                  className="h-14 w-full rounded-lg object-cover"
+                  className="h-[4.5rem] w-full rounded-lg object-cover"
                   iconClassName="text-white/60"
                 />
-                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
+                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#10162B]">
                   {t("live.featured")}
                 </span>
               </div>
-              <div className="truncate text-[10.5px] font-semibold leading-tight">
+              <div className="truncate text-[12px] font-semibold leading-tight">
                 {featured.name}
               </div>
               {activeAuction && activeAuction.productId === featured.id ? (
@@ -1173,11 +1173,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             className="absolute z-30"
             style={{
               top: "calc(env(safe-area-inset-top) + 110px)",
-              right: "calc(0.75rem + 2.75rem + 0.5rem)",
+              right: "3.5rem",
             }}
           >
             <div
-              className="w-[6.75rem] rounded-2xl p-2 text-center text-white"
+              className="w-36 rounded-2xl p-2 text-center text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",

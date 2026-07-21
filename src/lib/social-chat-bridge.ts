@@ -83,6 +83,9 @@ export function useSocialChatBridge(opts: {
   const ingestRef = useRef(room.ingestExternalChat);
   ingestRef.current = room.ingestExternalChat;
   const fbErrorToastedRef = useRef(false);
+  const fbEmptyToastedRef = useRef(false);
+  const fbMissingToastedRef = useRef(false);
+  const fbEmptyPollsRef = useRef(0);
 
   useEffect(() => {
     if (!liveId || (!enabledYoutube && !enabledFacebook)) return;
@@ -90,6 +93,9 @@ export function useSocialChatBridge(opts: {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let delayMs = 4000;
     fbErrorToastedRef.current = false;
+    fbEmptyToastedRef.current = false;
+    fbMissingToastedRef.current = false;
+    fbEmptyPollsRef.current = 0;
 
     const tick = async () => {
       if (cancelled) return;
@@ -120,6 +126,7 @@ export function useSocialChatBridge(opts: {
               text: string;
             }>;
             error?: string;
+            hint?: string;
           } | null;
         };
 
@@ -150,18 +157,41 @@ export function useSocialChatBridge(opts: {
             }
           }
 
+          if (enabledFacebook && body.facebook == null && !fbMissingToastedRef.current) {
+            fbMissingToastedRef.current = true;
+            toast.error(
+              "Facebook ON mais aucun live vidéo lié — arrête puis relance « Diffuser Facebook ».",
+            );
+          }
+
           if (body.facebook) {
             if (body.facebook.error && !fbErrorToastedRef.current) {
               fbErrorToastedRef.current = true;
               console.warn("[social-chat] facebook poll", body.facebook.error);
               toast.error(
-                body.facebook.error.includes("reconnecte") ||
-                  body.facebook.error.includes("permission")
-                  ? body.facebook.error
-                  : `Commentaires Facebook: ${body.facebook.error}`,
+                body.facebook.error.length > 180
+                  ? `${body.facebook.error.slice(0, 180)}…`
+                  : body.facebook.error,
               );
             }
-            for (const m of body.facebook.messages ?? []) {
+            const fbMsgs = body.facebook.messages ?? [];
+            if (fbMsgs.length === 0 && !body.facebook.error) {
+              fbEmptyPollsRef.current += 1;
+              if (
+                fbEmptyPollsRef.current >= 3 &&
+                !fbEmptyToastedRef.current &&
+                body.facebook.hint
+              ) {
+                fbEmptyToastedRef.current = true;
+                toast.message("Commentaires Facebook", {
+                  description: body.facebook.hint,
+                  duration: 10_000,
+                });
+              }
+            } else if (fbMsgs.length > 0) {
+              fbEmptyPollsRef.current = 0;
+            }
+            for (const m of fbMsgs) {
               const key = `fb:${m.id}`;
               if (seenExternalIds.has(key)) continue;
               markSeen(key);
