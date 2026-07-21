@@ -36,9 +36,15 @@ export type LiveChatModeration = {
 export function LiveChat({
   messages,
   moderation,
+  /** Lift chat above bottom chrome (composer / bid bar). */
+  bottomOffset,
+  /** Visible chat stack height. */
+  height = "36dvh",
 }: {
   messages: ChatMsg[];
   moderation?: LiveChatModeration;
+  bottomOffset?: string | number;
+  height?: string | number;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
@@ -46,6 +52,7 @@ export function LiveChat({
   const [menuMsg, setMenuMsg] = useState<ChatMsg | null>(null);
   const [expiredJoins, setExpiredJoins] = useState<Set<string>>(() => new Set());
   const joinTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const unpinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lastCountRef = useRef(messages.length);
   const lastTsRef = useRef(performance.now());
@@ -88,6 +95,7 @@ export function LiveChat({
     return () => {
       for (const t of joinTimersRef.current.values()) clearTimeout(t);
       joinTimersRef.current.clear();
+      if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
     };
   }, []);
 
@@ -105,9 +113,18 @@ export function LiveChat({
     const onScroll = () => {
       const distFromBottom =
         el.scrollHeight - el.scrollTop - el.clientHeight;
-      const isPinned = distFromBottom < 24;
+      const isPinned = distFromBottom < 32;
       setPinned(isPinned);
       setShowJump(!isPinned);
+      // TikTok-like: if the host glances up then stops, resume live follow.
+      if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
+      if (!isPinned) {
+        unpinTimerRef.current = setTimeout(() => {
+          setPinned(true);
+          setShowJump(false);
+          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        }, 4_000);
+      }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -120,11 +137,12 @@ export function LiveChat({
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: burstMode ? "auto" : "smooth" });
     });
-  }, [messages, pinned, burstMode]);
+  }, [messages, pinned, burstMode, visible.length]);
 
   const jumpDown = () => {
     const el = scrollerRef.current;
     if (!el) return;
+    if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setPinned(true);
     setShowJump(false);
@@ -133,9 +151,9 @@ export function LiveChat({
   const maskStyle = useMemo(
     () => ({
       maskImage:
-        "linear-gradient(to bottom, transparent 0%, black 40px, black 100%)",
+        "linear-gradient(to bottom, transparent 0%, black 28px, black 100%)",
       WebkitMaskImage:
-        "linear-gradient(to bottom, transparent 0%, black 40px, black 100%)",
+        "linear-gradient(to bottom, transparent 0%, black 28px, black 100%)",
     }),
     [],
   );
@@ -165,10 +183,13 @@ export function LiveChat({
   const { t } = useTranslation();
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-start px-3">
+    <div
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-start px-3"
+      style={{ bottom: bottomOffset ?? 0 }}
+    >
       <div
         className="pointer-events-auto flex w-[85%] max-w-[420px] flex-col"
-        style={{ height: "40dvh" }}
+        style={{ height }}
       >
         <div
           ref={scrollerRef}
@@ -179,7 +200,7 @@ export function LiveChat({
             WebkitOverflowScrolling: "touch",
           }}
         >
-          <div className="flex flex-col justify-end gap-1.5 pt-8">
+          <div className="flex flex-col justify-end gap-1.5 pt-6">
             {burstMode ? (
               visible.map((m) => (
                 <div key={m.id}>
@@ -225,18 +246,19 @@ export function LiveChat({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.15 }}
-              className="pointer-events-auto mb-1 self-start"
+              className="pointer-events-auto z-30 mb-1 self-start"
             >
               <Press
                 onClick={jumpDown}
                 className="!min-h-8 rounded-full px-3 text-xs font-semibold text-white"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.55)",
+                  backgroundColor: "rgba(0,0,0,0.7)",
                   backdropFilter: "blur(10px)",
                   WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                Nouveaux messages
+                {t("live.newComments", "Nouveaux commentaires")}
                 <ChevronDown size={14} className="ml-1" />
               </Press>
             </motion.div>

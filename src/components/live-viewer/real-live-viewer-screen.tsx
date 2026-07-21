@@ -935,6 +935,8 @@ export function RealLiveViewerScreen() {
       <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
         <LiveChat
           messages={messages}
+          bottomOffset={0}
+          height="34dvh"
           moderation={{
             canModerate: isModerator,
             // Even regular viewers can now open the message menu — Apple 1.2

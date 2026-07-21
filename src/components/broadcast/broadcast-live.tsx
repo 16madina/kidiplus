@@ -1025,6 +1025,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       />
       <LiveChat
         messages={chatMessages}
+        bottomOffset="calc(env(safe-area-inset-bottom) + 64px)"
+        height="34dvh"
         moderation={{
           canModerate: true,
           canReport: true,
@@ -1126,13 +1128,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Just left of HostToolRail (right-3 + w-11), not mid-screen.
-              top: "calc(env(safe-area-inset-top) + 110px)",
+              // Just under the top bar, left of HostToolRail.
+              top: "calc(env(safe-area-inset-top) + 52px)",
               right: "3.5rem",
             }}
           >
             <div
-              className="w-36 rounded-2xl p-2 text-white"
+              className="w-28 rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
@@ -1142,14 +1144,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               <div className="relative mb-1">
                 <LiveProductImage
                   src={imgFor(featured)}
-                  className="h-[4.5rem] w-full rounded-lg object-cover"
+                  className="h-14 w-full rounded-lg object-cover"
                   iconClassName="text-white/60"
                 />
-                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#10162B]">
+                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
                   {t("live.featured")}
                 </span>
               </div>
-              <div className="truncate text-[12px] font-semibold leading-tight">
+              <div className="truncate text-[10.5px] font-semibold leading-tight">
                 {featured.name}
               </div>
               {activeAuction && activeAuction.productId === featured.id ? (
@@ -1163,7 +1165,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       initial={{ scale: 1.15 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2, ease: EASE_IOS }}
-                      className="text-[13px] font-bold tabular-nums"
+                      className="text-[12px] font-bold tabular-nums"
                     >
                       {fmt(featured.price)}
                     </motion.span>
@@ -1189,7 +1191,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       else void toggleFixedSale(featured);
                     }}
                     hapticOnTap={false}
-                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10px] font-bold text-[#10162B]"
                   >
                     {featured.mode === "auction"
                       ? `${t("live.startAuction")} ▸`
@@ -1208,12 +1210,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30"
             style={{
-              top: "calc(env(safe-area-inset-top) + 110px)",
+              top: "calc(env(safe-area-inset-top) + 52px)",
               right: "3.5rem",
             }}
           >
             <div
-              className="w-36 rounded-2xl p-2 text-center text-white"
+              className="w-28 rounded-2xl p-1.5 text-center text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
