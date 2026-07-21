@@ -875,7 +875,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <Radio size={11} />
-              {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
+              {ytBusy ? "…" : ytRestreaming ? "YouTube ON" : "YT"}
             </Press>
             <Press
               disabled={fbBusy}
@@ -891,7 +891,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <Radio size={11} />
-              {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
+              {fbBusy ? "…" : fbRestreaming ? "Facebook ON" : "FB"}
             </Press>
           </>
         )}
@@ -1137,9 +1137,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Under Terminer, shifted left of the tool rail.
+              // Just under Terminer (top-right), clear of the tool rail.
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "5.25rem",
+              right: "3.15rem",
             }}
           >
             <div
@@ -1220,7 +1220,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             className="absolute z-30"
             style={{
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "5.25rem",
+              right: "3.15rem",
             }}
           >
             <div
