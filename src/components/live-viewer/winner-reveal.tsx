@@ -19,14 +19,16 @@ import { Frown } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { playAuctionSoldChime } from "@/lib/auction-sold-chime";
 
 type Phase = "logo" | "card" | "out";
 export type RevealVariant = "winner" | "unsold";
 
 const TIMINGS = {
-  card: 700,
-  out: 5000,
-  done: 5500,
+  /** Hold big logo a beat longer so it reads on phone + social. */
+  card: 1100,
+  out: 5200,
+  done: 5700,
 } as const;
 
 function displayName(full: string | null | undefined): string {
@@ -86,6 +88,9 @@ export function WinnerReveal({
     setPhase("logo");
     setAvatarFailed(false);
     setResolvedAvatar(winnerAvatarUrl ?? null);
+    if (variant === "winner") {
+      playAuctionSoldChime();
+    }
     const t1 = setTimeout(() => setPhase("card"), TIMINGS.card);
     const t2 = setTimeout(() => setPhase("out"), TIMINGS.out);
     const t3 = setTimeout(() => onDoneRef.current(), TIMINGS.done);
@@ -166,7 +171,7 @@ export function WinnerReveal({
         >
           <div
             className="relative flex w-full items-center justify-center"
-            style={{ maxWidth: 380, minHeight: 280 }}
+            style={{ maxWidth: 420, minHeight: 320 }}
           >
             {/* Logo beat */}
             <AnimatePresence>
@@ -176,11 +181,11 @@ export function WinnerReveal({
                   initial={{ scale: 0.55, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 1.08, opacity: 0 }}
-                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                  transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
                   className="absolute inset-0 flex items-center justify-center"
                   style={{ filter: logoGlow }}
                 >
-                  <Logo size={128} />
+                  <Logo size={220} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -221,7 +226,7 @@ export function WinnerReveal({
                       <p
                         className="max-w-[90vw] text-white"
                         style={{
-                          fontSize: "clamp(22px, 6.5vw, 32px)",
+                          fontSize: "clamp(26px, 7.5vw, 36px)",
                           fontWeight: 900,
                           letterSpacing: "0.04em",
                           textTransform: "uppercase",
@@ -249,7 +254,7 @@ export function WinnerReveal({
                   ) : (
                     <>
                       <div
-                        className="relative grid h-[88px] w-[88px] place-items-center overflow-hidden rounded-full"
+                        className="relative grid h-[100px] w-[100px] place-items-center overflow-hidden rounded-full"
                         style={{
                           padding: 3,
                           background:
@@ -259,7 +264,7 @@ export function WinnerReveal({
                         }}
                       >
                         <div
-                          className="absolute inset-[3px] grid place-items-center rounded-full text-[30px] font-black"
+                          className="absolute inset-[3px] grid place-items-center rounded-full text-[34px] font-black"
                           style={{
                             background: "oklch(0.16 0.05 260)",
                             color: "oklch(0.9 0.14 90)",
@@ -290,7 +295,7 @@ export function WinnerReveal({
                         )}
                       </div>
                       <span
-                        className="rounded-full px-3.5 py-1.5 text-[12px] font-black uppercase tracking-[0.18em]"
+                        className="rounded-full px-4 py-1.5 text-[13px] font-black uppercase tracking-[0.18em]"
                         style={{
                           background:
                             "linear-gradient(135deg, oklch(0.9 0.14 90), oklch(0.75 0.16 75))",
@@ -301,13 +306,13 @@ export function WinnerReveal({
                         {t("auction.winner.badge", "Gagnant")}
                       </span>
                       <p
-                        className="max-w-[92vw] truncate text-white"
+                        className="max-w-[94vw] truncate text-white"
                         style={{
-                          fontSize: "clamp(30px, 9vw, 42px)",
+                          fontSize: "clamp(36px, 11vw, 52px)",
                           fontWeight: 900,
                           letterSpacing: "0.02em",
                           textTransform: "uppercase",
-                          textShadow: "0 4px 20px rgba(0,0,0,0.8)",
+                          textShadow: "0 4px 22px rgba(0,0,0,0.85)",
                         }}
                       >
                         {shownName}
