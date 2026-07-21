@@ -1,5 +1,6 @@
 // Host-side bridge: poll YouTube / Facebook comments → KiDi+ room chat,
-// and mirror host replies back to the social platforms.
+// mirror host replies back to social platforms, and post promo CTAs on
+// YouTube/Facebook only (never into the KiDi+ chat).
 
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,9 @@ const FB_COLOR = "oklch(0.7 0.14 260)";
 
 /** Shared across reply + poll so host mirrors don't re-ingest as YT/FB lines. */
 const seenExternalIds = new Set<string>();
+
+/** Space promo posts so social chat isn't spammy. */
+const PROMO_INTERVAL_MS = 4 * 60_000;
 
 function markSeen(key: string) {
   seenExternalIds.add(key);
@@ -67,21 +71,49 @@ export async function replyOnSocialPlatforms(opts: {
   }
 }
 
+function socialPromoText(productName: string | null, auctionActive: boolean): string {
+  if (auctionActive && productName) {
+    return `🔥 Enchère en cours sur KiDi+ : ${productName} — ouvre le lien dans la description pour enchérir !`;
+  }
+  if (productName) {
+    return `🛍 En vedette sur KiDi+ : ${productName} — lien dans la description pour acheter !`;
+  }
+  return "🛍 Live shopping KiDi+ — ouvre le lien dans la description pour rejoindre et acheter !";
+}
+
 /**
  * While YouTube and/or Facebook restream is ON, pull remote comments into
  * the KiDi+ chat (with source badges) so the host can see and answer them.
+ * Also posts occasional promo CTAs on YT/FB only — never into KiDi+ chat.
  */
 export function useSocialChatBridge(opts: {
   liveId: string | null | undefined;
   enabledYoutube: boolean;
   enabledFacebook: boolean;
   room: Pick<LiveRoomState, "ingestExternalChat" | "ready">;
+  /** When true, promo copy mentions the live auction. */
+  auctionActive?: boolean;
+  productName?: string | null;
 }) {
-  const { liveId, enabledYoutube, enabledFacebook, room } = opts;
+  const {
+    liveId,
+    enabledYoutube,
+    enabledFacebook,
+    room,
+    auctionActive = false,
+    productName = null,
+  } = opts;
   const ytPageTokenRef = useRef<string | null>(null);
   const ingestRef = useRef(room.ingestExternalChat);
   ingestRef.current = room.ingestExternalChat;
+  const auctionActiveRef = useRef(auctionActive);
+  auctionActiveRef.current = auctionActive;
+  const productNameRef = useRef(productName);
+  productNameRef.current = productName;
+  const lastPromoAtRef = useRef(0);
+  const lastAuctionPromoKeyRef = useRef<string | null>(null);
 
+  // Poll social comments → KiDi+ chat
   useEffect(() => {
     if (!liveId || (!enabledYoutube && !enabledFacebook)) return;
     let cancelled = false;
@@ -184,4 +216,53 @@ export function useSocialChatBridge(opts: {
       if (timer) clearTimeout(timer);
     };
   }, [liveId, enabledYoutube, enabledFacebook]);
+
+  // Promo CTAs on YouTube / Facebook only (not KiDi+ chat).
+  useEffect(() => {
+    if (!liveId || (!enabledYoutube && !enabledFacebook)) return;
+    let cancelled = false;
+
+    const postPromo = async (force = false) => {
+      if (cancelled) return;
+      const now = Date.now();
+      if (!force && now - lastPromoAtRef.current < PROMO_INTERVAL_MS) return;
+      lastPromoAtRef.current = now;
+      const text = socialPromoText(
+        productNameRef.current,
+        auctionActiveRef.current,
+      );
+      try {
+        await replyOnSocialPlatforms({ liveId, text, source: "all" });
+      } catch (e) {
+        console.warn("[social-chat] promo failed", e);
+      }
+    };
+
+    // First promo shortly after restream is up.
+    const first = window.setTimeout(() => void postPromo(true), 12_000);
+    const interval = window.setInterval(() => void postPromo(false), 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, [liveId, enabledYoutube, enabledFacebook]);
+
+  // Extra promo when a new auction starts (YT/FB only).
+  useEffect(() => {
+    if (!liveId || (!enabledYoutube && !enabledFacebook)) return;
+    if (!auctionActive || !productName) return;
+    const key = `${productName}:${auctionActive}`;
+    if (lastAuctionPromoKeyRef.current === key) return;
+    lastAuctionPromoKeyRef.current = key;
+    const timer = window.setTimeout(() => {
+      void replyOnSocialPlatforms({
+        liveId,
+        text: socialPromoText(productName, true),
+        source: "all",
+      }).catch((e) => console.warn("[social-chat] auction promo failed", e));
+    }, 2500);
+    return () => window.clearTimeout(timer);
+  }, [liveId, enabledYoutube, enabledFacebook, auctionActive, productName]);
 }

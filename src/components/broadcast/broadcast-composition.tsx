@@ -17,6 +17,8 @@ import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
+import { AuctionFinalCountdown } from "@/components/live-viewer/auction-final-countdown";
+import { BidPulseFlash } from "@/components/live-viewer/bid-pulse-flash";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import {
   BroadcastEgressVideo,
@@ -132,13 +134,17 @@ export function BroadcastComposition({
 
   useEffect(() => {
     const end = room.lastAuctionEnd;
-    if (!end?.endId) return;
+    if (!end) return;
+    const endId =
+      end.endId ??
+      `fallback-${end.ts ?? 0}-${end.productId}-${end.auctionRound ?? 0}`;
     const ts = end.ts ?? 0;
-    if (ts > 0 && ts < joinedAt - 2500) return;
+    // Drop only clearly stale ends from before this egress session joined.
+    if (ts > 0 && ts < joinedAt - 8000) return;
     const product = room.products.find((p) => p.id === end.productId);
     if (!end.winnerId) {
       setWinnerReveal({
-        key: end.endId,
+        key: endId,
         name: null,
         winnerId: null,
         variant: "unsold",
@@ -148,7 +154,7 @@ export function BroadcastComposition({
     }
     setConfettiKey((k) => k + 1);
     setWinnerReveal({
-      key: end.endId,
+      key: endId,
       name: end.winnerName,
       winnerId: end.winnerId,
       variant: "winner",
@@ -368,6 +374,20 @@ export function BroadcastComposition({
       <GiftAnimationsLayer trigger={room.lastGift} />
       <Confetti trigger={confettiKey} />
       <SuddenDeathFlash tick={suddenDeathTick} />
+      <AuctionFinalCountdown
+        secondsLeft={secondsLeft}
+        active={!!room.auctionStart}
+      />
+      <BidPulseFlash
+        text={
+          room.lastBid &&
+          featured &&
+          room.lastBid.productId === featured.id
+            ? `${room.lastBid.bidderName} · ${fmt(room.lastBid.amount)}`
+            : null
+        }
+        pulseKey={room.lastBid?.ts ?? 0}
+      />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
         open={!!winnerReveal}

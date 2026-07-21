@@ -62,6 +62,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { AUCTION_EXTENSION_WINDOW_SECONDS, AUCTION_EXTENSION_RESET_SECONDS } from "@/lib/fees";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
+import { AuctionFinalCountdown } from "@/components/live-viewer/auction-final-countdown";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import {
   replyOnSocialPlatforms,
@@ -726,6 +727,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     enabledYoutube: ytRestreaming,
     enabledFacebook: fbRestreaming,
     room,
+    auctionActive: !!activeAuction,
+    productName: activeProduct?.name ?? null,
   });
 
   const chatMessages: ChatMsg[] = room.chat
@@ -987,6 +990,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+      <AuctionFinalCountdown
+        secondsLeft={timeLeft}
+        active={!!activeAuction}
+      />
       <LiveChat
         messages={chatMessages}
         moderation={{

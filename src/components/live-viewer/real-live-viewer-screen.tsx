@@ -39,6 +39,8 @@ import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
 import { WinnerReveal } from "./winner-reveal";
 import { SuddenDeathFlash } from "./sudden-death-flash";
+import { AuctionFinalCountdown } from "./auction-final-countdown";
+import { BidPulseFlash } from "./bid-pulse-flash";
 import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
@@ -1196,6 +1198,18 @@ export function RealLiveViewerScreen() {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+      <AuctionFinalCountdown
+        secondsLeft={secondsLeft}
+        active={!!room.auctionStart}
+      />
+      <BidPulseFlash
+        text={
+          room.lastBid
+            ? `${room.lastBid.bidderName} · ${formatLive(room.lastBid.amount)}`
+            : null
+        }
+        pulseKey={room.lastBid?.ts ?? 0}
+      />
 
       <LiveViewersSheet
         open={viewersSheetOpen}
