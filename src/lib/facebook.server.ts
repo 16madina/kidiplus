@@ -102,6 +102,9 @@ export function buildFacebookAuthUrl(opts: {
   // Always request comment-read scopes. Login for Business still needs the same
   // permissions listed on the Meta Configuration (config_id).
   u.searchParams.set("scope", FACEBOOK_OAUTH_SCOPES);
+  // Force Meta to re-prompt so newly added Login Configuration permissions
+  // (e.g. pages_read_user_content) are actually granted on the token.
+  u.searchParams.set("auth_type", "rerequest");
   if (opts.cfg.configId) {
     u.searchParams.set("config_id", opts.cfg.configId);
     u.searchParams.set("override_default_response_type", "true");
@@ -231,9 +234,20 @@ const REQUIRED_LIVE_PERMISSIONS = [
   "publish_video",
 ] as const;
 
+/** Needed to read viewer comments on Page Live videos. */
+export const REQUIRED_CHAT_PERMISSIONS = [
+  "pages_read_engagement",
+  "pages_read_user_content",
+] as const;
+
 export function missingLivePermissions(granted: string[]): string[] {
   const set = new Set(granted);
   return REQUIRED_LIVE_PERMISSIONS.filter((p) => !set.has(p));
+}
+
+export function missingChatPermissions(granted: string[]): string[] {
+  const set = new Set(granted);
+  return REQUIRED_CHAT_PERMISSIONS.filter((p) => !set.has(p));
 }
 
 /** Refresh Page token from /me/accounts (needed after reconnect / new scopes). */

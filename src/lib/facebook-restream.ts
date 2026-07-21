@@ -8,6 +8,12 @@ export type FacebookStatus = {
   needsPageSelection: boolean;
   pageName?: string | null;
   pageId?: string | null;
+  /** Last 6 digits of FACEBOOK_LOGIN_CONFIG_ID — compare with Meta Configurations. */
+  configIdSuffix?: string | null;
+  hasLoginConfig?: boolean;
+  grantedPermissions?: string[];
+  missingChatPermissions?: string[];
+  canReadComments?: boolean;
 };
 
 export type FacebookPageOption = { id: string; name: string };
@@ -40,6 +46,11 @@ export async function fetchFacebookStatus(): Promise<FacebookStatus> {
     needsPageSelection?: boolean;
     pageName?: string | null;
     pageId?: string | null;
+    configIdSuffix?: string | null;
+    hasLoginConfig?: boolean;
+    grantedPermissions?: string[];
+    missingChatPermissions?: string[];
+    canReadComments?: boolean;
   };
   if (!res.ok) {
     throw new Error(body.error || `Facebook status failed (${res.status})`);
@@ -49,6 +60,11 @@ export async function fetchFacebookStatus(): Promise<FacebookStatus> {
     needsPageSelection: !!body.needsPageSelection,
     pageName: body.pageName,
     pageId: body.pageId,
+    configIdSuffix: body.configIdSuffix ?? null,
+    hasLoginConfig: !!body.hasLoginConfig,
+    grantedPermissions: body.grantedPermissions ?? [],
+    missingChatPermissions: body.missingChatPermissions ?? [],
+    canReadComments: body.canReadComments !== false,
   };
 }
 
