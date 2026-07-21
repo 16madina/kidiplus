@@ -133,10 +133,11 @@ export function BroadcastComposition({
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);
   const joinedAt = useMemo(() => Date.now(), []);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  const productsRef = useRef(room.products);
+  productsRef.current = room.products;
 
-  // Show reveal once per endId. Re-running on product updates must NOT
-  // resurrect a finished reveal (that left the logo/name stuck on YouTube
-  // while the host already moved to the next item on KiDi+).
+  // Exactly once per auction end. Do NOT depend on products — updates were
+  // re-opening the same reveal on YouTube in a loop.
   useEffect(() => {
     const end = room.lastAuctionEnd;
     if (!end) return;
@@ -151,7 +152,7 @@ export function BroadcastComposition({
       const first = seenEndIdsRef.current.values().next().value;
       if (first) seenEndIdsRef.current.delete(first);
     }
-    const product = room.products.find((p) => p.id === end.productId);
+    const product = productsRef.current.find((p) => p.id === end.productId);
     if (!end.winnerId) {
       setWinnerReveal({
         key: endId,
@@ -172,23 +173,13 @@ export function BroadcastComposition({
       variant: "winner",
       productName: product?.name ?? null,
     });
-  }, [room.lastAuctionEnd?.endId, joinedAt, room.products, room.lastAuctionEnd]);
+  }, [room.lastAuctionEnd?.endId, joinedAt, room.lastAuctionEnd]);
 
-  // Host moved on (new auction) → drop reveal immediately.
+  // New auction started → cut reveal so social stays with the host.
   useEffect(() => {
     if (!room.auctionStart) return;
     setWinnerReveal(null);
   }, [room.auctionStart?.productId, room.auctionStart?.deadlineMs]);
-
-  // Host featured another product → drop reveal so social stays in sync.
-  useEffect(() => {
-    if (!featured?.id) return;
-    setWinnerReveal((prev) => {
-      if (!prev) return null;
-      if (prev.productId === featured.id) return prev;
-      return null;
-    });
-  }, [featured?.id]);
 
   useEffect(() => {
     if (!room.lastExtension?.ts) return;
