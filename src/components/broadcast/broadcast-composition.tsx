@@ -18,7 +18,6 @@ import { Confetti } from "@/components/live-viewer/confetti";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
-import { LiveJoinQr } from "./live-join-qr";
 import {
   BroadcastEgressVideo,
   type BroadcastEgressVideoStatus,
@@ -182,52 +181,38 @@ export function BroadcastComposition({
           right: SAFE_RIGHT,
         }}
       >
-        {/* Top: brand + QR | featured product + bid CTA */}
+        {/* Top: brand + description CTA | featured product */}
         <div className="flex items-start justify-between gap-2.5">
-          <div className="flex min-w-0 max-w-[52%] items-start gap-2">
-            <div
-              className="shrink-0 rounded-xl p-1"
-              style={{ background: "rgba(255,255,255,0.95)" }}
-            >
-              <LiveJoinQr liveId={liveId} size={64} />
-              <p
-                className="mt-0.5 text-center text-[8px] font-black uppercase tracking-wide"
-                style={{ color: "#10162B" }}
+          <div
+            className="min-w-0 max-w-[52%] rounded-2xl px-3 py-2"
+            style={{ background: "rgba(0,0,0,0.62)" }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                className="rounded px-1.5 py-0.5 text-[11px] font-black uppercase tracking-wide"
+                style={{ background: "oklch(0.62 0.24 25)" }}
               >
-                {t("broadcast.egress.scanJoin", "Scan")}
-              </p>
+                Live
+              </span>
+              <span className="truncate text-[14px] font-bold">{hostName}</span>
             </div>
-            <div
-              className="min-w-0 rounded-2xl px-2.5 py-2"
-              style={{ background: "rgba(0,0,0,0.55)" }}
-            >
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="rounded px-1.5 py-0.5 text-[11px] font-black uppercase tracking-wide"
-                  style={{ background: "oklch(0.62 0.24 25)" }}
-                >
-                  Live
-                </span>
-                <span className="truncate text-[14px] font-bold">{hostName}</span>
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-white/90">
-                <span className="inline-flex items-center gap-1 tabular-nums">
-                  <Eye size={12} /> {displayViewers}
-                </span>
-                <span>KiDi+</span>
-              </div>
-              <p className="mt-1 text-[11px] font-bold leading-snug text-white/95">
-                {auctionOnFeatured
-                  ? t(
-                      "broadcast.egress.scanToBid",
-                      "Scanne pour enchérir sur KiDi+",
-                    )
-                  : t(
-                      "broadcast.egress.scanToShop",
-                      "Scanne pour acheter sur KiDi+",
-                    )}
-              </p>
+            <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-white/90">
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Eye size={12} /> {displayViewers}
+              </span>
+              <span>KiDi+</span>
             </div>
+            <p className="mt-1.5 text-[12px] font-bold leading-snug text-white">
+              {auctionOnFeatured
+                ? t(
+                    "broadcast.egress.linkToBid",
+                    "Enchéris sur KiDi+ — lien dans la description",
+                  )
+                : t(
+                    "broadcast.egress.linkToShop",
+                    "Achète sur KiDi+ — lien dans la description",
+                  )}
+            </p>
           </div>
 
           {featured && (
