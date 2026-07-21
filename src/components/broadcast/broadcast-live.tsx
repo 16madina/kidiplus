@@ -1139,7 +1139,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             style={{
               // Just under Terminer (top-right), clear of the tool rail.
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "2.35rem",
+              right: "1.65rem",
             }}
           >
             <div
@@ -1220,7 +1220,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             className="absolute z-30"
             style={{
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "2.35rem",
+              right: "1.65rem",
             }}
           >
             <div
