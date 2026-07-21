@@ -610,33 +610,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         const started = await startYoutubeRestream(b.liveId);
         setYtRestreaming(true);
         setYtWatchUrl(started.watchUrl);
-        toast.success(
-          t("broadcast.youtube.started", "En direct sur YouTube (interface KiDi+)"),
-        );
-        // Promote "À venir" → live (serverless often kills the start-handler promote).
+        // Promote "À venir" → live quietly (no toast — keeps the host UI clean).
         ytPromoteAbortRef.current?.abort();
         const ac = new AbortController();
         ytPromoteAbortRef.current = ac;
-        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal }).then(
-          (res) => {
-            if (ac.signal.aborted) return;
-            if (res.ok) {
-              toast.success(
-                t(
-                  "broadcast.youtube.nowLive",
-                  "YouTube est passé en direct (plus « À venir »)",
-                ),
-              );
-              return;
-            }
-            toast.message(
-              t(
-                "broadcast.youtube.stillUpcoming",
-                "YouTube reçoit le flux — s’il reste « À venir », rouvre le lien dans 30 s",
-              ),
-            );
-          },
-        );
+        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal });
       }
     } catch (e) {
       toast.error(
@@ -674,9 +652,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         const started = await startFacebookRestream(b.liveId);
         setFbRestreaming(true);
         setFbWatchUrl(started.watchUrl);
-        toast.success(
-          t("broadcast.facebook.started", "En direct sur Facebook (interface KiDi+)"),
-        );
       }
     } catch (e) {
       toast.error(
@@ -845,16 +820,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }
       />
 
-      {/* Compact top bar — fits at 320pt width. Grid layout: leading pills |
-          spacer | trailing controls. Every pill has min-w-0 so text can
-          truncate without pushing the end button off-screen. */}
+      {/* Compact top bar — fits at 320pt width. */}
       <div
-        className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-1.5 px-2"
+        className="absolute inset-x-0 top-0 z-30 flex items-center gap-1.5 px-2"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
-        {/* Live pill: pulsing red dot + timer merged (no "EN DIRECT" text). */}
+        {/* Live pill: pulsing red dot + timer */}
         <div
-          className="flex items-center gap-1.5 rounded-full px-2 py-1 text-white"
+          className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-white"
           style={{
             backgroundColor: "rgba(220, 30, 40, 0.95)",
             backdropFilter: "blur(10px)",
@@ -875,7 +848,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             setViewersSheetOpen(true);
           }}
           aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-          className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+          className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(10px)",
@@ -885,13 +858,49 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <Eye size={12} />
           {room.viewerCount}
         </Press>
-        {/* Spacer */}
-        <div className="min-w-0" />
+        {/* YouTube / Facebook — compact pills next to views (not over Ventes/Cadeaux). */}
+        {!isRtmp && (
+          <>
+            <Press
+              disabled={ytBusy}
+              onClick={() => void toggleYoutubeRestream()}
+              aria-label={t("broadcast.youtube.goLive", "Diffuser sur YouTube")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ytRestreaming
+                  ? "linear-gradient(135deg, #ff0033, #cc0000)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ytRestreaming ? "#fff" : "#0a0a12",
+                opacity: ytBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
+            </Press>
+            <Press
+              disabled={fbBusy}
+              onClick={() => void toggleFacebookRestream()}
+              aria-label={t("broadcast.facebook.goLive", "Diffuser sur Facebook")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: fbRestreaming
+                  ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: fbRestreaming ? "#fff" : "#0a0a12",
+                opacity: fbBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
+            </Press>
+          </>
+        )}
+        <div className="min-w-0 flex-1" />
         {/* Products icon-only pill with count badge */}
         <Press
           onClick={() => { haptic.selection(); setProductsOpen(true); }}
           aria-label={t("live.openProducts")}
-          className="!min-h-9 !min-w-9 relative h-9 w-9 rounded-full text-white"
+          className="!min-h-9 !min-w-9 relative h-9 w-9 shrink-0 rounded-full text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(10px)",
@@ -908,7 +917,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             </span>
           )}
         </Press>
-        {/* End-live pill: compact icon+word, red. */}
+        {/* End-live pill */}
         <Press
           onClick={() => setConfirmEnd(true)}
           aria-label={t("live.endLive")}
@@ -1128,9 +1137,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Just under the top bar, left of HostToolRail.
+              // Under Terminer, shifted left of the tool rail.
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "3.5rem",
+              right: "5.25rem",
             }}
           >
             <div
@@ -1211,7 +1220,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             className="absolute z-30"
             style={{
               top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "3.5rem",
+              right: "5.25rem",
             }}
           >
             <div
@@ -1365,60 +1374,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             creds={b.rtmpCreds}
           />
         </>
-      )}
-
-      {!isRtmp && (
-        <div
-          className="absolute left-3 z-30 flex max-w-[75%] flex-col gap-1.5"
-          style={{ top: "calc(env(safe-area-inset-top) + 52px)" }}
-        >
-          <Press
-            disabled={ytBusy}
-            onClick={() => void toggleYoutubeRestream()}
-            className="!min-h-9 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
-            style={{
-              background: ytRestreaming
-                ? "linear-gradient(135deg, #ff0033, #cc0000)"
-                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
-              color: ytRestreaming ? "#fff" : "#0a0a12",
-              opacity: ytBusy ? 0.7 : 1,
-            }}
-          >
-            <Radio size={14} />
-            <span className="truncate">
-              {ytBusy
-                ? t("broadcast.youtube.working", "YouTube…")
-                : ytRestreaming
-                  ? t("broadcast.youtube.liveBadge", "YouTube ON")
-                  : ytConnected
-                    ? t("broadcast.youtube.goLive", "Diffuser sur YouTube")
-                    : t("broadcast.youtube.notConnected", "YouTube")}
-            </span>
-          </Press>
-          <Press
-            disabled={fbBusy}
-            onClick={() => void toggleFacebookRestream()}
-            className="!min-h-9 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold"
-            style={{
-              background: fbRestreaming
-                ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
-                : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
-              color: fbRestreaming ? "#fff" : "#0a0a12",
-              opacity: fbBusy ? 0.7 : 1,
-            }}
-          >
-            <Radio size={14} />
-            <span className="truncate">
-              {fbBusy
-                ? t("broadcast.facebook.working", "Facebook…")
-                : fbRestreaming
-                  ? t("broadcast.facebook.liveBadge", "Facebook ON")
-                  : fbReady
-                    ? t("broadcast.facebook.goLive", "Diffuser sur Facebook")
-                    : t("broadcast.facebook.notConnected", "Facebook")}
-            </span>
-          </Press>
-        </div>
       )}
 
       <LiveViewersSheet
