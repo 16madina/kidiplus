@@ -7,6 +7,9 @@ import {
   getFacebookConnection,
   pollFacebookLiveComments,
   refreshPageAccessToken,
+  fetchFacebookTokenPermissions,
+  getFacebookOAuthConfig,
+  missingChatPermissions,
 } from "@/lib/facebook.server";
 import {
   fetchYoutubeLiveChatId,
@@ -227,7 +230,32 @@ export const Route = createFileRoute("/api/social-chat/poll")({
                 pageAccessToken: refreshed.pageAccessToken,
               });
               if (!polled.ok) {
-                out.facebook = { messages: [], error: polled.error };
+                let error = polled.error;
+                const looksLikePerm =
+                  /#200|permission|pages_read|Missing Permissions/i.test(
+                    error,
+                  );
+                if (looksLikePerm) {
+                  const cfg = getFacebookOAuthConfig();
+                  const suffix = cfg?.configId
+                    ? `…${cfg.configId.slice(-6)}`
+                    : "(aucun FACEBOOK_LOGIN_CONFIG_ID)";
+                  const perms = await fetchFacebookTokenPermissions(
+                    conn.userAccessToken,
+                  );
+                  if (perms.ok) {
+                    const missing = missingChatPermissions(perms.granted);
+                    error =
+                      `${error} | Sur ton token KiDi+ : [${perms.granted.join(", ") || "aucune"}]` +
+                      ` | Manque pour le chat : [${missing.join(", ") || "rien"}]` +
+                      ` | Login config utilisée : ${suffix}. ` +
+                      `Dans Meta, ouvre EXACTEMENT cette config, coche pages_read_user_content, Save, puis Déconnecter → Connecter Facebook.`;
+                  } else {
+                    error =
+                      `${error} | Login config utilisée : ${suffix}. Impossible de lire /me/permissions (${perms.error}).`;
+                  }
+                }
+                out.facebook = { messages: [], error };
               } else {
                 out.facebook = {
                   messages: polled.messages,
