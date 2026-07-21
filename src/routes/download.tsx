@@ -112,7 +112,11 @@ function DownloadPage() {
       </div>
 
       <a
-        href={next?.startsWith('/') ? next : 'https://kidiplus.com'}
+        href={
+          next?.startsWith('/')
+            ? `${next}${next.includes('?') ? '&' : '?'}web=1`
+            : 'https://kidiplus.com'
+        }
         style={{
           marginTop: 8,
           fontSize: 13,
