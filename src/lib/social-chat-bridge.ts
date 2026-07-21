@@ -2,8 +2,9 @@
 // and mirror host replies back to the social platforms.
 
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { ChatEvt, ChatSource, LiveRoomState } from "@/lib/live-room";
+import type { ChatEvt, LiveRoomState } from "@/lib/live-room";
 
 const YT_COLOR = "oklch(0.72 0.2 25)";
 const FB_COLOR = "oklch(0.7 0.14 260)";
@@ -81,12 +82,14 @@ export function useSocialChatBridge(opts: {
   const ytPageTokenRef = useRef<string | null>(null);
   const ingestRef = useRef(room.ingestExternalChat);
   ingestRef.current = room.ingestExternalChat;
+  const fbErrorToastedRef = useRef(false);
 
   useEffect(() => {
     if (!liveId || (!enabledYoutube && !enabledFacebook)) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let delayMs = 4000;
+    fbErrorToastedRef.current = false;
 
     const tick = async () => {
       if (cancelled) return;
@@ -108,6 +111,7 @@ export function useSocialChatBridge(opts: {
             }>;
             nextPageToken?: string | null;
             pollingIntervalMs?: number;
+            error?: string;
           } | null;
           facebook?: {
             messages?: Array<{
@@ -115,6 +119,7 @@ export function useSocialChatBridge(opts: {
               authorName: string;
               text: string;
             }>;
+            error?: string;
           } | null;
         };
 
@@ -146,6 +151,16 @@ export function useSocialChatBridge(opts: {
           }
 
           if (body.facebook) {
+            if (body.facebook.error && !fbErrorToastedRef.current) {
+              fbErrorToastedRef.current = true;
+              console.warn("[social-chat] facebook poll", body.facebook.error);
+              toast.error(
+                body.facebook.error.includes("reconnecte") ||
+                  body.facebook.error.includes("permission")
+                  ? body.facebook.error
+                  : `Commentaires Facebook: ${body.facebook.error}`,
+              );
+            }
             for (const m of body.facebook.messages ?? []) {
               const key = `fb:${m.id}`;
               if (seenExternalIds.has(key)) continue;

@@ -13,6 +13,7 @@ const FB_DIALOG = "https://www.facebook.com/v21.0/dialog/oauth";
 export const FACEBOOK_OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
+  "pages_read_user_content",
   "pages_manage_posts",
   "publish_video",
 ].join(",");
@@ -348,7 +349,11 @@ export type FacebookChatMessage = {
   createdTime: string;
 };
 
-/** Newest-first comments on a Live Video; client dedupes by id. */
+/**
+ * Comments on a Live Video. Meta defaults to live_filter=filter_low_quality
+ * which often hides short test comments — we force no_filter.
+ * Client dedupes by id.
+ */
 export async function pollFacebookLiveComments(opts: {
   liveVideoId: string;
   pageAccessToken: string;
@@ -360,9 +365,10 @@ export async function pollFacebookLiveComments(opts: {
     `${GRAPH}/${encodeURIComponent(opts.liveVideoId)}/comments`,
   );
   u.searchParams.set("order", "reverse_chronological");
-  u.searchParams.set("filter", "stream");
-  u.searchParams.set("fields", "id,from,message,created_time");
-  u.searchParams.set("limit", "30");
+  u.searchParams.set("live_filter", "no_filter");
+  u.searchParams.set("filter", "toplevel");
+  u.searchParams.set("fields", "id,from{name,id},message,created_time");
+  u.searchParams.set("limit", "50");
   u.searchParams.set("access_token", opts.pageAccessToken);
 
   const res = await fetch(u.toString());
@@ -373,13 +379,23 @@ export async function pollFacebookLiveComments(opts: {
       created_time?: string;
       from?: { name?: string; id?: string };
     }>;
-    error?: { message?: string };
+    error?: { message?: string; code?: number };
   };
   if (!res.ok) {
-    return {
-      ok: false,
-      error: data.error?.message || `facebook_comments_${res.status}`,
-    };
+    const raw = data.error?.message || `facebook_comments_${res.status}`;
+    // Hint when Meta needs a reconnect for comment read scopes.
+    if (
+      data.error?.code === 200 ||
+      raw.toLowerCase().includes("permission") ||
+      raw.toLowerCase().includes("pages_read")
+    ) {
+      return {
+        ok: false,
+        error:
+          `${raw} — Déconnecte / reconnecte Facebook dans KiDi+ en acceptant pages_read_user_content.`,
+      };
+    }
+    return { ok: false, error: raw };
   }
 
   const messages: FacebookChatMessage[] = [];

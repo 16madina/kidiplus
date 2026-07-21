@@ -26,9 +26,10 @@ const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
 /** Safe rectangle — clear of social chrome + Facebook side crop. */
-const SAFE_TOP = "20%";
-const SAFE_BOTTOM = "44%";
-const SAFE_X = "12%";
+const SAFE_TOP = "22%";
+const SAFE_BOTTOM = "46%";
+/** Facebook crops / covers the sides more than YouTube — keep UI inset. */
+const SAFE_X = "18%";
 
 export type BroadcastCompositionProps = {
   liveId: string;
@@ -221,7 +222,7 @@ export function BroadcastComposition({
             {/* Compact featured — stays inside Facebook’s visible width */}
             {featured && (
               <div
-                className="w-[7.25rem] rounded-2xl p-1.5"
+                className="w-[6.5rem] rounded-2xl p-1.5"
                 style={{
                   background: "rgba(0,0,0,0.62)",
                   border: "1px solid rgba(255,255,255,0.16)",

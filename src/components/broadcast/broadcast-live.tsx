@@ -1088,11 +1088,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="absolute right-3 z-30 text-left"
-            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+            className="absolute z-30 text-left"
+            style={{
+              // Clear HostToolRail (right-3 + w-11) so EN VEDETTE isn't clipped.
+              top: "calc(env(safe-area-inset-top) + 110px)",
+              right: "calc(0.75rem + 2.75rem + 0.5rem)",
+            }}
           >
             <div
-              className="w-28 rounded-2xl p-1.5 text-white"
+              className="w-[6.75rem] rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
