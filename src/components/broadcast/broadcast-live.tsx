@@ -1170,11 +1170,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="absolute right-3 z-30"
-            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+            className="absolute z-30"
+            style={{
+              top: "calc(env(safe-area-inset-top) + 110px)",
+              right: "calc(0.75rem + 2.75rem + 0.5rem)",
+            }}
           >
             <div
-              className="w-28 rounded-2xl p-2 text-center text-white"
+              className="w-[6.75rem] rounded-2xl p-2 text-center text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
