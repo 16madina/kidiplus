@@ -259,6 +259,8 @@ export async function createYoutubeLiveBroadcast(opts: {
         contentDetails: {
           enableAutoStart: true,
           enableAutoStop: true,
+          // Prefer lower viewer delay (ultraLow ≈ interactive; may limit some YT features).
+          latencyPreference: "ultraLow",
           monitorStream: { enableMonitorStream: false },
         },
       }),

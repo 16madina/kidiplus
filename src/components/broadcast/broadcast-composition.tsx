@@ -66,10 +66,11 @@ export function BroadcastComposition({
     silent: true,
   });
 
+  // Backup START_RECORDING if video attach is slow (primary signal is in BroadcastEgressVideo).
   useEffect(() => {
     const timer = window.setTimeout(() => {
       signalLivekitEgressStartRecording();
-    }, 10_000);
+    }, 5_000);
     return () => window.clearTimeout(timer);
   }, []);
 

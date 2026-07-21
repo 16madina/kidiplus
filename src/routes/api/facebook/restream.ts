@@ -4,12 +4,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
-  EncodingOptionsPreset,
   StreamOutput,
   StreamProtocol,
 } from "livekit-server-sdk";
 import { signBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
 import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
+import { socialRestreamEncodingOptions } from "@/lib/social-egress-encoding";
 import {
   facebookCorsHeaders,
   facebookJson,
@@ -272,7 +272,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
             }),
             {
               awaitStartSignal: true,
-              encodingOptions: EncodingOptionsPreset.PORTRAIT_H264_720P_30,
+              encodingOptions: socialRestreamEncodingOptions(),
             },
           );
         } catch (e) {

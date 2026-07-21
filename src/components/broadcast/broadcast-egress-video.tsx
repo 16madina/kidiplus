@@ -84,7 +84,7 @@ export function BroadcastEgressVideo({
     };
 
     // Fallback: never leave egress hanging on awaitStartSignal.
-    readyTimer = setTimeout(() => signalReady("timeout_8s"), 8_000);
+    readyTimer = setTimeout(() => signalReady("timeout_5s"), 5_000);
 
     async function start() {
       setStatus("connecting");
