@@ -232,11 +232,16 @@ export type YoutubeLiveBundle = {
 export async function createYoutubeLiveBroadcast(opts: {
   accessToken: string;
   title: string;
+  liveId?: string;
   privacyStatus?: "public" | "unlisted" | "private";
 }): Promise<{ ok: true; live: YoutubeLiveBundle } | { ok: false; error: string }> {
   const title = opts.title.trim().slice(0, 100) || "KiDi+ Live";
   const privacyStatus = opts.privacyStatus ?? "public";
   const scheduledStartTime = new Date().toISOString();
+  const { liveSocialDescription } = await import("@/lib/deep-links");
+  const description = opts.liveId
+    ? liveSocialDescription({ title, liveId: opts.liveId }).slice(0, 5000)
+    : "Live shopping on KiDi+ — télécharge l’app pour enchérir.";
 
   const broadcastRes = await fetch(
     `${YT_API}/liveBroadcasts?part=snippet,status,contentDetails`,
@@ -250,7 +255,7 @@ export async function createYoutubeLiveBroadcast(opts: {
         snippet: {
           title,
           scheduledStartTime,
-          description: "Live shopping on KiDi+",
+          description,
         },
         status: {
           privacyStatus,

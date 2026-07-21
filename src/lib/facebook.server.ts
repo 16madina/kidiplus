@@ -281,15 +281,20 @@ export async function createFacebookLiveVideo(opts: {
   pageId: string;
   pageAccessToken: string;
   title: string;
+  liveId?: string;
 }): Promise<{ ok: true; live: FacebookLiveBundle } | { ok: false; error: string }> {
+  const { liveSocialDescription } = await import("@/lib/deep-links");
   const title = opts.title.trim().slice(0, 100) || "KiDi+ Live";
+  const description = opts.liveId
+    ? liveSocialDescription({ title, liveId: opts.liveId }).slice(0, 5000)
+    : "Live shopping on KiDi+ — télécharge l’app pour enchérir.";
   const u = new URL(`${GRAPH}/${encodeURIComponent(opts.pageId)}/live_videos`);
   const res = await fetch(u.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       title,
-      description: "Live shopping on KiDi+",
+      description,
       status: "LIVE_NOW",
       access_token: opts.pageAccessToken,
     }),

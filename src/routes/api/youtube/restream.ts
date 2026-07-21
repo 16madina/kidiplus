@@ -177,6 +177,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
         const created = await createYoutubeLiveBroadcast({
           accessToken: tok.accessToken,
           title,
+          liveId,
           privacyStatus: "public",
         });
         if (!created.ok) {

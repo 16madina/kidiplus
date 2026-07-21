@@ -224,6 +224,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
           pageId: conn.pageId,
           pageAccessToken: refreshed.pageAccessToken,
           title,
+          liveId,
         });
         if (!created.ok) {
           return facebookJson(

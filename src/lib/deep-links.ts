@@ -63,3 +63,17 @@ export function pathFromDeepLinkUrl(raw: string): string | null {
 export function liveShareUrl(liveId: string): string {
   return `https://kidiplus.com/live/${encodeURIComponent(liveId)}`;
 }
+
+/** Description blurb for YouTube / Facebook Live — drives downloads. */
+export function liveSocialDescription(opts: {
+  title?: string | null;
+  liveId: string;
+}): string {
+  const title = (opts.title ?? "").trim() || "Live shopping KiDi+";
+  const url = liveShareUrl(opts.liveId);
+  return (
+    `${title}\n\n` +
+    `Enchéris et achète en direct sur KiDi+ 👇\n${url}\n\n` +
+    `Télécharge l’app KiDi+ pour participer aux enchères.`
+  );
+}

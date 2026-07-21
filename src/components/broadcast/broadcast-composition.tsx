@@ -18,6 +18,7 @@ import { Confetti } from "@/components/live-viewer/confetti";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
+import { LiveJoinQr } from "./live-join-qr";
 import {
   BroadcastEgressVideo,
   type BroadcastEgressVideoStatus,
@@ -181,38 +182,62 @@ export function BroadcastComposition({
           right: SAFE_RIGHT,
         }}
       >
-        {/* Top: brand + large featured product */}
-        <div className="flex items-start justify-between gap-3">
-          <div
-            className="min-w-0 max-w-[48%] rounded-2xl px-3 py-2"
-            style={{ background: "rgba(0,0,0,0.55)" }}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="rounded px-1.5 py-0.5 text-[11px] font-black uppercase tracking-wide"
-                style={{ background: "oklch(0.62 0.24 25)" }}
+        {/* Top: brand + QR | featured product + bid CTA */}
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex min-w-0 max-w-[52%] items-start gap-2">
+            <div
+              className="shrink-0 rounded-xl p-1"
+              style={{ background: "rgba(255,255,255,0.95)" }}
+            >
+              <LiveJoinQr liveId={liveId} size={64} />
+              <p
+                className="mt-0.5 text-center text-[8px] font-black uppercase tracking-wide"
+                style={{ color: "#10162B" }}
               >
-                Live
-              </span>
-              <span className="truncate text-[15px] font-bold">{hostName}</span>
+                {t("broadcast.egress.scanJoin", "Scan")}
+              </p>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[12px] font-semibold text-white/90">
-              <span className="inline-flex items-center gap-1 tabular-nums">
-                <Eye size={13} /> {displayViewers}
-              </span>
-              <span>KiDi+</span>
-              {title ? (
-                <span className="truncate text-white/70">{title}</span>
-              ) : null}
+            <div
+              className="min-w-0 rounded-2xl px-2.5 py-2"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="rounded px-1.5 py-0.5 text-[11px] font-black uppercase tracking-wide"
+                  style={{ background: "oklch(0.62 0.24 25)" }}
+                >
+                  Live
+                </span>
+                <span className="truncate text-[14px] font-bold">{hostName}</span>
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-white/90">
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <Eye size={12} /> {displayViewers}
+                </span>
+                <span>KiDi+</span>
+              </div>
+              <p className="mt-1 text-[11px] font-bold leading-snug text-white/95">
+                {auctionOnFeatured
+                  ? t(
+                      "broadcast.egress.scanToBid",
+                      "Scanne pour enchérir sur KiDi+",
+                    )
+                  : t(
+                      "broadcast.egress.scanToShop",
+                      "Scanne pour acheter sur KiDi+",
+                    )}
+              </p>
             </div>
           </div>
 
           {featured && (
             <div
-              className="w-[9.5rem] shrink-0 rounded-2xl p-2"
+              className="w-[9.75rem] shrink-0 rounded-2xl p-2"
               style={{
-                background: "rgba(0,0,0,0.68)",
-                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(0,0,0,0.72)",
+                border: auctionOnFeatured
+                  ? "2px solid oklch(0.82 0.14 85)"
+                  : "1px solid rgba(255,255,255,0.2)",
               }}
             >
               <div className="relative mb-1.5">
@@ -226,7 +251,7 @@ export function BroadcastComposition({
                 </span>
                 {auctionOnFeatured && (
                   <span
-                    className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums"
+                    className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-black tabular-nums"
                     style={{
                       background:
                         secondsLeft <= 10
@@ -235,7 +260,7 @@ export function BroadcastComposition({
                       color: secondsLeft <= 10 ? "#10162B" : "white",
                     }}
                   >
-                    <Timer size={11} />
+                    <Timer size={12} />
                     {mm}:{ss}
                   </span>
                 )}
@@ -248,11 +273,17 @@ export function BroadcastComposition({
                   <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
                     {t("live.currentBid", "Enchère")}
                   </div>
-                  <div className="text-[17px] font-black tabular-nums">
+                  <div
+                    className="text-[18px] font-black tabular-nums"
+                    style={{
+                      color:
+                        secondsLeft <= 10 ? "oklch(0.88 0.14 85)" : "white",
+                    }}
+                  >
                     {fmt(Number(featured.price))}
                   </div>
                   {room.lastBid?.productId === featured.id && (
-                    <div className="truncate text-[11px] text-white/80">
+                    <div className="truncate text-[11px] font-semibold text-white/85">
                       @{room.lastBid.bidderName}
                     </div>
                   )}
@@ -265,13 +296,17 @@ export function BroadcastComposition({
                 </div>
               )}
               <div
-                className="mt-1.5 rounded-lg py-1 text-center text-[11px] font-black uppercase tracking-wide"
+                className="mt-1.5 rounded-lg py-1.5 text-center text-[11px] font-black uppercase leading-tight tracking-wide"
                 style={{
-                  background: "oklch(0.82 0.14 85)",
-                  color: "#10162B",
+                  background: auctionOnFeatured
+                    ? "oklch(0.72 0.2 25)"
+                    : "oklch(0.82 0.14 85)",
+                  color: auctionOnFeatured ? "#fff" : "#10162B",
                 }}
               >
-                {t("broadcast.egress.onKidi", "Sur KiDi+")}
+                {auctionOnFeatured
+                  ? t("broadcast.egress.bidOnKidi", "Enchéris sur KiDi+")
+                  : t("broadcast.egress.onKidi", "Sur KiDi+")}
               </div>
             </div>
           )}
