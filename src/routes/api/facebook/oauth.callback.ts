@@ -6,9 +6,7 @@ import {
   exchangeFacebookCode,
   exchangeLongLivedUserToken,
   fetchFacebookPages,
-  fetchFacebookTokenPermissions,
   getFacebookOAuthConfig,
-  missingChatPermissions,
   verifyFacebookOAuthState,
 } from "@/lib/facebook.server";
 
@@ -176,34 +174,16 @@ export const Route = createFileRoute("/api/facebook/oauth/callback")({
         }
 
         const needsPick = !auto;
+        const status = needsPick ? "select_page" : "ok";
         const pageLabel = auto?.name ?? "";
-
-        const perms = await fetchFacebookTokenPermissions(userToken);
-        const missingChat = perms.ok
-          ? missingChatPermissions(perms.granted)
-          : ["pages_read_user_content"];
-        const chatOk = missingChat.length === 0;
-        const status = needsPick
-          ? "select_page"
-          : chatOk
-            ? "ok"
-            : "missing_chat_perms";
-
-        const chatWarn = chatOk
-          ? ""
-          : ` Attention : permission commentaires manquante (${missingChat.join(", ")}). Vérifie la Login Configuration Meta, puis reconnecte.`;
 
         if (state.native) {
           return htmlPage({
-            title: needsPick
-              ? "Choisis ta Page"
-              : chatOk
-                ? "Facebook connecté"
-                : "Permission commentaires manquante",
+            title: needsPick ? "Choisis ta Page" : "Facebook connecté",
             body: needsPick
               ? "Compte lié. Choisis la Page Facebook pour diffuser dans KiDi+."
-              : `Page « ${pageLabel} » liée à KiDi+.${chatWarn}`,
-            tone: chatOk || needsPick ? "ok" : "error",
+              : `Page « ${pageLabel} » liée à KiDi+.`,
+            tone: "ok",
             deepLink: `kidiplus://facebook-connected?status=${status}&page=${encodeURIComponent(pageLabel)}`,
           });
         }
@@ -211,19 +191,12 @@ export const Route = createFileRoute("/api/facebook/oauth/callback")({
         const dest = new URL(state.returnPath || "/", origin);
         dest.searchParams.set("facebook", status);
         if (pageLabel) dest.searchParams.set("fb_page", pageLabel);
-        if (!chatOk) {
-          dest.searchParams.set("fb_missing", missingChat.join(","));
-        }
         return htmlPage({
-          title: needsPick
-            ? "Choisis ta Page"
-            : chatOk
-              ? "Facebook connecté"
-              : "Permission commentaires manquante",
+          title: needsPick ? "Choisis ta Page" : "Facebook connecté",
           body: needsPick
             ? "Compte lié. Tu vas choisir la Page dans KiDi+…"
-            : `Page « ${pageLabel} » liée.${chatWarn} Redirection…`,
-          tone: chatOk || needsPick ? "ok" : "error",
+            : `Page « ${pageLabel} » liée. Redirection…`,
+          tone: "ok",
           webRedirect: dest.toString(),
         });
       },
