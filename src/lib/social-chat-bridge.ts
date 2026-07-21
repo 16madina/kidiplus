@@ -68,6 +68,20 @@ export async function replyOnSocialPlatforms(opts: {
   }
 }
 
+function stickyFacebookToast(title: string, detail: string) {
+  toast.error(title, {
+    description: detail,
+    duration: 60_000,
+    closeButton: true,
+    action: {
+      label: "Copier",
+      onClick: () => {
+        void navigator.clipboard?.writeText?.(detail).catch(() => {});
+      },
+    },
+  });
+}
+
 /**
  * While YouTube and/or Facebook restream is ON, pull remote comments into
  * the KiDi+ chat (with source badges) so the host can see and answer them.
@@ -77,11 +91,15 @@ export function useSocialChatBridge(opts: {
   enabledYoutube: boolean;
   enabledFacebook: boolean;
   room: Pick<LiveRoomState, "ingestExternalChat" | "ready">;
+  /** Persist last Facebook poll notice on the host UI (toast alone is too fleeting). */
+  onFacebookNotice?: (notice: string | null) => void;
 }) {
-  const { liveId, enabledYoutube, enabledFacebook, room } = opts;
+  const { liveId, enabledYoutube, enabledFacebook, room, onFacebookNotice } = opts;
   const ytPageTokenRef = useRef<string | null>(null);
   const ingestRef = useRef(room.ingestExternalChat);
   ingestRef.current = room.ingestExternalChat;
+  const noticeRef = useRef(onFacebookNotice);
+  noticeRef.current = onFacebookNotice;
   const fbErrorToastedRef = useRef(false);
   const fbEmptyToastedRef = useRef(false);
   const fbMissingToastedRef = useRef(false);
@@ -159,20 +177,18 @@ export function useSocialChatBridge(opts: {
 
           if (enabledFacebook && body.facebook == null && !fbMissingToastedRef.current) {
             fbMissingToastedRef.current = true;
-            toast.error(
-              "Facebook ON mais aucun live vidéo lié — arrête puis relance « Diffuser Facebook ».",
-            );
+            const msg =
+              "Facebook ON mais aucun live vidéo lié — arrête puis relance « Diffuser Facebook ».";
+            noticeRef.current?.(msg);
+            stickyFacebookToast("Facebook chat", msg);
           }
 
           if (body.facebook) {
             if (body.facebook.error && !fbErrorToastedRef.current) {
               fbErrorToastedRef.current = true;
               console.warn("[social-chat] facebook poll", body.facebook.error);
-              toast.error(
-                body.facebook.error.length > 180
-                  ? `${body.facebook.error.slice(0, 180)}…`
-                  : body.facebook.error,
-              );
+              noticeRef.current?.(body.facebook.error);
+              stickyFacebookToast("Erreur commentaires Facebook", body.facebook.error);
             }
             const fbMsgs = body.facebook.messages ?? [];
             if (fbMsgs.length === 0 && !body.facebook.error) {
@@ -183,13 +199,24 @@ export function useSocialChatBridge(opts: {
                 body.facebook.hint
               ) {
                 fbEmptyToastedRef.current = true;
+                noticeRef.current?.(body.facebook.hint);
                 toast.message("Commentaires Facebook", {
                   description: body.facebook.hint,
-                  duration: 10_000,
+                  duration: 45_000,
+                  closeButton: true,
+                  action: {
+                    label: "Copier",
+                    onClick: () => {
+                      void navigator.clipboard
+                        ?.writeText?.(body.facebook?.hint ?? "")
+                        .catch(() => {});
+                    },
+                  },
                 });
               }
             } else if (fbMsgs.length > 0) {
               fbEmptyPollsRef.current = 0;
+              noticeRef.current?.(null);
             }
             for (const m of fbMsgs) {
               const key = `fb:${m.id}`;

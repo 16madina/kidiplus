@@ -89,6 +89,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [fbRestreaming, setFbRestreaming] = useState(false);
   const [fbBusy, setFbBusy] = useState(false);
   const [fbWatchUrl, setFbWatchUrl] = useState<string | null>(null);
+  /** Sticky Facebook poll / start error — toasts vanish too fast to screenshot. */
+  const [fbChatNotice, setFbChatNotice] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
@@ -638,10 +640,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         await stopFacebookRestream(b.liveId);
         setFbRestreaming(false);
         setFbWatchUrl(null);
+        setFbChatNotice(null);
         toast.success(
           t("broadcast.facebook.stopped", "Diffusion Facebook arrêtée"),
         );
       } else {
+        setFbChatNotice(null);
         const started = await startFacebookRestream(b.liveId);
         setFbRestreaming(true);
         setFbWatchUrl(started.watchUrl);
@@ -650,11 +654,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         );
       }
     } catch (e) {
-      toast.error(
+      const msg =
         e instanceof Error
           ? e.message
-          : t("broadcast.facebook.startFailed", "Impossible de diffuser sur Facebook"),
-      );
+          : t("broadcast.facebook.startFailed", "Impossible de diffuser sur Facebook");
+      setFbChatNotice(msg);
+      toast.error(t("broadcast.facebook.startFailed", "Erreur Facebook"), {
+        description: msg,
+        duration: 60_000,
+        closeButton: true,
+        action: {
+          label: "Copier",
+          onClick: () => {
+            void navigator.clipboard?.writeText?.(msg).catch(() => {});
+          },
+        },
+      });
     } finally {
       setFbBusy(false);
     }
@@ -726,6 +741,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     enabledYoutube: ytRestreaming,
     enabledFacebook: fbRestreaming,
     room,
+    onFacebookNotice: setFbChatNotice,
   });
 
   const chatMessages: ChatMsg[] = room.chat
@@ -1383,7 +1399,43 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </div>
       )}
 
-
+      {fbChatNotice && (
+        <div
+          className="absolute left-3 z-[45] max-w-[min(22rem,70%)] rounded-2xl p-3 text-white"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 96px)",
+            background: "rgba(20, 24, 48, 0.92)",
+            border: "1px solid rgba(255,80,80,0.45)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <p className="text-[11px] font-black uppercase tracking-wide text-red-300">
+              Facebook — détail erreur
+            </p>
+            <button
+              type="button"
+              className="shrink-0 text-[11px] font-bold text-white/70"
+              onClick={() => setFbChatNotice(null)}
+            >
+              Fermer
+            </button>
+          </div>
+          <p className="max-h-28 overflow-y-auto text-[12px] font-medium leading-snug text-white/95">
+            {fbChatNotice}
+          </p>
+          <button
+            type="button"
+            className="mt-2 text-[11px] font-bold text-[#7eb6ff] underline"
+            onClick={() => {
+              void navigator.clipboard?.writeText?.(fbChatNotice).catch(() => {});
+              toast.success(t("common.copied", "Copié"));
+            }}
+          >
+            Copier le message
+          </button>
+        </div>
+      )}
 
       <LiveViewersSheet
         open={viewersSheetOpen}

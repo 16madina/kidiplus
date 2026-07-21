@@ -112,7 +112,7 @@ export function BroadcastComposition({
         if (!c.text?.trim()) return false;
         return true;
       })
-      .slice(-4);
+      .slice(-5);
   }, [room.chat]);
 
   const displayViewers = Math.max(1, room.viewerCount);
@@ -279,18 +279,21 @@ export function BroadcastComposition({
         {/* Spacer pushes chat toward lower safe band (above FB native chrome) */}
         <div className="min-h-3 flex-1" />
 
-        {/* Chat — wide + large type for mobile Facebook viewers */}
-        <div className="max-w-[78%] space-y-2 self-start">
+        {/* Chat — high contrast for mobile Facebook viewers */}
+        <div className="max-w-[88%] space-y-2 self-start">
           <div
-            className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white/95"
-            style={{ background: "rgba(0,0,0,0.5)" }}
+            className="inline-flex rounded-full px-3 py-1 text-[12px] font-black uppercase tracking-wide text-white"
+            style={{ background: "rgba(0,0,0,0.72)" }}
           >
             {t("broadcast.egress.kidiChat", "Chat KiDi+")}
           </div>
           {chatLines.length === 0 ? (
             <div
-              className="rounded-2xl px-3 py-2.5 text-[15px] font-semibold text-white/90"
-              style={{ background: "rgba(0,0,0,0.55)" }}
+              className="rounded-2xl px-3.5 py-3 text-[17px] font-bold leading-snug text-white"
+              style={{
+                background: "rgba(0,0,0,0.72)",
+                border: "1px solid rgba(255,255,255,0.22)",
+              }}
             >
               {t("broadcast.egress.chatWaitingShort", "Chat KiDi+…")}
             </div>
@@ -298,31 +301,34 @@ export function BroadcastComposition({
             chatLines.map((c) => (
               <div
                 key={c.id}
-                className="rounded-2xl px-3 py-2"
-                style={{ background: "rgba(0,0,0,0.58)" }}
+                className="rounded-2xl px-3.5 py-2.5"
+                style={{
+                  background: "rgba(0,0,0,0.72)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                }}
               >
                 {c.system ? (
-                  <p className="text-[15px] font-semibold leading-snug text-white/95">
+                  <p className="text-[16px] font-bold leading-snug text-white">
                     {c.text}
                   </p>
                 ) : (
-                  <p className="text-[15px] leading-snug">
+                  <p className="text-[17px] font-semibold leading-snug">
                     <span
-                      className="font-bold"
-                      style={{ color: c.color || "oklch(0.85 0.12 85)" }}
+                      className="font-black"
+                      style={{ color: c.color || "oklch(0.88 0.14 85)" }}
                     >
                       {c.isHost ? `${c.user} [HOST]` : c.user}
                     </span>
                     {c.source === "youtube" ? (
                       <span
-                        className="ml-1.5 inline-flex rounded px-1 py-px text-[10px] font-black text-white"
+                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[11px] font-black text-white"
                         style={{ background: "oklch(0.55 0.22 25)" }}
                       >
                         YT
                       </span>
                     ) : c.source === "facebook" ? (
                       <span
-                        className="ml-1.5 inline-flex rounded px-1 py-px text-[10px] font-black text-white"
+                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[11px] font-black text-white"
                         style={{ background: "oklch(0.5 0.14 260)" }}
                       >
                         FB
