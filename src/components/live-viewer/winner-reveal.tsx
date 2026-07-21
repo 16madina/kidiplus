@@ -24,11 +24,17 @@ import { playAuctionSoldChime } from "@/lib/auction-sold-chime";
 type Phase = "logo" | "card" | "out";
 export type RevealVariant = "winner" | "unsold";
 
-const TIMINGS = {
-  /** Hold big logo a beat longer so it reads on phone + social. */
+const TIMINGS_APP = {
   card: 1100,
   out: 5200,
   done: 5700,
+} as const;
+
+/** Shorter on social egress so YT/FB delay doesn't leave the reveal over the next item. */
+const TIMINGS_SOCIAL = {
+  card: 800,
+  out: 3200,
+  done: 3600,
 } as const;
 
 function displayName(full: string | null | undefined): string {
@@ -53,6 +59,7 @@ export function WinnerReveal({
   variant = "winner",
   productName,
   revealKey,
+  surface = "app",
   onDone,
 }: {
   open: boolean;
@@ -64,9 +71,12 @@ export function WinnerReveal({
   productName?: string | null;
   /** Unique per auction end — remounts the animation even if same winner. */
   revealKey?: string | null;
+  /** Social egress uses a shorter hold to stay closer to the host. */
+  surface?: "app" | "social";
   onDone: () => void;
 }) {
   const { t } = useTranslation();
+  const timings = surface === "social" ? TIMINGS_SOCIAL : TIMINGS_APP;
   const [phase, setPhase] = useState<Phase>("logo");
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [resolvedAvatar, setResolvedAvatar] = useState<string | null>(
@@ -91,9 +101,9 @@ export function WinnerReveal({
     if (variant === "winner") {
       playAuctionSoldChime();
     }
-    const t1 = setTimeout(() => setPhase("card"), TIMINGS.card);
-    const t2 = setTimeout(() => setPhase("out"), TIMINGS.out);
-    const t3 = setTimeout(() => onDoneRef.current(), TIMINGS.done);
+    const t1 = setTimeout(() => setPhase("card"), timings.card);
+    const t2 = setTimeout(() => setPhase("out"), timings.out);
+    const t3 = setTimeout(() => onDoneRef.current(), timings.done);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -101,7 +111,7 @@ export function WinnerReveal({
     };
     // revealKey must re-trigger for every win (same winnerId is common).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, revealKey, winnerId, winnerName, variant]);
+  }, [open, revealKey, winnerId, winnerName, variant, surface]);
 
   useEffect(() => {
     if (!open || !winnerAvatarUrl) return;

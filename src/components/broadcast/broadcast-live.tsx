@@ -993,6 +993,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <AuctionFinalCountdown
         secondsLeft={timeLeft}
         active={!!activeAuction}
+        density="app"
       />
       <LiveChat
         messages={chatMessages}

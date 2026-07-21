@@ -6,7 +6,7 @@
 //   - Facebook right reaction column ~10%
 // Keep KiDi+ overlays inside a roomy safe band — large enough to read.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLiveRoom } from "@/lib/live-room";
@@ -124,6 +124,7 @@ export function BroadcastComposition({
   const [confettiKey, setConfettiKey] = useState(0);
   const [winnerReveal, setWinnerReveal] = useState<{
     key: string;
+    productId: string;
     name: string | null;
     winnerId: string | null;
     variant: "winner" | "unsold";
@@ -131,20 +132,30 @@ export function BroadcastComposition({
   } | null>(null);
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);
   const joinedAt = useMemo(() => Date.now(), []);
+  const seenEndIdsRef = useRef<Set<string>>(new Set());
 
+  // Show reveal once per endId. Re-running on product updates must NOT
+  // resurrect a finished reveal (that left the logo/name stuck on YouTube
+  // while the host already moved to the next item on KiDi+).
   useEffect(() => {
     const end = room.lastAuctionEnd;
     if (!end) return;
     const endId =
       end.endId ??
       `fallback-${end.ts ?? 0}-${end.productId}-${end.auctionRound ?? 0}`;
+    if (seenEndIdsRef.current.has(endId)) return;
     const ts = end.ts ?? 0;
-    // Drop only clearly stale ends from before this egress session joined.
     if (ts > 0 && ts < joinedAt - 8000) return;
+    seenEndIdsRef.current.add(endId);
+    if (seenEndIdsRef.current.size > 80) {
+      const first = seenEndIdsRef.current.values().next().value;
+      if (first) seenEndIdsRef.current.delete(first);
+    }
     const product = room.products.find((p) => p.id === end.productId);
     if (!end.winnerId) {
       setWinnerReveal({
         key: endId,
+        productId: end.productId,
         name: null,
         winnerId: null,
         variant: "unsold",
@@ -155,12 +166,29 @@ export function BroadcastComposition({
     setConfettiKey((k) => k + 1);
     setWinnerReveal({
       key: endId,
+      productId: end.productId,
       name: end.winnerName,
       winnerId: end.winnerId,
       variant: "winner",
       productName: product?.name ?? null,
     });
   }, [room.lastAuctionEnd?.endId, joinedAt, room.products, room.lastAuctionEnd]);
+
+  // Host moved on (new auction) → drop reveal immediately.
+  useEffect(() => {
+    if (!room.auctionStart) return;
+    setWinnerReveal(null);
+  }, [room.auctionStart?.productId, room.auctionStart?.deadlineMs]);
+
+  // Host featured another product → drop reveal so social stays in sync.
+  useEffect(() => {
+    if (!featured?.id) return;
+    setWinnerReveal((prev) => {
+      if (!prev) return null;
+      if (prev.productId === featured.id) return prev;
+      return null;
+    });
+  }, [featured?.id]);
 
   useEffect(() => {
     if (!room.lastExtension?.ts) return;
@@ -377,6 +405,7 @@ export function BroadcastComposition({
       <AuctionFinalCountdown
         secondsLeft={secondsLeft}
         active={!!room.auctionStart}
+        density="social"
       />
       <BidPulseFlash
         text={
@@ -396,6 +425,7 @@ export function BroadcastComposition({
         variant={winnerReveal?.variant ?? "winner"}
         productName={winnerReveal?.productName ?? null}
         revealKey={winnerReveal?.key ?? null}
+        surface="social"
         onDone={() => setWinnerReveal(null)}
       />
 

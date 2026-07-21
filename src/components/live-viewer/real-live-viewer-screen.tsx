@@ -1201,6 +1201,7 @@ export function RealLiveViewerScreen() {
       <AuctionFinalCountdown
         secondsLeft={secondsLeft}
         active={!!room.auctionStart}
+        density="app"
       />
       <BidPulseFlash
         text={
