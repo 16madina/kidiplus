@@ -10,6 +10,7 @@ import {
   fetchYoutubeStatus,
   startYoutubeRestream,
   stopYoutubeRestream,
+  ensureYoutubeBroadcastLive,
 } from "@/lib/youtube-restream";
 import {
   fetchFacebookStatus,
@@ -86,6 +87,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [ytRestreaming, setYtRestreaming] = useState(false);
   const [ytBusy, setYtBusy] = useState(false);
   const [ytWatchUrl, setYtWatchUrl] = useState<string | null>(null);
+  const ytPromoteAbortRef = useRef<AbortController | null>(null);
   const [fbReady, setFbReady] = useState(false);
   const [fbRestreaming, setFbRestreaming] = useState(false);
   const [fbBusy, setFbBusy] = useState(false);
@@ -596,6 +598,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.selection();
     try {
       if (ytRestreaming) {
+        ytPromoteAbortRef.current?.abort();
+        ytPromoteAbortRef.current = null;
         await stopYoutubeRestream(b.liveId);
         setYtRestreaming(false);
         setYtWatchUrl(null);
@@ -608,6 +612,30 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         setYtWatchUrl(started.watchUrl);
         toast.success(
           t("broadcast.youtube.started", "En direct sur YouTube (interface KiDi+)"),
+        );
+        // Promote "À venir" → live (serverless often kills the start-handler promote).
+        ytPromoteAbortRef.current?.abort();
+        const ac = new AbortController();
+        ytPromoteAbortRef.current = ac;
+        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal }).then(
+          (res) => {
+            if (ac.signal.aborted) return;
+            if (res.ok) {
+              toast.success(
+                t(
+                  "broadcast.youtube.nowLive",
+                  "YouTube est passé en direct (plus « À venir »)",
+                ),
+              );
+              return;
+            }
+            toast.message(
+              t(
+                "broadcast.youtube.stillUpcoming",
+                "YouTube reçoit le flux — s’il reste « À venir », rouvre le lien dans 30 s",
+              ),
+            );
+          },
         );
       }
     } catch (e) {

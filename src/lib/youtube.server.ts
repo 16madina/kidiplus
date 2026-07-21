@@ -237,7 +237,7 @@ export async function createYoutubeLiveBroadcast(opts: {
 }): Promise<{ ok: true; live: YoutubeLiveBundle } | { ok: false; error: string }> {
   const title = opts.title.trim().slice(0, 100) || "KiDi+ Live";
   const privacyStatus = opts.privacyStatus ?? "public";
-  const scheduledStartTime = new Date().toISOString();
+  const scheduledStartTime = new Date(Date.now() - 60_000).toISOString();
   const { liveSocialDescription } = await import("@/lib/deep-links");
   const description = opts.liveId
     ? liveSocialDescription({ title, liveId: opts.liveId }).slice(0, 5000)
@@ -370,59 +370,128 @@ export async function completeYoutubeBroadcast(
 }
 
 /**
- * Wait until the bound liveStream is active, then transition broadcast → live.
- * enableAutoStart usually does this, but we force it so viewers don't stay on "À venir".
+ * Wait until the bound liveStream is receiving, then transition broadcast → live.
+ * enableAutoStart often fails on Web Egress; without this viewers stay on "À venir".
+ *
+ * Returns quickly once live (or when maxWaitMs elapses) so serverless + client
+ * polling can drive promotion reliably.
  */
 export async function promoteYoutubeBroadcastWhenStreamActive(opts: {
   accessToken: string;
   broadcastId: string;
   streamId: string;
   maxWaitMs?: number;
-}): Promise<void> {
+}): Promise<{
+  ok: boolean;
+  lifeCycleStatus: string | null;
+  streamStatus: string | null;
+}> {
   const maxWaitMs = opts.maxWaitMs ?? 90_000;
   const started = Date.now();
 
+  const readBroadcastStatus = async (): Promise<string | null> => {
+    const u = new URL(`${YT_API}/liveBroadcasts`);
+    u.searchParams.set("part", "status");
+    u.searchParams.set("id", opts.broadcastId);
+    const res = await fetch(u.toString(), {
+      headers: { Authorization: `Bearer ${opts.accessToken}` },
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      items?: Array<{ status?: { lifeCycleStatus?: string } }>;
+    };
+    return data.items?.[0]?.status?.lifeCycleStatus ?? null;
+  };
+
+  const readStreamStatus = async (): Promise<string | null> => {
+    const u = new URL(`${YT_API}/liveStreams`);
+    u.searchParams.set("part", "status");
+    u.searchParams.set("id", opts.streamId);
+    const res = await fetch(u.toString(), {
+      headers: { Authorization: `Bearer ${opts.accessToken}` },
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      items?: Array<{ status?: { streamStatus?: string } }>;
+    };
+    return data.items?.[0]?.status?.streamStatus ?? null;
+  };
+
+  const transition = async (status: "testing" | "live"): Promise<boolean> => {
+    const tr = await fetch(
+      `${YT_API}/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(opts.broadcastId)}&part=status`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${opts.accessToken}` },
+      },
+    );
+    if (!tr.ok) {
+      const err = (await tr.json().catch(() => ({}))) as {
+        error?: { message?: string; errors?: Array<{ reason?: string }> };
+      };
+      const reason = err.error?.errors?.[0]?.reason;
+      // Already in that state / redundant transition — treat as soft ok.
+      if (
+        reason === "invalidTransition" ||
+        reason === "redundantTransition" ||
+        /already|live/i.test(err.error?.message ?? "")
+      ) {
+        return true;
+      }
+      console.warn(
+        `[youtube] transition ${status} failed`,
+        err.error?.message || tr.status,
+        reason,
+      );
+      return false;
+    }
+    return true;
+  };
+
+  let lifeCycleStatus = await readBroadcastStatus();
+  if (lifeCycleStatus === "live" || lifeCycleStatus === "liveStarting") {
+    return { ok: true, lifeCycleStatus, streamStatus: await readStreamStatus() };
+  }
+
+  let streamStatus: string | null = null;
   while (Date.now() - started < maxWaitMs) {
     try {
-      const u = new URL(`${YT_API}/liveStreams`);
-      u.searchParams.set("part", "status");
-      u.searchParams.set("id", opts.streamId);
-      const res = await fetch(u.toString(), {
-        headers: { Authorization: `Bearer ${opts.accessToken}` },
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        items?: Array<{ status?: { streamStatus?: string } }>;
-      };
-      const streamStatus = data.items?.[0]?.status?.streamStatus;
+      lifeCycleStatus = await readBroadcastStatus();
+      if (lifeCycleStatus === "live" || lifeCycleStatus === "liveStarting") {
+        return { ok: true, lifeCycleStatus, streamStatus };
+      }
+
+      streamStatus = await readStreamStatus();
+      // active / good = ingesting. "ready" is bound but not receiving yet.
       if (streamStatus === "active" || streamStatus === "good") {
-        // testing → live (YouTube requires testing first for some accounts)
-        for (const status of ["testing", "live"] as const) {
-          const tr = await fetch(
-            `${YT_API}/liveBroadcasts/transition?broadcastStatus=${status}&id=${encodeURIComponent(opts.broadcastId)}&part=status`,
-            {
-              method: "POST",
-              headers: { Authorization: `Bearer ${opts.accessToken}` },
-            },
-          );
-          if (!tr.ok) {
-            const err = (await tr.json().catch(() => ({}))) as {
-              error?: { message?: string };
-            };
-            console.warn(
-              `[youtube] transition ${status} failed`,
-              err.error?.message || tr.status,
-            );
-          }
-          await new Promise((r) => setTimeout(r, 800));
+        // monitorStream is off → prefer direct → live (testing often invalid).
+        await transition("live");
+        await new Promise((r) => setTimeout(r, 600));
+        lifeCycleStatus = await readBroadcastStatus();
+        if (lifeCycleStatus === "live" || lifeCycleStatus === "liveStarting") {
+          return { ok: true, lifeCycleStatus, streamStatus };
         }
-        return;
+        await transition("testing");
+        await new Promise((r) => setTimeout(r, 800));
+        await transition("live");
+        await new Promise((r) => setTimeout(r, 600));
+        lifeCycleStatus = await readBroadcastStatus();
+        if (lifeCycleStatus === "live" || lifeCycleStatus === "liveStarting") {
+          return { ok: true, lifeCycleStatus, streamStatus };
+        }
       }
     } catch (e) {
-      console.warn("[youtube] stream status poll failed", e);
+      console.warn("[youtube] promote poll failed", e);
     }
-    await new Promise((r) => setTimeout(r, 3_000));
+    await new Promise((r) => setTimeout(r, 2_500));
   }
-  console.warn("[youtube] stream never became active within wait window");
+
+  lifeCycleStatus = await readBroadcastStatus().catch(() => lifeCycleStatus);
+  streamStatus = await readStreamStatus().catch(() => streamStatus);
+  console.warn("[youtube] promote timed out", { lifeCycleStatus, streamStatus });
+  return {
+    ok: lifeCycleStatus === "live" || lifeCycleStatus === "liveStarting",
+    lifeCycleStatus,
+    streamStatus,
+  };
 }
 
 export type YoutubeChatMessage = {

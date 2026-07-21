@@ -55,7 +55,9 @@ export const Route = createFileRoute("/api/youtube/restream")({
             ? "stop"
             : body.action === "start"
               ? "start"
-              : null;
+              : body.action === "promote"
+                ? "promote"
+                : null;
         const liveId = typeof body.liveId === "string" ? body.liveId.trim() : "";
         if (!action || !liveId || !UUID_RE.test(liveId)) {
           return youtubeJson(
@@ -128,6 +130,49 @@ export const Route = createFileRoute("/api/youtube/restream")({
             .eq("id", liveId);
 
           return youtubeJson({ ok: true }, 200, origin);
+        }
+
+        // Host polls this after start — serverless often kills the fire-and-forget
+        // promote on the start response, which left YouTube stuck on "À venir".
+        if (action === "promote") {
+          const broadcastId = (liveRow as { youtube_broadcast_id?: string | null })
+            .youtube_broadcast_id;
+          const streamId = (liveRow as { youtube_stream_id?: string | null })
+            .youtube_stream_id;
+          if (!broadcastId || !streamId) {
+            return youtubeJson(
+              {
+                error: "youtube_not_streaming",
+                message: "Aucun live YouTube actif pour ce live KiDi+.",
+              },
+              400,
+              origin,
+            );
+          }
+          const tok = await getValidYoutubeAccessToken(userId);
+          if (!tok.ok) {
+            return youtubeJson(
+              { error: tok.error, message: tok.error },
+              tok.error === "youtube_not_connected" ? 400 : 502,
+              origin,
+            );
+          }
+          const result = await promoteYoutubeBroadcastWhenStreamActive({
+            accessToken: tok.accessToken,
+            broadcastId,
+            streamId,
+            maxWaitMs: 12_000,
+          });
+          return youtubeJson(
+            {
+              ok: result.ok,
+              live: result.ok,
+              lifeCycleStatus: result.lifeCycleStatus,
+              streamStatus: result.streamStatus,
+            },
+            200,
+            origin,
+          );
         }
 
         // start
@@ -288,12 +333,14 @@ export const Route = createFileRoute("/api/youtube/restream")({
           );
         }
 
-        // Don't block the host UI — promote YouTube from "upcoming" → live in background.
+        // Best-effort on long-lived servers. Host also polls action=promote
+        // because serverless often kills this promise after the response.
         void promoteYoutubeBroadcastWhenStreamActive({
           accessToken: tok.accessToken,
           broadcastId: created.live.broadcastId,
           streamId: created.live.streamId,
-        });
+          maxWaitMs: 90_000,
+        }).catch((e) => console.warn("[youtube-restream] background promote", e));
 
         return youtubeJson(
           {

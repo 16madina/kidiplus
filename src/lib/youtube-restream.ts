@@ -135,3 +135,48 @@ export async function stopYoutubeRestream(liveId: string): Promise<void> {
     throw new Error(body.message || body.error || `Restream stop failed (${res.status})`);
   }
 }
+
+/**
+ * Poll until YouTube leaves "upcoming" / ready and becomes live.
+ * Needed because the start handler's background promote is often killed on serverless.
+ */
+export async function ensureYoutubeBroadcastLive(
+  liveId: string,
+  opts?: { maxAttempts?: number; intervalMs?: number; signal?: AbortSignal },
+): Promise<{ ok: boolean; lifeCycleStatus: string | null }> {
+  const maxAttempts = opts?.maxAttempts ?? 24;
+  const intervalMs = opts?.intervalMs ?? 5_000;
+  let lastStatus: string | null = null;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    if (opts?.signal?.aborted) {
+      return { ok: false, lifeCycleStatus: lastStatus };
+    }
+    try {
+      const res = await fetch("/api/youtube/restream", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ action: "promote", liveId }),
+        signal: opts?.signal,
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        live?: boolean;
+        ok?: boolean;
+        lifeCycleStatus?: string | null;
+        error?: string;
+      };
+      lastStatus = body.lifeCycleStatus ?? null;
+      if (res.ok && (body.live || body.ok)) {
+        return { ok: true, lifeCycleStatus: lastStatus };
+      }
+    } catch (e) {
+      if (opts?.signal?.aborted) {
+        return { ok: false, lifeCycleStatus: lastStatus };
+      }
+      console.warn("[youtube] promote poll failed", e);
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  return { ok: false, lifeCycleStatus: lastStatus };
+}
