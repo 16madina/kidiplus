@@ -60,7 +60,7 @@ export function isSnapProductionToken(): boolean {
  * Ajoute/retire des lenses sur my-lenses.snapchat.com : elles apparaissent
  * dans l'app automatiquement, sans changement de code. */
 export const SNAP_LENS_GROUP_ID =
-  readEnv("VITE_SNAP_LENS_GROUP_ID") || "df287f43-6646-4b01-a711-1a0e632c211a";
+  readEnv("VITE_SNAP_LENS_GROUP_ID") || "9dd9798c-cef5-443b-a494-af0cc480059e";
 
 /** Supporté = WebGL2 + WebAssembly disponibles (WKWebView iOS + Chrome ok). */
 export function isCameraKitSupported(): boolean {
