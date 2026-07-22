@@ -1017,8 +1017,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </div>
       )}
 
-      {/* Session stats + social restream (YT/FB/TT under each metric —
-          keeps the top bar free on narrow phones). */}
+      {/* Session stats strip (metrics only). */}
       <div
         className="absolute z-30"
         style={{
@@ -1028,63 +1027,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }}
       >
         <div
-          className="flex items-stretch gap-2 rounded-2xl px-2.5 py-1.5 text-white"
+          className="flex items-center gap-3 rounded-2xl px-3 py-1.5 text-white"
           style={{
             backgroundColor: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
           }}
         >
-          {/* Ventes → YouTube */}
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 leading-tight">
+          <div className="flex flex-col leading-tight">
             <span className="text-[9px] uppercase tracking-wide text-white/60">Ventes</span>
             <AnimatedEuro value={totalRevenue} currency={cur} locale={i18n.language} />
-            {!isRtmp && (
-              <Press
-                disabled={ytBusy}
-                onClick={() => void toggleYoutubeRestream()}
-                aria-label={t("broadcast.youtube.goLive", "Diffuser sur YouTube")}
-                className="!min-h-0 mt-0.5 flex h-5 w-full items-center justify-center gap-0.5 rounded-full px-1.5 text-[9px] font-black tracking-wide"
-                style={{
-                  background: ytRestreaming
-                    ? "linear-gradient(135deg, #ff0033, #cc0000)"
-                    : "rgba(255,255,255,0.14)",
-                  color: ytRestreaming ? "#fff" : "rgba(255,255,255,0.9)",
-                  opacity: ytBusy ? 0.7 : 1,
-                }}
-              >
-                <Radio size={9} />
-                {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
-              </Press>
-            )}
           </div>
-          <div className="w-px self-stretch bg-white/20" />
-          {/* Articles → Facebook */}
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 leading-tight">
+          <div className="h-6 w-px bg-white/20" />
+          <div className="flex flex-col leading-tight">
             <span className="text-[9px] uppercase tracking-wide text-white/60">Articles</span>
             <span className="text-[14px] font-bold tabular-nums">{soldCount}</span>
-            {!isRtmp && (
-              <Press
-                disabled={fbBusy}
-                onClick={() => void toggleFacebookRestream()}
-                aria-label={t("broadcast.facebook.goLive", "Diffuser sur Facebook")}
-                className="!min-h-0 mt-0.5 flex h-5 w-full items-center justify-center gap-0.5 rounded-full px-1.5 text-[9px] font-black tracking-wide"
-                style={{
-                  background: fbRestreaming
-                    ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
-                    : "rgba(255,255,255,0.14)",
-                  color: fbRestreaming ? "#fff" : "rgba(255,255,255,0.9)",
-                  opacity: fbBusy ? 0.7 : 1,
-                }}
-              >
-                <Radio size={9} />
-                {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
-              </Press>
-            )}
           </div>
-          <div className="w-px self-stretch bg-white/20" />
-          {/* Cadeaux → TikTok */}
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 leading-tight">
+          <div className="h-6 w-px bg-white/20" />
+          <div className="flex flex-col leading-tight">
             <span className="text-[9px] uppercase tracking-wide text-white/60">
               {t("gifts.short", "Cadeaux 🎁")}
             </span>
@@ -1094,26 +1054,62 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             >
               {formatMoney(giftStats.sellerNet, cur, i18n.language)}
             </span>
-            {!isRtmp && (
-              <Press
-                disabled={ttBusy}
-                onClick={() => void toggleTiktokRestream()}
-                aria-label={t("broadcast.tiktok.goLive", "Diffuser sur TikTok")}
-                className="!min-h-0 mt-0.5 flex h-5 w-full items-center justify-center gap-0.5 rounded-full px-1.5 text-[9px] font-black tracking-wide"
-                style={{
-                  background: ttRestreaming
-                    ? "linear-gradient(135deg, #FE2C55, #c41e3a)"
-                    : "rgba(255,255,255,0.14)",
-                  color: ttRestreaming ? "#fff" : "rgba(255,255,255,0.9)",
-                  opacity: ttBusy ? 0.7 : 1,
-                }}
-              >
-                <Radio size={9} />
-                {ttBusy ? "…" : ttRestreaming ? "TT ON" : "TT"}
-              </Press>
-            )}
           </div>
         </div>
+
+        {/* Social restream — separate row BELOW the stats strip (not inside). */}
+        {!isRtmp && (
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Press
+              disabled={ytBusy}
+              onClick={() => void toggleYoutubeRestream()}
+              aria-label={t("broadcast.youtube.goLive", "Diffuser sur YouTube")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ytRestreaming
+                  ? "linear-gradient(135deg, #ff0033, #cc0000)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ytRestreaming ? "#fff" : "#0a0a12",
+                opacity: ytBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
+            </Press>
+            <Press
+              disabled={fbBusy}
+              onClick={() => void toggleFacebookRestream()}
+              aria-label={t("broadcast.facebook.goLive", "Diffuser sur Facebook")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: fbRestreaming
+                  ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: fbRestreaming ? "#fff" : "#0a0a12",
+                opacity: fbBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
+            </Press>
+            <Press
+              disabled={ttBusy}
+              onClick={() => void toggleTiktokRestream()}
+              aria-label={t("broadcast.tiktok.goLive", "Diffuser sur TikTok")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ttRestreaming
+                  ? "linear-gradient(135deg, #FE2C55, #c41e3a)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ttRestreaming ? "#fff" : "#0a0a12",
+                opacity: ttBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ttBusy ? "…" : ttRestreaming ? "TT ON" : "TT"}
+            </Press>
+          </div>
+        )}
       </div>
 
       <FloatingHearts trigger={room.heartTick} />
@@ -1243,13 +1239,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Below taller stats+social strip; left of tool rail on narrow phones.
-              top: "calc(env(safe-area-inset-top, 0px) + 128px)",
-              right: "3.25rem",
+              // Flush under Terminer (top-right), slightly inset from the edge.
+              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
+              right: "0.5rem",
             }}
           >
             <div
-              className="w-24 rounded-2xl p-1.5 text-white"
+              className="w-28 rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
@@ -1259,14 +1255,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               <div className="relative mb-1">
                 <LiveProductImage
                   src={imgFor(featured)}
-                  className="h-12 w-full rounded-lg object-cover"
+                  className="h-14 w-full rounded-lg object-cover"
                   iconClassName="text-white/60"
                 />
-                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[#10162B]">
+                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
                   {t("live.featured")}
                 </span>
               </div>
-              <div className="truncate text-[10px] font-semibold leading-tight">
+              <div className="truncate text-[10.5px] font-semibold leading-tight">
                 {featured.name}
               </div>
               {activeAuction && activeAuction.productId === featured.id ? (
@@ -1325,12 +1321,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30"
             style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 128px)",
-              right: "3.25rem",
+              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
+              right: "0.5rem",
             }}
           >
             <div
-              className="w-24 rounded-2xl p-1.5 text-center text-white"
+              className="w-28 rounded-2xl p-1.5 text-center text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
