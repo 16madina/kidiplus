@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { giftByKey } from "@/lib/gifts";
+import { isGiftAnimStale, rememberGiftAnim } from "@/lib/gift-anim-seen";
 import { EASE_IOS } from "@/lib/motion";
 import type { GiftEvt } from "@/lib/live-room";
 
@@ -41,6 +42,10 @@ export function GiftComboFeed({
 
   useEffect(() => {
     if (!trigger?.id) return;
+    if (isGiftAnimStale(trigger.ts)) return;
+    // Combo feed shares the session seen-set with GiftAnimationsLayer so a
+    // remount of either layer cannot re-show an already-played gift.
+    if (!rememberGiftAnim(`combo:${trigger.id}`)) return;
 
     const comboKey = `${trigger.senderId}:${trigger.giftKey}`;
     const now = Date.now();

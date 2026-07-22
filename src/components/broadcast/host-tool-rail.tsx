@@ -48,9 +48,10 @@ export function HostToolRail({
 }: HostToolRailProps) {
   return (
     <div
-      className="pointer-events-none absolute right-3 z-30 flex flex-col items-center gap-2"
+      className="pointer-events-none absolute z-30 flex flex-col items-center gap-2"
       style={{
         top: "50%",
+        right: "max(0.75rem, env(safe-area-inset-right, 0px))",
         transform: "translateY(-50%)",
       }}
     >

@@ -349,7 +349,11 @@ function AppShellInner() {
 
   return (
     <div
-      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
+      className={
+        immersive || liveFullScreen
+          ? "relative mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-background"
+          : "relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
+      }
       style={{ isolation: "isolate" }}
     >
       <div data-kp-shell-chrome>

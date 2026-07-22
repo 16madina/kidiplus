@@ -224,6 +224,8 @@ export function useLiveRoom(params: {
   ingestGiftRef.current = (evt: GiftEvt) => {
     if (!evt?.id || !evt.giftKey) return;
     if (seenGiftIdsRef.current.has(evt.id)) return;
+    // Never animate ancient rows (e.g. delayed postgres / remount with stale lastGift).
+    if (evt.ts && Date.now() - evt.ts > 20_000) return;
     seenGiftIdsRef.current.add(evt.id);
     if (seenGiftIdsRef.current.size > 200) {
       const arr = Array.from(seenGiftIdsRef.current);
@@ -252,6 +254,16 @@ export function useLiveRoom(params: {
     setLastBid(null);
     setLastGift(null);
   }, [liveId]);
+
+  // Drop lastGift after the animation window so remounting the viewer
+  // (leave → re-enter) cannot re-trigger GiftAnimationsLayer / combo.
+  useEffect(() => {
+    if (!lastGift) return;
+    const t = window.setTimeout(() => {
+      setLastGift((cur) => (cur?.id === lastGift.id ? null : cur));
+    }, 8_000);
+    return () => window.clearTimeout(t);
+  }, [lastGift]);
 
   // Load initial products + rehydrate an already-running auction so late
   // joiners see the same countdown as everyone else. `auction_deadline_at`

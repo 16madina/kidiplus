@@ -14,6 +14,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { isGiftAnimStale, rememberGiftAnim } from "@/lib/gift-anim-seen";
 import { EASE_IOS } from "@/lib/motion";
 import type { GiftEvt } from "@/lib/live-room";
 
@@ -35,16 +36,12 @@ const isTier3 = (k: string) => k === "rocket" || k === "lion";
 export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   const [active, setActive] = useState<QueueItem[]>([]);
   const queueRef = useRef<QueueItem[]>([]);
-  const seenRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!trigger) return;
-    if (seenRef.current.has(trigger.id)) return;
-    seenRef.current.add(trigger.id);
-    if (seenRef.current.size > 200) {
-      const arr = Array.from(seenRef.current);
-      seenRef.current = new Set(arr.slice(arr.length - 100));
-    }
+    if (!trigger?.id) return;
+    // Skip history / remount replays of the same lastGift.
+    if (isGiftAnimStale(trigger.ts)) return;
+    if (!rememberGiftAnim(trigger.id)) return;
     const item: QueueItem = { ...trigger, animId: `${trigger.id}-${Date.now()}` };
     setActive((prev) => {
       const t3Playing = prev.some((a) => isTier3(a.giftKey));

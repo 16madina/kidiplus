@@ -290,3 +290,18 @@ html.kp-in-system-pip [data-kp-live-pip] {
   overflow: hidden !important;
   background: #000 !important;
 }
+
+/* Full-screen live (viewer): never letterbox to max-w-xl on iPad / Fold. */
+[data-kp-live-pip="full"] {
+  max-width: none !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Host / viewer live chrome: keep overlays inside safe areas on notched
+ * phones and unfolded Folds (side insets when in landscape / multi-window). */
+.kp-live-safe-x {
+  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+}

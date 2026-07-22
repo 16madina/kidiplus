@@ -841,8 +841,8 @@ export function RealLiveViewerScreen() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
-      <div className="absolute inset-x-0 top-0 z-30 pt-safe">
-        <div className="flex items-start justify-between gap-2 px-3 pt-2">
+      <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
+        <div className="flex items-start justify-between gap-2 px-1 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
