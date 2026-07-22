@@ -822,8 +822,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       {/* Compact top bar — fits at 320pt width. */}
       <div
-        className="absolute inset-x-0 top-0 z-30 flex items-center gap-1.5 px-2"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
+        className="absolute inset-x-0 top-0 z-30 flex items-center gap-1 px-2"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
       >
         {/* Live pill: pulsing red dot + timer */}
         <div
@@ -875,7 +875,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <Radio size={11} />
-              {ytBusy ? "…" : ytRestreaming ? "YouTube ON" : "YT"}
+              {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
             </Press>
             <Press
               disabled={fbBusy}
@@ -891,7 +891,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               }}
             >
               <Radio size={11} />
-              {fbBusy ? "…" : fbRestreaming ? "Facebook ON" : "FB"}
+              {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
             </Press>
           </>
         )}
@@ -921,11 +921,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         <Press
           onClick={() => setConfirmEnd(true)}
           aria-label={t("live.endLive")}
-          className="!min-h-9 h-9 min-w-0 shrink-0 rounded-full pl-2 pr-3 text-[12px] font-bold text-white inline-flex items-center gap-1"
+          className="!min-h-9 h-9 shrink-0 rounded-full pl-2 pr-2.5 text-[12px] font-bold text-white inline-flex items-center gap-1"
           style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
         >
           <X size={14} />
-          <span className="truncate">{t("live.endLive")}</span>
+          <span>{t("live.endLiveShort", "Terminer")}</span>
         </Press>
       </div>
 
@@ -1137,9 +1137,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Just under Terminer (top-right), clear of the tool rail.
-              top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "1.65rem",
+              // Flush under Terminer (top-right). Tool rail is vertically
+              // centered so this top corner can sit on the right edge.
+              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
+              right: "0.5rem",
             }}
           >
             <div
@@ -1219,8 +1220,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30"
             style={{
-              top: "calc(env(safe-area-inset-top) + 52px)",
-              right: "1.65rem",
+              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
+              right: "0.5rem",
             }}
           >
             <div
