@@ -3,6 +3,7 @@
 // host is not connected yet, or after they leave.
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
 import {
   RoomEvent,
   Track,
@@ -14,7 +15,13 @@ import {
   type RemoteParticipant,
 } from "@/lib/livekit";
 import { useAppActive } from "@/lib/app-state";
-import { getInSystemPip, getPipHold, useMediaSessionActive } from "@/lib/pip-session";
+import {
+  getInSystemPip,
+  getPipHold,
+  useInSystemPip,
+  useMediaSessionActive,
+  usePipHold,
+} from "@/lib/pip-session";
 import { Room } from "livekit-client";
 
 export type ViewerLiveVideoProps = {
@@ -119,15 +126,29 @@ export function ViewerLiveVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
+  const hadLiveRef = useRef(false);
   const [status, setStatus] = useState<ViewerStatus>("connecting");
   const appActive = useAppActive();
   // Keep LiveKit connected in Android system PiP even though Capacitor
   // reports the app as inactive while the PiP window is showing.
   const sessionActive = useMediaSessionActive(appActive);
+  const inSystemPip = useInSystemPip();
+  const pipHold = usePipHold();
+  const isIosNative = (() => {
+    try {
+      return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+    } catch {
+      return false;
+    }
+  })();
 
   useEffect(() => {
     onStatus?.(status);
   }, [status, onStatus]);
+
+  useEffect(() => {
+    if (status === "live") hadLiveRef.current = true;
+  }, [status]);
 
   useEffect(() => {
     if (!sessionActive) return;
@@ -332,9 +353,59 @@ export function ViewerLiveVideo({
     }
   }, [appActive]);
 
+  // iOS system PiP uses a SECOND native LiveKit room. If the WebView keeps
+  // playing audio (or holding AVAudioSession), you get the classic split:
+  // bubble has video but silence, or voice continues with a frozen/black frame.
+  // Hand exclusive A/V to native while inactive + PiP-eligible / in system PiP.
+  useEffect(() => {
+    const audio = audioRef.current;
+    const video = videoRef.current;
+    const nativeOwnsAv =
+      isIosNative && (inSystemPip || (!appActive && pipHold));
+    if (nativeOwnsAv) {
+      if (audio) {
+        audio.muted = true;
+        try { audio.pause(); } catch { /* ignore */ }
+      }
+      if (video) {
+        try { video.pause(); } catch { /* ignore */ }
+      }
+      return;
+    }
+    if (audio) audio.muted = false;
+    const r = roomRef.current;
+    if (!r) return;
+    if (reattachRemoteMedia(r, video, audio, true) || hadLiveRef.current) {
+      setStatus("live");
+    }
+  }, [isIosNative, inSystemPip, appActive, pipHold]);
+
+  // Android WebView PiP: keep kicking BOTH elements — otherwise the bubble
+  // often keeps only one of video/audio after the Activity resize.
+  useEffect(() => {
+    if (!inSystemPip && !(pipHold && !appActive)) return;
+    if (isIosNative) return;
+    const kick = () => {
+      const r = roomRef.current;
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
+      else kickPlayback(videoRef.current, audioRef.current);
+    };
+    kick();
+    const t1 = window.setTimeout(kick, 200);
+    const t2 = window.setTimeout(kick, 800);
+    const iv = window.setInterval(kick, 1500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearInterval(iv);
+    };
+  }, [inSystemPip, pipHold, appActive, isIosNative]);
+
   // First paint as "live" can still leave WKWebView paused. Soft kicks + stall watchdog.
   useEffect(() => {
     if (status !== "live") return;
+    // Don't fight the native PiP session on iOS.
+    if (isIosNative && (inSystemPip || (!appActive && pipHold))) return;
     const soft = () => {
       const r = roomRef.current;
       if (r) {
@@ -356,6 +427,7 @@ export function ViewerLiveVideo({
     let lastTime = -1;
     let stallTicks = 0;
     const watch = window.setInterval(() => {
+      if (isIosNative && (getInSystemPip() || (!appActive && getPipHold()))) return;
       const v = videoRef.current;
       const r = roomRef.current;
       if (!v || !r) return;
@@ -380,7 +452,7 @@ export function ViewerLiveVideo({
       window.clearTimeout(t3);
       window.clearInterval(watch);
     };
-  }, [status]);
+  }, [status, isIosNative, inSystemPip, appActive, pipHold]);
 
   const showPoster = status !== "live";
 

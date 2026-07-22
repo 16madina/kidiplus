@@ -181,6 +181,54 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         return wasPip
     }
 
+    private func activatePipAudioSession(reason: String) {
+        AudioManager.shared.isSpeakerOutputPreferred = true
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(
+                .playback,
+                mode: .moviePlayback,
+                options: []
+            )
+            try session.setActive(true)
+            print("[KiDi+] PiP audio session active (\(reason))")
+        } catch {
+            print("[KiDi+] PiP audio session failed (\(reason)): \(error)")
+        }
+    }
+
+    /// Force-subscribe remote audio + video. Stale / racing unsubscribes are the
+    /// usual cause of "video without sound" or "sound without video" in system PiP.
+    private func ensureAllRemoteMediaSubscribed(reason: String) {
+        print("[KiDi+] ensureAllRemoteMediaSubscribed (\(reason)) remotes=\(room.remoteParticipants.count)")
+        for participant in room.remoteParticipants.values {
+            for publication in participant.trackPublications.values {
+                guard let remote = publication as? RemoteTrackPublication else { continue }
+                Task {
+                    do {
+                        try await remote.set(subscribed: true)
+                        if publication.kind == .audio {
+                            print("[KiDi+] LivePipSession audio force-subscribed (\(reason))")
+                        } else if let track = publication.track as? VideoTrack {
+                            await MainActor.run {
+                                self.setHostTrack(track)
+                            }
+                        }
+                    } catch {
+                        print("[KiDi+] LivePipSession force-subscribe failed (\(reason)): \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    private func prepareForBackgroundPip(reason: String) {
+        activatePipAudioSession(reason: reason)
+        ensureAllRemoteMediaSubscribed(reason: reason)
+        ensureSourceViewsAttached()
+        startPipIfPossible()
+    }
+
     private func connect(url: String, token: String) async {
         if connected {
             await teardownRoomOnly()
@@ -188,17 +236,7 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         // Ensure LiveKit can play remote host audio in the background PiP bubble.
         // Without this, video PiP can appear while playout stays silent.
         await MainActor.run {
-            AudioManager.shared.isSpeakerOutputPreferred = true
-            do {
-                try AVAudioSession.sharedInstance().setCategory(
-                    .playback,
-                    mode: .moviePlayback,
-                    options: []
-                )
-                try AVAudioSession.sharedInstance().setActive(true)
-            } catch {
-                print("[KiDi+] PiP audio session pre-connect failed: \(error)")
-            }
+            self.activatePipAudioSession(reason: "pre-connect")
         }
         room.add(delegate: self)
         do {
@@ -207,6 +245,7 @@ final class LivePipSession: NSObject, @unchecked Sendable {
             print("[KiDi+] LivePipSession connected, remotes=\(room.remoteParticipants.count)")
             await MainActor.run {
                 self.bindExistingRemoteTracks()
+                self.ensureAllRemoteMediaSubscribed(reason: "post-connect")
             }
         } catch {
             print("[KiDi+] LivePipSession connect failed: \(error)")
@@ -239,15 +278,16 @@ final class LivePipSession: NSObject, @unchecked Sendable {
     private func bindExistingRemoteTracks() {
         for participant in room.remoteParticipants.values {
             for publication in participant.trackPublications.values {
-                // Keep audio subscribed so host voice keeps playing in system PiP.
-                // trackPublications is typed as TrackPublication — cast to remote.
-                if publication.kind == .audio, let remote = publication as? RemoteTrackPublication {
+                // Keep audio + video subscribed so host A/V both keep playing in system PiP.
+                if let remote = publication as? RemoteTrackPublication {
                     Task {
                         do {
                             try await remote.set(subscribed: true)
-                            print("[KiDi+] LivePipSession audio track subscribed")
+                            if publication.kind == .audio {
+                                print("[KiDi+] LivePipSession audio track subscribed")
+                            }
                         } catch {
-                            print("[KiDi+] LivePipSession audio subscribe failed: \(error)")
+                            print("[KiDi+] LivePipSession subscribe failed: \(error)")
                         }
                     }
                 }
@@ -363,22 +403,11 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                 queue: .main
             ) { [weak self] _ in
                 guard let self else { return }
-                // Keep exclusive playback focus so host audio continues in PiP.
-                // mixWithOthers can leave the bubble silent on some iPhones.
-                do {
-                    try AVAudioSession.sharedInstance().setCategory(
-                        .playback,
-                        mode: .moviePlayback,
-                        options: []
-                    )
-                    try AVAudioSession.sharedInstance().setActive(true)
-                } catch {
-                    print("[KiDi+] AVAudioSession reactivate failed: \(error)")
-                }
-                // Source view must be visible in the hierarchy for
-                // isPictureInPicturePossible — it was hidden on last return.
-                self.ensureSourceViewsAttached()
-                self.startPipIfPossible()
+                // Hand exclusive playback to the native LiveKit session.
+                // The WebView A/V is muted from JS while inactive — otherwise
+                // WKWebView and native LiveKit fight AVAudioSession and you get
+                // either silent video or audio with a frozen PiP frame.
+                self.prepareForBackgroundPip(reason: "willResignActive")
             }
         }
         if backgroundObserver == nil {
@@ -388,8 +417,7 @@ final class LivePipSession: NSObject, @unchecked Sendable {
                 queue: .main
             ) { [weak self] _ in
                 guard let self else { return }
-                self.ensureSourceViewsAttached()
-                self.startPipIfPossible()
+                self.prepareForBackgroundPip(reason: "didEnterBackground")
             }
         }
         if activeObserver == nil {
@@ -421,6 +449,9 @@ extension LivePipSession: RoomDelegate {
     func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
         if publication.kind == .audio {
             print("[KiDi+] LivePipSession remote audio subscribed")
+            Task { @MainActor in
+                self.activatePipAudioSession(reason: "audio-subscribed")
+            }
             return
         }
         guard let track = publication.track as? VideoTrack else { return }
@@ -438,6 +469,10 @@ extension LivePipSession: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         print("[KiDi+] PiP did start")
         cancelPipRetries()
+        // Re-claim audio the moment the bubble appears — WebView often still
+        // holds the session for a beat after resignActive.
+        activatePipAudioSession(reason: "pip-did-start")
+        ensureAllRemoteMediaSubscribed(reason: "pip-did-start")
         emitMode(true)
     }
 
