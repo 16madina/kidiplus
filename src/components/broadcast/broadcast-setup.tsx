@@ -37,6 +37,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { CoverCropperSheet } from "./cover-cropper-sheet";
 import { YoutubeConnectCard } from "./youtube-connect-card";
 import { FacebookConnectCard } from "./facebook-connect-card";
+import { TiktokConnectCard } from "./tiktok-connect-card";
 
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 80;
@@ -651,11 +652,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         </div>
 
 
-        {/* YouTube / Facebook OAuth (KiDi+ camera → social) — camera mode only */}
+        {/* YouTube / Facebook OAuth + TikTok how-to (KiDi+ camera → social) */}
         {b.streamSource !== "rtmp" && (
           <div className="space-y-2">
             <YoutubeConnectCard />
             <FacebookConnectCard />
+            <TiktokConnectCard />
           </div>
         )}
 
