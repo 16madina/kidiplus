@@ -67,6 +67,14 @@ const AuthContext = createContext<AuthCtx | null>(null);
 
 const GUEST_STORAGE_KEY = "kidi:guestMode";
 
+/**
+ * Columns granted to anon/authenticated after the email lockdown migration.
+ * Never use `select("*")` on `profiles` — PostgREST would request `email`
+ * and fail, leaving profile=null (Live tab infinite spinner, profile updates broken).
+ */
+export const PROFILE_SAFE_SELECT =
+  "id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_reason, frozen_at, frozen_by, risk_restricted, kyc_verified";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // block anon/authenticated from reading it. Use supabase.auth session email instead.
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_reason, frozen_at, frozen_by, risk_restricted, kyc_verified")
+      .select(PROFILE_SAFE_SELECT)
       .eq("id", userId)
       .maybeSingle();
     if (token !== profileFetchToken.current) return;
@@ -202,18 +210,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback<AuthCtx["updateProfile"]>(
     async (patch) => {
       if (!session?.user) throw new Error("Non connecté");
+      // Must not use select("*") — email column is revoked for authenticated.
       const { data, error } = await supabase
         .from("profiles")
         .update(patch)
         .eq("id", session.user.id)
-        .select("*")
+        .select(PROFILE_SAFE_SELECT)
         .single();
       if (error) throw error;
-      const next = data as Profile;
+      const { data: userData } = await supabase.auth.getUser();
+      const sessionEmail = userData?.user?.email ?? profile?.email ?? "";
+      const next = {
+        ...(data as Omit<Profile, "email">),
+        email: sessionEmail,
+      } as Profile;
       setProfile(next);
       return next;
     },
-    [session],
+    [session, profile?.email],
   );
 
   const becomeSeller = useCallback<AuthCtx["becomeSeller"]>(async () => {

@@ -166,9 +166,10 @@ function FloatingPill({
 
 function LiveScreenAuthed() {
   const { t } = useTranslation();
-  const { profile, loading, becomeSeller } = useAuth();
+  const { profile, loading, becomeSeller, refreshProfile, user } = useAuth();
   const [flipping, setFlipping] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const activateSeller = async () => {
     setConfirmOpen(false);
@@ -190,12 +191,42 @@ function LiveScreenAuthed() {
     }
   };
 
+  const retryProfile = async () => {
+    setRetrying(true);
+    try {
+      await refreshProfile();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
-
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="animate-spin text-muted-foreground" size={22} />
+      </div>
+    );
+  }
+
+  // After the profiles.email lockdown, a failed profile fetch used to leave
+  // profile=null forever → infinite spinner on this tab. Show a retry instead.
+  if (!profile) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-[14px] text-muted-foreground">
+          {user
+            ? t("live.profileLoadFailed", "Impossible de charger ton profil. Réessaie.")
+            : t("auth.prompt.signIn", "Connecte-toi pour continuer")}
+        </p>
+        {user && (
+          <Press
+            onClick={() => void retryProfile()}
+            className="!min-h-10 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-[13px] font-bold text-primary-foreground"
+          >
+            {retrying ? <Loader2 size={16} className="animate-spin" /> : null}
+            {t("common.retry", "Réessayer")}
+          </Press>
+        )}
       </div>
     );
   }
