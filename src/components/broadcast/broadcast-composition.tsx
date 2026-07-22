@@ -80,16 +80,28 @@ export function BroadcastComposition({
     useState<BroadcastEgressVideoStatus>("connecting");
 
   const activeAuctionId = room.auctionStart?.productId ?? null;
+  const endedProductId = room.lastAuctionEnd?.productId ?? null;
   const featured = useMemo(() => {
     if (activeAuctionId) {
       return room.products.find((p) => p.id === activeAuctionId) ?? null;
     }
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    const playable = (p: (typeof sorted)[number]) =>
+      p.id !== endedProductId &&
+      p.status !== "sold" &&
+      p.status !== "out" &&
+      p.status !== "unsold";
+    if (endedProductId) {
+      const idx = sorted.findIndex((p) => p.id === endedProductId);
+      const next = sorted.slice(idx + 1).find(playable);
+      if (next) return next;
+    }
     return (
-      sorted.find((p) => p.status === "upcoming" || p.status === "active") ??
+      sorted.find((p) => p.status === "upcoming" && playable(p)) ??
+      sorted.find(playable) ??
       null
     );
-  }, [room.products, activeAuctionId]);
+  }, [room.products, activeAuctionId, endedProductId]);
 
   const [now, setNow] = useState(Date.now());
   useEffect(() => {

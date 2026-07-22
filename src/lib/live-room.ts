@@ -44,6 +44,44 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   return row;
 }
 
+function isTerminalProductStatus(status: string | null | undefined): boolean {
+  return status === "sold" || status === "unsold" || status === "out";
+}
+
+/** Merge a realtime/hydrated row without letting a stale frame revive a
+ *  finished auction (sold/unsold/out → active), which pinned the star card
+ *  on the item that just ended. A higher auction_round means relaunch. */
+function mergeLiveProductRow(prev: LiveProductRow, incoming: LiveProductRow): LiveProductRow {
+  const keepImage =
+    !!prev.image_url &&
+    /^(https?:|blob:|data:)/i.test(prev.image_url) &&
+    !!incoming.image_url &&
+    !/^(https?:|blob:|data:)/i.test(incoming.image_url);
+
+  const prevRound = prev.auction_round ?? 1;
+  const nextRound = incoming.auction_round ?? 1;
+  const roundBumped = nextRound > prevRound;
+  const protectTerminal =
+    isTerminalProductStatus(prev.status) &&
+    !isTerminalProductStatus(incoming.status) &&
+    !roundBumped;
+
+  const merged: LiveProductRow = protectTerminal
+    ? {
+        ...incoming,
+        status: prev.status,
+        sold_to_identity: prev.sold_to_identity,
+        final_price: prev.final_price,
+        price: prev.price,
+        auction_deadline_at: null,
+        auction_round: prev.auction_round,
+      }
+    : { ...prev, ...incoming };
+
+  if (keepImage) merged.image_url = prev.image_url;
+  return merged;
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -371,16 +409,13 @@ export function useLiveRoom(params: {
           setProducts((prev) =>
             prev.map((p) => {
               if (p.id !== row.id) return p;
-              const keepImage =
-                p.image_url &&
-                /^(https?:|blob:|data:)/i.test(p.image_url) &&
-                row.image_url &&
-                !/^(https?:|blob:|data:)/i.test(row.image_url);
-              return keepImage ? { ...row, image_url: p.image_url } : { ...p, ...row };
+              return mergeLiveProductRow(p, row);
             }),
           );
           void hydrateImage(row).then((r) =>
-            setProducts((prev) => prev.map((p) => (p.id === r.id ? { ...p, ...r } : p))),
+            setProducts((prev) =>
+              prev.map((p) => (p.id === r.id ? mergeLiveProductRow(p, r) : p)),
+            ),
           );
           // Fallback deadline sync — if the broadcast frame was missed, this
           // ensures viewers still adopt the persisted absolute deadline.

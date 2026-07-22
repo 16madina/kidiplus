@@ -104,6 +104,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
+  /** Products whose auction already ended this session — star card must never
+   *  stick on them even if a stale realtime frame revives status=active. */
+  const [retiredFeaturedIds, setRetiredFeaturedIds] = useState<string[]>([]);
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
   const [lastBidFlash, setLastBidFlash] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
@@ -213,12 +216,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, [room.viewerCount]);
 
   // Featured auto-advances FORWARD only. When the current featured is
-  // finished (sold / unsold / out) or removed, we pick the next product by
-  // ascending position whose status is still playable — never loop back to an
-  // earlier item. When none remain, `featuredId` is cleared and the "all
-  // done" state renders.
-  const isFeaturedDone = (p: { status: string }) =>
-    p.status === "sold" || p.status === "out" || p.status === "unsold";
+  // finished (sold / unsold / out) or retired this session, we pick the next
+  // product by ascending position — never loop back to an earlier item.
+  const isFeaturedDone = (p: { id: string; status: string }) =>
+    retiredFeaturedIds.includes(p.id) ||
+    p.status === "sold" ||
+    p.status === "out" ||
+    p.status === "unsold";
 
   useEffect(() => {
     if (room.products.length === 0) {
@@ -230,9 +234,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (!done) return;
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
     const curIdx = cur ? sorted.findIndex((p) => p.id === cur.id) : -1;
-    const next = sorted.slice(curIdx + 1).find((p) => !isFeaturedDone(p));
-    setFeaturedId(next?.id ?? "");
-  }, [room.products, featuredId]);
+    const next = sorted.slice(Math.max(curIdx, -1) + 1).find((p) => !isFeaturedDone(p));
+    const fallback = sorted.find((p) => !isFeaturedDone(p));
+    setFeaturedId(next?.id ?? fallback?.id ?? "");
+  }, [room.products, featuredId, retiredFeaturedIds]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
   const [now, setNow] = useState(() => Date.now());
@@ -410,6 +415,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     joinedAtRef.current = Date.now();
     seenEndIdsRef.current = new Set();
     setWinnerReveal(null);
+    setRetiredFeaturedIds([]);
   }, [b.liveId]);
 
   useEffect(() => {
@@ -428,20 +434,23 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       if (first) seenEndIdsRef.current.delete(first);
     }
     const prod = productsRef.current.find((p) => p.id === evt.productId);
-    // Advance the star card to the next playable article right away (multi-item
-    // lives were stuck on the finished product until a slow realtime refresh).
+    // Retire this article from the star card and jump to the next playable one.
+    const retired = new Set(retiredFeaturedIds);
+    retired.add(evt.productId);
+    setRetiredFeaturedIds((prev) =>
+      prev.includes(evt.productId) ? prev : [...prev, evt.productId],
+    );
     {
       const sorted = [...productsRef.current].sort((a, b) => a.position - b.position);
       const idx = sorted.findIndex((p) => p.id === evt.productId);
-      const next = sorted
-        .slice(idx + 1)
-        .find(
-          (p) =>
-            p.status !== "sold" &&
-            p.status !== "out" &&
-            p.status !== "unsold",
-        );
-      setFeaturedId(next?.id ?? "");
+      const isPlayable = (p: (typeof sorted)[number]) =>
+        !retired.has(p.id) &&
+        p.status !== "sold" &&
+        p.status !== "out" &&
+        p.status !== "unsold";
+      const next = sorted.slice(idx + 1).find(isPlayable);
+      const fallback = sorted.find(isPlayable);
+      setFeaturedId(next?.id ?? fallback?.id ?? "");
     }
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
@@ -580,18 +589,25 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, [room.lastGift, cur]);
 
   const featured = useMemo(() => {
+    const playable = (p: LiveProductRow) =>
+      !retiredFeaturedIds.includes(p.id) &&
+      p.status !== "sold" &&
+      p.status !== "out" &&
+      p.status !== "unsold";
     const byId = featuredId
       ? room.products.find((p) => p.id === featuredId)
       : undefined;
-    if (byId && !isFeaturedDone(byId)) return byId;
+    if (byId && playable(byId)) return byId;
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
-    return sorted.find((p) => !isFeaturedDone(p)) ?? null;
-  }, [room.products, featuredId]);
+    return sorted.find(playable) ?? null;
+  }, [room.products, featuredId, retiredFeaturedIds]);
 
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
     haptic.medium();
     setFeaturedId(p.id);
+    // Relaunch / rejouer — allow this product back onto the star card.
+    setRetiredFeaturedIds((prev) => prev.filter((id) => id !== p.id));
     endingRef.current = null;
     // Ask the server to flip the row to active AND persist the deadline. We
     // then broadcast the SAME absolute epoch ms to every viewer, and the

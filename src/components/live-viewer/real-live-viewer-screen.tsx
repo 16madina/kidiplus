@@ -288,14 +288,29 @@ export function RealLiveViewerScreen() {
     return () => clearTimeout(t);
   }, [liveEnded, chromeHidden, close]);
 
-  // Featured product: server auction pick, else the next 'upcoming' product
-  // by position. Never loops back to earlier items — matches host behavior.
+  // Featured product: active auction wins; otherwise the next playable item
+  // after any just-ended product (never stay on the finished article).
   const activeAuctionId = room.auctionStart?.productId ?? null;
+  const endedProductId = room.lastAuctionEnd?.productId ?? null;
   const currentProduct = useMemo(() => {
-    if (activeAuctionId) return room.products.find((p) => p.id === activeAuctionId) ?? null;
+    if (activeAuctionId) {
+      return room.products.find((p) => p.id === activeAuctionId) ?? null;
+    }
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
-    return sorted.find((p) => p.status === "upcoming") ?? null;
-  }, [room.products, activeAuctionId]);
+    const playable = (p: (typeof sorted)[number]) =>
+      p.id !== endedProductId &&
+      p.status !== "sold" &&
+      p.status !== "out" &&
+      p.status !== "unsold";
+    if (endedProductId) {
+      const idx = sorted.findIndex((p) => p.id === endedProductId);
+      const next = sorted.slice(idx + 1).find(playable);
+      if (next) return next;
+    }
+    return sorted.find((p) => p.status === "upcoming" && playable(p))
+      ?? sorted.find(playable)
+      ?? null;
+  }, [room.products, activeAuctionId, endedProductId]);
 
   // Auction countdown from broadcast deadline.
   const [now, setNow] = useState(Date.now());
