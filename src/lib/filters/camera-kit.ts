@@ -18,14 +18,6 @@
 
 import type { CameraKit, CameraKitSession, Lens as SnapLens } from "@snap/camera-kit";
 
-// Client-side Camera Kit tokens (public JWT, same model as native embeds).
-const STAGING_API_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-U1RBR0lOR34zMDk5ZGFjNS01ZGNiLTQ0MzEtYjQ2Ni1kMGE1ZGJiMzhiNTAifQ.TJkEJQDegkU7PiogT3QoedmWYg4mPQsu-Jj60sGALgM";
-
-/** Production token — use after Snap Kit review approval (kit.snapchat.com). */
-const PRODUCTION_API_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4";
-
 function readEnv(key: string): string {
   try {
     const v = (import.meta.env as Record<string, string | undefined>)[key];
@@ -36,36 +28,33 @@ function readEnv(key: string): string {
 }
 
 /**
- * Prefer `VITE_SNAP_CAMERA_KIT_API_TOKEN`. In production builds, default to
- * the production token so App Store / kidiplus.com are not stuck on staging
- * (which often fails Trusted Origins / Camera Kit review gates).
+ * Snap Camera Kit API token for the KiDi+ Web app.
+ *
+ * Paste the Staging token in .env / .env.production as
+ * VITE_SNAP_CAMERA_KIT_API_TOKEN. The production token will be configured
+ * later, once Snap approves Production Camera Kit status for kidiplus.com.
  */
 export function snapApiToken(): string {
-  const fromEnv = readEnv("VITE_SNAP_CAMERA_KIT_API_TOKEN");
-  if (fromEnv) return fromEnv;
-  try {
-    if (import.meta.env.PROD) return PRODUCTION_API_TOKEN;
-  } catch {
-    /* ignore */
-  }
-  return STAGING_API_TOKEN;
+  return readEnv("VITE_SNAP_CAMERA_KIT_API_TOKEN");
 }
 
 export function isSnapProductionToken(): boolean {
   const t = snapApiToken();
-  return t === PRODUCTION_API_TOKEN || t.includes("~PRODUCTION~");
+  return t.includes("~PRODUCTION~");
 }
 
-/** Groupe de lenses affiché dans le carrousel — groupe "test 1" de KIDI+.
- * Ajoute/retire des lenses sur my-lenses.snapchat.com : elles apparaissent
- * dans l'app automatiquement, sans changement de code. */
+/** Lens Group displayed in the Filters carousel — KiDi+ Web "test 1" group.
+ * Add/remove lenses on my-lenses.snapchat.com ; they appear in-app without
+ * code changes. Configure via VITE_SNAP_LENS_GROUP_ID. */
 export const SNAP_LENS_GROUP_ID =
-  readEnv("VITE_SNAP_LENS_GROUP_ID") || "9dd9798c-cef5-443b-a494-af0cc480059e";
+  readEnv("VITE_SNAP_LENS_GROUP_ID") || "df287f43-6646-4b01-a711-1a0e632c211a";
 
-/** Supporté = WebGL2 + WebAssembly disponibles (WKWebView iOS + Chrome ok). */
+/** Supporté = WebGL2 + WebAssembly + un token Camera Kit configuré.
+ * Si le token est vide, le carrousel tombe automatiquement sur les filtres CSS. */
 export function isCameraKitSupported(): boolean {
   if (typeof window === "undefined") return false;
   if (typeof WebAssembly === "undefined") return false;
+  if (!snapApiToken()) return false;
   try {
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl2");
@@ -77,12 +66,19 @@ export function isCameraKitSupported(): boolean {
 
 let bootstrapPromise: Promise<CameraKit> | null = null;
 
-/** Bootstrap paresseux (télécharge le runtime WASM au premier appel). */
+/** Bootstrap paresseux (télécharge le runtime WASM au premier appel).
+ * Nécessite que VITE_SNAP_CAMERA_KIT_API_TOKEN soit renseigné. */
 export function getCameraKit(): Promise<CameraKit> {
+  const token = snapApiToken();
+  if (!token) {
+    return Promise.reject(
+      new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured"),
+    );
+  }
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
       const { bootstrapCameraKit } = await import("@snap/camera-kit");
-      return bootstrapCameraKit({ apiToken: snapApiToken() });
+      return bootstrapCameraKit({ apiToken: token });
     })().catch((e) => {
       bootstrapPromise = null; // permettre un retry au prochain appel
       throw e;
