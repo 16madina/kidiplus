@@ -238,6 +238,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!appActive || !room.auctionStart) return;
+    // Catch up immediately when returning from background — otherwise the
+    // card can sit at 00s without firing auto-end until the next tick.
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, [appActive, room.auctionStart]);
@@ -279,59 +282,102 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, []);
 
   // Auto-end when time hits zero (host is authoritative).
-  // Require that we actually saw a positive countdown for THIS deadline —
-  // otherwise a stale/zero timeLeft on start (race or clock skew) instantly
-  // finalizes as unsold (seen on some narrower devices / slow networks).
+  // Guard against instant finalize on start (race / clock skew), but still
+  // end reliably once the auction has actually been running.
   const endingRef = useRef<string | null>(null);
   const sawCountdownRef = useRef<string | null>(null);
+  const finalizeAttemptsRef = useRef<Map<string, number>>(new Map());
+  const [finalizeRetryTick, setFinalizeRetryTick] = useState(0);
   useEffect(() => {
     if (!activeAuction) {
       sawCountdownRef.current = null;
       return;
     }
     const armKey = `${activeAuction.productId}:${activeAuction.deadlineMs}`;
-    if (timeLeft > 0) sawCountdownRef.current = armKey;
+    if (timeLeft > 0) {
+      sawCountdownRef.current = armKey;
+      return;
+    }
+    // Fallback arm: if the auction started >2s ago (from timerSec), treat as
+    // real even if we somehow missed a positive timeLeft frame.
+    const timerSec = Math.max(1, activeAuction.timerSec ?? 30);
+    const startedAt = activeAuction.deadlineMs - timerSec * 1000;
+    if (Date.now() - startedAt >= 2000) sawCountdownRef.current = armKey;
   }, [activeAuction, timeLeft]);
 
   useEffect(() => {
-    if (!activeAuction || !activeProduct) return;
+    if (!activeAuction) return;
     if (timeLeft > 0) return;
-    const armKey = `${activeAuction.productId}:${activeAuction.deadlineMs}`;
+    // Prefer row from products list; fall back to auction productId alone so a
+    // missing/desynced product row cannot freeze the host at 00s forever.
+    const productId = activeAuction.productId;
+    const product =
+      activeProduct ??
+      room.products.find((p) => p.id === productId) ??
+      null;
+    const armKey = `${productId}:${activeAuction.deadlineMs}`;
     if (sawCountdownRef.current !== armKey) return;
-    const round = activeProduct.auction_round ?? 1;
-    const endKey = `${activeAuction.productId}:${round}:${activeAuction.deadlineMs}`;
+    const round = product?.auction_round ?? 1;
+    const endKey = `${productId}:${round}:${activeAuction.deadlineMs}`;
     if (endingRef.current === endKey) return;
     endingRef.current = endKey;
     const lastBidMatches =
       !!room.lastBid &&
-      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
-    const finalPrice = activeProduct.price;
-    const productId = activeAuction.productId;
+    const finalPrice = product?.price ?? 0;
+    const attempts = (finalizeAttemptsRef.current.get(endKey) ?? 0) + 1;
+    finalizeAttemptsRef.current.set(endKey, attempts);
     void (async () => {
-      const res = await finalizeAuctionInDb({
-        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-      });
-      const resolvedWinnerId = res.winnerId ?? winnerId;
-      const resolvedWinnerName = res.winnerName ?? winnerName;
-      const resolvedPrice = res.finalPrice ?? finalPrice;
-      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
-      room.broadcastAuctionEnd({
-        productId,
-        winnerId: resolvedWinnerId,
-        winnerName: resolvedWinnerName,
-        winnerAvatarUrl,
-        finalPrice: Number(resolvedPrice ?? 0),
-        orderId: res.orderId ?? null,
-        autoPaid: !!res.autoPaid,
-        auctionRound: round,
-        ts: Date.now(),
-      });
+      const forceEndUi = async (
+        res: Awaited<ReturnType<typeof finalizeAuctionInDb>> | null,
+      ) => {
+        const resolvedWinnerId = res?.winnerId ?? winnerId;
+        const resolvedWinnerName = res?.winnerName ?? winnerName;
+        const resolvedPrice = res?.finalPrice ?? finalPrice;
+        const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+        room.broadcastAuctionEnd({
+          productId,
+          winnerId: resolvedWinnerId,
+          winnerName: resolvedWinnerName,
+          winnerAvatarUrl,
+          finalPrice: Number(resolvedPrice ?? 0),
+          orderId: res?.orderId ?? null,
+          autoPaid: !!res?.autoPaid,
+          auctionRound: round,
+          ts: Date.now(),
+        });
+      };
+      try {
+        const res = await finalizeAuctionInDb({
+          liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+        });
+        if (res.ok) {
+          await forceEndUi(res);
+          return;
+        }
+        console.warn("[auction] finalize failed", res.error, `attempt=${attempts}`);
+        if (attempts >= 3) {
+          // Unstick the host after retries — popup + clear countdown — even if
+          // the RPC is still unhappy (manual stop used to be the only escape).
+          await forceEndUi(res);
+          return;
+        }
+        endingRef.current = null;
+        window.setTimeout(() => setFinalizeRetryTick((n) => n + 1), 1500);
+      } catch (e) {
+        console.warn("[auction] finalize threw", e, `attempt=${attempts}`);
+        if (attempts >= 3) {
+          await forceEndUi(null);
+          return;
+        }
+        endingRef.current = null;
+        window.setTimeout(() => setFinalizeRetryTick((n) => n + 1), 1500);
+      }
     })();
-  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
-
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar, finalizeRetryTick]);
   // ---- Sudden-death / anti-snipe extension ----
   // Whenever a new realtime bid lands on the active auction with less than
   // AUCTION_EXTENSION_WINDOW seconds remaining, extend the deadline to
@@ -545,6 +591,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
     setFeaturedId(p.id);
     endingRef.current = null;
+    finalizeAttemptsRef.current.clear();
     // Ask the server to flip the row to active AND persist the deadline. We
     // then broadcast the SAME absolute epoch ms to every viewer, and the
     // host's own countdown reads from broadcastAuctionStart(...) — a single
@@ -563,16 +610,21 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
 
   const endAuctionNow = async () => {
-    if (!activeAuction || !activeProduct) return;
-    const round = activeProduct.auction_round ?? 1;
+    if (!activeAuction) return;
+    const productId = activeAuction.productId;
+    const product =
+      activeProduct ??
+      room.products.find((p) => p.id === productId) ??
+      null;
+    const round = product?.auction_round ?? 1;
     const lastBidMatches =
       !!room.lastBid &&
-      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
-    const finalPrice = activeProduct.price;
-    const productId = activeAuction.productId;
+    const finalPrice = product?.price ?? 0;
+    endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
     const res = await finalizeAuctionInDb({
       liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
     });
@@ -580,6 +632,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const resolvedWinnerName = res.winnerName ?? winnerName;
     const resolvedPrice = res.finalPrice ?? finalPrice;
     const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+    // Always clear the host countdown / show reveal, even if RPC failed —
+    // otherwise the featured card can sit at 00s forever.
     room.broadcastAuctionEnd({
       productId,
       winnerId: resolvedWinnerId,
@@ -1017,13 +1071,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </div>
       )}
 
-      {/* Session stats strip (metrics only). */}
+      {/* Session stats strip (metrics only). Keep clear of the featured card. */}
       <div
         className="absolute z-30"
         style={{
           top: "calc(env(safe-area-inset-top) + 52px)",
           left: "max(12px, env(safe-area-inset-left, 0px))",
-          maxWidth: "calc(100% - 7rem)",
+          // Featured card is w-28 (~7rem) + right inset — never let stats/social
+          // run under it (iPhone 15 was overlapping Cadeaux / FB / TT).
+          right: "calc(7.75rem + max(0.5rem, env(safe-area-inset-right, 0px)))",
+          maxWidth: "none",
         }}
       >
         <div
@@ -1239,13 +1296,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
             style={{
-              // Flush under Terminer (top-right), slightly inset from the edge.
-              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
-              right: "0.5rem",
+              // Under Terminer, but BELOW the stats row so it never covers
+              // Ventes / Articles / Cadeaux on narrow phones (iPhone 15).
+              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
+              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
             }}
           >
             <div
-              className="w-28 rounded-2xl p-1.5 text-white"
+              className="w-[6.75rem] rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
@@ -1321,8 +1379,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30"
             style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 44px)",
-              right: "0.5rem",
+              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
+              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
             }}
           >
             <div

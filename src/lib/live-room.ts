@@ -224,8 +224,9 @@ export function useLiveRoom(params: {
   ingestGiftRef.current = (evt: GiftEvt) => {
     if (!evt?.id || !evt.giftKey) return;
     if (seenGiftIdsRef.current.has(evt.id)) return;
-    // Never animate ancient rows (e.g. delayed postgres / remount with stale lastGift).
-    if (evt.ts && Date.now() - evt.ts > 20_000) return;
+    // Only drop truly ancient events (e.g. replay on rejoin). Keep a wide
+    // window — phone clocks can be minutes off and were dropping live gifts.
+    if (evt.ts && Date.now() - evt.ts > 5 * 60_000) return;
     seenGiftIdsRef.current.add(evt.id);
     if (seenGiftIdsRef.current.size > 200) {
       const arr = Array.from(seenGiftIdsRef.current);

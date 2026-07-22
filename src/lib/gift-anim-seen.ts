@@ -9,8 +9,9 @@
 const seen = new Set<string>();
 const MAX = 400;
 
-/** Gifts older than this are treated as history, never animated on join. */
-export const GIFT_ANIM_MAX_AGE_MS = 12_000;
+/** Gifts older than this are treated as history, never animated on join.
+ * Keep generous — device clocks are often minutes skewed vs the DB. */
+export const GIFT_ANIM_MAX_AGE_MS = 5 * 60_000;
 
 export function rememberGiftAnim(id: string): boolean {
   if (!id) return false;

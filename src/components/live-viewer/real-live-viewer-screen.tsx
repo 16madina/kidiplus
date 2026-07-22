@@ -79,23 +79,24 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "s
     size === "lg"
       ? "h-16 w-16 text-[24px]"
       : size === "sm"
-        ? "h-8 w-8 text-[12px]"
+        ? "h-9 w-9 text-[12px]"
         : "h-10 w-10 text-[16px]";
-  if (src && !failed) {
+  const showImg = !!src.trim() && !failed;
+  if (showImg) {
     return (
       <img
         src={src}
         alt=""
         onError={() => setFailed(true)}
-        className={`${box} shrink-0 rounded-full object-cover ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
+        className={`${box} shrink-0 rounded-full object-cover ring-2 ring-white/90`}
         draggable={false}
       />
     );
   }
   return (
     <span
-      className={`${box} grid shrink-0 place-items-center rounded-full font-black ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
-      style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+      className={`${box} grid shrink-0 place-items-center rounded-full font-black ring-2 ring-white/90`}
+      style={{ backgroundColor: "oklch(0.72 0.16 70)", color: "#10162B" }}
     >
       {initials || "?"}
     </span>
@@ -848,21 +849,21 @@ export function RealLiveViewerScreen() {
 
       <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
         <div className="flex items-center gap-1.5 px-2 pt-2">
-          {/* Left: avatar + name + follow — one row, name truncates. */}
+          {/* Left: avatar is mandatory (store link) — never let the action cluster hide it. */}
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
-              aria-label={`Voir le profil de ${active.seller}`}
-              className="!block shrink-0 p-0"
+              aria-label={`Voir la boutique de ${active.seller}`}
+              className="!inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full p-0"
             >
-              <SellerAvatar src={active.avatar} name={active.seller} size="sm" />
+              <SellerAvatar src={active.avatar || ""} name={active.seller || "?"} size="sm" />
             </Press>
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
-              className="!block !min-h-0 min-w-0 flex-1 p-0 text-left"
+              className="!inline-flex !min-h-0 min-w-0 max-w-[34%] flex-col items-start justify-center gap-0 p-0 text-left"
             >
               <p
-                className="flex min-w-0 items-center gap-1 text-[13px] font-bold text-white"
+                className="flex max-w-full min-w-0 items-center gap-1 text-[13px] font-bold leading-tight text-white"
                 style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               >
                 <span className="truncate">{active.seller}</span>
@@ -877,7 +878,7 @@ export function RealLiveViewerScreen() {
             />
           </div>
 
-          {/* Right: wallet + actions — same height, never wrap. */}
+          {/* Right: keep compact — share lives in the ⋯ menu to free room for the avatar. */}
           <div className="flex shrink-0 items-center gap-1">
             <WalletPill compact onTap={() => requireAuth(() => setTopupOpen(true))} />
             <Press
@@ -891,30 +892,6 @@ export function RealLiveViewerScreen() {
             >
               <Eye size={12} />
               {displayViewers}
-            </Press>
-
-            <Press
-              aria-label={t("live.share")}
-              onClick={async () => {
-                haptic.light();
-                const shareUrl = active?.liveId
-                  ? liveShareUrl(active.liveId)
-                  : "https://kidiplus.com";
-                const title = `${active.seller} — Kidi+`;
-                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
-                try {
-                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
-                  if (nav && typeof nav.share === "function") {
-                    await nav.share({ title, text, url: shareUrl });
-                  } else if (nav && nav.clipboard) {
-                    await nav.clipboard.writeText(shareUrl);
-                    toast.success(t("live.shareCopied", "Lien copié"));
-                  }
-                } catch { /* user cancelled */ }
-              }}
-              className="!min-h-0 h-8 w-8 rounded-full text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <Share2 size={15} />
             </Press>
             <Press aria-label="More" onClick={() => setMoreOpen(true)}
               className="!min-h-0 h-8 w-8 rounded-full text-white"
@@ -1258,6 +1235,29 @@ export function RealLiveViewerScreen() {
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <Press
+              onClick={async () => {
+                setMoreOpen(false);
+                haptic.light();
+                const shareUrl = active?.liveId
+                  ? liveShareUrl(active.liveId)
+                  : "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
+                try {
+                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav && nav.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch { /* user cancelled */ }
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]"
+            >
+              <Share2 size={18} /> {t("live.share")}
+            </Press>
             <Press onClick={() => { setMoreOpen(false); requireAuth(() => { if (confirm(t("report.confirm", { defaultValue: "Signaler ce live ? Notre équipe examinera ton signalement." }))) setReportOpen(true); }); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
               <Flag size={18} /> {t("report.action")}
