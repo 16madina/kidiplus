@@ -1,0 +1,60 @@
+{
+	"appId": "com.kidiplus.app",
+	"appName": "KiDi+",
+	"webDir": "dist",
+	"bundledWebRuntime": false,
+	"ios": {
+		"contentInset": "never",
+		"limitsNavigationsToAppBoundDomains": false,
+		"allowsLinkPreview": false,
+		"scrollEnabled": true
+	},
+	"android": {
+		"allowMixedContent": false,
+		"captureInput": true
+	},
+	"server": {
+		"url": "https://kidiplus.com",
+		"cleartext": false,
+		"androidScheme": "https",
+		"iosScheme": "capacitor",
+		"allowNavigation": [
+			"kidiplus.lovable.app",
+			"kidiplus.com",
+			"www.kidiplus.com",
+			"*.stripe.com",
+			"*.livekit.cloud"
+		]
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 3000,
+			"launchAutoHide": true,
+			"launchFadeOutDuration": 250,
+			"backgroundColor": "#10162B",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false,
+			"splashFullScreen": true,
+			"splashImmersive": true,
+			"iosSpinnerStyle": "small"
+		},
+		"Keyboard": {
+			"resize": "native",
+			"style": "DARK",
+			"resizeOnFullScreen": true
+		},
+		"StatusBar": {
+			"overlaysWebView": true,
+			"style": "LIGHT",
+			"backgroundColor": "#10162B"
+		},
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		}
+	}
+}

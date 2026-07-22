@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Local machine backups / duplicates (not the real ios/ or lockfile)
+ios.local-backup/
+package-lock.json.local-backup
+# Firebase plist already lives at ios/App/App/GoogleService-Info.plist
+/GoogleService-Info.plist
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
