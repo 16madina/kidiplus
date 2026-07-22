@@ -6,6 +6,7 @@ import {
 import { HostToolRail } from "./host-tool-rail";
 import { FiltersCarousel } from "./filters-carousel";
 import { RtmpCredentialsSheet } from "./rtmp-credentials-sheet";
+import { TiktokRtmpSheet } from "./tiktok-rtmp-sheet";
 import {
   fetchYoutubeStatus,
   startYoutubeRestream,
@@ -17,6 +18,10 @@ import {
   startFacebookRestream,
   stopFacebookRestream,
 } from "@/lib/facebook-restream";
+import {
+  startTiktokRestream,
+  stopTiktokRestream,
+} from "@/lib/tiktok-restream";
 import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
@@ -92,6 +97,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [fbRestreaming, setFbRestreaming] = useState(false);
   const [fbBusy, setFbBusy] = useState(false);
   const [fbWatchUrl, setFbWatchUrl] = useState<string | null>(null);
+  const [ttRestreaming, setTtRestreaming] = useState(false);
+  const [ttBusy, setTtBusy] = useState(false);
+  const [ttSheetOpen, setTtSheetOpen] = useState(false);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
@@ -664,6 +672,56 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
   };
 
+  const toggleTiktokRestream = async () => {
+    if (!b.liveId || isRtmp || ttBusy) return;
+    haptic.selection();
+    if (ttRestreaming) {
+      setTtBusy(true);
+      try {
+        await stopTiktokRestream(b.liveId);
+        setTtRestreaming(false);
+        toast.success(
+          t("broadcast.tiktok.stopped", "Diffusion TikTok arrêtée"),
+        );
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : t("broadcast.tiktok.stopFailed", "Impossible d’arrêter TikTok"),
+        );
+      } finally {
+        setTtBusy(false);
+      }
+      return;
+    }
+    setTtSheetOpen(true);
+  };
+
+  const startTiktokFromSheet = async (creds: {
+    serverUrl: string;
+    streamKey: string;
+  }) => {
+    if (!b.liveId || ttBusy) return;
+    setTtBusy(true);
+    try {
+      await startTiktokRestream({
+        liveId: b.liveId,
+        serverUrl: creds.serverUrl,
+        streamKey: creds.streamKey,
+      });
+      setTtRestreaming(true);
+      setTtSheetOpen(false);
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.tiktok.startFailed", "Impossible de diffuser sur TikTok"),
+      );
+    } finally {
+      setTtBusy(false);
+    }
+  };
+
   const endLive = async () => {
     haptic.success();
     b.setSession({
@@ -688,6 +746,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       }
       if (fbRestreaming || fbWatchUrl) {
         await stopFacebookRestream(b.liveId).catch(() => {});
+      }
+      if (ttRestreaming) {
+        await stopTiktokRestream(b.liveId).catch(() => {});
       }
       if (isRtmp || b.rtmpCreds) {
         const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
@@ -892,6 +953,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             >
               <Radio size={11} />
               {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
+            </Press>
+            <Press
+              disabled={ttBusy}
+              onClick={() => void toggleTiktokRestream()}
+              aria-label={t("broadcast.tiktok.goLive", "Diffuser sur TikTok")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ttRestreaming
+                  ? "linear-gradient(135deg, #FE2C55, #c41e3a)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ttRestreaming ? "#fff" : "#0a0a12",
+                opacity: ttBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ttBusy ? "…" : ttRestreaming ? "TT ON" : "TT"}
             </Press>
           </>
         )}
@@ -1376,6 +1453,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           />
         </>
       )}
+
+      <TiktokRtmpSheet
+        open={ttSheetOpen}
+        onClose={() => !ttBusy && setTtSheetOpen(false)}
+        busy={ttBusy}
+        onStart={startTiktokFromSheet}
+      />
 
       <LiveViewersSheet
         open={viewersSheetOpen}

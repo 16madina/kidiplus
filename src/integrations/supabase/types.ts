@@ -764,6 +764,7 @@ export type Database = {
           seller_id: string
           started_at: string | null
           status: string
+          tiktok_egress_id: string | null
           title: string
           viewer_count: number
           youtube_broadcast_id: string | null
@@ -795,6 +796,7 @@ export type Database = {
           seller_id: string
           started_at?: string | null
           status?: string
+          tiktok_egress_id?: string | null
           title: string
           viewer_count?: number
           youtube_broadcast_id?: string | null
@@ -826,6 +828,7 @@ export type Database = {
           seller_id?: string
           started_at?: string | null
           status?: string
+          tiktok_egress_id?: string | null
           title?: string
           viewer_count?: number
           youtube_broadcast_id?: string | null
