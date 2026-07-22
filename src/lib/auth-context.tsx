@@ -93,9 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const token = ++profileFetchToken.current;
+    // NOTE: `email` column is intentionally not selected; column-level privileges
+    // block anon/authenticated from reading it. Use supabase.auth session email instead.
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_reason, frozen_at, frozen_by, risk_restricted, kyc_verified")
       .eq("id", userId)
       .maybeSingle();
     if (token !== profileFetchToken.current) return;
@@ -104,7 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       return;
     }
-    const next = (data as Profile | null) ?? null;
+    const { data: userData } = await supabase.auth.getUser();
+    const sessionEmail = userData?.user?.email ?? "";
+    const next = data ? ({ ...(data as Omit<Profile, "email">), email: sessionEmail } as Profile) : null;
     setProfile(next);
     if (next?.email && !next.welcome_email_sent) {
       void sendWelcomeEmailOnce({
