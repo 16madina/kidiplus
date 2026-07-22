@@ -214,24 +214,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   // Featured auto-advances FORWARD only. When the current featured is
   // finished (sold / unsold / out) or removed, we pick the next product by
-  // ascending position whose status is 'upcoming' — never loop back to an
+  // ascending position whose status is still playable — never loop back to an
   // earlier item. When none remain, `featuredId` is cleared and the "all
   // done" state renders.
+  const isFeaturedDone = (p: { status: string }) =>
+    p.status === "sold" || p.status === "out" || p.status === "unsold";
+
   useEffect(() => {
     if (room.products.length === 0) {
       if (featuredId) setFeaturedId("");
       return;
     }
     const cur = room.products.find((p) => p.id === featuredId);
-    const done = cur && (cur.status === "sold" || cur.status === "out" || cur.status === "unsold");
-    if (!cur || done) {
-      const curPos = cur?.position ?? -1;
-      const sorted = [...room.products].sort((a, b) => a.position - b.position);
-      const next = sorted.find(
-        (p) => p.position > curPos && p.status === "upcoming",
-      );
-      setFeaturedId(next?.id ?? "");
-    }
+    const done = !cur || isFeaturedDone(cur);
+    if (!done) return;
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    const curIdx = cur ? sorted.findIndex((p) => p.id === cur.id) : -1;
+    const next = sorted.slice(curIdx + 1).find((p) => !isFeaturedDone(p));
+    setFeaturedId(next?.id ?? "");
   }, [room.products, featuredId]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
@@ -286,8 +286,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   // end reliably once the auction has actually been running.
   const endingRef = useRef<string | null>(null);
   const sawCountdownRef = useRef<string | null>(null);
-  const finalizeAttemptsRef = useRef<Map<string, number>>(new Map());
-  const [finalizeRetryTick, setFinalizeRetryTick] = useState(0);
   useEffect(() => {
     if (!activeAuction) {
       sawCountdownRef.current = null;
@@ -328,56 +326,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = product?.price ?? 0;
-    const attempts = (finalizeAttemptsRef.current.get(endKey) ?? 0) + 1;
-    finalizeAttemptsRef.current.set(endKey, attempts);
+    // End UI immediately at 00s — never wait on RPC/avatar (that was the
+    // multi-second "stuck at zero" gap before the winner popup).
+    room.broadcastAuctionEnd({
+      productId,
+      winnerId,
+      winnerName,
+      winnerAvatarUrl: null,
+      finalPrice: Number(finalPrice ?? 0),
+      orderId: null,
+      autoPaid: false,
+      auctionRound: round,
+      ts: Date.now(),
+    });
     void (async () => {
-      const forceEndUi = async (
-        res: Awaited<ReturnType<typeof finalizeAuctionInDb>> | null,
-      ) => {
-        const resolvedWinnerId = res?.winnerId ?? winnerId;
-        const resolvedWinnerName = res?.winnerName ?? winnerName;
-        const resolvedPrice = res?.finalPrice ?? finalPrice;
-        const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
-        room.broadcastAuctionEnd({
-          productId,
-          winnerId: resolvedWinnerId,
-          winnerName: resolvedWinnerName,
-          winnerAvatarUrl,
-          finalPrice: Number(resolvedPrice ?? 0),
-          orderId: res?.orderId ?? null,
-          autoPaid: !!res?.autoPaid,
-          auctionRound: round,
-          ts: Date.now(),
-        });
-      };
-      try {
-        const res = await finalizeAuctionInDb({
-          liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-        });
-        if (res.ok) {
-          await forceEndUi(res);
-          return;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const res = await finalizeAuctionInDb({
+            liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+          });
+          if (res.ok) {
+            // Avatar refresh is handled by the auction:end reveal effect.
+            void resolveWinnerAvatar(res.winnerId ?? winnerId);
+            return;
+          }
+          console.warn("[auction] finalize failed", res.error, `attempt=${attempt}`);
+        } catch (e) {
+          console.warn("[auction] finalize threw", e, `attempt=${attempt}`);
         }
-        console.warn("[auction] finalize failed", res.error, `attempt=${attempts}`);
-        if (attempts >= 3) {
-          // Unstick the host after retries — popup + clear countdown — even if
-          // the RPC is still unhappy (manual stop used to be the only escape).
-          await forceEndUi(res);
-          return;
-        }
-        endingRef.current = null;
-        window.setTimeout(() => setFinalizeRetryTick((n) => n + 1), 1500);
-      } catch (e) {
-        console.warn("[auction] finalize threw", e, `attempt=${attempts}`);
-        if (attempts >= 3) {
-          await forceEndUi(null);
-          return;
-        }
-        endingRef.current = null;
-        window.setTimeout(() => setFinalizeRetryTick((n) => n + 1), 1500);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1200));
       }
     })();
-  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar, finalizeRetryTick]);
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
   // ---- Sudden-death / anti-snipe extension ----
   // Whenever a new realtime bid lands on the active auction with less than
   // AUCTION_EXTENSION_WINDOW seconds remaining, extend the deadline to
@@ -448,6 +428,21 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       if (first) seenEndIdsRef.current.delete(first);
     }
     const prod = productsRef.current.find((p) => p.id === evt.productId);
+    // Advance the star card to the next playable article right away (multi-item
+    // lives were stuck on the finished product until a slow realtime refresh).
+    {
+      const sorted = [...productsRef.current].sort((a, b) => a.position - b.position);
+      const idx = sorted.findIndex((p) => p.id === evt.productId);
+      const next = sorted
+        .slice(idx + 1)
+        .find(
+          (p) =>
+            p.status !== "sold" &&
+            p.status !== "out" &&
+            p.status !== "unsold",
+        );
+      setFeaturedId(next?.id ?? "");
+    }
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
@@ -584,14 +579,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     });
   }, [room.lastGift, cur]);
 
-  const featured = room.products.find((p) => p.id === featuredId) ?? room.products[0];
+  const featured = useMemo(() => {
+    const byId = featuredId
+      ? room.products.find((p) => p.id === featuredId)
+      : undefined;
+    if (byId && !isFeaturedDone(byId)) return byId;
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    return sorted.find((p) => !isFeaturedDone(p)) ?? null;
+  }, [room.products, featuredId]);
 
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
     haptic.medium();
     setFeaturedId(p.id);
     endingRef.current = null;
-    finalizeAttemptsRef.current.clear();
     // Ask the server to flip the row to active AND persist the deadline. We
     // then broadcast the SAME absolute epoch ms to every viewer, and the
     // host's own countdown reads from broadcastAuctionStart(...) — a single
@@ -625,26 +626,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = product?.price ?? 0;
     endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
-    const res = await finalizeAuctionInDb({
-      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-    });
-    const resolvedWinnerId = res.winnerId ?? winnerId;
-    const resolvedWinnerName = res.winnerName ?? winnerName;
-    const resolvedPrice = res.finalPrice ?? finalPrice;
-    const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
-    // Always clear the host countdown / show reveal, even if RPC failed —
-    // otherwise the featured card can sit at 00s forever.
+    // Clear countdown / show reveal immediately; persist in the background.
     room.broadcastAuctionEnd({
       productId,
-      winnerId: resolvedWinnerId,
-      winnerName: resolvedWinnerName,
-      winnerAvatarUrl,
-      finalPrice: Number(resolvedPrice ?? 0),
-      orderId: res.orderId ?? null,
-      autoPaid: !!res.autoPaid,
+      winnerId,
+      winnerName,
+      winnerAvatarUrl: null,
+      finalPrice: Number(finalPrice ?? 0),
+      orderId: null,
+      autoPaid: false,
       auctionRound: round,
       ts: Date.now(),
     });
+    const res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    void resolveWinnerAvatar(res.winnerId ?? winnerId);
   };
 
   const toggleFixedSale = async (p: LiveProductRow) => {

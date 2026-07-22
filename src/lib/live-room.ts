@@ -366,8 +366,21 @@ export function useLiveRoom(params: {
         { event: "UPDATE", schema: "public", table: "live_products", filter: `live_id=eq.${liveId}` },
         (payload) => {
           const row = payload.new as LiveProductRow;
+          // Apply status/price immediately — don't wait on image signing
+          // (retries) or the star card stays on a finished item for seconds.
+          setProducts((prev) =>
+            prev.map((p) => {
+              if (p.id !== row.id) return p;
+              const keepImage =
+                p.image_url &&
+                /^(https?:|blob:|data:)/i.test(p.image_url) &&
+                row.image_url &&
+                !/^(https?:|blob:|data:)/i.test(row.image_url);
+              return keepImage ? { ...row, image_url: p.image_url } : { ...p, ...row };
+            }),
+          );
           void hydrateImage(row).then((r) =>
-            setProducts((prev) => prev.map((p) => (p.id === r.id ? r : p))),
+            setProducts((prev) => prev.map((p) => (p.id === r.id ? { ...p, ...r } : p))),
           );
           // Fallback deadline sync — if the broadcast frame was missed, this
           // ensures viewers still adopt the persisted absolute deadline.
@@ -384,6 +397,13 @@ export function useLiveRoom(params: {
                   : { productId: row.id, deadlineMs, timerSec: row.timer_seconds },
               );
             }
+          }
+          // Auction finished in DB — clear local countdown if it was this product.
+          if (
+            row.mode === "auction" &&
+            (row.status === "sold" || row.status === "unsold" || row.status === "out")
+          ) {
+            setAuctionStart((cur) => (cur && cur.productId === row.id ? null : cur));
           }
         },
       )
@@ -493,6 +513,21 @@ export function useLiveRoom(params: {
       };
       setLastAuctionEnd(full);
       setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
+      setProducts((prev) =>
+        prev.map((p) => {
+          if (p.id !== full.productId) return p;
+          if (p.status === "sold" || p.status === "out" || p.status === "unsold") return p;
+          const won = !!(full.winnerId && full.winnerName);
+          return {
+            ...p,
+            status: won ? "sold" : "unsold",
+            sold_to_identity: won ? full.winnerName : null,
+            final_price: won ? full.finalPrice : null,
+            price: won ? Number(full.finalPrice ?? p.price) : p.start_price,
+            auction_deadline_at: null,
+          };
+        }),
+      );
     });
     ch.on("broadcast", { event: "auction:extend" }, ({ payload }) => {
       const evt = payload as AuctionExtendEvt;
@@ -765,6 +800,23 @@ export function useLiveRoom(params: {
         };
         setLastAuctionEnd(full);
         setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
+        // Optimistic status so the host star card can advance to the next
+        // article immediately — don't wait for postgres_changes + image hydrate.
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id !== full.productId) return p;
+            if (p.status === "sold" || p.status === "out" || p.status === "unsold") return p;
+            const won = !!(full.winnerId && full.winnerName);
+            return {
+              ...p,
+              status: won ? "sold" : "unsold",
+              sold_to_identity: won ? full.winnerName : null,
+              final_price: won ? full.finalPrice : null,
+              price: won ? Number(full.finalPrice ?? p.price) : p.start_price,
+              auction_deadline_at: null,
+            };
+          }),
+        );
         void channelRef.current?.send({ type: "broadcast", event: "auction:end", payload: full });
       },
       broadcastAuctionExtend: (evt) => {
