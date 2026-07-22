@@ -68,14 +68,19 @@ import { logLiveInteraction } from "@/lib/interactions-db";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
-function SellerAvatar({ src, name, size }: { src: string; name: string; size: "md" | "lg" }) {
+function SellerAvatar({ src, name, size }: { src: string; name: string; size: "sm" | "md" | "lg" }) {
   const [failed, setFailed] = useState(false);
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const initials =
     parts.length >= 2
       ? ((parts[0][0] || "") + (parts[1][0] || "")).toUpperCase()
       : (parts[0]?.[0] || "?").toUpperCase();
-  const box = size === "lg" ? "h-16 w-16 text-[24px]" : "h-10 w-10 text-[16px]";
+  const box =
+    size === "lg"
+      ? "h-16 w-16 text-[24px]"
+      : size === "sm"
+        ? "h-8 w-8 text-[12px]"
+        : "h-10 w-10 text-[16px]";
   if (src && !failed) {
     return (
       <img
@@ -842,54 +847,50 @@ export function RealLiveViewerScreen() {
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
       <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
-        <div className="flex items-start justify-between gap-2 px-1 pt-2">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="flex items-center gap-1.5 px-2 pt-2">
+          {/* Left: avatar + name + follow — one row, name truncates. */}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir le profil de ${active.seller}`}
               className="!block shrink-0 p-0"
             >
-              <SellerAvatar src={active.avatar} name={active.seller} size="md" />
+              <SellerAvatar src={active.avatar} name={active.seller} size="sm" />
             </Press>
-            <div className="min-w-0">
-              <Press
-                onClick={() => openSeller(active.sellerId ?? active.seller)}
-                className="!block !min-h-0 max-w-full p-0 text-left"
+            <Press
+              onClick={() => openSeller(active.sellerId ?? active.seller)}
+              className="!block !min-h-0 min-w-0 flex-1 p-0 text-left"
+            >
+              <p
+                className="flex min-w-0 items-center gap-1 text-[13px] font-bold text-white"
+                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               >
-                <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
-                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  <span className="truncate">{active.seller}</span>
-                  <VerifiedBadge verified={sellerVerified} size={13} />
-                </p>
-              </Press>
-              <Press
-                onClick={() => {
-                  haptic.selection();
-                  setViewersSheetOpen(true);
-                }}
-                aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-                className="!block !min-h-0 p-0 text-left"
-              >
-                <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  {displayViewers} {t("live.viewers", { count: displayViewers })}
-                </p>
-              </Press>
-            </div>
-            <FollowButton sellerId={active.sellerId ?? null} size="sm" variant="solid" />
+                <span className="truncate">{active.seller}</span>
+                <VerifiedBadge verified={sellerVerified} size={12} className="shrink-0" />
+              </p>
+            </Press>
+            <FollowButton
+              sellerId={active.sellerId ?? null}
+              size="sm"
+              variant="solid"
+              tone="live"
+            />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
+          {/* Right: wallet + actions — same height, never wrap. */}
+          <div className="flex shrink-0 items-center gap-1">
+            <WalletPill compact onTap={() => requireAuth(() => setTopupOpen(true))} />
             <Press
               onClick={() => {
                 haptic.selection();
                 setViewersSheetOpen(true);
               }}
               aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+              className="!min-h-0 flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-white tabular-nums"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
             >
-              <Eye size={13} />{displayViewers}
+              <Eye size={12} />
+              {displayViewers}
             </Press>
 
             <Press
@@ -911,21 +912,21 @@ export function RealLiveViewerScreen() {
                   }
                 } catch { /* user cancelled */ }
               }}
-              className="h-9 w-9 rounded-full text-white"
+              className="!min-h-0 h-8 w-8 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <Share2 size={16} />
+              <Share2 size={15} />
             </Press>
             <Press aria-label="More" onClick={() => setMoreOpen(true)}
-              className="h-9 w-9 rounded-full text-white"
+              className="!min-h-0 h-8 w-8 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <MoreVertical size={16} />
+              <MoreVertical size={15} />
             </Press>
             <Press
               aria-label={t("live.leave")}
               onClick={() => { haptic.light(); close(); }}
-              className="h-9 w-9 rounded-full text-white"
+              className="!min-h-0 h-8 w-8 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <X size={18} />
+              <X size={16} />
             </Press>
           </div>
         </div>
