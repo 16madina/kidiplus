@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check, Sparkles } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -384,24 +384,6 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
           />
         )}
-        {/* Filters button — only when the form is visible (not in try-on). */}
-        {b.streamSource !== "rtmp" && !filterTryOn && (
-          <Press
-            onClick={() => { haptic.selection(); setFiltersOpen(true); }}
-            aria-label={t("broadcast.setup.tryFilters", "Essayer les filtres")}
-            className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
-            style={{
-              bottom: 12,
-              backgroundColor: "rgba(10,12,20,0.55)",
-              border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
-              color: activeLens.lensId !== "none" ? GOLD : "white",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-            }}
-          >
-            <Sparkles size={18} />
-          </Press>
-        )}
       </div>
 
       {/* Full-screen filter try-on strip (above the form, camera visible). */}
@@ -518,26 +500,50 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   </div>
                 )}
               </Press>
-              <Press
-                onClick={() => {
-                  haptic.selection();
-                  coverInputRef.current?.click();
-                }}
-                className="!min-h-7 h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
-                style={{
-                  color: "#0a0a12",
-                  background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
-                  boxShadow: `0 4px 12px ${GOLD_SOFT}`,
-                }}
-                aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
-              >
-                <Camera size={11} strokeWidth={2.4} />
-                <span>
-                  {coverRequired && !hasCover
-                    ? t("broadcast.setup.addCoverShort", "Photo *")
-                    : t("common.edit", "modifier")}
-                </span>
-              </Press>
+              <div className="flex max-w-[5.5rem] flex-col items-stretch gap-1">
+                <Press
+                  onClick={() => {
+                    haptic.selection();
+                    coverInputRef.current?.click();
+                  }}
+                  className="!min-h-7 h-7 gap-1 rounded-full px-2 text-[11px] font-semibold"
+                  style={{
+                    color: "#0a0a12",
+                    background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
+                    boxShadow: `0 4px 12px ${GOLD_SOFT}`,
+                  }}
+                  aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
+                >
+                  <Camera size={11} strokeWidth={2.4} />
+                  <span>
+                    {coverRequired && !hasCover
+                      ? t("broadcast.setup.addCoverShort", "Photo *")
+                      : t("common.edit", "modifier")}
+                  </span>
+                </Press>
+                {b.streamSource !== "rtmp" && (
+                  <Press
+                    onClick={() => {
+                      haptic.selection();
+                      setFiltersOpen(true);
+                    }}
+                    className="!min-h-7 h-7 rounded-full px-2 text-[11px] font-semibold"
+                    style={{
+                      color: activeLens.lensId !== "none" ? "#0a0a12" : "white",
+                      background:
+                        activeLens.lensId !== "none"
+                          ? `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`
+                          : "oklch(0.16 0.04 260 / 0.85)",
+                      border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+                      boxShadow:
+                        activeLens.lensId !== "none" ? `0 4px 12px ${GOLD_SOFT}` : "none",
+                    }}
+                    aria-label={t("broadcast.setup.tryFilters", "Essayer les filtres")}
+                  >
+                    {t("broadcast.setup.filterBtn", "Filtre")}
+                  </Press>
+                )}
+              </div>
             </div>
             <input
               value={b.title}
