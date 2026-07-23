@@ -327,6 +327,10 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     return <ScheduleLiveSetup onExit={onExit} />;
   }
 
+  // Try-on mode: hide the product/form sheet so the host sees the filter on
+  // their face full-screen before launching the live.
+  const filterTryOn = filtersOpen && b.streamSource !== "rtmp";
+
   return (
     <motion.div
       key="setup"
@@ -340,8 +344,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 55%, #05060a 100%)",
       }}
     >
-      {/* Camera preview area (top half) — skipped for RTMP multi-stream */}
-      <div className="absolute inset-x-0 top-0 h-[52%] overflow-hidden">
+      {/* Camera preview — expands to full screen while trying filters */}
+      <div
+        className={
+          filterTryOn
+            ? "absolute inset-0 overflow-hidden"
+            : "absolute inset-x-0 top-0 h-[52%] overflow-hidden"
+        }
+      >
         {b.streamSource === "rtmp" ? (
           <div className="absolute inset-0 grid place-items-center bg-neutral-950 px-6 text-center">
             {b.cover && (
@@ -374,28 +384,38 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
             onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
           />
         )}
-        {/* Filters button — bottom-right of the preview */}
-        {b.streamSource !== "rtmp" && (
-          <>
-            <Press
-              onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
-              aria-label="Filtres"
-              className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
-              style={{
-                bottom: 12,
-                backgroundColor: "rgba(10,12,20,0.55)",
-                border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
-                color: activeLens.lensId !== "none" ? GOLD : "white",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-              }}
-            >
-              <Sparkles size={18} />
-            </Press>
-            <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
-          </>
+        {/* Filters button — only when the form is visible (not in try-on). */}
+        {b.streamSource !== "rtmp" && !filterTryOn && (
+          <Press
+            onClick={() => { haptic.selection(); setFiltersOpen(true); }}
+            aria-label={t("broadcast.setup.tryFilters", "Essayer les filtres")}
+            className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
+            style={{
+              bottom: 12,
+              backgroundColor: "rgba(10,12,20,0.55)",
+              border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+              color: activeLens.lensId !== "none" ? GOLD : "white",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <Sparkles size={18} />
+          </Press>
         )}
       </div>
+
+      {/* Full-screen filter try-on strip (above the form, camera visible). */}
+      {b.streamSource !== "rtmp" && (
+        <FiltersCarousel
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          doneLabel={t("broadcast.setup.filtersDone", "C'est bon")}
+          hint={t(
+            "broadcast.setup.filtersHint",
+            "Regarde ton visage — choisis le filtre, puis continue",
+          )}
+        />
+      )}
 
       {/* Top bar — X · KIDI+ · Refresh */}
       <div
@@ -403,8 +423,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
         <Press
-          onClick={onExit}
-          aria-label={t("common.close")}
+          onClick={() => {
+            if (filterTryOn) {
+              haptic.selection();
+              setFiltersOpen(false);
+              return;
+            }
+            onExit();
+          }}
+          aria-label={filterTryOn ? t("common.close") : t("common.close")}
           className="!min-h-11 !min-w-11 h-11 w-11 rounded-full p-0 text-white"
           style={{
             backgroundColor: "rgba(10,12,20,0.55)",
@@ -443,7 +470,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         </Press>
       </div>
 
-      {/* Bottom sheet */}
+      {/* Bottom sheet — hidden while trying filters so the face stays visible */}
+      {!filterTryOn && (
       <div
         className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-3"
         style={{
@@ -796,6 +824,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           {launching ? t("common.loading") : t("broadcast.setup.start", "Lancer le live")}
         </Press>
       </div>
+      )}
 
       <AddProductSheet
         open={showAdd}

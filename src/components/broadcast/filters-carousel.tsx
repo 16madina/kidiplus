@@ -19,9 +19,13 @@ const GOLD = "oklch(0.85 0.18 90)";
 export type FiltersCarouselProps = {
   open: boolean;
   onClose: () => void;
+  /** When set, shows a clear done CTA (setup filter try-on). */
+  doneLabel?: string;
+  /** Extra hint above the strip (e.g. try-on on face). */
+  hint?: string;
 };
 
-export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
+export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarouselProps) {
   const {
     lenses,
     activeLens,
@@ -50,17 +54,22 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 200, opacity: 0 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-40 px-3 pb-6 pt-3"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-50 px-3 pb-6 pt-3"
           style={{
             paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 55%, rgba(0,0,0,0) 100%)",
           }}
         >
-          <div className="mb-2 flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
+          {hint && (
+            <p className="mb-2 px-2 text-center text-[12px] font-semibold text-white/85">
+              {hint}
+            </p>
+          )}
+          <div className="mb-2 flex items-center justify-between gap-2 px-2">
+            <div className="min-w-0 flex items-center gap-2">
               <span className="text-[13px] font-bold text-white">Filtres</span>
-              <span className="text-[11px] text-white/60">
+              <span className="truncate text-[11px] text-white/60">
                 {activeLens.lensId === "none" ? "Aucun" : activeLens.name}
               </span>
             </div>
@@ -69,16 +78,34 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
                 haptic.selection();
                 onClose();
               }}
-              aria-label="Fermer les filtres"
-              className="!min-h-8 !min-w-8 h-8 w-8 rounded-full text-white grid place-items-center"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.5)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
+              aria-label={doneLabel ?? "Fermer les filtres"}
+              className={
+                doneLabel
+                  ? "!min-h-9 h-9 shrink-0 rounded-full px-3.5 text-[12px] font-bold inline-flex items-center gap-1.5"
+                  : "!min-h-8 !min-w-8 h-8 w-8 rounded-full text-white grid place-items-center"
+              }
+              style={
+                doneLabel
+                  ? {
+                      background: GOLD,
+                      color: "#10162B",
+                    }
+                  : {
+                      backgroundColor: "rgba(0,0,0,0.5)",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }
+              }
             >
-              <X size={14} />
+              {doneLabel ? (
+                <>
+                  <Check size={14} strokeWidth={3} />
+                  {doneLabel}
+                </>
+              ) : (
+                <X size={14} />
+              )}
             </Press>
           </div>
 
