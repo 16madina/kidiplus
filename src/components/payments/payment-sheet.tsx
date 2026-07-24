@@ -41,6 +41,8 @@ import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publisha
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 import { OrderItemImage } from "@/components/orders/order-item-image";
+import { setOrderProductOptions } from "@/lib/orders-db";
+import { variantSelectionState } from "@/lib/live-product-options";
 
 
 
@@ -54,10 +56,17 @@ export function PaymentSheet({
   order,
   onClose,
   onPaid,
+  productColors = [],
+  productSizes = [],
+  onOrderPatched,
 }: {
   order: OrderRow | null;
   onClose: () => void;
   onPaid?: (order: OrderRow) => void;
+  /** Available color options for the live product (auction wins). */
+  productColors?: string[];
+  productSizes?: string[];
+  onOrderPatched?: (order: OrderRow) => void;
 }) {
   const { t, i18n } = useTranslation();
   const { balance, currency: walletCurrency } = useWallet();
@@ -65,6 +74,61 @@ export function PaymentSheet({
   const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
+  const variantState = variantSelectionState(productColors, productSizes);
+  const existingOpts = (order?.address_snapshot?.product_options ?? null) as
+    | { color?: string | null; size?: string | null }
+    | null;
+  const [pickedColor, setPickedColor] = useState<string | undefined>();
+  const [pickedSize, setPickedSize] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!order) {
+      setPickedColor(undefined);
+      setPickedSize(undefined);
+      return;
+    }
+    setPickedColor(
+      existingOpts?.color ??
+        variantState.color ??
+        (productColors.length === 1 ? productColors[0] : undefined),
+    );
+    setPickedSize(
+      existingOpts?.size ??
+        variantState.size ??
+        (productSizes.length === 1 ? productSizes[0] : undefined),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
+  const needsVariant =
+    order?.status === "pending" &&
+    (productColors.length > 1 || productSizes.length > 1);
+  const variantReady =
+    !needsVariant ||
+    ((productColors.length <= 1 || !!pickedColor) &&
+      (productSizes.length <= 1 || !!pickedSize));
+
+  const ensureVariantOnOrder = async (): Promise<boolean> => {
+    if (!order || !needsVariant) return true;
+    if (!variantReady) {
+      toast.error(
+        t("productOptions.pickRequired", "Choisis une couleur / taille"),
+      );
+      return false;
+    }
+    const r = await setOrderProductOptions(order.id, {
+      color: pickedColor,
+      size: pickedSize,
+    });
+    if (!r.ok) {
+      toast.error(r.error);
+      return false;
+    }
+    if (r.itemName) {
+      onOrderPatched?.({ ...order, item_name: r.itemName });
+    }
+    return true;
+  };
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null> }
@@ -218,6 +282,64 @@ export function PaymentSheet({
                   </div>
                 </div>
 
+                {needsVariant && (
+                  <div className="mt-4 space-y-3 rounded-2xl border p-3">
+                    <p className="text-[13px] font-semibold">
+                      {t("productOptions.pickVariant", "Choisis ta variante")}
+                    </p>
+                    {productColors.length > 1 && (
+                      <div className="flex flex-wrap gap-2">
+                        {productColors.map((c) => {
+                          const active = pickedColor === c;
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                haptic.selection();
+                                setPickedColor(c);
+                              }}
+                              className="min-h-9 rounded-full px-3 text-[12px] font-semibold"
+                              style={{
+                                background: active ? "oklch(0.18 0.04 260)" : "var(--muted)",
+                                color: active ? "white" : "var(--foreground)",
+                                border: active ? "none" : "1px solid var(--border)",
+                              }}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {productSizes.length > 1 && (
+                      <div className="flex flex-wrap gap-2">
+                        {productSizes.map((s) => {
+                          const active = pickedSize === s;
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                haptic.selection();
+                                setPickedSize(s);
+                              }}
+                              className="min-h-9 rounded-full px-3 text-[12px] font-semibold"
+                              style={{
+                                background: active ? "oklch(0.18 0.04 260)" : "var(--muted)",
+                                color: active ? "white" : "var(--foreground)",
+                                border: active ? "none" : "1px solid var(--border)",
+                              }}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Fees breakdown: item + delivery (or courier note) = total */}
                 <dl className="mt-4 space-y-2 text-sm">
                   <Row label={t("pay.item")} value={fmt(Number(order.amount))} />
@@ -252,6 +374,8 @@ export function PaymentSheet({
                       busy={walletBusy}
                       onPay={async () => {
                         if (walletBusy) return;
+                        const okVariant = await ensureVariantOnOrder();
+                        if (!okVariant) return;
                         setWalletBusy(true);
                         haptic.medium();
                         const r = await payOrderWithWallet(order.id);
@@ -364,6 +488,8 @@ export function PaymentSheet({
                       clientSecret={state.clientSecret}
                       stripePromise={state.stripePromise}
                       totalLabel={fmt(Number(order.total))}
+                      disabled={!variantReady}
+                      beforeConfirm={ensureVariantOnOrder}
                       onSuccess={(pi) => { void handleSuccess(pi); }}
                     />
                   )}
@@ -540,11 +666,15 @@ function StripeCardForm({
   stripePromise,
   totalLabel,
   onSuccess,
+  beforeConfirm,
+  disabled = false,
 }: {
   clientSecret: string;
   stripePromise: Promise<StripeJs | null>;
   totalLabel: string;
   onSuccess: (paymentIntentId: string) => void;
+  beforeConfirm?: () => Promise<boolean>;
+  disabled?: boolean;
 }) {
   const options = useMemo(
     () => ({
@@ -565,7 +695,12 @@ function StripeCardForm({
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <StripePayForm totalLabel={totalLabel} onSuccess={onSuccess} />
+      <StripePayForm
+        totalLabel={totalLabel}
+        onSuccess={onSuccess}
+        beforeConfirm={beforeConfirm}
+        disabled={disabled}
+      />
     </Elements>
   );
 }
@@ -573,9 +708,13 @@ function StripeCardForm({
 function StripePayForm({
   totalLabel,
   onSuccess,
+  beforeConfirm,
+  disabled = false,
 }: {
   totalLabel: string;
   onSuccess: (paymentIntentId: string) => void;
+  beforeConfirm?: () => Promise<boolean>;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const stripe = useStripe();
@@ -587,7 +726,11 @@ function StripePayForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || busy || !ready || !complete) return;
+    if (!stripe || !elements || busy || !ready || !complete || disabled) return;
+    if (beforeConfirm) {
+      const ok = await beforeConfirm();
+      if (!ok) return;
+    }
     setBusy(true);
     setError(null);
     haptic.medium();
@@ -641,7 +784,7 @@ function StripePayForm({
       )}
       <Press
         type="submit"
-        disabled={!stripe || busy || !ready || !complete}
+        disabled={!stripe || busy || !ready || !complete || disabled}
         className="mt-1 w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
       >
         {busy ? <Loader2 className="mx-auto animate-spin" size={18} /> : t("pay.payNow", { total: totalLabel })}

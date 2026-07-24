@@ -115,6 +115,11 @@ export function AuctionCard({
             </p>
             <ChevronUp size={13} className="shrink-0 text-white/55" />
           </div>
+          {product.metaLine ? (
+            <p className="mt-0.5 truncate text-[11px] leading-tight text-white/60">
+              {product.metaLine}
+            </p>
+          ) : null}
           <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
             <motion.span
               key={bidPulse}

@@ -27,12 +27,19 @@ import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/lib/money";
+import {
+  conditionLabel,
+  formatProductMetaLine,
+  itemNameWithVariant,
+  variantSelectionState,
+} from "@/lib/live-product-options";
 import { LiveChat } from "./live-chat";
 import { LiveViewersSheet } from "./live-viewers-sheet";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { CustomBidStepper } from "./custom-bid-stepper";
 import { ProductsSheet } from "./products-sheet";
+import { VariantPickerSheet } from "./variant-picker-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { AddressFormSheet } from "@/components/buyer/address-form-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
@@ -104,13 +111,20 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "s
   );
 }
 
-function toProduct(row: LiveProductRow, activeId: string | null): Product {
+function toProduct(
+  row: LiveProductRow,
+  activeId: string | null,
+  t: (key: string, fallback: string) => string,
+): Product {
   const status: Product["status"] =
     row.status === "sold" || row.status === "out" || row.status === "unsold"
       ? "sold"
       : row.id === activeId
         ? "current"
         : "upcoming";
+  const colors = row.colors ?? [];
+  const sizes = row.sizes ?? [];
+  const cond = conditionLabel(row.condition ?? null, t);
   return {
     id: row.id,
     name: row.name,
@@ -120,6 +134,15 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
     price: Number(row.price),
     status,
     winner: row.sold_to_identity ?? undefined,
+    metaLine: formatProductMetaLine({
+      brand: row.brand,
+      colors,
+      sizes,
+      conditionText: cond,
+    }),
+    description: row.description,
+    colors,
+    sizes,
   };
 }
 
@@ -567,13 +590,22 @@ export function RealLiveViewerScreen() {
             }
             if (settledEndIdsRef.current.has(endId)) return;
             settledEndIdsRef.current.add(endId);
+            const colors = prodRow.colors ?? [];
+            const sizes = prodRow.sizes ?? [];
+            const sel = variantSelectionState(colors, sizes);
+            const variant =
+              sel.needsPick ? undefined : { color: sel.color, size: sel.size };
             const res = await createPendingOrder({
               buyerId: user.id,
               sellerId: active.sellerId!,
               liveId: active.liveId!,
               productId: prodRow.id,
               kind: "auction",
-              itemName: prodRow.name,
+              itemName: itemNameWithVariant(
+                prodRow.name,
+                variant?.color,
+                variant?.size,
+              ),
               itemImage: prodRow.image_url,
               amount: evt.finalPrice,
               currency: liveCurrency,
@@ -581,7 +613,14 @@ export function RealLiveViewerScreen() {
               deliveryMode: dr.delivery.deliveryMode,
               deliveryZone: dr.delivery.deliveryZone,
               addressId: dr.delivery.addressId,
-              addressSnapshot: dr.delivery.addressSnapshot,
+              addressSnapshot: {
+                ...(dr.delivery.addressSnapshot ?? {}),
+                item_base_name: prodRow.name,
+                product_options: {
+                  color: variant?.color ?? null,
+                  size: variant?.size ?? null,
+                },
+              },
             });
             if (res.ok) setPendingOrder(res.order);
             else toast.error(res.error);
@@ -764,10 +803,19 @@ export function RealLiveViewerScreen() {
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
 
-  // Fixed-price flow: reserve stock atomically, then open the payment sheet.
+  // Fixed-price flow: optional variant pick → reserve stock → payment sheet.
   // Note (phase 1): if the buyer abandons payment, stock is not automatically
   // returned. A future phase should refund stock on payment_intent.canceled.
-  const startFixedPurchase = async (p: LiveProductRow) => {
+  const [variantPick, setVariantPick] = useState<{
+    product: LiveProductRow;
+    colors: string[];
+    sizes: string[];
+  } | null>(null);
+
+  const completeFixedPurchase = async (
+    p: LiveProductRow,
+    variant?: { color?: string; size?: string },
+  ) => {
     if (liveEnded) return;
     if (!user) { openAuth(); return; }
     if (!active?.liveId || !active?.sellerId) return;
@@ -799,13 +847,21 @@ export function RealLiveViewerScreen() {
     }
     const res = await purchaseFixedPriceRpc(p.id, user.id);
     if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
+    const snap = {
+      ...(dr.delivery.addressSnapshot ?? {}),
+      item_base_name: p.name,
+      product_options: {
+        color: variant?.color ?? null,
+        size: variant?.size ?? null,
+      },
+    };
     const order = await createPendingOrder({
       buyerId: user.id,
       sellerId: active.sellerId,
       liveId: active.liveId,
       productId: p.id,
       kind: "fixed",
-      itemName: p.name,
+      itemName: itemNameWithVariant(p.name, variant?.color, variant?.size),
       itemImage: p.image_url,
       amount: Number(p.price),
       currency: liveCurrency,
@@ -813,10 +869,21 @@ export function RealLiveViewerScreen() {
       deliveryMode: dr.delivery.deliveryMode,
       deliveryZone: dr.delivery.deliveryZone,
       addressId: dr.delivery.addressId,
-      addressSnapshot: dr.delivery.addressSnapshot,
+      addressSnapshot: snap,
     });
     if (order.ok) setPendingOrder(order.order);
     else toast.error(order.error);
+  };
+
+  const startFixedPurchase = async (p: LiveProductRow) => {
+    const colors = p.colors ?? [];
+    const sizes = p.sizes ?? [];
+    const sel = variantSelectionState(colors, sizes);
+    if (sel.needsPick) {
+      setVariantPick({ product: p, colors, sizes });
+      return;
+    }
+    await completeFixedPurchase(p, { color: sel.color, size: sel.size });
   };
 
   // Composer
@@ -906,8 +973,8 @@ export function RealLiveViewerScreen() {
     close();
     return null;
   }
-  const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
-  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
+  const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId, t));
+  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
 
   return (
     <LivePipShell>
@@ -1290,9 +1357,32 @@ export function RealLiveViewerScreen() {
         disabled={liveEnded}
         deliveryBlockedLabel={deliveryBlockedLabel}
       />
+      <VariantPickerSheet
+        open={!!variantPick}
+        onClose={() => setVariantPick(null)}
+        productName={variantPick?.product.name ?? ""}
+        colors={variantPick?.colors ?? []}
+        sizes={variantPick?.sizes ?? []}
+        onConfirm={(v) => {
+          const p = variantPick?.product;
+          setVariantPick(null);
+          if (p) void completeFixedPurchase(p, v);
+        }}
+      />
       <PaymentSheet
         order={pendingOrder}
         onClose={() => setPendingOrder(null)}
+        productColors={
+          pendingOrder?.product_id
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.colors ?? [])
+            : []
+        }
+        productSizes={
+          pendingOrder?.product_id
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.sizes ?? [])
+            : []
+        }
+        onOrderPatched={(o) => setPendingOrder(o)}
       />
       <AddressFormSheet
         open={addressFormOpen}

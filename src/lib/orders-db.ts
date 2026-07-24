@@ -110,6 +110,22 @@ export async function fetchOrderById(orderId: string): Promise<OrderRow | null> 
   return (data ?? null) as OrderRow | null;
 }
 
+/** Attach selected color/size on a pending order (item_name + address_snapshot). */
+export async function setOrderProductOptions(
+  orderId: string,
+  opts: { color?: string | null; size?: string | null },
+): Promise<{ ok: true; itemName?: string } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc("set_order_product_options", {
+    _order_id: orderId,
+    _color: opts.color ?? undefined,
+    _size: opts.size ?? undefined,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string; item_name?: string };
+  if (!r.ok) return { ok: false, error: r.error ?? "update_failed" };
+  return { ok: true, itemName: r.item_name };
+}
+
 export async function fetchMyOrders(buyerId: string, limit = 50): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from("orders")

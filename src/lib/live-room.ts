@@ -20,6 +20,7 @@ import {
   fetchLiveProducts,
   updateLiveViewerCount,
   resolveLiveImage,
+  normalizeLiveProductRow,
   type LiveProductRow,
 } from "@/lib/lives-db";
 
@@ -28,20 +29,21 @@ import {
  *  retry once before giving up. If it still fails, keep image_url = null so
  *  the UI shows a placeholder rather than a broken <img>. */
 async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
-  if (!row.image_url) return row;
-  if (/^(https?:|blob:|data:)/i.test(row.image_url)) return row;
-  const path = row.image_url;
+  const normalized = normalizeLiveProductRow(row);
+  if (!normalized.image_url) return normalized;
+  if (/^(https?:|blob:|data:)/i.test(normalized.image_url)) return normalized;
+  const path = normalized.image_url;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const url = await resolveLiveImage("live-products", path);
-      if (url) return { ...row, image_url: url };
+      if (url) return { ...normalized, image_url: url };
     } catch (err) {
       console.warn("[live-room] hydrateImage error", err, path);
     }
     if (attempt < 3) await new Promise((r) => setTimeout(r, attempt === 0 ? 700 : 1400));
   }
   console.warn("[live-room] failed to sign product image after retry", path);
-  return row;
+  return normalized;
 }
 
 function isTerminalProductStatus(status: string | null | undefined): boolean {

@@ -8,6 +8,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LiveStream } from "@/lib/live-mock";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import {
+  normalizeCondition,
+  parseStringArray,
+  type ProductCondition,
+} from "@/lib/live-product-options";
 
 // -------------------------------------------------------------------------
 // Storage
@@ -110,8 +115,65 @@ export type CreateLiveInput = {
     timerSeconds: number;
     position: number;
     shopProductId?: string | null;
+    description?: string | null;
+    brand?: string | null;
+    condition?: ProductCondition | null;
+    colors?: string[];
+    sizes?: string[];
+    extraImages?: string[];
+    bidIncrement?: number | null;
   }>;
 };
+
+/** Shared optional columns written on live_products insert. */
+function liveProductOptionColumns(p: {
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  extraImages?: string[];
+  bidIncrement?: number | null;
+}) {
+  return {
+    description: p.description?.trim() || null,
+    brand: p.brand?.trim() || null,
+    condition: p.condition ?? null,
+    colors: parseStringArray(p.colors ?? []),
+    sizes: parseStringArray(p.sizes ?? []),
+    extra_images: parseStringArray(p.extraImages ?? []),
+    bid_increment:
+      typeof p.bidIncrement === "number" && Number.isFinite(p.bidIncrement) && p.bidIncrement > 0
+        ? p.bidIncrement
+        : null,
+  };
+}
+
+/** Upload extra product image slots (paths or keep remote URLs). */
+export async function uploadExtraLiveProductImages(args: {
+  userId: string;
+  productName: string;
+  extraImages?: string[];
+  extraImageFiles?: (File | null | undefined)[];
+}): Promise<string[]> {
+  const urls = args.extraImages ?? [];
+  const files = args.extraImageFiles ?? [];
+  const out: string[] = [];
+  const n = Math.max(urls.length, files.length);
+  for (let i = 0; i < n; i++) {
+    const file = files[i] ?? null;
+    const url = urls[i];
+    if (file) {
+      out.push(await uploadLiveImage("live-products", file, args.userId));
+    } else if (url && /^blob:/i.test(url)) {
+      const f = await blobUrlToFile(url, `${args.productName || "product"}-extra-${i}.jpg`);
+      out.push(await uploadLiveImage("live-products", f, args.userId));
+    } else if (url) {
+      out.push(url);
+    }
+  }
+  return out;
+}
 
 export type CreatedLive = {
   liveId: string;
@@ -153,6 +215,7 @@ export async function createLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
       ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { data: prods, error: pErr } = await supabase
@@ -468,7 +531,6 @@ export async function fetchLiveById(id: string): Promise<LiveStream | null> {
 // -------------------------------------------------------------------------
 
 export type LiveProductRow = {
-
   id: string;
   live_id: string;
   name: string;
@@ -487,7 +549,31 @@ export type LiveProductRow = {
   auction_deadline_at: string | null;
   /** Incremented each time start_auction runs on this product row. */
   auction_round?: number;
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[] | null;
+  sizes?: string[] | null;
+  extra_images?: string[] | null;
+  bid_increment?: number | null;
 };
+
+/** Normalize JSON array / condition fields coming from PostgREST. */
+export function normalizeLiveProductRow(row: LiveProductRow): LiveProductRow {
+  return {
+    ...row,
+    description: row.description ?? null,
+    brand: row.brand ?? null,
+    condition: normalizeCondition(row.condition),
+    colors: parseStringArray(row.colors),
+    sizes: parseStringArray(row.sizes),
+    extra_images: parseStringArray(row.extra_images),
+    bid_increment:
+      typeof row.bid_increment === "number" && Number.isFinite(row.bid_increment)
+        ? row.bid_increment
+        : null,
+  };
+}
 
 
 export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[]> {
@@ -496,7 +582,7 @@ export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[
     .select("*")
     .eq("live_id", liveId)
     .order("position", { ascending: true });
-  return (data ?? []) as LiveProductRow[];
+  return ((data ?? []) as LiveProductRow[]).map(normalizeLiveProductRow);
 }
 
 /** Append a product mid-live (called from the host dock).
@@ -513,8 +599,17 @@ export async function createLiveProductInDb(args: {
   stock: number;
   timerSeconds: number;
   shopProductId?: string | null;
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  extraImages?: string[];
+  extraImageFiles?: (File | null)[];
+  bidIncrement?: number | null;
 }): Promise<{ ok: boolean; error?: string; id?: string; imagePath?: string | null }> {
   let imagePath: string | null = null;
+  let extraImages: string[] = [];
   try {
     if (args.imageFile) {
       imagePath = await uploadLiveImage("live-products", args.imageFile, args.userId);
@@ -524,6 +619,12 @@ export async function createLiveProductInDb(args: {
     } else {
       imagePath = args.imageUrl || null;
     }
+    extraImages = await uploadExtraLiveProductImages({
+      userId: args.userId,
+      productName: args.name,
+      extraImages: args.extraImages,
+      extraImageFiles: args.extraImageFiles,
+    });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -548,6 +649,7 @@ export async function createLiveProductInDb(args: {
       timer_seconds: args.timerSeconds,
       status: "upcoming",
       position,
+      ...liveProductOptionColumns({ ...args, extraImages }),
       ...(args.shopProductId ? { shop_product_id: args.shopProductId } : {}),
     })
     .select("id")
@@ -834,6 +936,8 @@ export async function createScheduledLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
+      ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { data: prods, error: pErr } = await supabase
       .from("live_products")
@@ -890,6 +994,8 @@ export async function updateScheduledLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
+      ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { error: pErr } = await supabase.from("live_products").insert(rows);
     if (pErr) throw pErr;

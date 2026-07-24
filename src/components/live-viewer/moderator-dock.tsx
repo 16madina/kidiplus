@@ -100,6 +100,14 @@ export function ModeratorDock({
       stock: p.stock,
       timerSeconds: p.timerSec,
       shopProductId: p.shopProductId ?? null,
+      description: p.description ?? null,
+      brand: p.brand ?? null,
+      condition: p.condition ?? null,
+      colors: p.colors ?? [],
+      sizes: p.sizes ?? [],
+      extraImages: p.extraImages,
+      extraImageFiles: p.extraImageFiles,
+      bidIncrement: p.bidIncrement ?? null,
     });
     if (!res.ok) {
       toast.error(res.error ?? t("common.error", "Une erreur est survenue"));

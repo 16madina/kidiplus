@@ -115,6 +115,11 @@ export function GoLiveEntryScreen({
         const img = p.image_url
           ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
           : "";
+        const extras = await Promise.all(
+          (p.extra_images ?? []).map(async (path) =>
+            (await resolveLiveImage("live-products", path)) ?? path,
+          ),
+        );
         b.addProduct({
           name: p.name,
           image: img,
@@ -123,6 +128,13 @@ export function GoLiveEntryScreen({
           price: Number(p.price),
           stock: Number(p.stock),
           timerSec: Number(p.timer_seconds),
+          description: p.description ?? undefined,
+          brand: p.brand ?? undefined,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages: extras.length ? extras : undefined,
+          bidIncrement: p.bid_increment ?? null,
         });
       }
       onEdit(row);
@@ -149,6 +161,11 @@ export function GoLiveEntryScreen({
         const img = p.image_url
           ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
           : "";
+        const extras = await Promise.all(
+          (p.extra_images ?? []).map(async (path) =>
+            (await resolveLiveImage("live-products", path)) ?? path,
+          ),
+        );
         b.addProduct({
           name: p.name,
           image: img,
@@ -157,6 +174,13 @@ export function GoLiveEntryScreen({
           price: Number(p.price),
           stock: Number(p.stock),
           timerSec: Number(p.timer_seconds),
+          description: p.description ?? undefined,
+          brand: p.brand ?? undefined,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages: extras.length ? extras : undefined,
+          bidIncrement: p.bid_increment ?? null,
         });
       }
       b.setProductDbIds(res.productIds ?? []);

@@ -1592,5 +1592,33 @@
       "assignBtn": "Confirmer l'assignation",
       "assigned": "Assigné à @{{h}}"
     }
+  },
+  "productOptions": {
+    "title": "Options",
+    "subtitle": "Marque, état, couleurs, tailles",
+    "brand": "Marque",
+    "brandPlaceholder": "ex : Nike, Zara…",
+    "conditionLabel": "État",
+    "condition": {
+      "new": "Neuf",
+      "likeNew": "Comme neuf",
+      "good": "Bon état",
+      "used": "Occasion"
+    },
+    "colors": "Couleurs",
+    "sizes": "Tailles",
+    "customColor": "Autre couleur",
+    "customSize": "Autre taille",
+    "quantity": "Quantité",
+    "duration": "Durée (s)",
+    "bidIncrement": "Incrément par enchère (optionnel)",
+    "description": "Description (optionnel)",
+    "descriptionPlaceholder": "Décris brièvement ton produit…",
+    "coverPhoto": "Couverture",
+    "addPhoto": "Ajouter",
+    "photosHint": "Jusqu’à 3 photos — la 1ʳᵉ est la couverture",
+    "pickVariant": "Choisis ta variante",
+    "confirmVariant": "Continuer",
+    "pickRequired": "Choisis une couleur / taille"
   }
 }

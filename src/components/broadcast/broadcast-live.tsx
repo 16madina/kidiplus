@@ -906,6 +906,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       stock: p.stock,
       timerSeconds: p.timerSec,
       shopProductId: p.shopProductId ?? null,
+      description: p.description ?? null,
+      brand: p.brand ?? null,
+      condition: p.condition ?? null,
+      colors: p.colors ?? [],
+      sizes: p.sizes ?? [],
+      extraImages: p.extraImages,
+      extraImageFiles: p.extraImageFiles,
+      bidIncrement: p.bidIncrement ?? null,
     });
     setAddingProduct(false);
     if (!res.ok) {

@@ -94,6 +94,11 @@ export type Product = {
   price: number; // current or fixed
   status: "upcoming" | "current" | "sold";
   winner?: string;
+  /** Compact meta under the name (brand · color · size · condition). */
+  metaLine?: string;
+  description?: string | null;
+  colors?: string[];
+  sizes?: string[];
 };
 
 const PRODUCT_POOL: Omit<Product, "id" | "status">[] = [

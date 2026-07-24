@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { ProductCondition } from "@/lib/live-product-options";
 
 export type BroadcastStage = "entry" | "setup" | "live" | "summary";
 export type BroadcastMode = "now" | "schedule" | "edit";
@@ -20,6 +21,8 @@ export type RtmpCreds = {
   ingressId: string;
   participantIdentity: string;
 };
+
+export type { ProductCondition };
 
 export type BProduct = {
   id: string;
@@ -38,6 +41,18 @@ export type BProduct = {
   dbId?: string;
   /** Optional link back to the seller's shop_products row (traceability + stock sync). */
   shopProductId?: string;
+  /** Optional short description (shown to viewers). */
+  description?: string;
+  /** Optional auction bid step override. */
+  bidIncrement?: number | null;
+  brand?: string;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  /** Extra image preview URLs (slots 1–2). Cover is `image`. */
+  extraImages?: string[];
+  /** Local files for extra slots (aligned with `extraImages`; null = URL-only). */
+  extraImageFiles?: (File | null)[];
 };
 
 

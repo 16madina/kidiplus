@@ -178,6 +178,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         } else {
           imagePath = p.image || null;
         }
+        const { uploadExtraLiveProductImages } = await import("@/lib/lives-db");
+        const extraImages = await uploadExtraLiveProductImages({
+          userId: b.hostIdentity!,
+          productName: p.name,
+          extraImages: p.extraImages,
+          extraImageFiles: p.extraImageFiles,
+        });
         return {
           name: p.name,
           imagePath,
@@ -188,6 +195,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           timerSeconds: p.timerSec,
           position: index,
           shopProductId: p.shopProductId ?? null,
+          description: p.description ?? null,
+          brand: p.brand ?? null,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages,
+          bidIncrement: p.bidIncrement ?? null,
         };
       }),
     );

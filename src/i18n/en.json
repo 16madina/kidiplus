@@ -1592,5 +1592,33 @@
       "assignBtn": "Confirm assignment",
       "assigned": "Assigned to @{{h}}"
     }
+  },
+  "productOptions": {
+    "title": "Options",
+    "subtitle": "Brand, condition, colors, sizes",
+    "brand": "Brand",
+    "brandPlaceholder": "e.g. Nike, Zara…",
+    "conditionLabel": "Condition",
+    "condition": {
+      "new": "New",
+      "likeNew": "Like new",
+      "good": "Good condition",
+      "used": "Used"
+    },
+    "colors": "Colors",
+    "sizes": "Sizes",
+    "customColor": "Other color",
+    "customSize": "Other size",
+    "quantity": "Quantity",
+    "duration": "Duration (s)",
+    "bidIncrement": "Bid increment (optional)",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "Briefly describe your item…",
+    "coverPhoto": "Cover",
+    "addPhoto": "Add",
+    "photosHint": "Up to 3 photos — the 1st is the cover",
+    "pickVariant": "Choose your variant",
+    "confirmVariant": "Continue",
+    "pickRequired": "Pick a color / size"
   }
 }
