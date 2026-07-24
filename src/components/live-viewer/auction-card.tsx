@@ -188,8 +188,12 @@ export function AuctionCard({
                   </>
                 ) : deliveryBlocked ? (
                   deliveryBlockedLabel
+                ) : disabled ? (
+                  t("live.ended")
+                ) : auctionActive && secondsLeft <= 0 ? (
+                  t("live.auctionEnding", "Fin de l'enchère…")
                 ) : (
-                  disabled ? t("live.ended") : t("live.waitingForSeller")
+                  t("live.waitingForSeller")
                 )}
               </Press>
               {onToggleCustom && (

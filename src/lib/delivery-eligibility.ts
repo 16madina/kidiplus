@@ -9,6 +9,7 @@
 
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { zonesForCountry } from "@/lib/delivery";
+import { normalizeCountryCode } from "@/lib/delivery-zones-data";
 
 export type EligibilityInput = {
   settings: SellerDeliverySettings | null;
@@ -21,7 +22,7 @@ export type EligibilityResult = {
   reason?: "no_country_coverage" | "courier_country_mismatch";
 };
 
-const norm = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+const norm = (s: string | null | undefined) => normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
 
 export function canDeliver({
   settings,

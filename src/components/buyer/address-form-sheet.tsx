@@ -25,6 +25,7 @@ import {
   CONTINENT_LABEL,
   countryName,
   defaultCountryFromCurrency,
+  normalizeCountryCode,
   searchCountries,
   suggestionsFor,
 } from "@/lib/delivery-zones-data";
@@ -77,7 +78,7 @@ export function AddressFormSheet({
         label: initial.label ?? "",
         full_name: initial.full_name ?? "",
         phone: initial.phone ?? "",
-        country: initial.country ?? "",
+        country: normalizeCountryCode(initial.country) ?? "",
         city: initial.city ?? "",
         zone_or_commune: initial.zone_or_commune ?? "",
         street_address: initial.street_address ?? "",
@@ -87,8 +88,9 @@ export function AddressFormSheet({
         is_default: !!initial.is_default,
       });
     } else {
-      const c = (defaultCountry ?? "").trim().toUpperCase()
-        || defaultCountryFromCurrency(currency);
+      const c =
+        normalizeCountryCode(defaultCountry) ||
+        defaultCountryFromCurrency(currency);
       setForm({
         label: "", full_name: "", phone: "", country: c,
         city: "", zone_or_commune: "", street_address: "",
@@ -135,7 +137,7 @@ export function AddressFormSheet({
       label: form.label.trim(),
       full_name: form.full_name.trim(),
       phone: form.phone.trim(),
-      country: form.country.trim().toUpperCase(),
+      country: (normalizeCountryCode(form.country) ?? form.country.trim()).toUpperCase(),
       city: form.city.trim(),
       zone_or_commune: form.zone_or_commune.trim() || null,
       street_address: form.street_address.trim() || null,
@@ -174,15 +176,22 @@ export function AddressFormSheet({
           <button
             type="button"
             onClick={() => setCountryOpen((o) => !o)}
-            className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-left text-[14px] outline-none"
+            className="flex w-full items-center justify-between gap-2 overflow-hidden rounded-xl border border-border bg-background px-3 py-2.5 text-left text-[14px] outline-none"
           >
-            <span className="flex min-w-0 items-center gap-2">
-              {form.country ? <CountryFlag code={form.country} className="h-4 w-6 rounded-sm" /> : null}
+            <span className="flex min-w-0 items-center gap-2 overflow-hidden">
+              {form.country ? (
+                <CountryFlag
+                  code={form.country}
+                  className="h-4 w-6 shrink-0 rounded-sm object-cover"
+                />
+              ) : null}
               <span className="truncate">
-                {form.country ? countryName(form.country, i18n.language) : t("address.pickCountry", { defaultValue: "Choisir un pays" })}
+                {form.country
+                  ? countryName(form.country, i18n.language)
+                  : t("address.pickCountry", { defaultValue: "Choisir un pays" })}
               </span>
             </span>
-            <span className="text-muted-foreground text-[12px]">▾</span>
+            <span className="shrink-0 text-muted-foreground text-[12px]">▾</span>
           </button>
           {countryOpen && (
             <>

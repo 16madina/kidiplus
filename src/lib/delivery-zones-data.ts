@@ -239,30 +239,84 @@ const COUNTRY_BY_CODE: Map<string, CountryOption> = new Map(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
+function normalizeSearch(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Profiles historically store "🇨🇮 Côte d'Ivoire" while addresses/delivery
+ * expect ISO-2 ("CI"). Normalize anything we get into a real country code.
+ */
+export function normalizeCountryCode(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const upper = trimmed.toUpperCase();
+  if (/^[A-Z]{2}$/.test(upper) && COUNTRY_BY_CODE.has(upper)) return upper;
+
+  // Strip leading flag emoji / symbols, then match by localized name.
+  const withoutFlag = trimmed
+    .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")
+    .trim();
+  const needle = normalizeSearch(withoutFlag);
+  if (!needle) return null;
+  if (/^[a-z]{2}$/.test(needle)) {
+    const code = needle.toUpperCase();
+    if (COUNTRY_BY_CODE.has(code)) return code;
+  }
+  const exact = COUNTRIES.find(
+    (c) =>
+      normalizeSearch(c.name) === needle ||
+      normalizeSearch(c.nameEn) === needle,
+  );
+  if (exact) return exact.code;
+  // Prefer longer name matches so "congo" doesn't steal "RD Congo" incorrectly
+  // when the full string is present — still OK for profile legacy values.
+  const partial = COUNTRIES.find(
+    (c) =>
+      normalizeSearch(c.name).includes(needle) ||
+      normalizeSearch(c.nameEn).includes(needle) ||
+      needle.includes(normalizeSearch(c.name)) ||
+      needle.includes(normalizeSearch(c.nameEn)),
+  );
+  return partial?.code ?? null;
+}
+
 export function countryName(code: string | null | undefined, locale?: string): string {
   if (!code) return "";
-  const c = COUNTRY_BY_CODE.get(code.toUpperCase());
-  if (!c) return code;
+  const normalized = normalizeCountryCode(code);
+  const c = normalized ? COUNTRY_BY_CODE.get(normalized) : undefined;
+  if (!c) {
+    return code
+      .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "")
+      .trim() || code;
+  }
   const en = (locale ?? "").toLowerCase().startsWith("en");
   return en ? c.nameEn : c.name;
 }
 
 export function countryLabel(code: string | null | undefined, locale?: string): string {
-  const name = countryName(code, locale);
+  const normalized = normalizeCountryCode(code);
+  const name = countryName(normalized ?? code, locale);
   if (!name) return "";
-  const c = COUNTRY_BY_CODE.get((code ?? "").toUpperCase());
+  const c = normalized ? COUNTRY_BY_CODE.get(normalized) : undefined;
   return c ? `${c.flag} ${name}` : name;
 }
 
 export function countryFlag(code: string | null | undefined): string {
-  if (!code) return "";
-  return COUNTRY_BY_CODE.get(code.toUpperCase())?.flag ?? "";
+  const normalized = normalizeCountryCode(code);
+  if (!normalized) return "";
+  return COUNTRY_BY_CODE.get(normalized)?.flag ?? "";
 }
 
 
 export function continentOfCountry(code: string | null | undefined): Continent | null {
-  if (!code) return null;
-  return COUNTRY_BY_CODE.get(code.toUpperCase())?.continent ?? null;
+  const normalized = normalizeCountryCode(code);
+  if (!normalized) return null;
+  return COUNTRY_BY_CODE.get(normalized)?.continent ?? null;
 }
 
 /** Returns countries grouped by continent, with the user's continent first. */
@@ -278,13 +332,6 @@ export function countriesByContinent(
     continent: cont,
     countries: COUNTRIES.filter((c) => c.continent === cont),
   }));
-}
-
-function normalizeSearch(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
 }
 
 /** Search countries by name (localized), ISO code or continent; keeps user's continent first. */

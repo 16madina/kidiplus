@@ -331,6 +331,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = product?.price ?? 0;
+    // Stable endId across optimistic UI end + post-finalize settlement frame.
+    const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
     // End UI immediately at 00s — never wait on RPC/avatar (that was the
     // multi-second "stuck at zero" gap before the winner popup).
     room.broadcastAuctionEnd({
@@ -342,6 +344,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       orderId: null,
       autoPaid: false,
       auctionRound: round,
+      endId,
       ts: Date.now(),
     });
     void (async () => {
@@ -351,8 +354,23 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
           });
           if (res.ok) {
-            // Avatar refresh is handled by the auction:end reveal effect.
-            void resolveWinnerAvatar(res.winnerId ?? winnerId);
+            const resolvedWinnerId = res.winnerId ?? winnerId;
+            const resolvedWinnerName = res.winnerName ?? winnerName;
+            const resolvedPrice = res.finalPrice ?? finalPrice;
+            const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+            // Same endId → viewers skip a second confetti, but apply wallet/order.
+            room.broadcastAuctionEnd({
+              productId,
+              winnerId: resolvedWinnerId,
+              winnerName: resolvedWinnerName,
+              winnerAvatarUrl,
+              finalPrice: Number(resolvedPrice ?? 0),
+              orderId: res.orderId ?? null,
+              autoPaid: !!res.autoPaid,
+              auctionRound: round,
+              endId,
+              ts: Date.now(),
+            });
             return;
           }
           console.warn("[auction] finalize failed", res.error, `attempt=${attempt}`);
@@ -642,6 +660,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
     const finalPrice = product?.price ?? 0;
     endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
+    const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
     // Clear countdown / show reveal immediately; persist in the background.
     room.broadcastAuctionEnd({
       productId,
@@ -652,12 +671,32 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       orderId: null,
       autoPaid: false,
       auctionRound: round,
+      endId,
       ts: Date.now(),
     });
     const res = await finalizeAuctionInDb({
       liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
     });
-    void resolveWinnerAvatar(res.winnerId ?? winnerId);
+    if (res.ok) {
+      const resolvedWinnerId = res.winnerId ?? winnerId;
+      const resolvedWinnerName = res.winnerName ?? winnerName;
+      const resolvedPrice = res.finalPrice ?? finalPrice;
+      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+      room.broadcastAuctionEnd({
+        productId,
+        winnerId: resolvedWinnerId,
+        winnerName: resolvedWinnerName,
+        winnerAvatarUrl,
+        finalPrice: Number(resolvedPrice ?? 0),
+        orderId: res.orderId ?? null,
+        autoPaid: !!res.autoPaid,
+        auctionRound: round,
+        endId,
+        ts: Date.now(),
+      });
+    } else {
+      void resolveWinnerAvatar(winnerId);
+    }
   };
 
   const toggleFixedSale = async (p: LiveProductRow) => {

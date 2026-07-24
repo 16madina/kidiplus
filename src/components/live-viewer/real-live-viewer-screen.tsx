@@ -142,7 +142,7 @@ export function RealLiveViewerScreen() {
   const { requireAuth, openAuth } = useAuthPrompt();
   const { requestWithPrePrompt } = usePush();
 
-  const { currency: walletCurrency } = useWallet();
+  const { currency: walletCurrency, refresh: refreshWallet } = useWallet();
   const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
@@ -411,6 +411,7 @@ export function RealLiveViewerScreen() {
     productName: string | null;
   } | null>(null);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  const settledEndIdsRef = useRef<Set<string>>(new Set());
   // Only celebrate ends that arrive after we joined this live session.
   // Prevents replaying a leftover lastAuctionEnd (or a stale broadcast) when
   // opening / rejoining a live after someone already won.
@@ -421,6 +422,7 @@ export function RealLiveViewerScreen() {
   useEffect(() => {
     joinedAtRef.current = Date.now();
     seenEndIdsRef.current = new Set();
+    settledEndIdsRef.current = new Set();
     setWinnerReveal(null);
     setConfettiKey(0);
   }, [active?.liveId]);
@@ -430,10 +432,33 @@ export function RealLiveViewerScreen() {
     if (!evt) return;
     // Only dedupe by unique endId — same buyer may win the same item many times.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
-    if (seenEndIdsRef.current.has(endId)) return;
     // Stale end from before this viewer session (rejoin / swipe leak).
     const ts = evt.ts ?? 0;
     if (ts > 0 && ts < joinedAtRef.current - 2500) return;
+
+    const settleWinnerPayment = () => {
+      if (!user || evt.winnerId !== user.id || !active?.liveId || !active?.sellerId) return;
+      if (settledEndIdsRef.current.has(endId)) return;
+      if (!evt.autoPaid && !evt.orderId) return;
+      settledEndIdsRef.current.add(endId);
+      if (evt.autoPaid) {
+        toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+        void refreshWallet();
+        return;
+      }
+      void (async () => {
+        const order = await fetchOrderById(evt.orderId!);
+        if (order) setPendingOrder(order);
+        void refreshWallet();
+      })();
+    };
+
+    // Host sends a second frame with the same endId after finalize (order /
+    // auto-pay). Skip confetti replay; only settle payment.
+    if (seenEndIdsRef.current.has(endId)) {
+      settleWinnerPayment();
+      return;
+    }
     seenEndIdsRef.current.add(endId);
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
@@ -490,32 +515,28 @@ export function RealLiveViewerScreen() {
       }
     })();
 
-    // If I won and this is a real live with a known seller, either celebrate
-    // an auto-paid wallet purchase or open the payment sheet.
+    // Prefer host finalize settlement (auto-pay / order id). Only fall back to
+    // client-created pending order if that second frame never arrives.
     if (
       user &&
       evt.winnerId === user.id &&
       active?.liveId &&
       active?.sellerId
     ) {
-      if (evt.autoPaid) {
-        toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
-      } else if (evt.orderId) {
-        void (async () => {
-          const order = await fetchOrderById(evt.orderId!);
-          if (order) setPendingOrder(order);
-        })();
+      if (evt.autoPaid || evt.orderId) {
+        settleWinnerPayment();
       } else {
-        const prodRow = productsRef.current.find((p) => p.id === evt.productId);
-        if (prodRow) {
+        window.setTimeout(() => {
+          if (settledEndIdsRef.current.has(endId)) return;
+          const prodRow = productsRef.current.find((p) => p.id === evt.productId);
+          if (!prodRow || !active?.sellerId || !active?.liveId) return;
           void (async () => {
+            if (settledEndIdsRef.current.has(endId)) return;
             const dr = await resolveDeliveryForCheckout({
               sellerId: active.sellerId!,
               buyerId: user.id,
             });
             if (!dr.ok) {
-              // Auction can't auto-resolve — surface a toast; buyer must
-              // set a default address / a matching zone before paying.
               const msg =
                 dr.reason === "no_address"
                   ? t("delivery.noAddressBlock")
@@ -523,6 +544,8 @@ export function RealLiveViewerScreen() {
               toast.error(msg);
               return;
             }
+            if (settledEndIdsRef.current.has(endId)) return;
+            settledEndIdsRef.current.add(endId);
             const res = await createPendingOrder({
               buyerId: user.id,
               sellerId: active.sellerId!,
@@ -542,10 +565,10 @@ export function RealLiveViewerScreen() {
             if (res.ok) setPendingOrder(res.order);
             else toast.error(res.error);
           })();
-        }
+        }, 3500);
       }
     }
-  }, [room.lastAuctionEnd, t, user, active?.liveId, active?.sellerId, liveCurrency, formatLive]);
+  }, [room.lastAuctionEnd, t, user, active?.liveId, active?.sellerId, liveCurrency, formatLive, refreshWallet]);
 
   // Sudden-death flash + haptic when the deadline is extended by a late bid.
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);

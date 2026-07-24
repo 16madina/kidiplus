@@ -4,6 +4,7 @@
 // order snapshotting. It has NO Supabase calls (see delivery-db.ts).
 
 import { normalizeCurrency, type Currency } from "@/lib/money";
+import { normalizeCountryCode } from "@/lib/delivery-zones-data";
 
 export type DeliveryMode = "zones" | "flat" | "courier";
 
@@ -46,7 +47,7 @@ const COMPACT_COUNTRIES = new Set([
 ]);
 
 export function isCompactAddressCountry(country: string | null | undefined): boolean {
-  const c = (country ?? "").trim().toUpperCase();
+  const c = normalizeCountryCode(country) ?? (country ?? "").trim().toUpperCase();
   if (!c) return false;
   return COMPACT_COUNTRIES.has(c);
 }
