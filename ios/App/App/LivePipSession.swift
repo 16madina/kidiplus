@@ -19,6 +19,12 @@ final class LivePipSession: NSObject, @unchecked Sendable {
     private var modeListener: ((Bool) -> Void)?
     private var eligible = false
     private var connected = false
+    private var connectInFlight = false
+    /// Kept for silent-drop recovery: if the room disconnects while the user
+    /// browses the app (mini player), we reconnect with the same session so
+    /// leaving the app doesn't open a black, silent PiP bubble.
+    private var sessionUrl: String?
+    private var sessionToken: String?
     private var hostTrack: VideoTrack?
     private var hasRenderedFrame = false
     private var resignObserver: NSObjectProtocol?
@@ -53,6 +59,8 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         print("[KiDi+] LivePipSession setEligible=\(on) url=\(url != nil) token=\(token != nil)")
         if !on {
             eligible = false
+            sessionUrl = nil
+            sessionToken = nil
             cancelPipRetries()
             await teardown()
             return
@@ -61,11 +69,15 @@ final class LivePipSession: NSObject, @unchecked Sendable {
             // Never leave eligible=true without a real LiveKit session — that
             // caused empty PiP bubbles when leaving the app with no live open.
             eligible = false
+            sessionUrl = nil
+            sessionToken = nil
             print("[KiDi+] LivePipSession enable ignored — missing url/token (publish web JS?)")
             await teardown()
             return
         }
         eligible = true
+        sessionUrl = url
+        sessionToken = token
         await MainActor.run {
             self.ensureSourceViewsAttached()
         }
@@ -222,8 +234,20 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         }
     }
 
+    /// Reconnect the native room if it silently dropped while the app was in
+    /// the foreground (network blip / idle disconnect during the in-app mini
+    /// player). Without this, `connected` went stale and leaving the app
+    /// produced a black, silent PiP bubble with nothing recovering it.
+    private func reconnectIfNeeded(reason: String) {
+        guard eligible, !connected, !connectInFlight else { return }
+        guard let url = sessionUrl, let token = sessionToken else { return }
+        print("[KiDi+] LivePipSession reconnecting (\(reason))")
+        Task { await self.connect(url: url, token: token) }
+    }
+
     private func prepareForBackgroundPip(reason: String) {
         activatePipAudioSession(reason: reason)
+        reconnectIfNeeded(reason: reason)
         ensureAllRemoteMediaSubscribed(reason: reason)
         ensureSourceViewsAttached()
         // Drop any stale black frame left from a previous PiP cycle.
@@ -233,6 +257,9 @@ final class LivePipSession: NSObject, @unchecked Sendable {
     }
 
     private func connect(url: String, token: String) async {
+        if connectInFlight { return }
+        connectInFlight = true
+        defer { connectInFlight = false }
         if connected {
             await teardownRoomOnly()
         }
@@ -448,6 +475,24 @@ final class LivePipSession: NSObject, @unchecked Sendable {
 }
 
 extension LivePipSession: RoomDelegate {
+    func room(_ room: Room, didUpdateConnectionState connectionState: ConnectionState, from oldConnectionState: ConnectionState) {
+        print("[KiDi+] LivePipSession connectionState \(oldConnectionState) → \(connectionState)")
+        switch connectionState {
+        case .connected:
+            connected = true
+        case .disconnected:
+            connected = false
+            if eligible {
+                DispatchQueue.main.async {
+                    self.reconnectIfNeeded(reason: "state-disconnected")
+                }
+            }
+        default:
+            // connecting / reconnecting — LiveKit is handling it, don't stomp.
+            break
+        }
+    }
+
     func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
         if publication.kind == .audio {
             print("[KiDi+] LivePipSession remote audio subscribed")
