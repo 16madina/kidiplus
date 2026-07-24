@@ -26,7 +26,7 @@ import { canDeliver } from "@/lib/delivery-eligibility";
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
-import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
+import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { LiveViewersSheet } from "./live-viewers-sheet";
 import { FloatingHearts } from "./floating-hearts";
@@ -143,7 +143,7 @@ export function RealLiveViewerScreen() {
   const { requireAuth, openAuth } = useAuthPrompt();
   const { requestWithPrePrompt } = usePush();
 
-  const { currency: walletCurrency, refresh: refreshWallet } = useWallet();
+  const { currency: walletCurrency, refresh: refreshWallet, balance: walletBalance } = useWallet();
   const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
@@ -689,6 +689,20 @@ export function RealLiveViewerScreen() {
     const quickAmount = nextBidAmount(freshest, liveCurrency);
     const sendAmount = customAmount ?? quickAmount;
 
+    // Bids are a purchase commitment — require enough wallet balance (in the
+    // buyer's wallet currency) before placing. Open top-up instead of bidding.
+    const needInWallet = convertMoney(sendAmount, liveCurrency, walletCurrency);
+    if (!(walletBalance >= needInWallet)) {
+      toast.error(
+        t(
+          "live.bidInsufficientFunds",
+          "Solde insuffisant — recharge ton portefeuille pour enchérir",
+        ),
+      );
+      setTopupOpen(true);
+      return;
+    }
+
     const attempt = async (amount: number) =>
       placeBidInDb({
         liveId: active!.liveId!,
@@ -974,11 +988,11 @@ export function RealLiveViewerScreen() {
       </div>
 
 
-      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
+      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 128px)" }}>
         <LiveChat
           messages={messages}
           bottomOffset={0}
-          height="34dvh"
+          height="38dvh"
           moderation={{
             canModerate: isModerator,
             // Even regular viewers can now open the message menu — Apple 1.2
@@ -1028,99 +1042,15 @@ export function RealLiveViewerScreen() {
         />
       </div>
 
-      {currentAsProduct ? (
-        <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
-          {/* When the featured product is upcoming (no auction active),
-              show an explicit "next item soon" hint above the disabled card
-              so viewers don't stare at empty space between rounds. */}
-          {!liveEnded && !room.auctionStart && currentProduct?.status === "upcoming" && (
-            <div
-              className="mb-2 rounded-2xl px-3 py-2 text-center text-[12px] font-semibold text-white"
-              style={{
-                background: "rgba(15, 15, 20, 0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              ⏳ {t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}
-            </div>
-          )}
-          <AuctionCard
-            product={currentAsProduct}
-            secondsLeft={secondsLeft}
-            currency={liveCurrency}
-            viewerCurrency={walletCurrency}
-            auctionActive={
-              !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
-            }
-            isHighestBidder={
-              !!user &&
-              room.lastBid?.productId === currentAsProduct.id &&
-              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1) &&
-              room.lastBid.bidderId === user.id
-            }
-            disabled={liveEnded}
-            deliveryBlockedLabel={deliveryBlockedLabel}
-            lastBidder={
-              room.lastBid &&
-              room.lastBid.productId === currentAsProduct.id &&
-              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1)
-                ? room.lastBid.bidderName : undefined
-            }
-            onBid={() => { void doBid(); }}
-            onOpenProducts={() => setShowProducts(true)}
-            onBuy={() => {
-              if (!currentProduct) return;
-              void startFixedPurchase(currentProduct);
-            }}
-            onToggleCustom={() => { haptic.light(); setCustomOpen((v) => !v); setCustomMinOverride(null); }}
-            customOpen={customOpen}
-            customPanel={
-              currentProduct && currentProduct.mode === "auction" ? (
-                <CustomBidStepper
-                  open={customOpen}
-                  onClose={() => setCustomOpen(false)}
-                  currentPrice={Number(currentProduct.price)}
-                  startPrice={Number(currentProduct.start_price)}
-                  currency={liveCurrency}
-                  minOverride={customMinOverride}
-                  onConfirm={(amount) => doBid(amount)}
-                />
-              ) : null
-            }
-          />
-        </div>
-      ) : (
-        // No active auction AND no upcoming product left — everything has
-        // been auctioned. Show a friendly closing state so the viewer
-        // understands why the featured area is empty.
-        !liveEnded && room.products.length > 0 && (
-          <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
-            <div
-              className="rounded-2xl px-3 py-3 text-center text-[13px] font-semibold text-white"
-              style={{
-                background: "rgba(15, 15, 20, 0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              ✨ {t("live.allSold", "Tous les articles sont passés")}
-            </div>
-          </div>
-        )
-      )}
-
       <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 px-3 pb-safe"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
         {replyTo && !isGuest && (
           <div
             className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
             style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
               border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
@@ -1147,12 +1077,12 @@ export function RealLiveViewerScreen() {
           <Press
             onClick={() => openAuth()}
             aria-label={t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
-            className="!min-h-11 h-11 flex-1 rounded-full px-4 text-left text-[14px] font-semibold text-white"
+            className="!min-h-10 h-10 flex-1 rounded-full px-4 text-left text-[13px] font-semibold text-white"
             style={{
-              backgroundColor: "rgba(0,0,0,0.5)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              border: "1px solid rgba(255,255,255,0.15)",
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.14)",
             }}
           >
             {t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
@@ -1169,26 +1099,26 @@ export function RealLiveViewerScreen() {
                     : t("live.chatPlaceholder")
                 }
                 disabled={liveEnded}
-                className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+                className="w-full rounded-full px-3.5 py-2 text-[13px] text-white outline-none placeholder:text-white/55"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.5)",
-                  backdropFilter: "blur(14px)",
-                  WebkitBackdropFilter: "blur(14px)",
-                  border: "1px solid rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.14)",
                 }}
               />
             </form>
             <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
-              className="h-11 w-11 rounded-full text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-              <Send size={17} />
+              className="h-10 w-10 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)" }}>
+              <Send size={16} />
             </Press>
           </>
         )}
         <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
-          className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Heart size={17} fill="currentColor" />
+          className="h-10 w-10 rounded-full text-white"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)" }}>
+          <Heart size={16} fill="currentColor" />
         </Press>
         <Press
           onClick={liveEnded ? undefined : () => {
@@ -1198,16 +1128,83 @@ export function RealLiveViewerScreen() {
           }}
           disabled={liveEnded}
           aria-label={t("gifts.open", "Cadeaux")}
-          className="h-11 w-11 rounded-full text-white"
+          className="h-10 w-10 rounded-full text-white"
           style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            border: "1px solid oklch(0.75 0.14 85 / 0.5)",
+            backgroundColor: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid oklch(0.75 0.14 85 / 0.45)",
           }}>
-          <Gift size={17} />
+          <Gift size={16} />
         </Press>
         </div>
+
+        {currentAsProduct ? (
+          <AuctionCard
+            product={currentAsProduct}
+            secondsLeft={secondsLeft}
+            currency={liveCurrency}
+            viewerCurrency={walletCurrency}
+            auctionActive={
+              !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
+            }
+            isHighestBidder={
+              !!user &&
+              room.lastBid?.productId === currentAsProduct.id &&
+              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1) &&
+              room.lastBid.bidderId === user.id
+            }
+            disabled={liveEnded}
+            deliveryBlockedLabel={deliveryBlockedLabel}
+            waitingLabel={
+              !liveEnded && !room.auctionStart && currentProduct?.status === "upcoming"
+                ? `⏳ ${t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}`
+                : undefined
+            }
+            lastBidder={
+              room.lastBid &&
+              room.lastBid.productId === currentAsProduct.id &&
+              room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1)
+                ? room.lastBid.bidderName
+                : undefined
+            }
+            onBid={() => { void doBid(); }}
+            onOpenProducts={() => setShowProducts(true)}
+            onBuy={() => {
+              if (!currentProduct) return;
+              void startFixedPurchase(currentProduct);
+            }}
+            onToggleCustom={() => { haptic.light(); setCustomOpen((v) => !v); setCustomMinOverride(null); }}
+            customOpen={customOpen}
+            customPanel={
+              currentProduct && currentProduct.mode === "auction" ? (
+                <CustomBidStepper
+                  open={customOpen}
+                  onClose={() => setCustomOpen(false)}
+                  currentPrice={Number(currentProduct.price)}
+                  startPrice={Number(currentProduct.start_price)}
+                  currency={liveCurrency}
+                  minOverride={customMinOverride}
+                  onConfirm={(amount) => doBid(amount)}
+                />
+              ) : null
+            }
+          />
+        ) : (
+          !liveEnded && room.products.length > 0 ? (
+            <div
+              className="rounded-full px-3 py-2 text-center text-[12px] font-semibold text-white/90"
+              style={{
+                backgroundColor: "rgba(0,0,0,0.32)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.14)",
+              }}
+            >
+              ✨ {t("live.allSold", "Tous les articles sont passés")}
+            </div>
+          ) : null
+        )}
       </div>
 
 

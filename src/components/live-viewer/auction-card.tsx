@@ -13,6 +13,7 @@ import {
   type Currency,
 } from "@/lib/money";
 
+/** Compact Whatnot-style product + bid bar — transparent, low height. */
 export function AuctionCard({
   product,
   secondsLeft,
@@ -23,6 +24,7 @@ export function AuctionCard({
   isHighestBidder = false,
   disabled = false,
   deliveryBlockedLabel,
+  waitingLabel,
   onBid,
   onOpenProducts,
   onBuy,
@@ -38,9 +40,9 @@ export function AuctionCard({
   auctionActive?: boolean;
   isHighestBidder?: boolean;
   disabled?: boolean;
-  /** When present, bid/buy is blocked because the seller doesn't deliver to
-   *  the viewer's country. The label is shown on the CTA. */
   deliveryBlockedLabel?: string;
+  /** Optional one-line status above the bar (e.g. next item soon). */
+  waitingLabel?: string;
   onBid: () => void;
   onOpenProducts: () => void;
   onBuy?: () => void;
@@ -66,185 +68,183 @@ export function AuctionCard({
   const canBid =
     auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled && !deliveryBlocked;
 
+  const glass = {
+    backgroundColor: "rgba(0, 0, 0, 0.32)",
+    backdropFilter: "blur(12px) saturate(140%)",
+    WebkitBackdropFilter: "blur(12px) saturate(140%)",
+    border: "1px solid rgba(255,255,255,0.14)",
+  } as const;
+
+  const ctaLabel = (() => {
+    if (isHighestBidder) return t("live.youLead", "Tu mènes 🏆");
+    if (canBid) return t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) });
+    if (deliveryBlocked) return deliveryBlockedLabel;
+    if (disabled) return t("live.ended");
+    if (auctionActive && secondsLeft <= 0) return t("live.auctionEnding", "Fin de l'enchère…");
+    return t("live.waitingForSeller");
+  })();
+
   return (
-    <motion.div
-      layout
-      className="relative overflow-hidden rounded-2xl"
-      style={{
-        backgroundColor: "rgba(15, 15, 20, 0.72)",
-        backdropFilter: "blur(24px) saturate(180%)",
-        WebkitBackdropFilter: "blur(24px) saturate(180%)",
-        border: "1px solid rgba(255,255,255,0.12)",
-      }}
-    >
+    <motion.div layout className="relative flex flex-col gap-1.5">
+      {waitingLabel ? (
+        <div
+          className="rounded-full px-3 py-1 text-center text-[11px] font-semibold text-white/90"
+          style={glass}
+        >
+          {waitingLabel}
+        </div>
+      ) : null}
+
+      {/* Product row — thumbnail | info | timer */}
       <Press
         onClick={onOpenProducts}
-        className="!block w-full !p-2.5 text-left"
+        className="!flex w-full items-center gap-2.5 !rounded-2xl !px-2 !py-1.5 text-left"
+        style={glass}
         aria-label="Voir tous les produits"
       >
-        <div className="flex items-center gap-2.5">
-          <LiveProductImage
-            src={product.image}
-            alt=""
-            className="h-11 w-11 shrink-0 rounded-lg object-cover"
-            draggable={false}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="min-w-0 truncate text-[13px] font-semibold text-white">
-                {product.name}
-              </p>
-              <ChevronUp size={14} className="shrink-0 text-white/60" />
-            </div>
-            {isAuction ? (
-              <div className="mt-0.5 flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-wide text-white/60">
-                  Enchère
-                </span>
-                <motion.span
-                  key={bidPulse}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.18, 1] }}
-                  transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-                  className="text-[15px] font-bold text-white"
-                >
-                  {formatMoney(product.price, cur, locale)}
-                </motion.span>
-                <AnimatePresence>
-                  {lastBidder && (
-                    <motion.span
-                      key={lastBidder + bidPulse}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="truncate text-[11px] text-white/70"
-                    >
-                      @{lastBidder}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <div className="mt-0.5 text-[15px] font-bold text-white">
-                {formatMoney(product.price, cur, locale)}
-              </div>
-            )}
-            {convHint && (
-              <div className="mt-0.5 text-[10.5px] text-white/60 tabular-nums">
-                {convHint}
-              </div>
-            )}
+        <LiveProductImage
+          src={product.image}
+          alt=""
+          className="h-10 w-10 shrink-0 rounded-lg object-cover"
+          draggable={false}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <p className="min-w-0 truncate text-[12px] font-semibold leading-tight text-white">
+              {product.name}
+            </p>
+            <ChevronUp size={12} className="shrink-0 text-white/55" />
           </div>
-
-          {isAuction && (
-            <div
-              className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums"
-              style={{
-                background: urgent
-                  ? "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.7 0.16 75))"
-                  : "rgba(255,255,255,0.12)",
-                color: urgent ? "#10162B" : "white",
-                boxShadow: urgent ? "0 0 18px oklch(0.78 0.14 85 / 0.55)" : "none",
-              }}
+          <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
+            <motion.span
+              key={bidPulse}
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.12, 1] }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="text-[15px] font-bold tabular-nums leading-none text-white"
             >
-              <motion.span
-                animate={urgent ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-                transition={{
-                  duration: 0.6,
-                  repeat: urgent ? Infinity : 0,
-                  ease: "easeInOut",
-                }}
-                className="flex items-center gap-1"
-              >
-                <Timer size={12} />
-                {mm}:{ss}
-              </motion.span>
-            </div>
-          )}
-        </div>
-      </Press>
-
-      <div className="px-2.5 pb-2.5">
-        {isAuction ? (
-          <>
-            <div className="flex items-stretch gap-1.5">
-              <Press
-                onClick={canBid || deliveryBlocked ? onBid : undefined}
-                disabled={!canBid && !deliveryBlocked}
-                className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
-                style={{
-                  background: canBid
-                    ? "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))"
-                    : "rgba(255,255,255,0.14)",
-                }}
-              >
-                {isHighestBidder ? (
-                  t("live.highestBidder")
-                ) : canBid ? (
-                  <>
-                    <Gavel size={14} className="mr-1.5" />
-                    {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
-                  </>
-                ) : deliveryBlocked ? (
-                  deliveryBlockedLabel
-                ) : disabled ? (
-                  t("live.ended")
-                ) : auctionActive && secondsLeft <= 0 ? (
-                  t("live.auctionEnding", "Fin de l'enchère…")
-                ) : (
-                  t("live.waitingForSeller")
-                )}
-              </Press>
-              {onToggleCustom && (
-                <Press
-                  onClick={canBid ? onToggleCustom : undefined}
-                  disabled={!canBid}
-                  aria-label={t("bid.custom.open", "Enchère personnalisée")}
-                  className="w-11 shrink-0 rounded-xl text-white disabled:opacity-50"
-                  style={{
-                    background: canBid
-                      ? "rgba(255,255,255,0.14)"
-                      : "rgba(255,255,255,0.08)",
-                  }}
+              {formatMoney(product.price, cur, locale)}
+            </motion.span>
+            {convHint ? (
+              <span className="truncate text-[10px] tabular-nums text-white/55">{convHint}</span>
+            ) : null}
+            <AnimatePresence>
+              {isAuction && lastBidder ? (
+                <motion.span
+                  key={lastBidder + bidPulse}
+                  initial={{ opacity: 0, y: 3 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="truncate text-[10px] text-white/65"
                 >
-                  <motion.span
-                    animate={{ rotate: customOpen ? 45 : 0 }}
-                    transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                    className="inline-flex"
-                  >
-                    <Plus size={18} />
-                  </motion.span>
-                </Press>
-              )}
-            </div>
-            {auctionActive && urgent && secondsLeft > 0 && (
-              <div
-                className="mt-1.5 text-center text-[10.5px] font-semibold"
-                style={{ color: "oklch(0.82 0.14 85)" }}
-              >
-                {t("auction.suddenDeath.hint", "Toute enchère relance le chrono ⚡")}
-              </div>
-            )}
-            {customPanel}
-          </>
-        ) : (
-          <Press
-            onClick={disabled || deliveryBlocked ? undefined : onBuy}
-            disabled={disabled || deliveryBlocked}
-            className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-60"
+                  @{lastBidder}
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {isAuction ? (
+          <div
+            className="flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums"
             style={{
-              background: deliveryBlocked
-                ? "rgba(255,255,255,0.14)"
-                : "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.6 0.24 25))",
+              background: urgent
+                ? "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.7 0.16 75))"
+                : "rgba(255,255,255,0.14)",
+              color: urgent ? "#10162B" : "white",
             }}
           >
-            {deliveryBlocked
-              ? deliveryBlockedLabel
-              : `Acheter ${formatMoney(product.price, cur, locale)}`}
-          </Press>
-        )}
-      </div>
+            <motion.span
+              animate={urgent ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+              transition={{
+                duration: 0.55,
+                repeat: urgent ? Infinity : 0,
+                ease: "easeInOut",
+              }}
+              className="flex items-center gap-0.5"
+            >
+              <Timer size={11} />
+              {mm}:{ss}
+            </motion.span>
+          </div>
+        ) : null}
+      </Press>
+
+      {/* CTA row — Max/+ left, primary bid/buy right (Whatnot order) */}
+      {isAuction ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-stretch gap-1.5">
+            {onToggleCustom ? (
+              <Press
+                onClick={canBid ? onToggleCustom : undefined}
+                disabled={!canBid}
+                aria-label={t("bid.custom.open", "Enchère personnalisée")}
+                className="h-10 w-[4.5rem] shrink-0 rounded-full text-[12px] font-bold text-white disabled:opacity-45"
+                style={glass}
+              >
+                <motion.span
+                  animate={{ rotate: customOpen ? 45 : 0 }}
+                  transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+                  className="inline-flex items-center gap-0.5"
+                >
+                  <Plus size={14} />
+                  {t("bid.custom.short", "Max")}
+                </motion.span>
+              </Press>
+            ) : null}
+            <Press
+              onClick={canBid || deliveryBlocked ? onBid : undefined}
+              disabled={!canBid && !deliveryBlocked}
+              className="h-10 min-w-0 flex-1 rounded-full px-3 text-[13px] font-bold text-white disabled:opacity-55"
+              style={{
+                background: canBid
+                  ? "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))"
+                  : "rgba(255,255,255,0.16)",
+                color: canBid ? "#10162B" : "white",
+                boxShadow: canBid ? "0 4px 16px oklch(0.78 0.14 85 / 0.35)" : "none",
+              }}
+            >
+              {canBid ? (
+                <span className="inline-flex items-center justify-center gap-1">
+                  <Gavel size={14} />
+                  {t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) })}
+                </span>
+              ) : (
+                <span className="truncate">{ctaLabel}</span>
+              )}
+            </Press>
+          </div>
+          {auctionActive && urgent && secondsLeft > 0 ? (
+            <p
+              className="text-center text-[10px] font-semibold leading-none"
+              style={{ color: "oklch(0.86 0.12 85)" }}
+            >
+              {t("auction.suddenDeath.hint", "Toute enchère relance le chrono ⚡")}
+            </p>
+          ) : null}
+          {customPanel}
+        </div>
+      ) : (
+        <Press
+          onClick={disabled || deliveryBlocked ? undefined : onBuy}
+          disabled={disabled || deliveryBlocked}
+          className="h-10 w-full rounded-full text-[13px] font-bold disabled:opacity-55"
+          style={{
+            background: deliveryBlocked
+              ? "rgba(255,255,255,0.16)"
+              : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+            color: deliveryBlocked ? "white" : "#10162B",
+          }}
+        >
+          {deliveryBlocked
+            ? deliveryBlockedLabel
+            : t("live.buyNowPrice", {
+                amount: formatMoney(product.price, cur, locale),
+                defaultValue: "Acheter {{amount}}",
+              })}
+        </Press>
+      )}
     </motion.div>
   );
 }
