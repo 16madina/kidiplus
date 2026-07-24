@@ -1039,26 +1039,26 @@ export function RealLiveViewerScreen() {
               under the wallet pill on narrow phones (iPhone 15) while wider
               ones (Pro Max) looked fine — stacking keeps every screen equal. */}
           <div className="flex min-w-0 flex-1 items-start">
-            <div className="flex w-[5.75rem] shrink-0 flex-col items-center gap-1">
+            <div className="flex w-[4.75rem] shrink-0 flex-col items-center gap-1">
               <Press
                 onClick={() => openSeller(active.sellerId ?? active.seller)}
                 aria-label={`Voir la boutique de ${active.seller}`}
-                className="!inline-flex !min-h-0 !min-w-0 flex-col items-center gap-1 p-0"
+                className="!inline-flex !min-h-0 !min-w-0 flex-col items-center gap-0.5 p-0"
               >
                 <span className="relative">
                   <SellerAvatar
                     src={sellerAvatarUrl || active.avatar || ""}
                     name={active.seller || "?"}
-                    size="md"
+                    size="sm"
                   />
                   <VerifiedBadge
                     verified={sellerVerified}
-                    size={14}
+                    size={12}
                     className="absolute -bottom-0.5 -right-0.5"
                   />
                 </span>
                 <span
-                  className="line-clamp-2 max-w-[5.5rem] text-center text-[11px] font-bold leading-tight text-white"
+                  className="line-clamp-1 max-w-[4.75rem] text-center text-[10px] font-bold leading-tight text-white"
                   style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}
                 >
                   {active.seller}
