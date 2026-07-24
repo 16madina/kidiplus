@@ -416,6 +416,14 @@
       "start": "Lancer le live",
       "starting": "Démarrage…",
       "readyHelp": "Ajoute au moins un produit pour lancer ton live.",
+      "deliveryPrompt": {
+        "title": "As-tu configuré la livraison ?",
+        "body1": "Si tu n’as pas encore réglé tes options de livraison, configure-les maintenant.",
+        "body2": "Sinon, les acheteurs de n’importe quel pays pourront commander — et tu seras obligé·e de livrer dans ces pays.",
+        "configure": "Configurer la livraison",
+        "continueAnyway": "Continuer sans configurer",
+        "cancel": "Annuler"
+      },
       "errors": {
         "coverRequired": "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
         "coverRequiredHint": "Photo de couverture obligatoire (pas de photo de profil)"

@@ -28,6 +28,18 @@ export const DEFAULT_DELIVERY_SETTINGS: Omit<SellerDeliverySettings, "seller_id"
   zones: [],
 };
 
+/** True when the seller has saved real delivery settings (not the implicit
+ *  worldwide free-flat fallback used when no row exists yet). */
+export function isSellerDeliveryConfigured(
+  settings: SellerDeliverySettings | null | undefined,
+): boolean {
+  if (!settings) return false;
+  if (settings.mode === "zones" && (!settings.zones || settings.zones.length === 0)) {
+    return false;
+  }
+  return true;
+}
+
 /** Legacy currency-based compact heuristic (kept for back-compat).
  *  Prefer `isCompactAddressCountry` which decides per address. */
 export function isCompactAddressCurrency(currency: string | null | undefined): boolean {

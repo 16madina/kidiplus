@@ -416,6 +416,14 @@
       "start": "Go live",
       "starting": "Starting…",
       "readyHelp": "Add at least one product to go live.",
+      "deliveryPrompt": {
+        "title": "Have you set up Delivery?",
+        "body1": "If you haven’t configured your delivery options yet, set them up now.",
+        "body2": "If you skip this, buyers from any country can place orders — and you will be required to deliver to those countries.",
+        "configure": "Set up Delivery",
+        "continueAnyway": "Continue without setting up",
+        "cancel": "Cancel"
+      },
       "errors": {
         "coverRequired": "Add a cover photo (you don't have a profile picture)",
         "coverRequiredHint": "Cover photo required (no profile picture)"

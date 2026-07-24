@@ -38,6 +38,10 @@ import { CoverCropperSheet } from "./cover-cropper-sheet";
 import { YoutubeConnectCard } from "./youtube-connect-card";
 import { FacebookConnectCard } from "./facebook-connect-card";
 import { TiktokConnectCard } from "./tiktok-connect-card";
+import { DeliverySetupPromptDialog } from "./delivery-setup-prompt-dialog";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
+import { fetchDeliverySettings } from "@/lib/delivery-db";
+import { isSellerDeliveryConfigured } from "@/lib/delivery";
 
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 80;
@@ -56,6 +60,10 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [deliveryPromptOpen, setDeliveryPromptOpen] = useState(false);
+  const [deliverySettingsOpen, setDeliverySettingsOpen] = useState(false);
+  /** Host chose "continue without configuring" for this setup session. */
+  const deliverySkippedRef = useRef(false);
   const { activeLens, loadLenses } = useFilter();
   // Prefetch Snap Camera Kit + lenses while the host prepares the live.
   useEffect(() => {
@@ -235,6 +243,21 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
     }
+
+    // Soft gate: warn once if delivery was never configured.
+    if (!deliverySkippedRef.current) {
+      const settings = await fetchDeliverySettings(b.hostIdentity);
+      if (!isSellerDeliveryConfigured(settings)) {
+        setDeliveryPromptOpen(true);
+        return;
+      }
+    }
+
+    await runLaunch();
+  };
+
+  const runLaunch = async () => {
+    if (launching || !b.hostIdentity) return;
     haptic.medium();
     setLaunching(true);
     try {
@@ -849,6 +872,27 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         imageSrc={rawCoverSrc}
         onClose={() => setCropperOpen(false)}
         onConfirm={onCropConfirm}
+      />
+      <DeliverySetupPromptDialog
+        open={deliveryPromptOpen}
+        onCancel={() => setDeliveryPromptOpen(false)}
+        onConfigure={() => {
+          setDeliveryPromptOpen(false);
+          setDeliverySettingsOpen(true);
+        }}
+        onContinue={() => {
+          deliverySkippedRef.current = true;
+          setDeliveryPromptOpen(false);
+          void runLaunch();
+        }}
+      />
+      <SellerDeliverySettingsScreen
+        open={deliverySettingsOpen}
+        onClose={() => {
+          setDeliverySettingsOpen(false);
+          // After configuring, host taps "Lancer le live" again — prompt
+          // will skip if settings are now saved.
+        }}
       />
     </motion.div>
   );

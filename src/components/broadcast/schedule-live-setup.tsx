@@ -41,6 +41,10 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { DeliverySetupPromptDialog } from "./delivery-setup-prompt-dialog";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
+import { fetchDeliverySettings } from "@/lib/delivery-db";
+import { isSellerDeliveryConfigured } from "@/lib/delivery";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_DIM = "oklch(0.82 0.14 85 / 0.35)";
@@ -180,6 +184,9 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [deliveryPromptOpen, setDeliveryPromptOpen] = useState(false);
+  const [deliverySettingsOpen, setDeliverySettingsOpen] = useState(false);
+  const deliverySkippedRef = useRef(false);
 
 
   // Kept for the datetime min/max clamps used by the split date/time inputs.
@@ -309,6 +316,20 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
     }
+
+    if (!deliverySkippedRef.current) {
+      const settings = await fetchDeliverySettings(b.hostIdentity);
+      if (!isSellerDeliveryConfigured(settings)) {
+        setDeliveryPromptOpen(true);
+        return;
+      }
+    }
+
+    await runLaunch();
+  };
+
+  const runLaunch = async () => {
+    if (launching || !b.hostIdentity) return;
     haptic.medium();
     setLaunching(true);
     try {
@@ -846,6 +867,23 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           }
           setShowShopPicker(false);
         }}
+      />
+      <DeliverySetupPromptDialog
+        open={deliveryPromptOpen}
+        onCancel={() => setDeliveryPromptOpen(false)}
+        onConfigure={() => {
+          setDeliveryPromptOpen(false);
+          setDeliverySettingsOpen(true);
+        }}
+        onContinue={() => {
+          deliverySkippedRef.current = true;
+          setDeliveryPromptOpen(false);
+          void runLaunch();
+        }}
+      />
+      <SellerDeliverySettingsScreen
+        open={deliverySettingsOpen}
+        onClose={() => setDeliverySettingsOpen(false)}
       />
     </motion.div>
   );
