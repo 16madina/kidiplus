@@ -80,6 +80,13 @@
     "auction": "Auction",
     "added": "Item added",
     "catalogPrice": "Catalog price · sold in live (auction or fixed)",
+    "configHint": "Pick auction or fixed price, quantity for this live, then Options for colors / sizes.",
+    "stockAvailable": "Shop stock: {{n}}",
+    "qtyForLive": "Qty for this live",
+    "pickColors": "Colors for this live",
+    "pickSizes": "Sizes for this live",
+    "optionsEmpty": "No options in shop — you can set them here",
+    "optionsHintEditShop": "Add colors / sizes in My shop to reuse them here.",
     "updated": "Item updated",
     "imageOnly": "Image only",
     "imageTooBig": "Image too large (max 5 MB)"

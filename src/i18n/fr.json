@@ -80,6 +80,13 @@
     "auction": "Enchère",
     "added": "Article ajouté",
     "catalogPrice": "Prix catalogue · vendu en live (enchère ou prix fixe)",
+    "configHint": "Choisis enchère ou prix fixe, la quantité pour ce live, puis Options pour couleurs / tailles.",
+    "stockAvailable": "Stock boutique : {{n}}",
+    "qtyForLive": "Qté pour ce live",
+    "pickColors": "Couleurs pour ce live",
+    "pickSizes": "Tailles pour ce live",
+    "optionsEmpty": "Aucune option en boutique — tu peux en ajouter ici",
+    "optionsHintEditShop": "Ajoute couleurs / tailles dans Ma boutique pour les retrouver ici.",
     "updated": "Article modifié",
     "imageOnly": "Image uniquement",
     "imageTooBig": "Image trop lourde (max 5 Mo)"
