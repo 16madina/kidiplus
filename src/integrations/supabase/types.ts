@@ -1930,6 +1930,9 @@ export type Database = {
       shop_products: {
         Row: {
           active: boolean
+          brand: string | null
+          colors: Json
+          condition: string | null
           created_at: string
           currency: string
           description: string | null
@@ -1939,11 +1942,15 @@ export type Database = {
           name: string
           price: number
           seller_id: string
+          sizes: Json
           stock: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
           currency: string
           description?: string | null
@@ -1953,11 +1960,15 @@ export type Database = {
           name: string
           price: number
           seller_id: string
+          sizes?: Json
           stock?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -1967,6 +1978,7 @@ export type Database = {
           name?: string
           price?: number
           seller_id?: string
+          sizes?: Json
           stock?: number
           updated_at?: string
         }
