@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { SellerDeliverySettings, DeliveryMode, DeliveryZone } from "@/lib/delivery";
 import { DEFAULT_DELIVERY_SETTINGS } from "@/lib/delivery";
+import { normalizeCountryCode } from "@/lib/delivery-zones-data";
 
 type AnySb = { from: (t: string) => any; channel: (n: string) => any; removeChannel: (c: any) => void };
 const sb = supabase as unknown as AnySb;
@@ -14,11 +15,15 @@ function normalizeZones(z: unknown): DeliveryZone[] {
   if (!Array.isArray(z)) return [];
   return z
     .filter((x) => x && typeof x === "object")
-    .map((x) => ({
-      country: String((x as { country?: unknown }).country ?? "").trim().toUpperCase(),
-      name: String((x as { name?: unknown }).name ?? "").trim(),
-      fee: Number((x as { fee?: unknown }).fee ?? 0),
-    }))
+    .map((x) => {
+      const raw = String((x as { country?: unknown }).country ?? "").trim();
+      const iso = normalizeCountryCode(raw) ?? raw.toUpperCase();
+      return {
+        country: iso,
+        name: String((x as { name?: unknown }).name ?? "").trim(),
+        fee: Number((x as { fee?: unknown }).fee ?? 0),
+      };
+    })
     .filter((x) => x.name.length > 0 && Number.isFinite(x.fee) && x.fee >= 0);
 }
 

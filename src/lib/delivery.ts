@@ -142,7 +142,8 @@ const normText = (s: string | null | undefined) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const normCountry = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+const normCountry = (s: string | null | undefined) =>
+  normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
 
 /** Zones filtered to the buyer's country. Zones with an empty/legacy country
  *  are treated as matching (backwards compatible). */
@@ -154,6 +155,7 @@ export function zonesForCountry(
   if (!c) return zones;
   return zones.filter((z) => {
     const zc = normCountry(z.country);
+    // Empty country → match any buyer (legacy / incomplete rows).
     return !zc || zc === c;
   });
 }

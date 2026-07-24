@@ -23,6 +23,7 @@ import {
   CONTINENT_LABEL,
   countryName,
   defaultCountryFromCurrency,
+  normalizeCountryCode,
   searchCountries,
   suggestionsFor,
 } from "@/lib/delivery-zones-data";
@@ -37,7 +38,9 @@ export function SellerDeliverySettingsScreen({
   const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
   const currency = profile?.currency ?? "EUR";
-  const sellerCountry = (profile?.country ?? "").toUpperCase() ||
+  // Profiles may store "🇨🇮 Côte d'Ivoire" — always persist ISO-2 on zones.
+  const sellerCountry =
+    normalizeCountryCode(profile?.country) ||
     defaultCountryFromCurrency(currency);
 
   const [mode, setMode] = useState<DeliveryMode>("flat");
@@ -54,10 +57,10 @@ export function SellerDeliverySettingsScreen({
       const s = await fetchDeliverySettingsOrDefault(user.id);
       setMode(s.mode);
       setFlatFee(String(s.flat_fee ?? 0));
-      // backfill missing country with seller's country
+      // backfill missing country with seller's country (ISO-2)
       setZones((s.zones ?? []).map((z) => ({
         ...z,
-        country: z.country || sellerCountry,
+        country: normalizeCountryCode(z.country) || sellerCountry,
       })));
     })();
   }, [open, user, sellerCountry]);
@@ -69,7 +72,7 @@ export function SellerDeliverySettingsScreen({
     const cleanFlat = Number(flatFee.replace(/,/g, ".")) || 0;
     const cleanZones = zones
       .map((z) => ({
-        country: (z.country || sellerCountry).toUpperCase(),
+        country: normalizeCountryCode(z.country) || sellerCountry,
         name: z.name.trim(),
         fee: Number(String(z.fee).replace(/,/g, ".")) || 0,
       }))
@@ -89,7 +92,7 @@ export function SellerDeliverySettingsScreen({
   const grouped = useMemo(() => {
     const map = new Map<string, { idx: number; zone: DeliveryZone }[]>();
     zones.forEach((z, idx) => {
-      const key = (z.country || sellerCountry).toUpperCase();
+      const key = normalizeCountryCode(z.country) || sellerCountry;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push({ idx, zone: z });
     });
