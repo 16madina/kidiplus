@@ -1455,6 +1455,7 @@
     "zoneCountry": "Country",
     "searchCountry": "Search a country",
     "noCountryFound": "No country found",
+    "zonesRequired": "Add at least one zone (country) before saving.",
     "sellerZones": "Delivery zones"
   },
   "escrow": {
