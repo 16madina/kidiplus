@@ -638,7 +638,13 @@ export type Database = {
         Row: {
           auction_deadline_at: string | null
           auction_round: number
+          bid_increment: number | null
+          brand: string | null
+          colors: Json
+          condition: string | null
           created_at: string
+          description: string | null
+          extra_images: Json
           final_price: number | null
           id: string
           image_url: string | null
@@ -648,6 +654,7 @@ export type Database = {
           position: number
           price: number
           shop_product_id: string | null
+          sizes: Json
           sold_to_identity: string | null
           start_price: number
           status: string
@@ -658,7 +665,13 @@ export type Database = {
         Insert: {
           auction_deadline_at?: string | null
           auction_round?: number
+          bid_increment?: number | null
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
+          description?: string | null
+          extra_images?: Json
           final_price?: number | null
           id?: string
           image_url?: string | null
@@ -668,6 +681,7 @@ export type Database = {
           position?: number
           price?: number
           shop_product_id?: string | null
+          sizes?: Json
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -678,7 +692,13 @@ export type Database = {
         Update: {
           auction_deadline_at?: string | null
           auction_round?: number
+          bid_increment?: number | null
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
+          description?: string | null
+          extra_images?: Json
           final_price?: number | null
           id?: string
           image_url?: string | null
@@ -688,6 +708,7 @@ export type Database = {
           position?: number
           price?: number
           shop_product_id?: string | null
+          sizes?: Json
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -2482,7 +2503,13 @@ export type Database = {
         Returns: {
           auction_deadline_at: string | null
           auction_round: number
+          bid_increment: number | null
+          brand: string | null
+          colors: Json
+          condition: string | null
           created_at: string
+          description: string | null
+          extra_images: Json
           final_price: number | null
           id: string
           image_url: string | null
@@ -2492,6 +2519,7 @@ export type Database = {
           position: number
           price: number
           shop_product_id: string | null
+          sizes: Json
           sold_to_identity: string | null
           start_price: number
           status: string
@@ -2579,6 +2607,10 @@ export type Database = {
       send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
+        Returns: Json
+      }
+      set_order_product_options: {
+        Args: { _color?: string; _order_id: string; _size?: string }
         Returns: Json
       }
       start_auction: { Args: { _product_id: string }; Returns: Json }
