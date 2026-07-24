@@ -657,6 +657,11 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
             </div>
             <div className="p-2">
               <p className="truncate text-[13px] font-medium">{p.name}</p>
+              {(p.brand || (p.colors?.length ?? 0) > 0 || (p.sizes?.length ?? 0) > 0 || p.condition) ? (
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {[p.brand, p.colors?.[0], p.sizes?.[0]].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
               <p className="text-[13px] font-bold">{formatMoney(Number(p.price), cur, lang)}</p>
               <p className="text-[11px] text-muted-foreground">{t("sellerProfile.availableInLives", { defaultValue: "Disponible pendant les lives" })}</p>
             </div>

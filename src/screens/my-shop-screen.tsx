@@ -15,7 +15,6 @@ import {
   Users as UsersIcon,
   Video,
   ChevronRight,
-  MoreHorizontal,
   ImagePlus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -35,8 +34,10 @@ import {
 import { formatMoney, normalizeCurrency } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { ShopProductFormSheet } from "@/components/shop/shop-product-form-sheet";
+import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sheet";
 import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
+import { formatProductMetaLine, conditionLabel } from "@/lib/live-product-options";
 
 /* ============================================================
    Design tokens — warm cream / gold / navy palette
@@ -67,6 +68,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   const [imgs, setImgs] = useState<Record<string, string | null>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ShopProduct | null>(null);
+  const [detail, setDetail] = useState<ShopProduct | null>(null);
   const [category, setCategory] = useState<string>("all");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -413,49 +415,66 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
               className="flex gap-3 overflow-x-auto px-4 pb-2"
               style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain" }}
             >
-              {featured.map((p) => (
+              {featured.map((p) => {
+                const meta = formatProductMetaLine({
+                  brand: p.brand,
+                  colors: p.colors,
+                  sizes: p.sizes,
+                  conditionText: conditionLabel(p.condition, t),
+                });
+                return (
                 <div
                   key={`f-${p.id}`}
                   className="shrink-0 overflow-hidden rounded-2xl bg-card"
                   style={{ width: 160, scrollSnapAlign: "start", border: "1px solid var(--border)" }}
                 >
-                  <div className="relative aspect-square bg-muted">
-                    {imgs[p.id] ? (
-                      <img
-                        src={imgs[p.id]!}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={28} /></div>
-                    )}
-                    <span
-                      className="absolute left-2 bottom-2 rounded-md px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-white"
-                      style={{ background: p.active ? "#12873F" : "#4A4A52" }}
-                    >
-                      {p.active ? "Actif" : "Archivé"}
-                    </span>
-                  </div>
-                  <div className="p-2.5">
-                    <p className="truncate text-[13px] font-semibold" style={{ color: NAVY }}>{p.name}</p>
-                    <div className="mt-0.5 flex items-baseline justify-between">
-                      <span className="text-[13.5px] font-extrabold" style={{ color: NAVY }}>
-                        {formatMoney(Number(p.price), normalizeCurrency(p.currency), lang)}
+                  <Press
+                    onClick={() => { haptic.selection(); setDetail(p); }}
+                    hapticOnTap={false}
+                    className="!block w-full p-0 text-left"
+                  >
+                    <div className="relative aspect-square bg-muted">
+                      {imgs[p.id] ? (
+                        <img
+                          src={imgs[p.id]!}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={28} /></div>
+                      )}
+                      <span
+                        className="absolute left-2 bottom-2 rounded-md px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-white"
+                        style={{ background: p.active ? "#12873F" : "#4A4A52" }}
+                      >
+                        {p.active ? "Actif" : "Archivé"}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">×{p.stock}</span>
                     </div>
-                    <div className="mt-2 flex gap-1">
-                      <Press onClick={() => { setEditing(p); setFormOpen(true); }} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[11px] font-semibold">
-                        <Pencil size={12} />
-                      </Press>
-                      <Press onClick={() => void toggleActive(p)} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[11px] font-semibold">
-                        {p.active ? <Archive size={12} /> : <RotateCcw size={12} />}
-                      </Press>
+                    <div className="p-2.5">
+                      <p className="truncate text-[13px] font-semibold" style={{ color: NAVY }}>{p.name}</p>
+                      {meta ? (
+                        <p className="truncate text-[10px] text-muted-foreground">{meta}</p>
+                      ) : null}
+                      <div className="mt-0.5 flex items-baseline justify-between">
+                        <span className="text-[13.5px] font-extrabold" style={{ color: NAVY }}>
+                          {formatMoney(Number(p.price), normalizeCurrency(p.currency), lang)}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">×{p.stock}</span>
+                      </div>
                     </div>
+                  </Press>
+                  <div className="flex gap-1 px-2.5 pb-2.5">
+                    <Press onClick={() => { setEditing(p); setFormOpen(true); }} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[11px] font-semibold">
+                      <Pencil size={12} />
+                    </Press>
+                    <Press onClick={() => void toggleActive(p)} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[11px] font-semibold">
+                      {p.active ? <Archive size={12} /> : <RotateCcw size={12} />}
+                    </Press>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>
@@ -507,63 +526,82 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-              {(filtered ?? []).map((p) => (
+              {(filtered ?? []).map((p) => {
+                const meta = formatProductMetaLine({
+                  brand: p.brand,
+                  colors: p.colors,
+                  sizes: p.sizes,
+                  conditionText: conditionLabel(p.condition, t),
+                });
+                return (
                 <div
                   key={p.id}
                   className="overflow-hidden rounded-2xl bg-card"
                   style={{ border: "1px solid var(--border)", opacity: p.active ? 1 : 0.65 }}
                 >
-                  <div className="relative aspect-square bg-muted">
-                    {imgs[p.id] ? (
-                      <img
-                        src={imgs[p.id]!}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                        onError={() => setImgs((prev) => { const n = { ...prev }; delete n[p.id]; return n; })}
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={26} /></div>
-                    )}
-                    <span
-                      className="absolute left-2 bottom-2 rounded-md px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-white"
-                      style={{ background: p.active ? "#12873F" : "#4A4A52" }}
-                    >
-                      {p.active ? "Actif" : "Archivé"}
-                    </span>
-                    <Press
-                      aria-label="Actions"
-                      onClick={() => { setEditing(p); setFormOpen(true); }}
-                      className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-foreground"
-                      style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}
-                    >
-                      <MoreHorizontal size={14} />
+                  <Press
+                    onClick={() => { haptic.selection(); setDetail(p); }}
+                    hapticOnTap={false}
+                    className="!block w-full p-0 text-left"
+                  >
+                    <div className="relative aspect-square bg-muted">
+                      {imgs[p.id] ? (
+                        <img
+                          src={imgs[p.id]!}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                          onError={() => setImgs((prev) => { const n = { ...prev }; delete n[p.id]; return n; })}
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-muted-foreground"><Package size={26} /></div>
+                      )}
+                      <span
+                        className="absolute left-2 bottom-2 rounded-md px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-white"
+                        style={{ background: p.active ? "#12873F" : "#4A4A52" }}
+                      >
+                        {p.active ? "Actif" : "Archivé"}
+                      </span>
+                    </div>
+                    <div className="p-2">
+                      <p className="truncate text-[12.5px] font-semibold" style={{ color: NAVY }}>{p.name}</p>
+                      {meta ? (
+                        <p className="truncate text-[10px] text-muted-foreground">{meta}</p>
+                      ) : null}
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[12.5px] font-extrabold" style={{ color: NAVY }}>
+                          {formatMoney(Number(p.price), normalizeCurrency(p.currency), lang)}
+                        </span>
+                        <span className="text-[10.5px] text-muted-foreground">×{p.stock}</span>
+                      </div>
+                    </div>
+                  </Press>
+                  <div className="flex gap-1 px-2 pb-2">
+                    <Press onClick={() => { setEditing(p); setFormOpen(true); }} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[10.5px] font-semibold">
+                      <Pencil size={11} />
+                    </Press>
+                    <Press onClick={() => void toggleActive(p)} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[10.5px] font-semibold">
+                      {p.active ? <Archive size={11} /> : <RotateCcw size={11} />}
                     </Press>
                   </div>
-                  <div className="p-2">
-                    <p className="truncate text-[12.5px] font-semibold" style={{ color: NAVY }}>{p.name}</p>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[12.5px] font-extrabold" style={{ color: NAVY }}>
-                        {formatMoney(Number(p.price), normalizeCurrency(p.currency), lang)}
-                      </span>
-                      <span className="text-[10.5px] text-muted-foreground">×{p.stock}</span>
-                    </div>
-                    <div className="mt-1.5 flex gap-1">
-                      <Press onClick={() => { setEditing(p); setFormOpen(true); }} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[10.5px] font-semibold">
-                        <Pencil size={11} />
-                      </Press>
-                      <Press onClick={() => void toggleActive(p)} className="!min-h-8 h-8 flex-1 rounded-lg bg-muted text-[10.5px] font-semibold">
-                        {p.active ? <Archive size={11} /> : <RotateCcw size={11} />}
-                      </Press>
-                    </div>
-                  </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
       </section>
 
+      <ShopProductDetailSheet
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        product={detail}
+        onEdit={(p) => {
+          setDetail(null);
+          setEditing(p);
+          setFormOpen(true);
+        }}
+      />
       <ShopProductFormSheet
         open={formOpen}
         onClose={() => setFormOpen(false)}

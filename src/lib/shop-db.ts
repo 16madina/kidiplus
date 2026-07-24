@@ -2,6 +2,11 @@
 // A shop product now supports up to 5 photos. `image_url` remains the cover
 // (mirrors `images[0]`) for backward compatibility with existing consumers.
 import { supabase } from "@/integrations/supabase/client";
+import {
+  normalizeCondition,
+  parseStringArray,
+  type ProductCondition,
+} from "@/lib/live-product-options";
 
 export type ShopProduct = {
   id: string;
@@ -16,6 +21,10 @@ export type ShopProduct = {
   active: boolean;
   created_at: string;
   updated_at: string;
+  brand: string | null;
+  condition: ProductCondition | null;
+  colors: string[];
+  sizes: string[];
 };
 
 const signedCache = new Map<string, { url: string; expiresAt: number }>();
@@ -95,6 +104,10 @@ function rowToProduct(row: Record<string, unknown>): ShopProduct {
     active: row.active as boolean,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
+    brand: (row.brand as string | null) ?? null,
+    condition: normalizeCondition(row.condition),
+    colors: parseStringArray(row.colors),
+    sizes: parseStringArray(row.sizes),
   };
 }
 
@@ -160,6 +173,10 @@ export type ShopProductInput = {
   price: number;
   currency: string;
   stock: number;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
 };
 
 export async function createShopProduct(
@@ -180,6 +197,10 @@ export async function createShopProduct(
       currency: input.currency,
       stock: input.stock,
       active: true,
+      brand: input.brand?.trim() || null,
+      condition: input.condition ?? null,
+      colors: parseStringArray(input.colors ?? []),
+      sizes: parseStringArray(input.sizes ?? []),
     })
     .select("*")
     .single();
@@ -194,6 +215,10 @@ type ShopUpdate = {
   price?: number;
   stock?: number;
   active?: boolean;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
 };
 
 export async function updateShopProduct(id: string, patch: ShopUpdate): Promise<void> {
@@ -203,6 +228,10 @@ export async function updateShopProduct(id: string, patch: ShopUpdate): Promise<
   if (patch.price !== undefined) dbPatch.price = patch.price;
   if (patch.stock !== undefined) dbPatch.stock = patch.stock;
   if (patch.active !== undefined) dbPatch.active = patch.active;
+  if (patch.brand !== undefined) dbPatch.brand = patch.brand?.trim() || null;
+  if (patch.condition !== undefined) dbPatch.condition = patch.condition;
+  if (patch.colors !== undefined) dbPatch.colors = parseStringArray(patch.colors);
+  if (patch.sizes !== undefined) dbPatch.sizes = parseStringArray(patch.sizes);
   if (patch.imagePaths !== undefined) {
     const images = patch.imagePaths.slice(0, MAX_SHOP_IMAGES);
     dbPatch.images = images;

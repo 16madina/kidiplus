@@ -79,6 +79,7 @@
     "fixed": "Fixed",
     "auction": "Auction",
     "added": "Item added",
+    "catalogPrice": "Catalog price · sold in live (auction or fixed)",
     "updated": "Item updated",
     "imageOnly": "Image only",
     "imageTooBig": "Image too large (max 5 MB)"

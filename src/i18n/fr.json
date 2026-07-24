@@ -79,6 +79,7 @@
     "fixed": "Prix fixe",
     "auction": "Enchère",
     "added": "Article ajouté",
+    "catalogPrice": "Prix catalogue · vendu en live (enchère ou prix fixe)",
     "updated": "Article modifié",
     "imageOnly": "Image uniquement",
     "imageTooBig": "Image trop lourde (max 5 Mo)"

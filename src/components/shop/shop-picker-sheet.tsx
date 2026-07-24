@@ -6,7 +6,13 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
-import { listMyShopProducts, listSellerActiveShopProducts, resolveShopImage, type ShopProduct } from "@/lib/shop-db";
+import {
+  listMyShopProducts,
+  listSellerActiveShopProducts,
+  resolveShopImage,
+  resolveShopImages,
+  type ShopProduct,
+} from "@/lib/shop-db";
 import { formatMoney, normalizeCurrency, currencySymbol } from "@/lib/money";
 import { useLanguage } from "@/i18n/language-context";
 import { haptic } from "@/lib/haptics";
@@ -104,28 +110,41 @@ export function ShopPickerSheet({
 
   const confirm = () => {
     if (!items) return;
-    const picked: PickedShopItem[] = [];
-    for (const p of items) {
-      if (!selected.has(p.id)) continue;
-      const c = configs[p.id];
-      if (!c) continue;
-      const price = Math.max(0, Number(c.price) || 0);
-      const startPrice = Math.max(0, Number(c.startPrice) || 0);
-      const timerSec = Math.max(10, Number(c.timerSec) || 10);
-      picked.push({
-        name: p.name,
-        // Store the signed URL so viewers see it as-is (24h TTL from resolveShopImage).
-        image: imgs[p.id] ?? "",
-        mode: c.mode,
-        startPrice,
-        timerSec,
-        price,
-        stock: p.stock,
-        shopProductId: p.id,
-      });
-    }
-    onConfirm(picked);
-    onClose();
+    void (async () => {
+      const picked: PickedShopItem[] = [];
+      for (const p of items) {
+        if (!selected.has(p.id)) continue;
+        const c = configs[p.id];
+        if (!c) continue;
+        const price = Math.max(0, Number(c.price) || 0);
+        const startPrice = Math.max(0, Number(c.startPrice) || 0);
+        const timerSec = Math.max(10, Number(c.timerSec) || 10);
+        const paths =
+          p.images.length > 0 ? p.images : p.image_url ? [p.image_url] : [];
+        const resolved = await resolveShopImages(paths);
+        const cover = resolved[0] ?? imgs[p.id] ?? "";
+        const extraImages = resolved.slice(1);
+        picked.push({
+          name: p.name,
+          // Store the signed URL so viewers see it as-is (24h TTL from resolveShopImage).
+          image: cover,
+          mode: c.mode,
+          startPrice,
+          timerSec,
+          price,
+          stock: p.stock,
+          shopProductId: p.id,
+          description: p.description ?? undefined,
+          brand: p.brand ?? undefined,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages: extraImages.length ? extraImages : undefined,
+        });
+      }
+      onConfirm(picked);
+      onClose();
+    })();
   };
 
 
