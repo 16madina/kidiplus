@@ -1330,6 +1330,7 @@
     "custom": {
       "title": "Enchère personnalisée",
       "open": "Enchère personnalisée",
+      "short": "Max",
       "close": "Fermer",
       "decrease": "Diminuer",
       "increase": "Augmenter",

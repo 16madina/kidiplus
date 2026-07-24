@@ -1330,6 +1330,7 @@
     "custom": {
       "title": "Custom bid",
       "open": "Custom bid",
+      "short": "Max",
       "close": "Close",
       "decrease": "Decrease",
       "increase": "Increase",
