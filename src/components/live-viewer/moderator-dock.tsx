@@ -70,6 +70,7 @@ export function ModeratorDock({
         productId: p.id,
         deadlineMs: res.deadlineMs,
         timerSec: res.timerSec ?? p.timer_seconds,
+        ...(res.auctionRound != null ? { auctionRound: res.auctionRound } : {}),
       });
       toast.success(t("moderator.auctionStarted", "Enchère démarrée"));
       setOpen(false);

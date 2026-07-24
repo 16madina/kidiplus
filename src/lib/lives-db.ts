@@ -665,14 +665,25 @@ export async function createLiveProductInDb(args: {
  *    countdown, and any late-joining viewer read the SAME absolute value. */
 export async function startAuctionInDb(
   productId: string,
-): Promise<{ ok: boolean; deadlineMs?: number; timerSec?: number; error?: string }> {
+): Promise<{ ok: boolean; deadlineMs?: number; timerSec?: number; auctionRound?: number; error?: string }> {
   const { data, error } = await supabase.rpc("start_auction", {
     _product_id: productId,
   } as never);
   if (error) return { ok: false, error: error.message };
-  const r = (data ?? {}) as { ok?: boolean; deadline_ms?: number; timer_sec?: number; error?: string };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    deadline_ms?: number;
+    timer_sec?: number;
+    auction_round?: number;
+    error?: string;
+  };
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, deadlineMs: Number(r.deadline_ms), timerSec: Number(r.timer_sec) };
+  return {
+    ok: true,
+    deadlineMs: Number(r.deadline_ms),
+    timerSec: Number(r.timer_sec),
+    ...(r.auction_round != null ? { auctionRound: Number(r.auction_round) } : {}),
+  };
 }
 
 

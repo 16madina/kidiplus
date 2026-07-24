@@ -403,6 +403,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Only extend if the new deadline is actually later.
     if (newDeadline <= activeAuction.deadlineMs) return;
     room.broadcastAuctionExtend({ productId: activeAuction.productId, deadlineMs: newDeadline });
+    // Persist the extended deadline — the 1.5s rescue poll and late joiners
+    // read auction_deadline_at from the DB, and without this write they kept
+    // reverting to the pre-extension deadline (viewers saw the countdown end
+    // while others were still bidding).
+    void supabase
+      .from("live_products")
+      .update({ auction_deadline_at: new Date(newDeadline).toISOString() })
+      .eq("id", activeAuction.productId)
+      .then(({ error }) => {
+        if (error) console.warn("[auction] persist extension failed", error.message);
+      });
   }, [room.lastBid, activeAuction, activeProduct, room]);
 
   // Sudden-death flash for everyone (host sees it too).
@@ -641,14 +652,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // then broadcast the SAME absolute epoch ms to every viewer, and the
     // host's own countdown reads from broadcastAuctionStart(...) — a single
     // deadline source keeps host, viewers, and late joiners in sync (±1s
-    // clock drift). Fall back to a local computation if the RPC fails so
-    // the auction still runs.
-    const res = await startAuctionInDb(p.id);
-    const deadlineMs = res.ok && res.deadlineMs ? res.deadlineMs : Date.now() + p.timer_seconds * 1000;
+    // clock drift). NEVER run a broadcast-only auction the DB doesn't know
+    // about: the row would stay "upcoming", so late joiners, the rescue poll
+    // and postgres_changes could not recover anyone who missed the single
+    // broadcast frame — exactly the "some viewers see the auction, others
+    // stay on waiting-for-seller" desync. Retry once, then surface the error.
+    let res = await startAuctionInDb(p.id);
+    if (!res.ok || !res.deadlineMs) res = await startAuctionInDb(p.id);
+    if (!res.ok || !res.deadlineMs) {
+      toast.error(res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère"));
+      return;
+    }
     room.broadcastAuctionStart({
       productId: p.id,
-      deadlineMs,
-      timerSec: p.timer_seconds,
+      deadlineMs: res.deadlineMs,
+      timerSec: res.timerSec ?? p.timer_seconds,
+      ...(res.auctionRound != null ? { auctionRound: res.auctionRound } : {}),
     });
     room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${fmt(p.start_price)}`);
   };
