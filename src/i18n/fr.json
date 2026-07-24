@@ -1446,6 +1446,7 @@
     "removeZone": "Retirer",
     "saveCta": "Enregistrer",
     "saved": "Paramètres enregistrés",
+    "saveFailed": "Enregistrement impossible. Réessaie.",
     "fee": "Livraison",
     "courierNote": "Frais de livraison : à payer au livreur 🛵",
     "chooseZone": "Choisir une zone",

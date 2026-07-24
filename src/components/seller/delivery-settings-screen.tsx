@@ -56,11 +56,13 @@ export function SellerDeliverySettingsScreen({
 
   useEffect(() => {
     if (!open || !user) return;
+    let cancelled = false;
     setCountryPickerIdx(null);
     setCountrySearch("");
     setOpenSuggestIdx(null);
     void (async () => {
       const s = await fetchDeliverySettingsOrDefault(user.id);
+      if (cancelled) return;
       setMode(s.mode);
       setFlatFee(String(s.flat_fee ?? 0));
       // backfill missing country with seller's country (ISO-2)
@@ -69,7 +71,13 @@ export function SellerDeliverySettingsScreen({
         country: normalizeCountryCode(z.country) || sellerCountry,
       })));
     })();
-  }, [open, user, sellerCountry]);
+    return () => {
+      cancelled = true;
+    };
+    // Only reload when the screen opens — not when profile country changes
+    // mid-edit (that was wiping unsaved zones).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [open, user?.id]);
 
   const save = async () => {
     if (!user) return;
@@ -108,10 +116,21 @@ export function SellerDeliverySettingsScreen({
       zones: cleanZones,
     });
     setBusy(false);
-    if (!r.ok) { toast.error(r.error); return; }
+    if (!r.ok) {
+      toast.error(r.error || t("delivery.saveFailed", { defaultValue: "Enregistrement impossible." }));
+      return;
+    }
+    // Stay on this screen — do not bounce back to Profile after save.
+    setMode(r.settings.mode);
+    setFlatFee(String(r.settings.flat_fee ?? 0));
+    setZones(
+      (r.settings.zones ?? []).map((z) => ({
+        ...z,
+        country: normalizeCountryCode(z.country) || sellerCountry,
+      })),
+    );
     haptic.success();
     toast.success(t("delivery.saved"));
-    onClose();
   };
 
   const grouped = useMemo(() => {

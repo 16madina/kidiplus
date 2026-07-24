@@ -1446,6 +1446,7 @@
     "removeZone": "Remove",
     "saveCta": "Save",
     "saved": "Settings saved",
+    "saveFailed": "Could not save. Please try again.",
     "fee": "Delivery",
     "courierNote": "Delivery fee: paid to the courier 🛵",
     "chooseZone": "Choose a zone",
