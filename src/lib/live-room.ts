@@ -51,7 +51,7 @@ function isTerminalProductStatus(status: string | null | undefined): boolean {
 }
 
 /** Build an auction:start payload from a DB product row when the broadcast
- *  frame was missed. Allow a short grace past the deadline so a client with
+ *  frame was missed. Allow a wide grace past the deadline so a client with
  *  a fast clock (or laggy realtime) still attaches instead of staying stuck
  *  on "waiting for seller" while others bid. */
 function auctionStartFromProduct(row: {
@@ -64,8 +64,9 @@ function auctionStartFromProduct(row: {
   if (row.mode !== "auction" || row.status !== "active" || !row.auction_deadline_at) return null;
   const deadlineMs = new Date(row.auction_deadline_at).getTime();
   if (!Number.isFinite(deadlineMs)) return null;
-  // 20s grace: still treat as running if DB says active.
-  if (deadlineMs <= Date.now() - 20_000) return null;
+  // Wide grace: phone clocks are often minutes off; DB `status=active` is
+  // the source of truth for "still running".
+  if (deadlineMs <= Date.now() - 120_000) return null;
   return {
     productId: row.id,
     deadlineMs,
@@ -527,6 +528,22 @@ export function useLiveRoom(params: {
     };
   }, [liveId]);
 
+  // Local rescue from already-hydrated rows — no network. Fixes viewers who
+  // dropped `auction:start` / postgres_changes but still have product state
+  // (classic "En attente du vendeur" while friends keep bidding).
+  useEffect(() => {
+    const running = products.find((row) => auctionStartFromProduct(row));
+    if (!running) return;
+    const adopted = auctionStartFromProduct(running);
+    if (!adopted || !canAdoptAuctionStart(adopted.productId)) return;
+    setAuctionStart((cur) => {
+      if (cur && cur.productId === adopted.productId && cur.deadlineMs >= adopted.deadlineMs) {
+        return cur;
+      }
+      return adopted;
+    });
+  }, [products]);
+
   // Periodic rescue: some Android/iOS WebViews drop realtime frames. If the
   // DB says an auction is active but we have no local auctionStart (or the
   // wrong product), adopt it so the bid CTA unlocks.
@@ -534,9 +551,9 @@ export function useLiveRoom(params: {
     if (!liveId) return;
     let alive = true;
     const rescue = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("live_products")
-        .select("id, mode, status, auction_deadline_at, timer_seconds")
+        .select("id, mode, status, auction_deadline_at, timer_seconds, updated_at")
         .eq("live_id", liveId)
         .eq("mode", "auction")
         .eq("status", "active")
@@ -544,7 +561,12 @@ export function useLiveRoom(params: {
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!alive || !data) return;
+      if (!alive) return;
+      if (error) {
+        console.warn("[live-room] auction rescue fetch failed", error.message);
+        return;
+      }
+      if (!data) return;
       const adopted = auctionStartFromProduct(data);
       if (!adopted || !canAdoptAuctionStart(adopted.productId)) return;
       setAuctionStart((cur) => {
@@ -553,9 +575,31 @@ export function useLiveRoom(params: {
         }
         return adopted;
       });
+      // Keep product row fresh so the star card matches the running auction.
+      setProducts((prev) => {
+        const idx = prev.findIndex((p) => p.id === data.id);
+        if (idx < 0) return prev;
+        const row = prev[idx]!;
+        if (
+          row.status === data.status &&
+          row.auction_deadline_at === data.auction_deadline_at
+        ) {
+          return prev;
+        }
+        return prev.map((p) =>
+          p.id === data.id
+            ? {
+                ...p,
+                status: data.status as LiveProductRow["status"],
+                auction_deadline_at: data.auction_deadline_at,
+                timer_seconds: data.timer_seconds ?? p.timer_seconds,
+              }
+            : p,
+        );
+      });
     };
     void rescue();
-    const timer = window.setInterval(() => { void rescue(); }, 4000);
+    const timer = window.setInterval(() => { void rescue(); }, 1500);
     return () => {
       alive = false;
       window.clearInterval(timer);
@@ -605,7 +649,12 @@ export function useLiveRoom(params: {
     });
     ch.on("broadcast", { event: "auction:start" }, ({ payload }) => {
       const evt = payload as AuctionStartEvt;
-      setAuctionStart(evt);
+      if (!evt?.productId || !Number.isFinite(Number(evt.deadlineMs))) return;
+      setAuctionStart({
+        productId: evt.productId,
+        deadlineMs: Number(evt.deadlineMs),
+        timerSec: Math.max(1, Number(evt.timerSec ?? 30)),
+      });
       // Fresh auction round: any lastBid from the previous round MUST NOT
       // carry over — otherwise the host would auto-finalize with the
       // previous winner, and the viewer UI would still show them as the

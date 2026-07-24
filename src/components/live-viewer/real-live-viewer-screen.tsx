@@ -331,7 +331,19 @@ export function RealLiveViewerScreen() {
 
   // Featured product: active auction wins; otherwise the next playable item
   // after any just-ended product (never stay on the finished article).
-  const activeAuctionId = room.auctionStart?.productId ?? null;
+  // Prefer a DB-active auction even if the auction:start broadcast was missed
+  // (Assi-style "En attente du vendeur" while friends can still bid).
+  const dbActiveAuction = useMemo(
+    () =>
+      room.products.find(
+        (p) =>
+          p.mode === "auction" &&
+          p.status === "active" &&
+          !!p.auction_deadline_at,
+      ) ?? null,
+    [room.products],
+  );
+  const activeAuctionId = room.auctionStart?.productId ?? dbActiveAuction?.id ?? null;
   const endedProductId = room.lastAuctionEnd?.productId ?? null;
   const currentProduct = useMemo(() => {
     if (activeAuctionId) {
@@ -353,16 +365,31 @@ export function RealLiveViewerScreen() {
       ?? null;
   }, [room.products, activeAuctionId, endedProductId]);
 
-  // Auction countdown from broadcast deadline.
+  // Auction countdown from broadcast deadline (fallback: DB deadline on product).
   const [now, setNow] = useState(Date.now());
+  const deadlineMs =
+    room.auctionStart?.deadlineMs ??
+    (currentProduct?.mode === "auction" &&
+    currentProduct.status === "active" &&
+    currentProduct.auction_deadline_at
+      ? new Date(currentProduct.auction_deadline_at).getTime()
+      : null);
   useEffect(() => {
-    if (!room.auctionStart) return;
+    if (!deadlineMs) return;
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
-  }, [room.auctionStart]);
-  const secondsLeft = room.auctionStart
-    ? Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000))
+  }, [deadlineMs]);
+  const secondsLeft = deadlineMs
+    ? Math.max(0, Math.ceil((deadlineMs - now) / 1000))
     : 0;
+  const auctionIsLive =
+    !liveEnded &&
+    !!currentProduct &&
+    currentProduct.mode === "auction" &&
+    (
+      (!!room.auctionStart && room.auctionStart.productId === currentProduct.id) ||
+      (currentProduct.status === "active" && !!currentProduct.auction_deadline_at)
+    );
 
   // Local chat tip — shown once on join, then fades so it never sticks forever.
   const [localMessages, setLocalMessages] = useState<ChatMsg[]>([]);
@@ -709,7 +736,7 @@ export function RealLiveViewerScreen() {
 
   const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
-    if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
+    if (!currentProduct || currentProduct.mode !== "auction" || !auctionIsLive) return;
     if (!user) { openAuth(); return; }
     if (secondsLeft <= 0) return;
     if (!eligibility.eligible) {
@@ -1227,9 +1254,7 @@ export function RealLiveViewerScreen() {
             secondsLeft={secondsLeft}
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
-            auctionActive={
-              !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
-            }
+            auctionActive={auctionIsLive && currentAsProduct.id === currentProduct?.id}
             isHighestBidder={
               !!user &&
               room.lastBid?.productId === currentAsProduct.id &&
@@ -1239,7 +1264,9 @@ export function RealLiveViewerScreen() {
             disabled={liveEnded}
             deliveryBlockedLabel={deliveryBlockedLabel}
             waitingLabel={
-              !liveEnded && !room.auctionStart && currentProduct?.status === "upcoming"
+              !liveEnded &&
+              !auctionIsLive &&
+              currentProduct?.status === "upcoming"
                 ? `⏳ ${t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}`
                 : undefined
             }
@@ -1323,7 +1350,7 @@ export function RealLiveViewerScreen() {
       <SuddenDeathFlash tick={suddenDeathTick} />
       <AuctionFinalCountdown
         secondsLeft={secondsLeft}
-        active={!!room.auctionStart}
+        active={auctionIsLive}
         density="app"
       />
       <BidPulseFlash
