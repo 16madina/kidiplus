@@ -353,15 +353,14 @@ export function ViewerLiveVideo({
     }
   }, [appActive]);
 
-  // iOS system PiP uses a SECOND native LiveKit room. If the WebView keeps
-  // playing audio (or holding AVAudioSession), you get the classic split:
-  // bubble has video but silence, or voice continues with a frozen/black frame.
-  // Hand exclusive A/V to native while inactive + PiP-eligible / in system PiP.
+  // iOS system PiP uses a SECOND native LiveKit room. Mute WebView A/V only
+  // after native PiP is confirmed (`inSystemPip`) — NOT merely on resignActive.
+  // Muting early left a black silent bubble while the native session was still
+  // connecting / waiting for its first frame.
   useEffect(() => {
     const audio = audioRef.current;
     const video = videoRef.current;
-    const nativeOwnsAv =
-      isIosNative && (inSystemPip || (!appActive && pipHold));
+    const nativeOwnsAv = isIosNative && inSystemPip;
     if (nativeOwnsAv) {
       if (audio) {
         audio.muted = true;
@@ -373,6 +372,8 @@ export function ViewerLiveVideo({
       return;
     }
     if (audio) audio.muted = false;
+    // App backgrounded but native PiP not up yet — keep WebView playing so
+    // there's no black gap; iOS may still freeze WKWebView, native takes over.
     const r = roomRef.current;
     if (!r) return;
     if (reattachRemoteMedia(r, video, audio, true) || hadLiveRef.current) {
@@ -404,8 +405,8 @@ export function ViewerLiveVideo({
   // First paint as "live" can still leave WKWebView paused. Soft kicks + stall watchdog.
   useEffect(() => {
     if (status !== "live") return;
-    // Don't fight the native PiP session on iOS.
-    if (isIosNative && (inSystemPip || (!appActive && pipHold))) return;
+    // Don't fight the native PiP session on iOS (only once bubble is confirmed).
+    if (isIosNative && inSystemPip) return;
     const soft = () => {
       const r = roomRef.current;
       if (r) {

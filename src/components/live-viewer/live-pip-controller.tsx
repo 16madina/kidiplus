@@ -150,10 +150,9 @@ export function LivePipController() {
       // Home→PiP had nothing ready.
       iosSessionReadyRef.current = false;
       await pipSetEnabled(false);
-      // Pre-connect while still foreground. Keep delay short: users often
-      // leave within a few seconds; 5s was too late and WebView networking
-      // then fails in the background.
-      await new Promise((r) => setTimeout(r, 1200));
+      // Connect ASAP while foreground — users often hit Home within 1–2s;
+      // a long delay left native with no frames → black PiP bubble.
+      await new Promise((r) => setTimeout(r, 350));
       if (cancelled || !getPipHold() || !activeRef.current) return;
       await ensureIosNativeSession();
     })();
@@ -196,14 +195,13 @@ export function LivePipController() {
         if (isAndroidPipPlatform()) {
           prepareSystemPipUi(() => expandRef.current());
         } else if (isIosPipPlatform()) {
-          // Keep media session alive while we try to enter system PiP.
-          // Do NOT mark pip as "started" yet — that caused failed starts to
-          // close the live session.
-          setInSystemPip(true);
+          // Do NOT setInSystemPip(true) yet — that muted the WebView before
+          // native had frames and produced a black silent bubble.
+          // inSystemPip flips only when pipModeChange(true) / pipIsActive().
           void (async () => {
             const ok = await ensureIosNativeSession();
             if (!ok || !getPipHold() || !activeRef.current) return;
-            for (const delay of [0, 200, 500, 1000, 2000, 3500]) {
+            for (const delay of [0, 150, 350, 700, 1200, 2000, 3500]) {
               if (delay) await new Promise((r) => setTimeout(r, delay));
               if (!getPipHold() || !activeRef.current) return;
               try {
@@ -214,6 +212,7 @@ export function LivePipController() {
               }
               if (pipActuallyStartedRef.current || (await pipIsActive())) {
                 pipActuallyStartedRef.current = true;
+                setInSystemPip(true);
                 return;
               }
               await pipEnter();

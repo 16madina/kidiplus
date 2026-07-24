@@ -226,6 +226,9 @@ final class LivePipSession: NSObject, @unchecked Sendable {
         activatePipAudioSession(reason: reason)
         ensureAllRemoteMediaSubscribed(reason: reason)
         ensureSourceViewsAttached()
+        // Drop any stale black frame left from a previous PiP cycle.
+        previewController.flushForPipHandoff()
+        videoCallController.flushForPipHandoff()
         startPipIfPossible()
     }
 
@@ -428,14 +431,13 @@ final class LivePipSession: NSObject, @unchecked Sendable {
             ) { [weak self] _ in
                 guard let self else { return }
                 self.cancelPipRetries()
-                // Hide the native sample-buffer source BEFORE stopping system
-                // PiP so it doesn't flash as a "splash/screenshot" over the
-                // WebView when returning to the live.
-                self.previewController.view?.isHidden = true
-                self.previewController.view?.alpha = 0
+                // Stop system PiP first, THEN hide the native source — hiding
+                // while still active produced a black flash / stuck surface.
                 if self.isInPip {
                     self.stopPip()
                 }
+                self.previewController.view?.isHidden = true
+                self.previewController.view?.alpha = 0
             }
         }
     }
@@ -473,6 +475,9 @@ extension LivePipSession: AVPictureInPictureControllerDelegate {
         // holds the session for a beat after resignActive.
         activatePipAudioSession(reason: "pip-did-start")
         ensureAllRemoteMediaSubscribed(reason: "pip-did-start")
+        // Force fresh frames into the PiP layers (avoids a stuck black surface).
+        previewController.flushForPipHandoff()
+        videoCallController.flushForPipHandoff()
         emitMode(true)
     }
 
@@ -509,6 +514,15 @@ private final class LivePipSampleView: UIView {
         }
     }
 
+    /// Drop stale/black frames so PiP gets a fresh keyframe stream.
+    func flushForPipHandoff() {
+        if #available(iOS 17.0, *) {
+            sampleBufferDisplayLayer.sampleBufferRenderer.flush()
+        } else {
+            sampleBufferDisplayLayer.flushAndRemoveImage()
+        }
+    }
+
     /// Match LiveKit's SampleBufferVideoRenderer: CATransform3D rotation,
     /// never mirrored for a remote viewer (mirroring caused the "selfie" look).
     func applyRotationIfNeeded(_ rotation: VideoRotation) {
@@ -532,7 +546,14 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer, @
 
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
+        if #available(iOS 15.0, *) {
+            renderingView.sampleBufferDisplayLayer.preventsDisplaySleepDuringVideoPlayback = true
+        }
         view = renderingView
+    }
+
+    func flushForPipHandoff() {
+        renderingView.flushForPipHandoff()
     }
 
     // Keep frames flowing even when the source view is tiny / briefly hidden —
@@ -555,8 +576,16 @@ private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewC
 
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
+        if #available(iOS 15.0, *) {
+            renderingView.sampleBufferDisplayLayer.preventsDisplaySleepDuringVideoPlayback = true
+        }
         view = renderingView
-        preferredContentSize = CGSize(width: 9, height: 16)
+        // Real landscape-ish portrait size — 9×16 pts made iOS open an empty black bubble.
+        preferredContentSize = CGSize(width: 270, height: 480)
+    }
+
+    func flushForPipHandoff() {
+        renderingView.flushForPipHandoff()
     }
 
     var isAdaptiveStreamEnabled: Bool { false }
