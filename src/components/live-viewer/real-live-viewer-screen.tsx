@@ -77,7 +77,7 @@ import { logLiveInteraction } from "@/lib/interactions-db";
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
 function SellerAvatar({ src, name, size }: { src: string; name: string; size: "sm" | "md" | "lg" }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const initials =
     parts.length >= 2
@@ -89,24 +89,25 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "s
       : size === "sm"
         ? "h-9 w-9 text-[12px]"
         : "h-10 w-10 text-[16px]";
-  const showImg = !!src.trim() && !failed;
-  if (showImg) {
-    return (
-      <img
-        src={src}
-        alt=""
-        onError={() => setFailed(true)}
-        className={`${box} shrink-0 rounded-full object-cover ring-2 ring-white/90`}
-        draggable={false}
-      />
-    );
-  }
+  const showImg = !!src.trim() && failedSrc !== src;
+  // Initials circle is ALWAYS painted; the photo overlays it once it actually
+  // loads. Rendering a bare <img> meant a slow / expired / blocked avatar URL
+  // painted nothing at all — the "host avatar disappeared" bug.
   return (
     <span
-      className={`${box} grid shrink-0 place-items-center rounded-full font-black ring-2 ring-white/90`}
+      className={`${box} relative grid shrink-0 place-items-center overflow-hidden rounded-full font-black ring-2 ring-white/90`}
       style={{ backgroundColor: "oklch(0.72 0.16 70)", color: "#10162B" }}
     >
       {initials || "?"}
+      {showImg && (
+        <img
+          src={src}
+          alt=""
+          onError={() => setFailedSrc(src)}
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
+      )}
     </span>
   );
 }
@@ -1033,29 +1034,36 @@ export function RealLiveViewerScreen() {
 
       <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
         <div className="flex items-start gap-1.5 px-2 pt-2">
-          {/* Left: avatar on top, name under it — always visible for the host. */}
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <Press
-              onClick={() => openSeller(active.sellerId ?? active.seller)}
-              aria-label={`Voir la boutique de ${active.seller}`}
-              className="!inline-flex !min-h-0 shrink-0 flex-col items-center gap-1 p-0"
-            >
-              <SellerAvatar
-                src={sellerAvatarUrl || active.avatar || ""}
-                name={active.seller || "?"}
-                size="md"
-              />
-              <span
-                className="line-clamp-2 max-w-[5.5rem] text-center text-[11px] font-bold leading-tight text-white"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}
+          {/* Left: one fixed-width column (avatar, name, follow stacked).
+              A flexible side-by-side layout let the follow button overflow
+              under the wallet pill on narrow phones (iPhone 15) while wider
+              ones (Pro Max) looked fine — stacking keeps every screen equal. */}
+          <div className="flex min-w-0 flex-1 items-start">
+            <div className="flex w-[5.75rem] shrink-0 flex-col items-center gap-1">
+              <Press
+                onClick={() => openSeller(active.sellerId ?? active.seller)}
+                aria-label={`Voir la boutique de ${active.seller}`}
+                className="!inline-flex !min-h-0 !min-w-0 flex-col items-center gap-1 p-0"
               >
-                {active.seller}
-              </span>
-            </Press>
-            <div className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
-              <div className="flex items-center gap-1">
-                <VerifiedBadge verified={sellerVerified} size={13} className="shrink-0" />
-              </div>
+                <span className="relative">
+                  <SellerAvatar
+                    src={sellerAvatarUrl || active.avatar || ""}
+                    name={active.seller || "?"}
+                    size="md"
+                  />
+                  <VerifiedBadge
+                    verified={sellerVerified}
+                    size={14}
+                    className="absolute -bottom-0.5 -right-0.5"
+                  />
+                </span>
+                <span
+                  className="line-clamp-2 max-w-[5.5rem] text-center text-[11px] font-bold leading-tight text-white"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}
+                >
+                  {active.seller}
+                </span>
+              </Press>
               <FollowButton
                 sellerId={active.sellerId ?? null}
                 size="sm"
