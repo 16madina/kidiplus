@@ -170,8 +170,8 @@ export function AuctionCard({
           <>
             <div className="flex items-stretch gap-1.5">
               <Press
-                onClick={canBid ? onBid : undefined}
-                disabled={!canBid}
+                onClick={canBid || deliveryBlocked ? onBid : undefined}
+                disabled={!canBid && !deliveryBlocked}
                 className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
                 style={{
                   background: canBid

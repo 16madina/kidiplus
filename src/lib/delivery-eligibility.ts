@@ -4,8 +4,9 @@
 // seller's delivery settings + country and a buyer's default-address
 // country, can the buyer bid/buy in this live?
 //
-// A missing buyer address never blocks — the payment sheet already prompts
-// for one at checkout time.
+// A missing buyer address ALWAYS blocks. Otherwise one viewer with no
+// address can bid while another is stopped at checkout ("add an address"),
+// and country coverage cannot be evaluated fairly.
 
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { zonesForCountry } from "@/lib/delivery";
@@ -19,7 +20,7 @@ export type EligibilityInput = {
 
 export type EligibilityResult = {
   eligible: boolean;
-  reason?: "no_country_coverage" | "courier_country_mismatch";
+  reason?: "no_address" | "no_country_coverage" | "courier_country_mismatch";
 };
 
 const norm = (s: string | null | undefined) => normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
@@ -29,14 +30,15 @@ export function canDeliver({
   sellerCountry,
   buyerCountry,
 }: EligibilityInput): EligibilityResult {
+  const buyer = norm(buyerCountry);
+  // Same rule for everyone — never let "no address" skip the gate while
+  // an addressed buyer in another country is blocked.
+  if (!buyer) return { eligible: false, reason: "no_address" };
+
   // No settings on the seller → treat as flat/0 (delivers everywhere).
   if (!settings || settings.mode === "flat") return { eligible: true };
 
-  const buyer = norm(buyerCountry);
-
   if (settings.mode === "courier") {
-    // Address prompt happens at checkout when no default is set.
-    if (!buyer) return { eligible: true };
     const seller = norm(sellerCountry);
     if (!seller) return { eligible: true }; // seller country unknown → don't gate
     return buyer === seller
@@ -47,7 +49,6 @@ export function canDeliver({
   // zones
   const zones = Array.isArray(settings.zones) ? settings.zones : [];
   if (zones.length === 0) return { eligible: true }; // seller hasn't configured yet
-  if (!buyer) return { eligible: true }; // ask at checkout
   const inCountry = zonesForCountry(zones, buyer);
   return inCountry.length > 0
     ? { eligible: true }

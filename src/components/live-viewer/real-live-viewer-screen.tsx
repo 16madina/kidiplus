@@ -34,6 +34,7 @@ import { AuctionCard } from "./auction-card";
 import { CustomBidStepper } from "./custom-bid-stepper";
 import { ProductsSheet } from "./products-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
+import { AddressFormSheet } from "@/components/buyer/address-form-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
@@ -202,6 +203,12 @@ export function RealLiveViewerScreen() {
   const [sellerCountry, setSellerCountry] = useState<string | null>(null);
   const [sellerVerified, setSellerVerified] = useState(false);
   const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+  const refreshBuyerCountry = useCallback(async () => {
+    if (!user?.id) { setBuyerCountry(null); return; }
+    const addr = await fetchDefaultAddress(user.id);
+    setBuyerCountry(addr?.country ?? null);
+  }, [user?.id]);
   useEffect(() => {
     if (!active?.sellerId) return;
     let cancelled = false;
@@ -233,7 +240,9 @@ export function RealLiveViewerScreen() {
   );
   const deliveryBlockedLabel = eligibility.eligible
     ? undefined
-    : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
+    : eligibility.reason === "no_address"
+      ? t("delivery.noAddressBlock")
+      : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
 
 
   
@@ -652,7 +661,15 @@ export function RealLiveViewerScreen() {
     if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
     if (!user) { openAuth(); return; }
     if (secondsLeft <= 0) return;
-    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
+    if (!eligibility.eligible) {
+      if (eligibility.reason === "no_address") {
+        toast.error(deliveryBlockedLabel!);
+        setAddressFormOpen(true);
+        return;
+      }
+      toast.error(deliveryBlockedLabel!);
+      return;
+    }
     if (
       room.lastBid?.productId === currentProduct.id &&
       room.lastBid.auctionRound === (currentProduct.auction_round ?? 1) &&
@@ -728,7 +745,15 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     if (!user) { openAuth(); return; }
     if (!active?.liveId || !active?.sellerId) return;
-    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
+    if (!eligibility.eligible) {
+      if (eligibility.reason === "no_address") {
+        toast.error(deliveryBlockedLabel!);
+        setAddressFormOpen(true);
+        return;
+      }
+      toast.error(deliveryBlockedLabel!);
+      return;
+    }
     // Resolve delivery BEFORE reserving stock so we don't hold stock the
     // buyer can't actually pay for.
     const dr = await resolveDeliveryForCheckout({
@@ -743,6 +768,7 @@ export function RealLiveViewerScreen() {
             ? t("delivery.noCountryCoverage")
             : t("delivery.zoneMismatch");
       toast.error(msg);
+      if (dr.reason === "no_address") setAddressFormOpen(true);
       return;
     }
     const res = await purchaseFixedPriceRpc(p.id, user.id);
@@ -1255,6 +1281,17 @@ export function RealLiveViewerScreen() {
       <PaymentSheet
         order={pendingOrder}
         onClose={() => setPendingOrder(null)}
+      />
+      <AddressFormSheet
+        open={addressFormOpen}
+        onClose={() => setAddressFormOpen(false)}
+        userId={user?.id ?? ""}
+        currency={profile?.currency ?? liveCurrency}
+        defaultCountry={profile?.country ?? null}
+        onSaved={() => {
+          setAddressFormOpen(false);
+          void refreshBuyerCountry();
+        }}
       />
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
       <GiftTraySheet
