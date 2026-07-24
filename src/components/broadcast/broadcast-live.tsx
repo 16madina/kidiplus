@@ -201,13 +201,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     return () => clearInterval(t);
   }, [appActive]);
 
-  // Seed a welcome system message once the room is ready.
-  const welcomedRef = useRef(false);
-  useEffect(() => {
-    if (!room.ready || welcomedRef.current) return;
-    welcomedRef.current = true;
-    room.systemMessage(t("live.chatIntro", "Sois respectueux dans le chat 💛"));
-  }, [room, t]);
+  // Chat etiquette tip is shown locally per viewer (and fades) — do not
+  // broadcast a permanent "Sois respectueux…" line into every client's chat.
 
   // Track a running peak viewer count.
   const [peak, setPeak] = useState(1);

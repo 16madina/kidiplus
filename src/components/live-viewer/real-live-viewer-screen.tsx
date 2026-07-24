@@ -202,6 +202,7 @@ export function RealLiveViewerScreen() {
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
   const [sellerCountry, setSellerCountry] = useState<string | null>(null);
   const [sellerVerified, setSellerVerified] = useState(false);
+  const [sellerAvatarUrl, setSellerAvatarUrl] = useState<string | null>(null);
   const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
   const [addressFormOpen, setAddressFormOpen] = useState(false);
   const refreshBuyerCountry = useCallback(async () => {
@@ -215,16 +216,26 @@ export function RealLiveViewerScreen() {
     void (async () => {
       const [settings, sellerProfile] = await Promise.all([
         fetchDeliverySettings(active.sellerId!),
-        supabase.from("profiles").select("country, is_verified").eq("id", active.sellerId!).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("country, is_verified, avatar_url")
+          .eq("id", active.sellerId!)
+          .maybeSingle(),
       ]);
       if (cancelled) return;
       setSellerSettings(settings);
-      const p = sellerProfile.data as { country?: string | null; is_verified?: boolean } | null;
+      const p = sellerProfile.data as {
+        country?: string | null;
+        is_verified?: boolean;
+        avatar_url?: string | null;
+      } | null;
       setSellerCountry(p?.country ?? null);
       setSellerVerified(!!p?.is_verified);
+      const resolved = p?.avatar_url ? await resolveAvatarUrl(p.avatar_url) : null;
+      if (!cancelled) setSellerAvatarUrl(resolved || active.avatar || null);
     })();
     return () => { cancelled = true; };
-  }, [active?.sellerId]);
+  }, [active?.sellerId, active?.avatar]);
   useEffect(() => {
     if (!user?.id) { setBuyerCountry(null); return; }
     let cancelled = false;
@@ -330,14 +341,17 @@ export function RealLiveViewerScreen() {
     ? Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000))
     : 0;
 
-  // Local chat (welcome msg) + real room chat merged.
+  // Local chat tip — shown once on join, then fades so it never sticks forever.
   const [localMessages, setLocalMessages] = useState<ChatMsg[]>([]);
   useEffect(() => {
-    if (!active) return;
-    setLocalMessages([
-      systemMessage(t("live.chatIntro", `Bienvenue dans le live de ${active.seller} 👋`)),
-    ]);
-  }, [active, t]);
+    if (!active?.liveId) return;
+    const intro = systemMessage(t("live.chatIntro", "Sois respectueux dans le chat 💛"));
+    setLocalMessages([intro]);
+    const timer = window.setTimeout(() => {
+      setLocalMessages((prev) => prev.filter((m) => m.id !== intro.id));
+    }, 5500);
+    return () => window.clearTimeout(timer);
+  }, [active?.liveId, t]);
   // Personal blocks — used to filter chat messages in real time and to
   // auto-close the live if the viewer opens a stream by an already-blocked
   // host (see the guard further down). Hoisted before `messages` memo.
@@ -924,34 +938,37 @@ export function RealLiveViewerScreen() {
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
       <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
-        <div className="flex items-center gap-1.5 px-2 pt-2">
-          {/* Left: avatar is mandatory (store link) — never let the action cluster hide it. */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <div className="flex items-start gap-1.5 px-2 pt-2">
+          {/* Left: avatar on top, name under it — always visible for the host. */}
+          <div className="flex min-w-0 flex-1 items-start gap-2">
             <Press
               onClick={() => openSeller(active.sellerId ?? active.seller)}
               aria-label={`Voir la boutique de ${active.seller}`}
-              className="!inline-flex h-9 w-9 shrink-0 overflow-hidden rounded-full p-0"
+              className="!inline-flex !min-h-0 shrink-0 flex-col items-center gap-1 p-0"
             >
-              <SellerAvatar src={active.avatar || ""} name={active.seller || "?"} size="sm" />
-            </Press>
-            <Press
-              onClick={() => openSeller(active.sellerId ?? active.seller)}
-              className="!inline-flex !min-h-0 min-w-0 max-w-[34%] flex-col items-start justify-center gap-0 p-0 text-left"
-            >
-              <p
-                className="flex max-w-full min-w-0 items-center gap-1 text-[13px] font-bold leading-tight text-white"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+              <SellerAvatar
+                src={sellerAvatarUrl || active.avatar || ""}
+                name={active.seller || "?"}
+                size="md"
+              />
+              <span
+                className="line-clamp-2 max-w-[5.5rem] text-center text-[11px] font-bold leading-tight text-white"
+                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}
               >
-                <span className="truncate">{active.seller}</span>
-                <VerifiedBadge verified={sellerVerified} size={12} className="shrink-0" />
-              </p>
+                {active.seller}
+              </span>
             </Press>
-            <FollowButton
-              sellerId={active.sellerId ?? null}
-              size="sm"
-              variant="solid"
-              tone="live"
-            />
+            <div className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
+              <div className="flex items-center gap-1">
+                <VerifiedBadge verified={sellerVerified} size={13} className="shrink-0" />
+              </div>
+              <FollowButton
+                sellerId={active.sellerId ?? null}
+                size="sm"
+                variant="solid"
+                tone="live"
+              />
+            </div>
           </div>
 
           {/* Right: keep compact — share lives in the ⋯ menu to free room for the avatar. */}
@@ -986,7 +1003,7 @@ export function RealLiveViewerScreen() {
       </div>
 
 
-      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 128px)" }}>
+      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 138px)" }}>
         <LiveChat
           messages={messages}
           bottomOffset={0}
@@ -1367,7 +1384,7 @@ export function RealLiveViewerScreen() {
             className="absolute inset-0 z-[80] grid place-items-center bg-black/85 px-6 text-center text-white"
           >
             <div className="flex max-w-xs flex-col items-center">
-              <SellerAvatar src={active.avatar} name={active.seller} size="lg" />
+              <SellerAvatar src={sellerAvatarUrl || active.avatar || ""} name={active.seller} size="lg" />
               <h2 className="mt-4 text-[24px] font-black leading-tight">{t("live.endedTitle")}</h2>
               <p className="mt-2 text-[14px] text-white/75">{active.seller}</p>
               <Press
