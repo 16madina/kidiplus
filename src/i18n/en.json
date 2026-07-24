@@ -1369,7 +1369,8 @@
     "saved": "Address saved",
     "confirmDelete": "Delete this address?",
     "fields": {
-      "label": "Label (Home, Office…)",
+      "label": "Address label (optional)",
+      "labelPlaceholder": "e.g. Home, Office…",
       "fullName": "Full name",
       "phone": "Phone",
       "country": "Country",

@@ -1,11 +1,11 @@
 // AddressFormSheet — dynamic form driven by the SELECTED COUNTRY.
 //
-// - Always: label, full_name, phone, COUNTRY selector.
+// Order: full_name, phone, country, then country-specific fields, then
+// optional label (Home / Office) at the end.
 // - African / XOF-zone countries → compact form: city + commune/quartier
 //   (with autocomplete) + landmark (details) + optional street.
 // - Western / postal countries → full form: street + city + postal code
 //   + region (optional).
-// The form switches instantly when the country changes.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -164,7 +164,6 @@ export function AddressFormSheet({
           {initial ? t("address.edit") : t("address.add")}
         </h2>
 
-        <Field label={t("address.fields.label")} value={form.label} onChange={(v) => setForm((s) => ({ ...s, label: v }))} />
         <Field required label={t("address.fields.fullName")} value={form.full_name} onChange={(v) => setForm((s) => ({ ...s, full_name: v }))} />
         <Field required label={t("address.fields.phone")} value={form.phone} onChange={(v) => setForm((s) => ({ ...s, phone: v }))} inputMode="tel" />
 
@@ -305,6 +304,13 @@ export function AddressFormSheet({
             <Field label={t("address.fields.details")} value={form.details} onChange={(v) => setForm((s) => ({ ...s, details: v }))} />
           </>
         )}
+
+        <Field
+          label={t("address.fields.label")}
+          placeholder={t("address.fields.labelPlaceholder", { defaultValue: "Ex : Maison, Bureau…" })}
+          value={form.label}
+          onChange={(v) => setForm((s) => ({ ...s, label: v }))}
+        />
 
         <label className="flex items-center gap-2 py-1 text-[13px]">
           <input

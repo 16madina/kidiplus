@@ -238,11 +238,9 @@ export function RealLiveViewerScreen() {
     () => canDeliver({ settings: sellerSettings, sellerCountry, buyerCountry }),
     [sellerSettings, sellerCountry, buyerCountry],
   );
-  const deliveryBlockedLabel = eligibility.eligible
+  const deliveryBlockedLabel = eligibility.eligible || eligibility.reason === "no_address"
     ? undefined
-    : eligibility.reason === "no_address"
-      ? t("delivery.noAddressBlock")
-      : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
+    : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
 
 
   
@@ -663,7 +661,7 @@ export function RealLiveViewerScreen() {
     if (secondsLeft <= 0) return;
     if (!eligibility.eligible) {
       if (eligibility.reason === "no_address") {
-        toast.error(deliveryBlockedLabel!);
+        toast.error(t("delivery.noAddressBlock"));
         setAddressFormOpen(true);
         return;
       }
@@ -761,7 +759,7 @@ export function RealLiveViewerScreen() {
     if (!active?.liveId || !active?.sellerId) return;
     if (!eligibility.eligible) {
       if (eligibility.reason === "no_address") {
-        toast.error(deliveryBlockedLabel!);
+        toast.error(t("delivery.noAddressBlock"));
         setAddressFormOpen(true);
         return;
       }

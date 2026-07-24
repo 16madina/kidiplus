@@ -1369,7 +1369,8 @@
     "saved": "Adresse enregistrée",
     "confirmDelete": "Supprimer cette adresse ?",
     "fields": {
-      "label": "Nom (Maison, Bureau…)",
+      "label": "Nom de l'adresse (optionnel)",
+      "labelPlaceholder": "Ex : Maison, Bureau…",
       "fullName": "Nom complet",
       "phone": "Téléphone",
       "country": "Pays",

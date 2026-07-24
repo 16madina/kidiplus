@@ -4,9 +4,8 @@
 // seller's delivery settings + country and a buyer's default-address
 // country, can the buyer bid/buy in this live?
 //
-// A missing buyer address ALWAYS blocks. Otherwise one viewer with no
-// address can bid while another is stopped at checkout ("add an address"),
-// and country coverage cannot be evaluated fairly.
+// Missing address returns reason "no_address". The live CTA stays the
+// normal bid/buy button; the first click opens the address form.
 
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { zonesForCountry } from "@/lib/delivery";
