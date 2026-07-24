@@ -380,8 +380,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }
         if (attempt < 3) await new Promise((r) => setTimeout(r, 1200));
       }
+      toast.error(
+        t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
+      );
+      endingRef.current = null;
+      // Opportunistic server sweeper as last resort (host offline path).
+      try {
+        await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+          .rpc("settle_expired_auctions", { _live_id: b.liveId });
+      } catch { /* ignore */ }
     })();
-  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar, t]);
   // ---- Sudden-death / anti-snipe extension ----
   // Whenever a new realtime bid lands on the active auction with less than
   // AUCTION_EXTENSION_WINDOW seconds remaining, extend the deadline to
@@ -643,6 +652,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
+    if (activeAuction && activeAuction.productId !== p.id) {
+      toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
+      return;
+    }
     haptic.medium();
     setFeaturedId(p.id);
     // Relaunch / rejouer — allow this product back onto the star card.
@@ -660,7 +673,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     let res = await startAuctionInDb(p.id);
     if (!res.ok || !res.deadlineMs) res = await startAuctionInDb(p.id);
     if (!res.ok || !res.deadlineMs) {
-      toast.error(res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère"));
+      const err = res.error ?? "";
+      toast.error(
+        err === "auction_already_running"
+          ? t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord.")
+          : (res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère")),
+      );
       return;
     }
     room.broadcastAuctionStart({
@@ -703,7 +721,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       endId,
       ts: Date.now(),
     });
-    const res = await finalizeAuctionInDb({
+    let res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    if (!res.ok) res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    if (!res.ok) res = await finalizeAuctionInDb({
       liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
     });
     if (res.ok) {
@@ -724,6 +748,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ts: Date.now(),
       });
     } else {
+      toast.error(
+        res.error ??
+          t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
+      );
+      endingRef.current = null;
       void resolveWinnerAvatar(winnerId);
     }
   };
@@ -1776,6 +1805,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                         >
                           {t("live.endAuction")}
                         </Press>
+                      ) : activeAuction ? (
+                        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground">
+                          {t("live.waitOtherAuction", "Enchère en cours")}
+                        </span>
                       ) : (
                         <Press
                           onClick={() => { void startAuction(p); setProductsOpen(false); }}

@@ -815,6 +815,10 @@ export function RealLiveViewerScreen() {
         }));
         return;
       }
+      if (res.error === "auction_ended" || res.error === "auction_not_active") {
+        toast.error(t("live.auctionEndedBid", "L'enchère est terminée."));
+        return;
+      }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
       return;
     }
@@ -1105,7 +1109,9 @@ export function RealLiveViewerScreen() {
       </div>
 
 
-      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 138px)" }}>
+      {/* z-[28] sits above the pager drag layer (z-25) so chat scroll / report /
+          reply stay tappable; composer chrome below remains z-30. */}
+      <div className="absolute inset-x-0 z-[28]" style={{ bottom: "calc(env(safe-area-inset-bottom) + 138px)" }}>
         <LiveChat
           messages={messages}
           bottomOffset={0}

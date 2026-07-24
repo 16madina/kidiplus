@@ -565,11 +565,16 @@ export function useLiveRoom(params: {
 
   // Periodic rescue: some Android/iOS WebViews drop realtime frames. If the
   // DB says an auction is active but we have no local auctionStart (or the
-  // wrong product), adopt it so the bid CTA unlocks.
+  // wrong product), adopt it so the bid CTA unlocks. Also opportunistically
+  // settle auctions whose deadline passed while the host was offline.
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
+    let settleCooldownUntil = 0;
     const rescue = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
       const { data, error } = await supabase
         .from("live_products")
         .select("id, mode, status, auction_deadline_at, timer_seconds, auction_round, updated_at")
@@ -586,6 +591,24 @@ export function useLiveRoom(params: {
         return;
       }
       if (!data) return;
+      const deadlineMs = data.auction_deadline_at
+        ? new Date(data.auction_deadline_at).getTime()
+        : 0;
+      // Past deadline by >20s → ask the server sweeper to settle (host offline).
+      if (deadlineMs > 0 && deadlineMs < Date.now() - 20_000 && Date.now() >= settleCooldownUntil) {
+        settleCooldownUntil = Date.now() + 30_000;
+        try {
+          await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+            .rpc("settle_expired_auctions", { _live_id: liveId });
+        } catch {
+          /* ignore — next tick retries */
+        }
+        // Unstick local UI if the host never finalized (zombie 00:01).
+        if (deadlineMs < Date.now() - 120_000) {
+          setAuctionStart((cur) => (cur && cur.productId === data.id ? null : cur));
+        }
+        return;
+      }
       if (!tryAdoptAuctionStart(auctionStartFromProduct(data))) return;
       // Keep product row fresh so the star card matches the running auction.
       setProducts((prev) => {
@@ -612,7 +635,9 @@ export function useLiveRoom(params: {
       });
     };
     void rescue();
-    const timer = window.setInterval(() => { void rescue(); }, 1500);
+    // 8s (was 1.5s): realtime + visibility rescue cover the fast path; this
+    // poll is a safety net and must not keep the radio awake every 1.5s.
+    const timer = window.setInterval(() => { void rescue(); }, 8_000);
     const onVis = () => {
       if (document.visibilityState === "visible") void rescue();
     };
@@ -629,6 +654,7 @@ export function useLiveRoom(params: {
   // Broadcast + presence channel.
   useEffect(() => {
     if (!liveId) return;
+    let dead = false;
     const ch = supabase.channel(`live:${liveId}`, {
       config: { presence: { key: identity } },
     });
@@ -877,11 +903,14 @@ export function useLiveRoom(params: {
         // ourselves with exponential backoff so a network blip during a
         // live doesn't kill chat/hearts/presence for the rest of the
         // session. 15s ceiling keeps recovery fast without stampeding.
+        // `dead` stops removeChannel's own CLOSED from arming a zombie retry.
+        if (dead) return;
         readyRef.current = false;
         setReady(false);
         if (retryTimer != null) return;
         retryTimer = setTimeout(() => {
           retryTimer = null;
+          if (dead) return;
           try { void ch.subscribe(); } catch { /* channel already gone */ }
         }, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 15_000);
@@ -890,7 +919,9 @@ export function useLiveRoom(params: {
 
 
     return () => {
+      dead = true;
       if (retryTimer != null) clearTimeout(retryTimer);
+      retryTimer = null;
       readyRef.current = false;
       setReady(false);
       setPresentViewers([]);

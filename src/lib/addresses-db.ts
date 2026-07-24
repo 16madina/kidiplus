@@ -41,7 +41,16 @@ export async function fetchDefaultAddress(userId: string): Promise<AddressRow | 
     .eq("user_id", userId)
     .eq("is_default", true)
     .maybeSingle();
-  return (data ?? null) as AddressRow | null;
+  if (data) return data as AddressRow;
+  // Fallback for legacy rows never marked default.
+  const { data: anyAddr } = await sb
+    .from("addresses")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (anyAddr ?? null) as AddressRow | null;
 }
 
 export type AddressInput = {
@@ -62,6 +71,16 @@ export async function createAddress(
   userId: string,
   input: AddressInput,
 ): Promise<{ ok: true; address: AddressRow } | { ok: false; error: string }> {
+  // First address becomes default automatically — otherwise the live delivery
+  // gate keeps seeing "no_address" even after the buyer just typed one.
+  let makeDefault = !!input.is_default;
+  if (!makeDefault) {
+    const { count } = await sb
+      .from("addresses")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    makeDefault = (count ?? 0) === 0;
+  }
   const { data, error } = await sb
     .from("addresses")
     .insert({
@@ -76,7 +95,7 @@ export async function createAddress(
       postal_code: (input.postal_code ?? "").trim() || null,
       region: (input.region ?? "").trim() || null,
       details: (input.details ?? "").trim() || null,
-      is_default: !!input.is_default,
+      is_default: makeDefault,
     })
     .select("*")
     .single();

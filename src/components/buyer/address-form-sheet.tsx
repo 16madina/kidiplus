@@ -95,7 +95,10 @@ export function AddressFormSheet({
         label: "", full_name: "", phone: "", country: c,
         city: "", zone_or_commune: "", street_address: "",
         postal_code: "", region: "", details: "",
-        is_default: false,
+        // New addresses default to "primary" so the live delivery gate sees
+        // the country immediately (createAddress also forces this when the
+        // user has zero addresses).
+        is_default: true,
       });
     }
     setCountryOpen(false);
