@@ -806,16 +806,21 @@ export async function placeBidInDb(args: {
   return { ok: true, amount: Number(result.amount) };
 }
 
+/** @deprecated Prefer createLiveOrder from orders-db — kept for legacy callers. */
 export async function purchaseFixedPriceRpc(
   productId: string,
-  buyerIdentity: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.rpc("purchase_fixed_price", {
+  _buyerIdentity?: string,
+): Promise<{ ok: boolean; error?: string; orderId?: string }> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (n: string, a: object) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("purchase_fixed_price", {
     _product_id: productId,
-    _buyer_identity: buyerIdentity,
+    _buyer_identity: _buyerIdentity ?? null,
   });
   if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = (data ?? {}) as { ok?: boolean; error?: string; order_id?: string };
+  if (!r.ok) return { ok: false, error: r.error ?? "purchase_failed" };
+  return { ok: true, orderId: r.order_id };
 }
 
 // -------------------------------------------------------------------------

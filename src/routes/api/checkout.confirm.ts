@@ -87,17 +87,39 @@ export const Route = createFileRoute("/api/checkout/confirm")({
         // return ok. Double-check buyer server-side (metadata could be stale).
         const { data: order } = await admin
           .from("orders")
-          .select("id, buyer_id, status")
+          .select("id, buyer_id, status, payment_method, stripe_payment_intent_id")
           .eq("id", orderId)
           .maybeSingle();
         if (!order) return json({ error: "order_not_found" }, 404, origin);
         if (order.buyer_id !== userId) return json({ error: "forbidden" }, 403, origin);
 
+        // Already paid by wallet (or another PI) — refund this card capture.
+        if (
+          order.status === "paid" &&
+          order.stripe_payment_intent_id &&
+          order.stripe_payment_intent_id !== intent.id
+        ) {
+          try {
+            await stripe.refunds.create({
+              payment_intent: intent.id,
+              reason: "duplicate",
+            });
+          } catch {
+            /* ignore — Stripe dashboard shows the refund attempt */
+          }
+          return json({ ok: true, orderId, status: "paid", refunded_duplicate: true }, 200, origin);
+        }
+
         let paid = order.status === "paid";
         if (!paid) {
           const { data: upd } = await admin
             .from("orders")
-            .update({ status: "paid", paid_at: new Date().toISOString(), stripe_payment_intent_id: intent.id })
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              stripe_payment_intent_id: intent.id,
+              payment_method: "card",
+            })
             .eq("id", orderId)
             .neq("status", "paid")
             .select("id");

@@ -17,9 +17,8 @@ import { pushStatusBarLight } from "@/lib/native";
 import { liveShareUrl } from "@/lib/deep-links";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
-import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
-import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
-import { resolveDeliveryForCheckout } from "@/lib/delivery-checkout";
+import { placeBidInDb, type LiveProductRow } from "@/lib/lives-db";
+import { createLiveOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
 import { fetchDeliverySettings } from "@/lib/delivery-db";
 import { fetchDefaultAddress } from "@/lib/addresses-db";
 import { canDeliver } from "@/lib/delivery-eligibility";
@@ -30,7 +29,6 @@ import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/l
 import {
   conditionLabel,
   formatProductMetaLine,
-  itemNameWithVariant,
   variantSelectionState,
 } from "@/lib/live-product-options";
 import { LiveChat } from "./live-chat";
@@ -604,54 +602,26 @@ export function RealLiveViewerScreen() {
           if (!prodRow || !active?.sellerId || !active?.liveId) return;
           void (async () => {
             if (settledEndIdsRef.current.has(endId)) return;
-            const dr = await resolveDeliveryForCheckout({
-              sellerId: active.sellerId!,
-              buyerId: user.id,
-            });
-            if (!dr.ok) {
-              const msg =
-                dr.reason === "no_address"
-                  ? t("delivery.noAddressBlock")
-                  : t("delivery.zoneMismatch");
-              toast.error(msg);
-              return;
-            }
-            if (settledEndIdsRef.current.has(endId)) return;
             settledEndIdsRef.current.add(endId);
             const colors = prodRow.colors ?? [];
             const sizes = prodRow.sizes ?? [];
             const sel = variantSelectionState(colors, sizes);
             const variant =
               sel.needsPick ? undefined : { color: sel.color, size: sel.size };
-            const res = await createPendingOrder({
-              buyerId: user.id,
-              sellerId: active.sellerId!,
-              liveId: active.liveId!,
+            // Server derives price/fees/delivery — client cannot forge amounts.
+            const res = await createLiveOrder({
               productId: prodRow.id,
               kind: "auction",
-              itemName: itemNameWithVariant(
-                prodRow.name,
-                variant?.color,
-                variant?.size,
-              ),
-              itemImage: prodRow.image_url,
-              amount: evt.finalPrice,
-              currency: liveCurrency,
-              deliveryFee: dr.delivery.deliveryFee,
-              deliveryMode: dr.delivery.deliveryMode,
-              deliveryZone: dr.delivery.deliveryZone,
-              addressId: dr.delivery.addressId,
-              addressSnapshot: {
-                ...(dr.delivery.addressSnapshot ?? {}),
-                item_base_name: prodRow.name,
-                product_options: {
-                  color: variant?.color ?? null,
-                  size: variant?.size ?? null,
-                },
-              },
+              color: variant?.color ?? null,
+              size: variant?.size ?? null,
             });
             if (res.ok) setPendingOrder(res.order);
-            else toast.error(res.error);
+            else if (res.error === "no_address") {
+              toast.error(t("delivery.noAddressBlock"));
+              setAddressFormOpen(true);
+            } else {
+              toast.error(res.error);
+            }
           })();
         }, 3500);
       }
@@ -819,6 +789,19 @@ export function RealLiveViewerScreen() {
         toast.error(t("live.auctionEndedBid", "L'enchère est terminée."));
         return;
       }
+      if (res.error === "no_address") {
+        toast.error(t("delivery.noAddressBlock"));
+        setAddressFormOpen(true);
+        return;
+      }
+      if (
+        res.error === "no_country_coverage" ||
+        res.error === "courier_country_mismatch" ||
+        res.error === "delivery_blocked"
+      ) {
+        toast.error(t("delivery.noCountryCoverage"));
+        return;
+      }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
       return;
     }
@@ -835,9 +818,8 @@ export function RealLiveViewerScreen() {
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
 
-  // Fixed-price flow: optional variant pick → reserve stock → payment sheet.
-  // Note (phase 1): if the buyer abandons payment, stock is not automatically
-  // returned. A future phase should refund stock on payment_intent.canceled.
+  // Fixed-price flow: optional variant pick → server creates order (stock +
+  // fees + delivery). Abandoned payments restore stock via expire_overdue_orders.
   const [variantPick, setVariantPick] = useState<{
     product: LiveProductRow;
     colors: string[];
@@ -860,51 +842,26 @@ export function RealLiveViewerScreen() {
       toast.error(deliveryBlockedLabel!);
       return;
     }
-    // Resolve delivery BEFORE reserving stock so we don't hold stock the
-    // buyer can't actually pay for.
-    const dr = await resolveDeliveryForCheckout({
-      sellerId: active.sellerId,
-      buyerId: user.id,
-    });
-    if (!dr.ok) {
-      const msg =
-        dr.reason === "no_address"
-          ? t("delivery.noAddressBlock")
-          : dr.reason === "no_country_coverage"
-            ? t("delivery.noCountryCoverage")
-            : t("delivery.zoneMismatch");
-      toast.error(msg);
-      if (dr.reason === "no_address") setAddressFormOpen(true);
-      return;
-    }
-    const res = await purchaseFixedPriceRpc(p.id, user.id);
-    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
-    const snap = {
-      ...(dr.delivery.addressSnapshot ?? {}),
-      item_base_name: p.name,
-      product_options: {
-        color: variant?.color ?? null,
-        size: variant?.size ?? null,
-      },
-    };
-    const order = await createPendingOrder({
-      buyerId: user.id,
-      sellerId: active.sellerId,
-      liveId: active.liveId,
+    const order = await createLiveOrder({
       productId: p.id,
       kind: "fixed",
-      itemName: itemNameWithVariant(p.name, variant?.color, variant?.size),
-      itemImage: p.image_url,
-      amount: Number(p.price),
-      currency: liveCurrency,
-      deliveryFee: dr.delivery.deliveryFee,
-      deliveryMode: dr.delivery.deliveryMode,
-      deliveryZone: dr.delivery.deliveryZone,
-      addressId: dr.delivery.addressId,
-      addressSnapshot: snap,
+      color: variant?.color ?? null,
+      size: variant?.size ?? null,
     });
-    if (order.ok) setPendingOrder(order.order);
-    else toast.error(order.error);
+    if (order.ok) {
+      setPendingOrder(order.order);
+      return;
+    }
+    if (order.error === "no_address") {
+      toast.error(t("delivery.noAddressBlock"));
+      setAddressFormOpen(true);
+      return;
+    }
+    if (order.error === "no_country_coverage" || order.error === "courier_country_mismatch") {
+      toast.error(t("delivery.noCountryCoverage"));
+      return;
+    }
+    toast.error(order.error === "out_of_stock" ? t("live.outOfStock", "Rupture de stock") : (order.error ?? "Achat impossible"));
   };
 
   const startFixedPurchase = async (p: LiveProductRow) => {

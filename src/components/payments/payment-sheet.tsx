@@ -31,6 +31,7 @@ import { payOrderWithWallet } from "@/lib/wallet-db";
 import { convertMoney, formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import {
+  cancelOrderPaymentIntent,
   confirmOrderPayment,
   markPendingOrder,
   clearPendingOrder,
@@ -383,6 +384,9 @@ export function PaymentSheet({
                         if (r.ok) {
                           haptic.success();
                           setState({ kind: "done" });
+                          // Cancel any Stripe PI created when the sheet opened
+                          // so a card confirm cannot double-charge.
+                          void cancelOrderPaymentIntent(order.id);
                           const debitLabel =
                             r.debitAmount !== undefined && r.debitCurrency
                               ? formatMoney(r.debitAmount, r.debitCurrency, i18n.language)

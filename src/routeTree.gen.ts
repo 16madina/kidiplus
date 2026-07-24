@@ -64,6 +64,7 @@ import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/r
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -354,6 +355,11 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiCheckoutCancelIntentRoute = ApiCheckoutCancelIntentRouteImport.update({
+  id: '/cancel-intent',
+  path: '/cancel-intent',
+  getParentRoute: () => ApiCheckoutRoute,
+} as any)
 const ApiAdminTestPushRoute = ApiAdminTestPushRouteImport.update({
   id: '/api/admin/test-push',
   path: '/api/admin/test-push',
@@ -441,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
+  '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
@@ -507,6 +514,7 @@ export interface FileRoutesByTo {
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
+  '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
@@ -574,6 +582,7 @@ export interface FileRoutesById {
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
+  '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
@@ -642,6 +651,7 @@ export interface FileRouteTypes {
     | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
+    | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
+    | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/sell/onboarding'
     | '/api/account/delete'
     | '/api/admin/test-push'
+    | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
@@ -1254,6 +1266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
     }
+    '/api/checkout/cancel-intent': {
+      id: '/api/checkout/cancel-intent'
+      path: '/cancel-intent'
+      fullPath: '/api/checkout/cancel-intent'
+      preLoaderRoute: typeof ApiCheckoutCancelIntentRouteImport
+      parentRoute: typeof ApiCheckoutRoute
+    }
     '/api/admin/test-push': {
       id: '/api/admin/test-push'
       path: '/api/admin/test-push'
@@ -1321,10 +1340,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface ApiCheckoutRouteChildren {
+  ApiCheckoutCancelIntentRoute: typeof ApiCheckoutCancelIntentRoute
   ApiCheckoutConfirmRoute: typeof ApiCheckoutConfirmRoute
 }
 
 const ApiCheckoutRouteChildren: ApiCheckoutRouteChildren = {
+  ApiCheckoutCancelIntentRoute: ApiCheckoutCancelIntentRoute,
   ApiCheckoutConfirmRoute: ApiCheckoutConfirmRoute,
 }
 
@@ -1424,3 +1445,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
