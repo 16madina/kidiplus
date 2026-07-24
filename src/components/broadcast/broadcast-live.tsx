@@ -210,9 +210,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured auto-advances FORWARD only. When the current featured is
-  // finished (sold / unsold / out) or retired this session, we pick the next
-  // product by ascending position — never loop back to an earlier item.
+  // Featured auto-advances FORWARD only when a next article exists.
+  // If the current one finishes and there is no next, keep it on the star
+  // card so the host can relaunch without re-adding from the shop.
   const isFeaturedDone = (p: { id: string; status: string }) =>
     retiredFeaturedIds.includes(p.id) ||
     p.status === "sold" ||
@@ -231,7 +231,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const curIdx = cur ? sorted.findIndex((p) => p.id === cur.id) : -1;
     const next = sorted.slice(Math.max(curIdx, -1) + 1).find((p) => !isFeaturedDone(p));
     const fallback = sorted.find((p) => !isFeaturedDone(p));
-    setFeaturedId(next?.id ?? fallback?.id ?? "");
+    if (next || fallback) {
+      setFeaturedId(next?.id ?? fallback!.id);
+      return;
+    }
+    // No next article — keep the finished one featured for relaunch.
+    if (cur) return;
+    setFeaturedId(sorted[sorted.length - 1]?.id ?? "");
   }, [room.products, featuredId, retiredFeaturedIds]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
@@ -447,15 +453,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       if (first) seenEndIdsRef.current.delete(first);
     }
     const prod = productsRef.current.find((p) => p.id === evt.productId);
-    // Retire this article from the star card and jump to the next playable one.
-    const retired = new Set(retiredFeaturedIds);
-    retired.add(evt.productId);
-    setRetiredFeaturedIds((prev) =>
-      prev.includes(evt.productId) ? prev : [...prev, evt.productId],
-    );
+    // If a next article exists, retire this one and advance. Otherwise keep
+    // it on the star card so the host can relaunch immediately.
     {
       const sorted = [...productsRef.current].sort((a, b) => a.position - b.position);
       const idx = sorted.findIndex((p) => p.id === evt.productId);
+      const retired = new Set(retiredFeaturedIds);
+      retired.add(evt.productId);
       const isPlayable = (p: (typeof sorted)[number]) =>
         !retired.has(p.id) &&
         p.status !== "sold" &&
@@ -463,7 +467,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         p.status !== "unsold";
       const next = sorted.slice(idx + 1).find(isPlayable);
       const fallback = sorted.find(isPlayable);
-      setFeaturedId(next?.id ?? fallback?.id ?? "");
+      if (next || fallback) {
+        setRetiredFeaturedIds((prev) =>
+          prev.includes(evt.productId) ? prev : [...prev, evt.productId],
+        );
+        setFeaturedId(next?.id ?? fallback!.id);
+      } else {
+        setFeaturedId(evt.productId);
+      }
     }
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
@@ -607,12 +618,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       p.status !== "sold" &&
       p.status !== "out" &&
       p.status !== "unsold";
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
     const byId = featuredId
       ? room.products.find((p) => p.id === featuredId)
       : undefined;
     if (byId && playable(byId)) return byId;
-    const sorted = [...room.products].sort((a, b) => a.position - b.position);
-    return sorted.find(playable) ?? null;
+    const nextPlayable = sorted.find(playable) ?? null;
+    if (nextPlayable) return nextPlayable;
+    // No upcoming article left — keep the finished featured item for relaunch.
+    if (byId) return byId;
+    return sorted[sorted.length - 1] ?? null;
   }, [room.products, featuredId, retiredFeaturedIds]);
 
   const startAuction = async (p: LiveProductRow) => {
@@ -1410,45 +1425,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                     className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10px] font-bold text-[#10162B]"
                   >
                     {featured.mode === "auction"
-                      ? `${t("live.startAuction")} ▸`
+                      ? (featured.status === "sold" || featured.status === "unsold"
+                          ? `${t("live.startAuctionAgain", "Rejouer")} ▸`
+                          : `${t("live.startAuction")} ▸`)
                       : t("live.listForSale")}
                   </Press>
                 </>
               )}
             </div>
           </motion.button>
-        ) : room.products.length > 0 ? (
-          <motion.div
-            key="all-done"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="absolute z-30"
-            style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
-              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
-            }}
-          >
-            <div
-              className="w-28 rounded-2xl p-1.5 text-center text-white"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.55)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="text-[11px] font-semibold leading-snug">
-                {t("live.allDone", "Tous les articles sont passés")}
-              </div>
-              <Press
-                onClick={() => { haptic.selection(); setAddOpen(true); }}
-                className="!min-h-7 mt-1.5 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
-              >
-                {t("live.addProduct", "Ajouter")}
-              </Press>
-            </div>
-          </motion.div>
         ) : null}
       </AnimatePresence>
 

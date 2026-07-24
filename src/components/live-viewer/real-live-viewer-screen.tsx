@@ -1208,7 +1208,7 @@ export function RealLiveViewerScreen() {
         ) : (
           !liveEnded && room.products.length > 0 ? (
             <div
-              className="rounded-full px-3 py-2 text-center text-[12px] font-semibold text-white/90"
+              className="rounded-full px-3 py-2.5 text-center text-[13px] font-semibold text-white/90"
               style={{
                 backgroundColor: "rgba(0,0,0,0.32)",
                 backdropFilter: "blur(10px)",
@@ -1216,7 +1216,7 @@ export function RealLiveViewerScreen() {
                 border: "1px solid rgba(255,255,255,0.14)",
               }}
             >
-              ✨ {t("live.allSold", "Tous les articles sont passés")}
+              {t("live.waitingForSeller")}
             </div>
           ) : null
         )}
