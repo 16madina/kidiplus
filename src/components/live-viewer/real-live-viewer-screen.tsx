@@ -738,7 +738,7 @@ export function RealLiveViewerScreen() {
     if (liveEnded) return;
     if (!currentProduct || currentProduct.mode !== "auction" || !auctionIsLive) return;
     if (!user) { openAuth(); return; }
-    if (secondsLeft <= 0) return;
+    // Local clock may already read 0 while DB status is still active — still allow.
     if (!eligibility.eligible) {
       if (eligibility.reason === "no_address") {
         toast.error(t("delivery.noAddressBlock"));

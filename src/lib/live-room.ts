@@ -600,9 +600,16 @@ export function useLiveRoom(params: {
     };
     void rescue();
     const timer = window.setInterval(() => { void rescue(); }, 1500);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void rescue();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
     return () => {
       alive = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
     };
   }, [liveId]);
 
@@ -650,17 +657,48 @@ export function useLiveRoom(params: {
     ch.on("broadcast", { event: "auction:start" }, ({ payload }) => {
       const evt = payload as AuctionStartEvt;
       if (!evt?.productId || !Number.isFinite(Number(evt.deadlineMs))) return;
-      setAuctionStart({
+      const local: AuctionStartEvt = {
         productId: evt.productId,
         deadlineMs: Number(evt.deadlineMs),
         timerSec: Math.max(1, Number(evt.timerSec ?? 30)),
-      });
+      };
+      setAuctionStart(local);
       // Fresh auction round: any lastBid from the previous round MUST NOT
       // carry over — otherwise the host would auto-finalize with the
       // previous winner, and the viewer UI would still show them as the
       // current highest bidder (which is exactly the "previous winner
       // blocked from bidding" symptom on the client side).
       setLastBid((cur) => (cur && cur.productId === evt.productId ? null : cur));
+      // Prefer the absolute server deadline (start_auction RPC) over the
+      // broadcast payload — host/viewer phone clocks often disagree.
+      void (async () => {
+        const { data } = await supabase
+          .from("live_products")
+          .select("id, mode, status, auction_deadline_at, timer_seconds")
+          .eq("id", evt.productId)
+          .maybeSingle();
+        if (!data) return;
+        const adopted = auctionStartFromProduct(data);
+        if (!adopted || !canAdoptAuctionStart(adopted.productId)) return;
+        setAuctionStart((cur) => {
+          if (cur && cur.productId === adopted.productId && cur.deadlineMs === adopted.deadlineMs) {
+            return cur;
+          }
+          return adopted;
+        });
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === data.id
+              ? {
+                  ...p,
+                  status: (data.status as LiveProductRow["status"]) ?? p.status,
+                  auction_deadline_at: data.auction_deadline_at,
+                  timer_seconds: data.timer_seconds ?? p.timer_seconds,
+                }
+              : p,
+          ),
+        );
+      })();
     });
     ch.on("broadcast", { event: "auction:end" }, ({ payload }) => {
       const evt = payload as AuctionEndEvt;
@@ -669,23 +707,39 @@ export function useLiveRoom(params: {
         endId: evt.endId || uid(),
         ts: evt.ts ?? Date.now(),
       };
-      setLastAuctionEnd(full);
-      setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
-      setProducts((prev) =>
-        prev.map((p) => {
-          if (p.id !== full.productId) return p;
-          if (p.status === "sold" || p.status === "out" || p.status === "unsold") return p;
-          const won = !!(full.winnerId && full.winnerName);
-          return {
-            ...p,
-            status: won ? "sold" : "unsold",
-            sold_to_identity: won ? full.winnerName : null,
-            final_price: won ? full.finalPrice : null,
-            price: won ? Number(full.finalPrice ?? p.price) : p.start_price,
-            auction_deadline_at: null,
-          };
-        }),
-      );
+      // Confirm with DB — a stale/replayed end must not freeze viewers on
+      // "waiting for seller" while the auction is still active for others.
+      void (async () => {
+        const { data } = await supabase
+          .from("live_products")
+          .select("id, mode, status, auction_deadline_at, timer_seconds")
+          .eq("id", full.productId)
+          .maybeSingle();
+        if (data && auctionStartFromProduct(data)) {
+          const adopted = auctionStartFromProduct(data)!;
+          if (canAdoptAuctionStart(adopted.productId)) {
+            setAuctionStart(adopted);
+            return;
+          }
+        }
+        setLastAuctionEnd(full);
+        setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));
+        setProducts((prev) =>
+          prev.map((p) => {
+            if (p.id !== full.productId) return p;
+            if (p.status === "sold" || p.status === "out" || p.status === "unsold") return p;
+            const won = !!(full.winnerId && full.winnerName);
+            return {
+              ...p,
+              status: won ? "sold" : "unsold",
+              sold_to_identity: won ? full.winnerName : null,
+              final_price: won ? full.finalPrice : null,
+              price: won ? Number(full.finalPrice ?? p.price) : p.start_price,
+              auction_deadline_at: null,
+            };
+          }),
+        );
+      })();
     });
     ch.on("broadcast", { event: "auction:extend" }, ({ payload }) => {
       const evt = payload as AuctionExtendEvt;

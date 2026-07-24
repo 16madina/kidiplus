@@ -59,14 +59,20 @@ export function AuctionCard({
   const cur: Currency = normalizeCurrency(currency);
   const locale = i18n.language;
   const isAuction = product.mode === "auction";
-  const urgent = secondsLeft <= 10;
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const ss = String(secondsLeft % 60).padStart(2, "0");
+  // Keep a 1s floor on the dial while auctionActive — avoids "00:00 / terminée"
+  // on phones whose clock is ahead of the server deadline.
+  const displayLeft = auctionActive && secondsLeft <= 0 ? 1 : secondsLeft;
+  const urgent = displayLeft <= 10;
+  const mm = String(Math.floor(displayLeft / 60)).padStart(2, "0");
+  const ss = String(displayLeft % 60).padStart(2, "0");
   const nextBid = nextBidAmount(product.price, cur);
   const convHint = viewerCurrency ? approxLabel(product.price, cur, viewerCurrency, locale) : "";
   const deliveryBlocked = Boolean(deliveryBlockedLabel);
+  // Don't gate on local secondsLeft — phone clocks drift and were locking
+  // viewers on "Fin de l'enchère" while friends still bid. `auctionActive`
+  // (DB/broadcast) is the source of truth until the host finalizes.
   const canBid =
-    auctionActive && secondsLeft > 0 && !isHighestBidder && !disabled && !deliveryBlocked;
+    auctionActive && !isHighestBidder && !disabled && !deliveryBlocked;
 
   const glass = {
     backgroundColor: "rgba(0, 0, 0, 0.32)",
@@ -80,7 +86,6 @@ export function AuctionCard({
     if (canBid) return t("live.bidAt", { amount: formatMoney(nextBid, cur, locale) });
     if (deliveryBlocked) return deliveryBlockedLabel;
     if (disabled) return t("live.ended");
-    if (auctionActive && secondsLeft <= 0) return t("live.auctionEnding", "Fin de l'enchère…");
     return t("live.waitingForSeller");
   })();
 
@@ -220,7 +225,7 @@ export function AuctionCard({
               )}
             </Press>
           </div>
-          {auctionActive && urgent && secondsLeft > 0 ? (
+          {auctionActive && urgent && displayLeft > 0 ? (
             <p
               className="text-center text-[10px] font-semibold leading-none"
               style={{ color: "oklch(0.86 0.12 85)" }}
