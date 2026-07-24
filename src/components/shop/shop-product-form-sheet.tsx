@@ -11,6 +11,7 @@ import {
   updateShopProduct,
   uploadShopProductImage,
   resolveShopImage,
+  formatShopError,
   MAX_SHOP_IMAGES,
   MIN_SHOP_IMAGES,
   type ShopProduct,
@@ -108,7 +109,7 @@ export function ShopProductFormSheet({
       const path = await uploadShopProductImage(f, user.id);
       setSlots((prev) => prev.map((s, i) => (i === idx ? { path, preview: localUrl } : s)));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(formatShopError(err));
       setSlots((prev) => prev.filter((_, i) => i !== idx));
       try { URL.revokeObjectURL(localUrl); } catch { /* ignore */ }
     } finally {
@@ -197,7 +198,7 @@ export function ShopProductFormSheet({
       haptic.success();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(formatShopError(err));
     } finally {
       setSaving(false);
     }
@@ -207,7 +208,7 @@ export function ShopProductFormSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={92}>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-6">
+      <div className="flex flex-col px-5 pb-6">
         <div className="flex items-center justify-between pt-1 pb-4">
           <h2 className="text-[20px] font-bold">
             {editing ? t("shop.editItem", { defaultValue: "Modifier l'article" }) : t("shop.add", { defaultValue: "Ajouter un article" })}

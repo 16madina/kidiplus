@@ -216,7 +216,14 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   );
 
   return (
-    <PushScreen open={open} onClose={onClose} title={t("shop.title", { defaultValue: "Ma boutique" })} right={headerRight} zIndex={70}>
+    <PushScreen
+      open={open}
+      onClose={onClose}
+      title={t("shop.title", { defaultValue: "Ma boutique" })}
+      right={headerRight}
+      zIndex={70}
+      swipeBackEnabled={!formOpen && !detail}
+    >
       {/* Hero */}
       <div
         className="relative overflow-hidden"

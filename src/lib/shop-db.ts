@@ -179,32 +179,86 @@ export type ShopProductInput = {
   sizes?: string[];
 };
 
+/** Human-readable message from Supabase / Postgrest / plain objects. */
+export function formatShopError(err: unknown): string {
+  if (!err) return "Erreur inconnue";
+  if (typeof err === "string") return err;
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "object" && err !== null) {
+    const o = err as {
+      message?: unknown;
+      error?: unknown;
+      details?: unknown;
+      hint?: unknown;
+      code?: unknown;
+    };
+    const msg = [o.message, o.error, o.details, o.hint]
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter(Boolean)
+      .join(" — ");
+    if (msg) return msg;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      /* ignore */
+    }
+  }
+  return "Erreur inconnue";
+}
+
+function isMissingOptionsColumnError(err: unknown): boolean {
+  const msg = formatShopError(err).toLowerCase();
+  return (
+    msg.includes("brand") ||
+    msg.includes("condition") ||
+    msg.includes("colors") ||
+    msg.includes("sizes") ||
+    msg.includes("column") ||
+    msg.includes("schema cache")
+  );
+}
+
 export async function createShopProduct(
   sellerId: string,
   input: ShopProductInput,
 ): Promise<ShopProduct> {
   const images = (input.imagePaths ?? []).slice(0, MAX_SHOP_IMAGES);
   const cover = images[0] ?? null;
-  const { data, error } = await supabase
+  const base = {
+    seller_id: sellerId,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    image_url: cover,
+    images: images as unknown as never,
+    price: input.price,
+    currency: input.currency,
+    stock: input.stock,
+    active: true,
+  };
+  const withOptions = {
+    ...base,
+    brand: input.brand?.trim() || null,
+    condition: input.condition ?? null,
+    colors: parseStringArray(input.colors ?? []),
+    sizes: parseStringArray(input.sizes ?? []),
+  };
+
+  let { data, error } = await supabase
     .from("shop_products")
-    .insert({
-      seller_id: sellerId,
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      image_url: cover,
-      images: images as unknown as never,
-      price: input.price,
-      currency: input.currency,
-      stock: input.stock,
-      active: true,
-      brand: input.brand?.trim() || null,
-      condition: input.condition ?? null,
-      colors: parseStringArray(input.colors ?? []),
-      sizes: parseStringArray(input.sizes ?? []),
-    })
+    .insert(withOptions)
     .select("*")
     .single();
-  if (error || !data) throw error ?? new Error("insert failed");
+
+  // Migration not applied yet → save core fields so the shop still works.
+  if (error && isMissingOptionsColumnError(error)) {
+    ({ data, error } = await supabase
+      .from("shop_products")
+      .insert(base)
+      .select("*")
+      .single());
+  }
+
+  if (error || !data) throw new Error(formatShopError(error) || "insert failed");
   return rowToProduct(data as Record<string, unknown>);
 }
 
@@ -237,7 +291,22 @@ export async function updateShopProduct(id: string, patch: ShopUpdate): Promise<
     dbPatch.images = images;
     dbPatch.image_url = images[0] ?? null;
   }
-  await supabase.from("shop_products").update(dbPatch as never).eq("id", id);
+
+  const { error } = await supabase.from("shop_products").update(dbPatch as never).eq("id", id);
+  if (!error) return;
+
+  // Retry without option columns if migration isn't applied yet.
+  if (isMissingOptionsColumnError(error)) {
+    const fallback: Record<string, unknown> = { ...dbPatch };
+    delete fallback.brand;
+    delete fallback.condition;
+    delete fallback.colors;
+    delete fallback.sizes;
+    const retry = await supabase.from("shop_products").update(fallback as never).eq("id", id);
+    if (retry.error) throw new Error(formatShopError(retry.error));
+    return;
+  }
+  throw new Error(formatShopError(error));
 }
 
 export async function archiveShopProduct(id: string): Promise<void> {

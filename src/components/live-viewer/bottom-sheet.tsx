@@ -1,23 +1,28 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import type { ReactNode } from "react";
 import { EASE_IOS } from "@/lib/motion";
 
-// Reusable bottom sheet with drag-to-dismiss and dimmed backdrop.
+// Reusable bottom sheet with drag-to-dismiss (handle only) and dimmed backdrop.
 export function BottomSheet({
   open,
   onClose,
   children,
   heightPercent = 75,
+  /** Above PushScreen (70) by default so forms aren't trapped under the shop page. */
+  zIndex = 90,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   heightPercent?: number;
+  zIndex?: number;
 }) {
+  const dragControls = useDragControls();
+
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[70]">
+        <div className="fixed inset-0" style={{ zIndex }}>
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
@@ -35,8 +40,10 @@ export function BottomSheet({
             exit={{ y: "100%" }}
             transition={{ duration: 0.3, ease: EASE_IOS }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.6 }}
+            dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={(_, info) => {
               if (info.offset.y > 120 || info.velocity.y > 500) onClose();
             }}
@@ -46,10 +53,20 @@ export function BottomSheet({
               boxShadow: "0 -10px 40px rgba(0,0,0,0.35)",
             }}
           >
-            <div className="grid place-items-center pt-2.5 pb-1">
+            {/* Drag only from the grabber — scrolling the form must not close the sheet. */}
+            <div
+              className="grid shrink-0 touch-none place-items-center pt-2.5 pb-1"
+              onPointerDown={(e) => dragControls.start(e)}
+              aria-hidden
+            >
               <span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
             </div>
-            <div className="flex-1 overflow-y-auto">{children}</div>
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {children}
+            </div>
           </motion.div>
         </div>
       )}

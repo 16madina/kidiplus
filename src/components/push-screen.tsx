@@ -12,6 +12,8 @@ export function PushScreen({
   right,
   children,
   zIndex = 70,
+  /** Disable edge swipe-back while a modal/sheet is open on top. */
+  swipeBackEnabled = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,6 +21,7 @@ export function PushScreen({
   right?: ReactNode;
   children: ReactNode;
   zIndex?: number;
+  swipeBackEnabled?: boolean;
 }) {
   const [mountedKey] = useState(0);
   const x = useMotionValue(0);
@@ -36,6 +39,7 @@ export function PushScreen({
           transition={{ duration: 0.3, ease: EASE_IOS }}
         >
           {/* left-edge back swipe */}
+          {swipeBackEnabled ? (
           <motion.div
             className="absolute inset-y-0 left-0 z-40 w-5"
             drag="x"
@@ -47,6 +51,7 @@ export function PushScreen({
               else animate(x, 0, { duration: 0.22, ease: EASE_IOS });
             }}
           />
+          ) : null}
 
           <header
             className="relative z-30 shrink-0 pt-safe"
