@@ -22,6 +22,7 @@ import {
   Store,
   MapPin,
   Truck,
+  ReceiptText,
 } from "lucide-react";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
@@ -53,6 +54,7 @@ import { OrderItemImage } from "@/components/orders/order-item-image";
 import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchMyReviewedOrderIds } from "@/lib/reviews-db";
 import { SellerOrderDetailSheet } from "@/components/seller/order-detail-sheet";
+import { OrderInvoiceSheet } from "@/components/orders/order-invoice-sheet";
 import { CountryFlag } from "@/components/country-flag";
 import { countryName } from "@/lib/delivery-zones-data";
 
@@ -615,6 +617,7 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
   const { user } = useAuth();
   const meta = statusMeta(order.status);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   const isBuyer = !!user && user.id === order.buyer_id;
   const canReview = isBuyer && order.fulfillment_status === "delivered";
   const fm = FULFILL_META[order.fulfillment_status];
@@ -661,15 +664,29 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
         </div>
       </div>
 
+      {/* Buyer invoice: item + delivery = total. Platform/processing fees are
+          charged to the seller, never added on top of the buyer's total. */}
       <div className="rounded-2xl border border-border p-4">
         <Row label={t("pay.item")} value={formatMoney(Number(order.amount), order.currency, i18n.language)} />
-        <Row label={t("pay.platformFee")} value={formatMoney(Number(order.platform_fee), order.currency, i18n.language)} />
-        <Row label={t("pay.processingFee")} value={formatMoney(Number(order.processing_fee), order.currency, i18n.language)} />
-        {Number(order.delivery_fee) > 0 && (
-          <Row label={t("delivery.fee", { defaultValue: "Livraison" })} value={formatMoney(Number(order.delivery_fee), order.currency, i18n.language)} />
-        )}
+        {order.delivery_mode === "courier" ? (
+          <Row label={t("delivery.fee", { defaultValue: "Livraison" })} value={t("delivery.courierShort", { defaultValue: "au livreur" })} />
+        ) : Number(order.delivery_fee) > 0 ? (
+          <Row
+            label={
+              t("delivery.fee", { defaultValue: "Livraison" }) +
+              (order.delivery_zone ? ` · ${order.delivery_zone}` : "")
+            }
+            value={formatMoney(Number(order.delivery_fee), order.currency, i18n.language)}
+          />
+        ) : null}
         <div className="my-2 h-px bg-border" />
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency, i18n.language)} bold />
+        <Press
+          onClick={() => { haptic.selection(); setInvoiceOpen(true); }}
+          className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-[13px] font-semibold"
+        >
+          <ReceiptText size={14} /> {t("invoice.viewCta", { defaultValue: "Voir la facture" })}
+        </Press>
       </div>
 
       {/* Delivery address (buyer view) */}
@@ -733,6 +750,11 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
         orderId={order.id}
+      />
+      <OrderInvoiceSheet
+        order={order}
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
       />
     </div>
   );

@@ -82,8 +82,10 @@
     "entities": "4.5.0",
     "firebase": "^12.15.0",
     "framer-motion": "^12.42.2",
+    "html-to-image": "^1.11.13",
     "i18next": "^26.3.4",
     "input-otp": "^1.4.2",
+    "jspdf": "^4.2.1",
     "livekit-client": "^2.20.0",
     "livekit-server-sdk": "^2.16.0",
     "lucide-react": "^0.575.0",
@@ -105,7 +107,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.7.7",
     "@types/node": "^22.16.5",

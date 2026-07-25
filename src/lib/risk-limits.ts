@@ -13,16 +13,16 @@ export type RiskLimitKind = "topup" | "spend" | "gift_received" | "payout";
 
 /** Daily spend (wallet purchases + gifts sent) by tier + currency. */
 const DAILY_SPEND: Record<"new" | "trusted" | "kyc", Record<Currency, number>> = {
-  new: { XOF: 150_000, EUR: 200, CAD: 250 },
-  trusted: { XOF: 1_000_000, EUR: 1_500, CAD: 2_000 },
-  kyc: { XOF: 2_000_000, EUR: 3_000, CAD: 4_000 },
+  new: { XOF: 150_000, EUR: 200, CAD: 250, USD: 220, GBP: 180 },
+  trusted: { XOF: 1_000_000, EUR: 1_500, CAD: 2_000, USD: 1_600, GBP: 1_300 },
+  kyc: { XOF: 2_000_000, EUR: 3_000, CAD: 4_000, USD: 3_300, GBP: 2_600 },
 };
 
 /** Daily gift net credited to seller available balance. */
 const DAILY_GIFT_RECEIVED: Record<"new" | "trusted" | "kyc", Record<Currency, number>> = {
-  new: { XOF: 100_000, EUR: 150, CAD: 200 },
-  trusted: { XOF: 500_000, EUR: 750, CAD: 1_000 },
-  kyc: { XOF: 1_000_000, EUR: 1_500, CAD: 2_000 },
+  new: { XOF: 100_000, EUR: 150, CAD: 200, USD: 160, GBP: 130 },
+  trusted: { XOF: 500_000, EUR: 750, CAD: 1_000, USD: 800, GBP: 650 },
+  kyc: { XOF: 1_000_000, EUR: 1_500, CAD: 2_000, USD: 1_600, GBP: 1_300 },
 };
 
 /**
@@ -33,15 +33,15 @@ const DAILY_GIFT_RECEIVED: Record<"new" | "trusted" | "kyc", Record<Currency, nu
  * XOF via EUR peg ≈ 655.957
  */
 const PAYOUT_DAILY: Record<"new" | "trusted" | "kyc", Record<Currency, number>> = {
-  new: { EUR: 500, CAD: 500, XOF: 328_000 },
-  trusted: { EUR: 1_000, CAD: 1_000, XOF: 656_000 },
-  kyc: { EUR: 2_000, CAD: 2_000, XOF: 1_312_000 },
+  new: { EUR: 500, CAD: 500, XOF: 328_000, USD: 500, GBP: 450 },
+  trusted: { EUR: 1_000, CAD: 1_000, XOF: 656_000, USD: 1_000, GBP: 900 },
+  kyc: { EUR: 2_000, CAD: 2_000, XOF: 1_312_000, USD: 2_000, GBP: 1_800 },
 };
 
 const PAYOUT_WEEKLY: Record<"new" | "trusted" | "kyc", Record<Currency, number>> = {
-  new: { EUR: 1_500, CAD: 1_500, XOF: 984_000 },
-  trusted: { EUR: 2_500, CAD: 2_500, XOF: 1_640_000 },
-  kyc: { EUR: 5_000, CAD: 5_000, XOF: 3_280_000 },
+  new: { EUR: 1_500, CAD: 1_500, XOF: 984_000, USD: 1_500, GBP: 1_350 },
+  trusted: { EUR: 2_500, CAD: 2_500, XOF: 1_640_000, USD: 2_500, GBP: 2_250 },
+  kyc: { EUR: 5_000, CAD: 5_000, XOF: 3_280_000, USD: 5_000, GBP: 4_500 },
 };
 
 const TOPUP_DAY_MULT: Record<"new" | "trusted" | "kyc", number> = {

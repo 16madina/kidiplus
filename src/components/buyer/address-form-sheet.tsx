@@ -10,17 +10,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { CountryFlag } from "@/components/country-flag";
 import { haptic } from "@/lib/haptics";
 import { isCompactAddressCountry } from "@/lib/delivery";
-import {
-  createAddress,
-  updateAddress,
-  type AddressRow,
-} from "@/lib/addresses-db";
+import { createAddress, updateAddress, type AddressRow } from "@/lib/addresses-db";
 import {
   CONTINENT_LABEL,
   countryName,
@@ -29,6 +25,8 @@ import {
   searchCountries,
   suggestionsFor,
 } from "@/lib/delivery-zones-data";
+import { formatPostalCode, isValidPostalCode, postalSpecFor } from "@/lib/postal-codes";
+import { searchAddresses, type AddressSuggestion } from "@/lib/address-autocomplete";
 
 type Props = {
   open: boolean;
@@ -70,6 +68,12 @@ export function AddressFormSheet({
   const [countryOpen, setCountryOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
   const [zoneOpen, setZoneOpen] = useState(false);
+  // Street autocomplete (Photon / OpenStreetMap) — postal countries only.
+  const [streetSuggestions, setStreetSuggestions] = useState<AddressSuggestion[]>([]);
+  const [streetOpen, setStreetOpen] = useState(false);
+  const streetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streetAbortRef = useRef<AbortController | null>(null);
+  const streetPickedRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -88,13 +92,18 @@ export function AddressFormSheet({
         is_default: !!initial.is_default,
       });
     } else {
-      const c =
-        normalizeCountryCode(defaultCountry) ||
-        defaultCountryFromCurrency(currency);
+      const c = normalizeCountryCode(defaultCountry) || defaultCountryFromCurrency(currency);
       setForm({
-        label: "", full_name: "", phone: "", country: c,
-        city: "", zone_or_commune: "", street_address: "",
-        postal_code: "", region: "", details: "",
+        label: "",
+        full_name: "",
+        phone: "",
+        country: c,
+        city: "",
+        zone_or_commune: "",
+        street_address: "",
+        postal_code: "",
+        region: "",
+        details: "",
         // New addresses default to "primary" so the live delivery gate sees
         // the country immediately (createAddress also forces this when the
         // user has zero addresses).
@@ -104,9 +113,64 @@ export function AddressFormSheet({
     setCountryOpen(false);
     setCountryQuery("");
     setZoneOpen(false);
+    setStreetOpen(false);
+    setStreetSuggestions([]);
   }, [open, initial, currency, defaultCountry]);
 
   const compact = isCompactAddressCountry(form.country);
+  const postalSpec = postalSpecFor(form.country);
+
+  // Debounced street search as the user types (min 3 chars).
+  const onStreetChange = (value: string) => {
+    setForm((s) => ({ ...s, street_address: value }));
+    if (streetPickedRef.current) {
+      // Right after picking a suggestion — don't reopen on the programmatic set.
+      streetPickedRef.current = false;
+      return;
+    }
+    if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
+    if (value.trim().length < 3) {
+      setStreetSuggestions([]);
+      setStreetOpen(false);
+      return;
+    }
+    streetDebounceRef.current = setTimeout(() => {
+      streetAbortRef.current?.abort();
+      const ctrl = new AbortController();
+      streetAbortRef.current = ctrl;
+      void searchAddresses(value, {
+        country: form.country,
+        lang: i18n.language,
+        limit: 6,
+        signal: ctrl.signal,
+      }).then((res) => {
+        if (ctrl.signal.aborted) return;
+        setStreetSuggestions(res);
+        setStreetOpen(res.length > 0);
+      });
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
+      streetAbortRef.current?.abort();
+    };
+  }, []);
+
+  const pickStreetSuggestion = (s: AddressSuggestion) => {
+    streetPickedRef.current = true;
+    setForm((f) => ({
+      ...f,
+      street_address: [s.houseNumber, s.street].filter(Boolean).join(" ") || f.street_address,
+      city: s.city ?? f.city,
+      postal_code: s.postcode ?? f.postal_code,
+      region: s.region ?? f.region,
+    }));
+    setStreetOpen(false);
+    setStreetSuggestions([]);
+    haptic.selection();
+  };
   const zoneSuggestions = useMemo(() => {
     const all = suggestionsFor(form.country);
     const q = form.zone_or_commune.trim().toLowerCase();
@@ -115,13 +179,27 @@ export function AddressFormSheet({
   }, [form.country, form.zone_or_commune]);
 
   const submit = async () => {
-    if (!form.full_name.trim()) { toast.error(t("address.nameRequired")); return; }
-    if (!form.phone.trim())     { toast.error(t("address.phoneRequired")); return; }
-    if (!form.country.trim())   { toast.error(t("address.countryRequired", { defaultValue: "Choisis un pays." })); return; }
-    if (!form.city.trim())      { toast.error(t("address.cityRequired")); return; }
+    if (!form.full_name.trim()) {
+      toast.error(t("address.nameRequired"));
+      return;
+    }
+    if (!form.phone.trim()) {
+      toast.error(t("address.phoneRequired"));
+      return;
+    }
+    if (!form.country.trim()) {
+      toast.error(t("address.countryRequired", { defaultValue: "Choisis un pays." }));
+      return;
+    }
+    if (!form.city.trim()) {
+      toast.error(t("address.cityRequired"));
+      return;
+    }
     if (compact) {
       if (!form.zone_or_commune.trim()) {
-        toast.error(t("address.communeRequired", { defaultValue: "La commune / quartier est requise." }));
+        toast.error(
+          t("address.communeRequired", { defaultValue: "La commune / quartier est requise." }),
+        );
         return;
       }
     } else {
@@ -131,6 +209,15 @@ export function AddressFormSheet({
       }
       if (!form.postal_code.trim()) {
         toast.error(t("address.postalRequired", { defaultValue: "Le code postal est requis." }));
+        return;
+      }
+      if (!isValidPostalCode(form.country, form.postal_code)) {
+        toast.error(
+          t("address.postalInvalid", {
+            example: postalSpec?.placeholder ?? "",
+            defaultValue: "Code postal invalide pour ce pays (ex : {{example}}).",
+          }),
+        );
         return;
       }
     }
@@ -144,7 +231,7 @@ export function AddressFormSheet({
       city: form.city.trim(),
       zone_or_commune: form.zone_or_commune.trim() || null,
       street_address: form.street_address.trim() || null,
-      postal_code: form.postal_code.trim() || null,
+      postal_code: formatPostalCode(form.country, form.postal_code) || null,
       region: form.region.trim() || null,
       details: form.details.trim() || null,
       is_default: form.is_default,
@@ -153,7 +240,10 @@ export function AddressFormSheet({
       ? await updateAddress(initial.id, payload)
       : await createAddress(userId, payload);
     setBusy(false);
-    if (!res.ok) { toast.error(res.error); return; }
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
     toast.success(t("address.saved"));
     haptic.success();
     onSaved?.(res.address);
@@ -163,12 +253,21 @@ export function AddressFormSheet({
   return (
     <BottomSheet open={open} onClose={onClose}>
       <div className="px-4 pb-6 pt-2 space-y-3">
-        <h2 className="text-[17px] font-bold">
-          {initial ? t("address.edit") : t("address.add")}
-        </h2>
+        <h2 className="text-[17px] font-bold">{initial ? t("address.edit") : t("address.add")}</h2>
 
-        <Field required label={t("address.fields.fullName")} value={form.full_name} onChange={(v) => setForm((s) => ({ ...s, full_name: v }))} />
-        <Field required label={t("address.fields.phone")} value={form.phone} onChange={(v) => setForm((s) => ({ ...s, phone: v }))} inputMode="tel" />
+        <Field
+          required
+          label={t("address.fields.fullName")}
+          value={form.full_name}
+          onChange={(v) => setForm((s) => ({ ...s, full_name: v }))}
+        />
+        <Field
+          required
+          label={t("address.fields.phone")}
+          value={form.phone}
+          onChange={(v) => setForm((s) => ({ ...s, phone: v }))}
+          inputMode="tel"
+        />
 
         {/* Country selector — drives the rest of the form */}
         <div className="relative">
@@ -201,7 +300,10 @@ export function AddressFormSheet({
               <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-auto rounded-xl border border-border bg-background shadow-lg">
                 <li className="sticky top-0 z-10 border-b border-border bg-background p-2">
                   <div className="relative">
-                    <Search size={14} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Search
+                      size={14}
+                      className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    />
                     <input
                       type="text"
                       value={countryQuery}
@@ -212,34 +314,39 @@ export function AddressFormSheet({
                     />
                   </div>
                 </li>
-                {searchCountries(countryQuery, form.country || defaultCountry || null).length === 0 && (
-                  <li className="px-3 py-2 text-[13px] text-muted-foreground">{t("delivery.noCountryFound")}</li>
-                )}
-                {searchCountries(countryQuery, form.country || defaultCountry || null).map(({ continent, countries }) => (
-                  <li key={continent}>
-                    <div className="sticky top-11 z-10 bg-muted/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur">
-                      {isEn ? CONTINENT_LABEL[continent].en : CONTINENT_LABEL[continent].fr}
-                    </div>
-                    <ul>
-                      {countries.map((c) => (
-                        <li key={c.code}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setForm((s) => ({ ...s, country: c.code }));
-                              setCountryOpen(false);
-                              setCountryQuery("");
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
-                          >
-                            <CountryFlag code={c.code} className="h-4 w-6 shrink-0 rounded-sm" />
-                            <span className="truncate">{isEn ? c.nameEn : c.name}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                {searchCountries(countryQuery, form.country || defaultCountry || null).length ===
+                  0 && (
+                  <li className="px-3 py-2 text-[13px] text-muted-foreground">
+                    {t("delivery.noCountryFound")}
                   </li>
-                ))}
+                )}
+                {searchCountries(countryQuery, form.country || defaultCountry || null).map(
+                  ({ continent, countries }) => (
+                    <li key={continent}>
+                      <div className="sticky top-11 z-10 bg-muted/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                        {isEn ? CONTINENT_LABEL[continent].en : CONTINENT_LABEL[continent].fr}
+                      </div>
+                      <ul>
+                        {countries.map((c) => (
+                          <li key={c.code}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((s) => ({ ...s, country: c.code }));
+                                setCountryOpen(false);
+                                setCountryQuery("");
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
+                            >
+                              <CountryFlag code={c.code} className="h-4 w-6 shrink-0 rounded-sm" />
+                              <span className="truncate">{isEn ? c.nameEn : c.name}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ),
+                )}
               </ul>
             </>
           )}
@@ -247,7 +354,12 @@ export function AddressFormSheet({
 
         {compact ? (
           <>
-            <Field required label={t("address.fields.city")} value={form.city} onChange={(v) => setForm((s) => ({ ...s, city: v }))} />
+            <Field
+              required
+              label={t("address.fields.city")}
+              value={form.city}
+              onChange={(v) => setForm((s) => ({ ...s, city: v }))}
+            />
             {/* Commune / quartier with country-aware autocomplete */}
             <div className="relative">
               <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
@@ -255,7 +367,10 @@ export function AddressFormSheet({
               </span>
               <input
                 value={form.zone_or_commune}
-                onChange={(e) => { setForm((s) => ({ ...s, zone_or_commune: e.target.value })); setZoneOpen(true); }}
+                onChange={(e) => {
+                  setForm((s) => ({ ...s, zone_or_commune: e.target.value }));
+                  setZoneOpen(true);
+                }}
                 onFocus={() => setZoneOpen(true)}
                 onBlur={() => setTimeout(() => setZoneOpen(false), 120)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[14px] outline-none focus:border-foreground/40"
@@ -282,7 +397,9 @@ export function AddressFormSheet({
             </div>
             <Field
               label={t("address.fields.details")}
-              placeholder={t("address.landmarkPlaceholder", { defaultValue: "Ex : derrière la pharmacie, immeuble bleu" })}
+              placeholder={t("address.landmarkPlaceholder", {
+                defaultValue: "Ex : derrière la pharmacie, immeuble bleu",
+              })}
               value={form.details}
               onChange={(v) => setForm((s) => ({ ...s, details: v }))}
             />
@@ -294,23 +411,78 @@ export function AddressFormSheet({
           </>
         ) : (
           <>
-            <Field required label={t("address.fields.streetAddress")} value={form.street_address} onChange={(v) => setForm((s) => ({ ...s, street_address: v }))} />
+            {/* Street with as-you-type suggestions (OpenStreetMap) */}
+            <div className="relative">
+              <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
+                {t("address.fields.streetAddress")} *
+              </span>
+              <input
+                value={form.street_address}
+                onChange={(e) => onStreetChange(e.target.value)}
+                onFocus={() => {
+                  if (streetSuggestions.length > 0) setStreetOpen(true);
+                }}
+                onBlur={() => setTimeout(() => setStreetOpen(false), 120)}
+                placeholder={t("address.streetPlaceholder", {
+                  defaultValue: "Ex : 2290 rue de Brébeuf",
+                })}
+                autoComplete="street-address"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[14px] outline-none focus:border-foreground/40"
+              />
+              {streetOpen && streetSuggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-auto rounded-xl border border-border bg-background shadow-lg">
+                  {streetSuggestions.map((s) => (
+                    <li key={s.label}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          pickStreetSuggestion(s);
+                        }}
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left text-[13px] hover:bg-muted"
+                      >
+                        <MapPin size={13} className="mt-0.5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 truncate">{s.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="grid grid-cols-[1fr_120px] gap-2">
-              <Field required label={t("address.fields.city")} value={form.city} onChange={(v) => setForm((s) => ({ ...s, city: v }))} />
-              <Field required label={t("address.fields.postalCode", { defaultValue: "Code postal" })} value={form.postal_code} onChange={(v) => setForm((s) => ({ ...s, postal_code: v }))} inputMode="numeric" />
+              <Field
+                required
+                label={t("address.fields.city")}
+                value={form.city}
+                onChange={(v) => setForm((s) => ({ ...s, city: v }))}
+              />
+              <Field
+                required
+                label={t("address.fields.postalCode", { defaultValue: "Code postal" })}
+                value={form.postal_code}
+                onChange={(v) => setForm((s) => ({ ...s, postal_code: v }))}
+                inputMode={postalSpec?.inputMode ?? "text"}
+                placeholder={postalSpec?.placeholder}
+              />
             </div>
             <Field
               label={t("address.fields.region", { defaultValue: "Région / Province (optionnel)" })}
               value={form.region}
               onChange={(v) => setForm((s) => ({ ...s, region: v }))}
             />
-            <Field label={t("address.fields.details")} value={form.details} onChange={(v) => setForm((s) => ({ ...s, details: v }))} />
+            <Field
+              label={t("address.fields.details")}
+              value={form.details}
+              onChange={(v) => setForm((s) => ({ ...s, details: v }))}
+            />
           </>
         )}
 
         <Field
           label={t("address.fields.label")}
-          placeholder={t("address.fields.labelPlaceholder", { defaultValue: "Ex : Maison, Bureau…" })}
+          placeholder={t("address.fields.labelPlaceholder", {
+            defaultValue: "Ex : Maison, Bureau…",
+          })}
           value={form.label}
           onChange={(v) => setForm((s) => ({ ...s, label: v }))}
         />
@@ -356,7 +528,8 @@ function Field({
   return (
     <label className="block">
       <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
-        {label}{required ? " *" : ""}
+        {label}
+        {required ? " *" : ""}
       </span>
       <input
         value={value}

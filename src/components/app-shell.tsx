@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { BottomTabBar } from "./bottom-tab-bar";
+import { closeTopPushScreen } from "./push-screen";
 import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
@@ -328,6 +329,9 @@ function AppShellInner() {
         minimizeLive();
         return;
       }
+      // Close the top-most stacked screen (orders, order detail, settings…)
+      // before touching tabs — otherwise back "skipped" pages.
+      if (closeTopPushScreen()) return;
       if (liveMinimized) {
         closeLive();
         return;

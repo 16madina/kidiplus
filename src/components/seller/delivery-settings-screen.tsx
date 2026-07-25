@@ -14,10 +14,7 @@ import { CountryFlag } from "@/components/country-flag";
 import { useAuth } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
-import {
-  fetchDeliverySettingsOrDefault,
-  upsertDeliverySettings,
-} from "@/lib/delivery-db";
+import { fetchDeliverySettingsOrDefault, upsertDeliverySettings } from "@/lib/delivery-db";
 import type { DeliveryMode, DeliveryZone } from "@/lib/delivery";
 import {
   CONTINENT_LABEL,
@@ -40,8 +37,7 @@ export function SellerDeliverySettingsScreen({
   const currency = profile?.currency ?? "EUR";
   // Profiles may store "🇨🇮 Côte d'Ivoire" — always persist ISO-2 on zones.
   const sellerCountry =
-    normalizeCountryCode(profile?.country) ||
-    defaultCountryFromCurrency(currency);
+    normalizeCountryCode(profile?.country) || defaultCountryFromCurrency(currency);
 
   const [mode, setMode] = useState<DeliveryMode>("flat");
   const [flatFee, setFlatFee] = useState<string>("0");
@@ -51,8 +47,14 @@ export function SellerDeliverySettingsScreen({
   // Country picker is a nested PushScreen — avoids the parent left-edge
   // swipe-back stealing taps on the country list (which kicked users back
   // to Profile before they could save).
+  // Index -1 = picking the quick-add country.
   const [countryPickerIdx, setCountryPickerIdx] = useState<number | null>(null);
   const [countrySearch, setCountrySearch] = useState("");
+  // Quick-add: type a zone, pick a suggestion or press Enter/comma, keep
+  // typing the next one — no more one-row-at-a-time.
+  const [quickCountry, setQuickCountry] = useState<string>(sellerCountry);
+  const [quickName, setQuickName] = useState("");
+  const [quickOpen, setQuickOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -60,16 +62,21 @@ export function SellerDeliverySettingsScreen({
     setCountryPickerIdx(null);
     setCountrySearch("");
     setOpenSuggestIdx(null);
+    setQuickCountry(sellerCountry);
+    setQuickName("");
+    setQuickOpen(false);
     void (async () => {
       const s = await fetchDeliverySettingsOrDefault(user.id);
       if (cancelled) return;
       setMode(s.mode);
       setFlatFee(String(s.flat_fee ?? 0));
       // backfill missing country with seller's country (ISO-2)
-      setZones((s.zones ?? []).map((z) => ({
-        ...z,
-        country: normalizeCountryCode(z.country) || sellerCountry,
-      })));
+      setZones(
+        (s.zones ?? []).map((z) => ({
+          ...z,
+          country: normalizeCountryCode(z.country) || sellerCountry,
+        })),
+      );
     })();
     return () => {
       cancelled = true;
@@ -117,7 +124,9 @@ export function SellerDeliverySettingsScreen({
     });
     setBusy(false);
     if (!r.ok) {
-      toast.error(r.error || t("delivery.saveFailed", { defaultValue: "Enregistrement impossible." }));
+      toast.error(
+        r.error || t("delivery.saveFailed", { defaultValue: "Enregistrement impossible." }),
+      );
       return;
     }
     // Stay on this screen — do not bounce back to Profile after save.
@@ -148,6 +157,42 @@ export function SellerDeliverySettingsScreen({
     setOpenSuggestIdx(zones.length);
   };
 
+  /** Add one or more zones ("Cocody" or "Cocody, Yopougon") and keep typing. */
+  const commitQuickAdd = (raw?: string) => {
+    const names = (raw ?? quickName)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    setZones((zs) => {
+      const existing = new Set(
+        zs.map(
+          (z) =>
+            `${normalizeCountryCode(z.country) || sellerCountry}::${z.name.trim().toLowerCase()}`,
+        ),
+      );
+      const additions = names
+        .filter((n) => !existing.has(`${quickCountry}::${n.toLowerCase()}`))
+        .map((n) => ({ country: quickCountry, name: n, fee: 0 }));
+      return additions.length > 0 ? [...zs, ...additions] : zs;
+    });
+    setQuickName("");
+    haptic.selection();
+  };
+
+  const quickSuggestions = useMemo(() => {
+    const already = new Set(
+      zones
+        .filter((z) => (normalizeCountryCode(z.country) || sellerCountry) === quickCountry)
+        .map((z) => z.name.trim().toLowerCase()),
+    );
+    const q = quickName.trim().toLowerCase();
+    return suggestionsFor(quickCountry)
+      .filter((s) => !already.has(s.toLowerCase()))
+      .filter((s) => (q ? s.toLowerCase().includes(q) : true))
+      .slice(0, 8);
+  }, [quickCountry, quickName, zones, sellerCountry]);
+
   const pickerOpen = countryPickerIdx !== null;
   const isEn = i18n.language.startsWith("en");
 
@@ -163,7 +208,9 @@ export function SellerDeliverySettingsScreen({
         <div className="px-4 py-4 space-y-4">
           <div
             className="rounded-3xl p-5 text-white"
-            style={{ background: "linear-gradient(135deg, oklch(0.4 0.06 265), oklch(0.28 0.05 265))" }}
+            style={{
+              background: "linear-gradient(135deg, oklch(0.4 0.06 265), oklch(0.28 0.05 265))",
+            }}
           >
             <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wide opacity-90">
               <Truck size={14} /> {t("delivery.title")}
@@ -181,7 +228,10 @@ export function SellerDeliverySettingsScreen({
                 return (
                   <Press
                     key={m}
-                    onClick={() => { haptic.selection(); setMode(m); }}
+                    onClick={() => {
+                      haptic.selection();
+                      setMode(m);
+                    }}
                     className="!min-h-12 rounded-2xl border px-2 py-2 text-[12px] font-bold"
                     style={{
                       borderColor: active ? "#10162B" : "var(--border)",
@@ -212,10 +262,79 @@ export function SellerDeliverySettingsScreen({
 
           {mode === "zones" && (
             <div className="space-y-3">
-              <p className="text-[12px] font-semibold text-muted-foreground">{t("delivery.zones")}</p>
+              <p className="text-[12px] font-semibold text-muted-foreground">
+                {t("delivery.zones")}
+              </p>
+
+              {/* Quick add — pick a country once, then chain zones */}
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <Press
+                    onClick={() => {
+                      setCountryPickerIdx(-1);
+                      setCountrySearch("");
+                      setQuickOpen(false);
+                    }}
+                    className="!min-h-10 shrink-0 rounded-lg border border-border bg-background px-2 text-[13px] flex items-center gap-1"
+                    aria-label={t("delivery.zoneCountry", "Pays")}
+                  >
+                    <CountryFlag code={quickCountry} className="h-4 w-6 rounded-sm" />
+                    <ChevronDown size={12} />
+                  </Press>
+                  <input
+                    value={quickName}
+                    onFocus={() => setQuickOpen(true)}
+                    onChange={(e) => {
+                      setQuickName(e.target.value);
+                      setQuickOpen(true);
+                    }}
+                    onBlur={() => window.setTimeout(() => setQuickOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        commitQuickAdd();
+                      }
+                    }}
+                    placeholder={t("delivery.quickAddPlaceholder", {
+                      defaultValue: "Tape une zone puis Entrée — ex : Cocody, Yopougon…",
+                    })}
+                    className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-[13px] outline-none focus:border-foreground/40"
+                  />
+                  <Press
+                    onClick={() => commitQuickAdd()}
+                    disabled={!quickName.trim()}
+                    aria-label={t("delivery.addZone")}
+                    className="!min-h-10 !min-w-10 shrink-0 rounded-lg border border-border disabled:opacity-40"
+                  >
+                    <Plus size={15} />
+                  </Press>
+                </div>
+                {quickOpen && quickSuggestions.length > 0 && (
+                  <ul className="absolute left-11 right-12 top-full z-20 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+                    {quickSuggestions.map((s) => (
+                      <li key={s}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            commitQuickAdd(s);
+                          }}
+                          className="w-full px-3 py-2 text-left text-[13px] hover:bg-muted"
+                        >
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {zones.length === 0 && (
                 <p className="rounded-xl border border-dashed border-border p-3 text-center text-[12px] text-muted-foreground">
-                  {t("delivery.addZone")}
+                  {t("delivery.quickAddHint", {
+                    defaultValue:
+                      "Ajoute tes zones ci-dessus — elles s'enchaînent, puis ajuste les frais en dessous.",
+                  })}
                 </p>
               )}
 
@@ -223,7 +342,10 @@ export function SellerDeliverySettingsScreen({
                 <div key={countryCode} className="space-y-2">
                   <p className="flex min-w-0 items-center gap-1.5 px-1 text-[12px] font-semibold text-muted-foreground">
                     <CountryFlag code={countryCode} className="h-4 w-6 shrink-0 rounded-sm" />
-                    <span className="min-w-0 truncate" title={countryName(countryCode, i18n.language)}>
+                    <span
+                      className="min-w-0 truncate"
+                      title={countryName(countryCode, i18n.language)}
+                    >
                       {countryName(countryCode, i18n.language)}
                     </span>
                   </p>
@@ -249,7 +371,10 @@ export function SellerDeliverySettingsScreen({
                               className="!min-h-9 shrink-0 rounded-lg border border-border bg-background px-2 text-[13px] flex items-center gap-1"
                               aria-label={t("delivery.zoneCountry", "Pays")}
                             >
-                              <CountryFlag code={z.country || sellerCountry} className="h-4 w-6 rounded-sm" />
+                              <CountryFlag
+                                code={z.country || sellerCountry}
+                                className="h-4 w-6 rounded-sm"
+                              />
                               <ChevronDown size={12} />
                             </Press>
                             <input
@@ -257,10 +382,17 @@ export function SellerDeliverySettingsScreen({
                               onFocus={() => setOpenSuggestIdx(idx)}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, name: val } : x)));
+                                setZones((zs) =>
+                                  zs.map((x, i) => (i === idx ? { ...x, name: val } : x)),
+                                );
                                 setOpenSuggestIdx(idx);
                               }}
-                              onBlur={() => window.setTimeout(() => setOpenSuggestIdx((v) => (v === idx ? null : v)), 150)}
+                              onBlur={() =>
+                                window.setTimeout(
+                                  () => setOpenSuggestIdx((v) => (v === idx ? null : v)),
+                                  150,
+                                )
+                              }
                               placeholder={t("delivery.zoneName")}
                               className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-[13px] outline-none"
                             />
@@ -268,7 +400,13 @@ export function SellerDeliverySettingsScreen({
                               value={String(z.fee)}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, fee: Number(val.replace(/,/g, ".")) || 0 } : x)));
+                                setZones((zs) =>
+                                  zs.map((x, i) =>
+                                    i === idx
+                                      ? { ...x, fee: Number(val.replace(/,/g, ".")) || 0 }
+                                      : x,
+                                  ),
+                                );
                               }}
                               inputMode="decimal"
                               placeholder={t("delivery.zoneFee")}
@@ -290,7 +428,9 @@ export function SellerDeliverySettingsScreen({
                                       type="button"
                                       onMouseDown={(e) => {
                                         e.preventDefault();
-                                        setZones((zs) => zs.map((x, i) => (i === idx ? { ...x, name: s } : x)));
+                                        setZones((zs) =>
+                                          zs.map((x, i) => (i === idx ? { ...x, name: s } : x)),
+                                        );
                                         setOpenSuggestIdx(null);
                                       }}
                                       className="w-full px-3 py-2 text-left text-[13px] hover:bg-muted"
@@ -384,9 +524,13 @@ export function SellerDeliverySettingsScreen({
                         onClick={() => {
                           if (countryPickerIdx === null) return;
                           const idx = countryPickerIdx;
-                          setZones((zs) =>
-                            zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)),
-                          );
+                          if (idx === -1) {
+                            setQuickCountry(c.code);
+                          } else {
+                            setZones((zs) =>
+                              zs.map((x, i) => (i === idx ? { ...x, country: c.code } : x)),
+                            );
+                          }
                           setCountryPickerIdx(null);
                           setCountrySearch("");
                           haptic.selection();

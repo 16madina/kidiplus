@@ -40,7 +40,7 @@ export type LiveStream = {
   /** Seller user id (profiles.id) — or `fictitious:…` for review/demo streams. */
   sellerId?: string;
   /** Live currency (defaults to EUR when unspecified). */
-  currency?: "XOF" | "EUR" | "CAD";
+  currency?: "XOF" | "EUR" | "CAD" | "USD" | "GBP";
   /** Client-only review/demo stream (no LiveKit / no DB row). */
   fictitious?: boolean;
   /** When true, the card renders as a scheduled (upcoming) live, not LIVE. */

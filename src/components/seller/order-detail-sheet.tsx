@@ -4,7 +4,7 @@
 // country), delivery zone & fee, and a copy-to-clipboard button so the
 // seller can paste the address into a courier app.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,7 @@ import {
   PackageCheck,
   UserRound,
   Truck,
+  ReceiptText,
 } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
@@ -23,6 +24,7 @@ import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
 import type { OrderRow } from "@/lib/orders-db";
 import { OrderItemImage } from "@/components/orders/order-item-image";
+import { OrderInvoiceSheet } from "@/components/orders/order-invoice-sheet";
 import { formatAddressLine, isCompactAddressCountry } from "@/lib/delivery";
 import { countryName } from "@/lib/delivery-zones-data";
 
@@ -76,6 +78,7 @@ export function SellerOrderDetailSheet({
 }) {
   const { t, i18n } = useTranslation();
   const snap = useMemo(() => asSnapshot(order?.address_snapshot), [order]);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   if (!order) return null;
   const compact = isCompactAddressCountry(snap?.country);
   const isPaid = order.status === "paid";
@@ -283,19 +286,31 @@ export function SellerOrderDetailSheet({
           </div>
         </section>
 
+        <Press
+          onClick={() => { haptic.selection(); setInvoiceOpen(true); }}
+          className="!min-h-10 mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-[13px] font-semibold"
+        >
+          <ReceiptText size={14} /> {t("invoice.viewCta", { defaultValue: "Voir la facture" })}
+        </Press>
+
         {canShip && (
           <Press
             onClick={() => {
               onShip?.(order.id);
               onClose();
             }}
-            className="!min-h-12 mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[15px] font-bold text-white"
+            className="!min-h-12 mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[15px] font-bold text-white"
             style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
           >
             <PackageCheck size={16} /> {t("orders.shipCta")}
           </Press>
         )}
       </div>
+      <OrderInvoiceSheet
+        order={order}
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
+      />
     </BottomSheet>
   );
 }

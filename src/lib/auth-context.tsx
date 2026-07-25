@@ -23,7 +23,7 @@ export type Profile = {
   is_seller: boolean;
   is_admin: boolean;
   country: string | null;
-  currency: "XOF" | "EUR" | "CAD";
+  currency: "XOF" | "EUR" | "CAD" | "USD" | "GBP";
   language: "fr" | "en";
   moderation_status?: "active" | "suspended" | "banned";
   followers_count?: number;

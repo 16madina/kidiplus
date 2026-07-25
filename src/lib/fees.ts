@@ -55,6 +55,8 @@ export const PAYOUT_MINIMUMS: Record<Currency, number> = {
   XOF: 5000,
   EUR: 10,
   CAD: 15,
+  USD: 12,
+  GBP: 10,
 };
 
 /**
@@ -65,6 +67,8 @@ export const MAX_WALLET_BALANCE: Record<Currency, number> = {
   XOF: 1_000_000,
   EUR: 2_000,
   CAD: 3_000,
+  USD: 2_200,
+  GBP: 1_800,
 };
 export const MAX_TOPUP_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;
 export const MAX_PAYOUT_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;

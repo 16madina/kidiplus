@@ -118,8 +118,8 @@ type Ctx = {
   setHost: (identity: string, name: string) => void;
 
   /** Seller's currency (mirrors profile.currency). One live = one currency. */
-  currency: "XOF" | "EUR" | "CAD";
-  setCurrency: (c: "XOF" | "EUR" | "CAD") => void;
+  currency: "XOF" | "EUR" | "CAD" | "USD" | "GBP";
+  setCurrency: (c: "XOF" | "EUR" | "CAD" | "USD" | "GBP") => void;
 
   /** Host camera facing — shared from setup → live so flip choice persists. */
   cameraFacing: "user" | "environment";
@@ -168,7 +168,7 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [hostIdentity, setHostIdentity] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string>("Host");
-  const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
+  const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD" | "USD" | "GBP">("EUR");
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [allowGifts, setAllowGifts] = useState<boolean>(true);
   const [streamSource, setStreamSource] = useState<StreamSource>("camera");
