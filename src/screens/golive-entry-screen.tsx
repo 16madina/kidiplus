@@ -208,8 +208,8 @@ export function GoLiveEntryScreen({
       } else {
         b.setRtmpCreds(null);
       }
-      // Fire-and-forget reminder notifications
-      void notifyLiveReminders(row.id);
+      // Fire-and-forget reminder notifications — unless the seller opted out.
+      if (full.notify_followers !== false) void notifyLiveReminders(row.id);
       haptic.success();
       onStartScheduled();
     } catch (e) {

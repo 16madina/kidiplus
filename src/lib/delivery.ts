@@ -145,18 +145,23 @@ const normText = (s: string | null | undefined) =>
 const normCountry = (s: string | null | undefined) =>
   normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
 
-/** Zones filtered to the buyer's country. Zones with an empty/legacy country
- *  are treated as matching (backwards compatible). */
+/** Zones filtered to the buyer's country. Legacy zones without a country only
+ *  match buyers in the seller's own country (mirrors resolve_buyer_delivery) —
+ *  never "worldwide by accident". When the seller country is unknown, legacy
+ *  zones still match to avoid over-blocking; the server has the final say. */
 export function zonesForCountry(
   zones: DeliveryZone[],
   country: string | null | undefined,
+  sellerCountry?: string | null,
 ): DeliveryZone[] {
   const c = normCountry(country);
   if (!c) return zones;
+  const seller = normCountry(sellerCountry);
   return zones.filter((z) => {
     const zc = normCountry(z.country);
-    // Empty country → match any buyer (legacy / incomplete rows).
-    return !zc || zc === c;
+    if (zc) return zc === c;
+    // Legacy row without a country: seller's own country only.
+    return seller ? c === seller : true;
   });
 }
 

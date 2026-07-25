@@ -768,10 +768,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
     setFeaturedId(p.id);
     if (p.status === "active") {
-      await stopFixedInDb(p.id);
+      const res = await stopFixedInDb(p.id);
+      if (!res.ok) {
+        toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+        return;
+      }
       room.systemMessage(`Vente arrêtée — ${p.name}`);
     } else {
-      await activateFixedInDb(p.id);
+      const res = await activateFixedInDb(p.id);
+      if (!res.ok) {
+        toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+        return;
+      }
       room.systemMessage(`${t("live.listForSale")} — ${p.name} · ${fmt(p.price)}`);
     }
   };

@@ -7,7 +7,7 @@ import {
   Clock,
   Timer,
   Plus,
-  GripVertical,
+  Trash2,
   Gavel,
   ShoppingBag,
   Bell,
@@ -34,6 +34,7 @@ import { makeRoomName } from "@/lib/livekit";
 import {
   blobUrlToFile,
   createScheduledLiveInDb,
+  fetchScheduledLiveWithProducts,
   updateScheduledLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
@@ -172,12 +173,29 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.avatar_url]);
 
-  // Local-only extras (not persisted server-side).
   const [description, setDescription] = useState("");
   const [durationMin, setDurationMin] = useState(45);
   const [allowBids, setAllowBids] = useState(true);
   const [allowBuyNow, setAllowBuyNow] = useState(true);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
+
+  // Edit mode: reload persisted options (the form context only carries
+  // title/category/cover/products — these live on the DB row).
+  useEffect(() => {
+    if (b.mode !== "edit" || !b.editingLiveId) return;
+    let cancelled = false;
+    void fetchScheduledLiveWithProducts(b.editingLiveId).then((full) => {
+      if (cancelled || !full) return;
+      setDescription(full.description ?? "");
+      if (full.estimated_duration_min != null) setDurationMin(full.estimated_duration_min);
+      setAllowBids(full.allow_bids !== false);
+      setAllowBuyNow(full.allow_buy_now !== false);
+      setNotifyFollowers(full.notify_followers !== false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [b.mode, b.editingLiveId]);
   const allowGifts = b.allowGifts;
   const setAllowGifts = b.setAllowGifts;
   const [showAdd, setShowAdd] = useState(false);
@@ -358,6 +376,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
           allowGifts,
           broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
+          description: description.trim() || null,
+          estimatedDurationMin: durationMin,
+          allowBids,
+          allowBuyNow,
+          notifyFollowers,
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -373,6 +396,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           currency: b.currency,
           broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           allowGifts,
+          description: description.trim() || null,
+          estimatedDurationMin: durationMin,
+          allowBids,
+          allowBuyNow,
+          notifyFollowers,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
@@ -764,7 +792,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
                   className="grid h-8 w-8 place-items-center rounded-md text-white/50 hover:text-white"
                   aria-label={t("common.remove")}
                 >
-                  <GripVertical size={16} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             ))}

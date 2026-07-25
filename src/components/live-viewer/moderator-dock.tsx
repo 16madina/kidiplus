@@ -91,8 +91,12 @@ export function ModeratorDock({
   const doToggleFixed = async (p: LiveProductRow) => {
     if (p.mode !== "fixed") return;
     haptic.medium();
-    if (p.status === "active") await stopFixedInDb(p.id);
-    else await activateFixedInDb(p.id);
+    const res =
+      p.status === "active" ? await stopFixedInDb(p.id) : await activateFixedInDb(p.id);
+    if (!res.ok) {
+      haptic.error();
+      toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+    }
   };
 
   const persistProduct = async (

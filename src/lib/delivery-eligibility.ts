@@ -48,7 +48,7 @@ export function canDeliver({
   // zones
   const zones = Array.isArray(settings.zones) ? settings.zones : [];
   if (zones.length === 0) return { eligible: true }; // seller hasn't configured yet
-  const inCountry = zonesForCountry(zones, buyer);
+  const inCountry = zonesForCountry(zones, buyer, sellerCountry);
   return inCountry.length > 0
     ? { eligible: true }
     : { eligible: false, reason: "no_country_coverage" };

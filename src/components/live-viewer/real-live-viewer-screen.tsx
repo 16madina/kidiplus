@@ -267,6 +267,15 @@ export function RealLiveViewerScreen() {
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+  // Address edited outside the live (settings screen, other tab) — re-read it
+  // when the app/tab comes back so the delivery gate reflects reality.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshBuyerCountry();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshBuyerCountry]);
   const eligibility = useMemo(
     () => canDeliver({ settings: sellerSettings, sellerCountry, buyerCountry }),
     [sellerSettings, sellerCountry, buyerCountry],

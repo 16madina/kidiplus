@@ -134,6 +134,14 @@ export type CreateLiveInput = {
   allowGifts?: boolean;
   /** camera = in-app WebRTC; rtmp = Restream/OBS via LiveKit Ingress. */
   broadcastMode?: "camera" | "rtmp";
+  /** Optional short description shown to viewers (scheduled lives). */
+  description?: string | null;
+  /** Estimated duration in minutes (scheduled lives). */
+  estimatedDurationMin?: number | null;
+  /** Scheduled-live options — persisted so edit round-trips them. */
+  allowBids?: boolean;
+  allowBuyNow?: boolean;
+  notifyFollowers?: boolean;
 
   products: Array<{
     name: string;
@@ -790,12 +798,24 @@ export async function expireOverdueOrders(): Promise<number> {
 }
 
 /** Set fixed-price row to active (opens buying). Idempotent. */
-export async function activateFixedInDb(productId: string): Promise<void> {
-  await supabase.from("live_products").update({ status: "active" }).eq("id", productId);
+export async function activateFixedInDb(
+  productId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("live_products")
+    .update({ status: "active" })
+    .eq("id", productId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-export async function stopFixedInDb(productId: string): Promise<void> {
-  await supabase.from("live_products").update({ status: "upcoming" }).eq("id", productId);
+export async function stopFixedInDb(
+  productId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("live_products")
+    .update({ status: "upcoming" })
+    .eq("id", productId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 /** Relaunch an unsold auction product: sends it back to the queue as
@@ -946,6 +966,11 @@ export type ScheduledLiveRow = {
   status: string;
   allow_gifts?: boolean | null;
   broadcast_mode?: string | null;
+  description?: string | null;
+  estimated_duration_min?: number | null;
+  allow_bids?: boolean | null;
+  allow_buy_now?: boolean | null;
+  notify_followers?: boolean | null;
   products?: LiveProductRow[];
 };
 
@@ -977,7 +1002,16 @@ export async function createScheduledLiveInDb(
       ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
       ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
-    })
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.estimatedDurationMin !== undefined
+        ? { estimated_duration_min: input.estimatedDurationMin }
+        : {}),
+      ...(typeof input.allowBids === "boolean" ? { allow_bids: input.allowBids } : {}),
+      ...(typeof input.allowBuyNow === "boolean" ? { allow_buy_now: input.allowBuyNow } : {}),
+      ...(typeof input.notifyFollowers === "boolean"
+        ? { notify_followers: input.notifyFollowers }
+        : {}),
+    } as never)
     .select("id")
     .single();
   if (error || !live) throw error ?? new Error("Failed to schedule live");
@@ -1024,6 +1058,11 @@ export async function updateScheduledLiveInDb(
     scheduledAt: string;
     allowGifts?: boolean;
     broadcastMode?: "camera" | "rtmp";
+    description?: string | null;
+    estimatedDurationMin?: number | null;
+    allowBids?: boolean;
+    allowBuyNow?: boolean;
+    notifyFollowers?: boolean;
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -1037,6 +1076,15 @@ export async function updateScheduledLiveInDb(
       ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
       ...(patch.broadcastMode
         ? { broadcast_mode: patch.broadcastMode, ...(patch.broadcastMode === "camera" ? { ingress_id: null } : {}) }
+        : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(patch.estimatedDurationMin !== undefined
+        ? { estimated_duration_min: patch.estimatedDurationMin }
+        : {}),
+      ...(typeof patch.allowBids === "boolean" ? { allow_bids: patch.allowBids } : {}),
+      ...(typeof patch.allowBuyNow === "boolean" ? { allow_buy_now: patch.allowBuyNow } : {}),
+      ...(typeof patch.notifyFollowers === "boolean"
+        ? { notify_followers: patch.notifyFollowers }
         : {}),
     } as never)
     .eq("id", liveId)
@@ -1164,13 +1212,13 @@ export async function fetchScheduledLiveWithProducts(
   const { data } = await supabase
     .from("lives")
     .select(
-      "id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts, broadcast_mode",
+      "id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts, broadcast_mode, description, estimated_duration_min, allow_bids, allow_buy_now, notify_followers",
     )
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;
   const prods = await fetchLiveProducts(liveId);
-  return { ...(data as ScheduledLiveRow), products: prods };
+  return { ...(data as unknown as ScheduledLiveRow), products: prods };
 }
 
 /** Public feed: upcoming scheduled lives visible to buyers. */
