@@ -2261,6 +2261,10 @@ export type Database = {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
       }
+      _settle_expired_auction_row: {
+        Args: { _live_id: string; _product_id: string }
+        Returns: undefined
+      }
       account_deletion_check: { Args: never; Returns: Json }
       admin_assign_promo_code: {
         Args: { _id: string; _owner_id: string }
@@ -2625,6 +2629,7 @@ export type Database = {
         Args: { _color?: string; _order_id: string; _size?: string }
         Returns: Json
       }
+      settle_expired_auctions: { Args: { _live_id?: string }; Returns: Json }
       start_auction: { Args: { _product_id: string }; Returns: Json }
       submit_report: {
         Args: {
