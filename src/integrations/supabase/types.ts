@@ -2409,6 +2409,15 @@ export type Database = {
         Args: { _amount: number; _from: string; _to: string }
         Returns: number
       }
+      create_live_order: {
+        Args: {
+          _color?: string
+          _kind: string
+          _product_id: string
+          _size?: string
+        }
+        Returns: Json
+      }
       credit_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
       credit_wallet_topup: {
@@ -2515,40 +2524,8 @@ export type Database = {
         Returns: Json
       }
       purchase_fixed_price: {
-        Args: { _buyer_identity: string; _product_id: string }
-        Returns: {
-          auction_deadline_at: string | null
-          auction_round: number
-          bid_increment: number | null
-          brand: string | null
-          colors: Json
-          condition: string | null
-          created_at: string
-          description: string | null
-          extra_images: Json
-          final_price: number | null
-          id: string
-          image_url: string | null
-          live_id: string
-          mode: string
-          name: string
-          position: number
-          price: number
-          shop_product_id: string | null
-          sizes: Json
-          sold_to_identity: string | null
-          start_price: number
-          status: string
-          stock: number
-          timer_seconds: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "live_products"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Args: { _buyer_identity?: string; _product_id: string }
+        Returns: Json
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -2571,6 +2548,10 @@ export type Database = {
       }
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
+      resolve_buyer_delivery: {
+        Args: { _buyer_id: string; _seller_id: string }
+        Returns: Json
+      }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       risk_account_age_hours: { Args: { _user_id: string }; Returns: number }
       risk_assert_can_topup: {
