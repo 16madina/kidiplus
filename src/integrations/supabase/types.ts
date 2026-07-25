@@ -2424,6 +2424,7 @@ export type Database = {
         Args: { _amount: number; _from: string; _to: string }
         Returns: number
       }
+      convert_my_wallet_currency: { Args: never; Returns: Json }
       create_live_order: {
         Args: {
           _color?: string
