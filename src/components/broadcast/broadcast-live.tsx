@@ -389,12 +389,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       toast.error(
         t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
       );
-      endingRef.current = null;
-      // Opportunistic server sweeper as last resort (host offline path).
+      // Force server settle + keep local end (do NOT clear endingRef in a way
+      // that revives the 00:01 zombie — product must leave `active`).
       try {
         await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
           .rpc("settle_expired_auctions", { _live_id: b.liveId });
       } catch { /* ignore */ }
+      // Re-fetch product; if still active, optimistic local close already ran
+      // via broadcastAuctionEnd — leave auctionStart cleared.
+      endingRef.current = endKey;
     })();
   }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar, t]);
   // ---- Sudden-death / anti-snipe extension ----
@@ -758,7 +761,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         res.error ??
           t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
       );
-      endingRef.current = null;
+      try {
+        await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+          .rpc("settle_expired_auctions", { _live_id: b.liveId });
+      } catch { /* ignore */ }
+      endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
       void resolveWinnerAvatar(winnerId);
     }
   };

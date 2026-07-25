@@ -52,9 +52,9 @@ function isTerminalProductStatus(status: string | null | undefined): boolean {
 }
 
 /** Build an auction:start payload from a DB product row when the broadcast
- *  frame was missed. Allow a wide grace past the deadline so a client with
- *  a fast clock (or laggy realtime) still attaches instead of staying stuck
- *  on "waiting for seller" while others bid. */
+ *  frame was missed. Only adopt auctions that are still truly running —
+ *  a long post-deadline grace used to revive zombie 00:01 timers after a
+ *  failed finalize (host toast + viewers stuck with a bid CTA). */
 function auctionStartFromProduct(row: {
   id: string;
   mode?: string | null;
@@ -66,9 +66,8 @@ function auctionStartFromProduct(row: {
   if (row.mode !== "auction" || row.status !== "active" || !row.auction_deadline_at) return null;
   const deadlineMs = new Date(row.auction_deadline_at).getTime();
   if (!Number.isFinite(deadlineMs)) return null;
-  // Wide grace: phone clocks are often minutes off; DB `status=active` is
-  // the source of truth for "still running".
-  if (deadlineMs <= Date.now() - 120_000) return null;
+  // Small clock-skew grace only. Past that → leave it to settle / auction:end.
+  if (deadlineMs <= Date.now() - 3_000) return null;
   return {
     productId: row.id,
     deadlineMs,
@@ -519,19 +518,34 @@ export function useLiveRoom(params: {
             auction_round?: number;
           };
           const round = Number(row.auction_round ?? 1);
+          const amount = Number(row.amount);
           console.debug("[auction-round diag] live_bids INSERT", {
             product_id: row.product_id,
             round,
-            amount: row.amount,
+            amount,
           });
           setLastBid({
             productId: row.product_id,
             bidderId: row.bidder_id,
             bidderName: row.bidder_name,
-            amount: Number(row.amount),
+            amount,
             ts: Date.now(),
             auctionRound: round,
           });
+          // Chat line so everyone sees who re-bid (not only the flash overlay).
+          const amountLabel = Number.isFinite(amount)
+            ? amount.toLocaleString("fr-FR")
+            : String(row.amount);
+          setChat((prev) => [
+            ...prev.slice(-120),
+            {
+              id: uid(),
+              user: "",
+              color: "",
+              text: `🔨 ${row.bidder_name} · ${amountLabel}`,
+              system: true,
+            },
+          ]);
           // If someone else is bidding, this auction is live — recover
           // auctionStart when auction:start broadcast / product UPDATE were missed
           // (classic "En attente du vendeur" while friends keep bidding).
@@ -592,19 +606,18 @@ export function useLiveRoom(params: {
       const deadlineMs = data.auction_deadline_at
         ? new Date(data.auction_deadline_at).getTime()
         : 0;
-      // Past deadline by >20s → ask the server sweeper to settle (host offline).
-      if (deadlineMs > 0 && deadlineMs < Date.now() - 20_000 && Date.now() >= settleCooldownUntil) {
-        settleCooldownUntil = Date.now() + 30_000;
+      // Past deadline by >3s → ask the server sweeper (was 20s — left everyone
+      // stuck on 00:01 with no winner while finalize failed).
+      if (deadlineMs > 0 && deadlineMs < Date.now() - 3_000 && Date.now() >= settleCooldownUntil) {
+        settleCooldownUntil = Date.now() + 8_000;
         try {
           await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
             .rpc("settle_expired_auctions", { _live_id: liveId });
         } catch {
           /* ignore — next tick retries */
         }
-        // Unstick local UI if the host never finalized (zombie 00:01).
-        if (deadlineMs < Date.now() - 120_000) {
-          setAuctionStart((cur) => (cur && cur.productId === data.id ? null : cur));
-        }
+        // Unstick local UI immediately — don't wait for DB if finalize is wedged.
+        setAuctionStart((cur) => (cur && cur.productId === data.id ? null : cur));
         return;
       }
       if (!tryAdoptAuctionStart(auctionStartFromProduct(data))) return;
@@ -743,8 +756,9 @@ export function useLiveRoom(params: {
         endId: evt.endId || uid(),
         ts: evt.ts ?? Date.now(),
       };
-      // Confirm with DB — a stale/replayed end must not freeze viewers on
-      // "waiting for seller" while the auction is still active for others.
+      // Only ignore an end when the DB shows a NEWER round still running
+      // (host already relaunched). Same-round `status=active` after a failed
+      // finalize must NOT revive the countdown — that was the stuck 00:01 bug.
       void (async () => {
         const { data } = await supabase
           .from("live_products")
@@ -752,11 +766,20 @@ export function useLiveRoom(params: {
           .eq("id", full.productId)
           .maybeSingle();
         if (data) {
-          const adopted = auctionStartFromProduct(data);
-          // DB still says active — if it's a newer round than the received
-          // end (host relaunched), or adoption is otherwise allowed, keep
-          // the auction running and ignore this end frame.
-          if (adopted && tryAdoptAuctionStart(adopted)) return;
+          const dbRound = Number(data.auction_round ?? 1);
+          const endRound = Number(full.auctionRound ?? 1);
+          const deadlineMs = data.auction_deadline_at
+            ? new Date(data.auction_deadline_at).getTime()
+            : 0;
+          const newerRoundRunning =
+            data.status === "active" &&
+            dbRound > endRound &&
+            deadlineMs > Date.now();
+          if (newerRoundRunning) {
+            const adopted = auctionStartFromProduct(data);
+            if (adopted) tryAdoptAuctionStart(adopted);
+            return;
+          }
         }
         setLastAuctionEnd(full);
         setAuctionStart((cur) => (cur && cur.productId === full.productId ? null : cur));

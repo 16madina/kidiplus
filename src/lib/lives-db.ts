@@ -847,6 +847,8 @@ export async function placeBidInDb(args: {
   currentPrice?: number;
   minNext?: number;
   maxAmount?: number;
+  extended?: boolean;
+  deadlineMs?: number;
 }> {
   const { data, error } = await supabase.rpc("place_live_bid", {
     _live_id: args.liveId,
@@ -858,6 +860,7 @@ export async function placeBidInDb(args: {
   const result = data as {
     ok?: boolean; error?: string; amount?: number;
     current_price?: number; min_next?: number; max_amount?: number;
+    extended?: boolean; deadline?: string | null;
   } | null;
   if (!result?.ok) return {
     ok: false,
@@ -866,7 +869,12 @@ export async function placeBidInDb(args: {
     minNext: result?.min_next !== undefined ? Number(result.min_next) : undefined,
     maxAmount: result?.max_amount !== undefined ? Number(result.max_amount) : undefined,
   };
-  return { ok: true, amount: Number(result.amount) };
+  return {
+    ok: true,
+    amount: Number(result.amount),
+    extended: !!result.extended,
+    deadlineMs: result.deadline ? new Date(result.deadline).getTime() : undefined,
+  };
 }
 
 /** @deprecated Prefer createLiveOrder from orders-db — kept for legacy callers. */
