@@ -5,33 +5,48 @@ import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
 
 // ---------------------------------------------------------------------------
-// Global stack of open PushScreens.
+// Global stack of open overlays (PushScreens + BottomSheets).
 //
-// 1) Android hardware back can close the TOP screen instead of switching tabs
-//    under a stack of overlays (which looked like "back → wrong page").
-// 2) Back taps are debounced across screens: the back chevrons of stacked
-//    screens sit at the exact same spot, so a double-tap during the 300ms exit
-//    animation used to close BOTH screens (order detail → straight to profile).
+// 1) Android hardware back closes the TOP overlay instead of switching tabs.
+// 2) Back taps are debounced: stacked headers share the same chevron spot, so
+//    a double-tap (or click-through after closing a sheet) used to skip pages
+//    (invoice → straight to profile).
 // ---------------------------------------------------------------------------
 type StackEntry = { id: number; zIndex: number; close: () => void };
-const pushStack: StackEntry[] = [];
+const overlayStack: StackEntry[] = [];
 let nextStackId = 1;
 let lastBackAt = 0;
 
-function guardBack(): boolean {
+/** Debounce back actions across all overlays (~exit animation + ghost clicks). */
+export function guardBack(ms = 450): boolean {
   const now = Date.now();
-  if (now - lastBackAt < 400) return false;
+  if (now - lastBackAt < ms) return false;
   lastBackAt = now;
   return true;
 }
 
-/** Close the top-most open PushScreen. Returns false when none is open. */
-export function closeTopPushScreen(): boolean {
-  if (pushStack.length === 0) return false;
-  const top = pushStack.reduce((a, b) =>
+/** Register an overlay; returns unregister. Call while the overlay is open. */
+export function registerOverlay(close: () => void, zIndex: number): () => void {
+  const entry: StackEntry = { id: nextStackId++, zIndex, close };
+  overlayStack.push(entry);
+  return () => {
+    const i = overlayStack.indexOf(entry);
+    if (i >= 0) overlayStack.splice(i, 1);
+  };
+}
+
+function topOverlay(): StackEntry | null {
+  if (overlayStack.length === 0) return null;
+  return overlayStack.reduce((a, b) =>
     b.zIndex > a.zIndex || (b.zIndex === a.zIndex && b.id > a.id) ? b : a,
   );
-  if (!guardBack()) return true; // swallowed: a screen is already closing
+}
+
+/** Close the top-most open overlay. Returns false when none is open. */
+export function closeTopPushScreen(): boolean {
+  const top = topOverlay();
+  if (!top) return false;
+  if (!guardBack()) return true; // swallowed: something is already closing
   top.close();
   return true;
 }
@@ -63,19 +78,14 @@ export function PushScreen({
 
   useEffect(() => {
     if (!open) return;
-    const entry: StackEntry = {
-      id: nextStackId++,
-      zIndex,
-      close: () => onCloseRef.current(),
-    };
-    pushStack.push(entry);
-    return () => {
-      const i = pushStack.indexOf(entry);
-      if (i >= 0) pushStack.splice(i, 1);
-    };
+    return registerOverlay(() => onCloseRef.current(), zIndex);
   }, [open, zIndex]);
 
   const requestClose = () => {
+    // Only the top-most overlay may close via its own chevron — otherwise a
+    // peeking header under a sheet can skip layers of the stack.
+    const top = topOverlay();
+    if (top && top.zIndex > zIndex) return;
     if (!guardBack()) return;
     onClose();
   };

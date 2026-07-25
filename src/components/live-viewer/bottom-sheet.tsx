@@ -1,8 +1,12 @@
+import { useEffect, useRef, type ReactNode } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import type { ReactNode } from "react";
 import { EASE_IOS } from "@/lib/motion";
+import { guardBack, registerOverlay } from "@/components/push-screen";
 
 // Reusable bottom sheet with drag-to-dismiss (handle only) and dimmed backdrop.
+// Registered on the global overlay stack so hardware/system back closes the
+// sheet first, and backdrop dismiss arms guardBack to block click-through onto
+// PushScreen chevrons underneath (classic "sheet → skipped to profile").
 export function BottomSheet({
   open,
   onClose,
@@ -18,6 +22,18 @@ export function BottomSheet({
   zIndex?: number;
 }) {
   const dragControls = useDragControls();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    return registerOverlay(() => onCloseRef.current(), zIndex);
+  }, [open, zIndex]);
+
+  const requestClose = () => {
+    if (!guardBack()) return;
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -29,7 +45,7 @@ export function BottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
+            onClick={requestClose}
             className="absolute inset-0"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           />
@@ -45,7 +61,7 @@ export function BottomSheet({
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={(_, info) => {
-              if (info.offset.y > 120 || info.velocity.y > 500) onClose();
+              if (info.offset.y > 120 || info.velocity.y > 500) requestClose();
             }}
             className="absolute inset-x-0 bottom-0 flex flex-col rounded-t-3xl bg-background pb-safe"
             style={{

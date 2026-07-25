@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Share2, Copy, BadgeCheck, Clock3, FileDown, Loader2 } from "lucide-react";
-import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
+import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { CountryFlag } from "@/components/country-flag";
@@ -168,8 +168,13 @@ export function OrderInvoiceSheet({
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} heightPercent={92} zIndex={zIndex}>
-      <div className="flex h-full flex-col overflow-y-auto px-4 pb-6 pt-1">
+    <PushScreen
+      open={open}
+      onClose={onClose}
+      title={t("invoice.title", { defaultValue: "Facture" })}
+      zIndex={zIndex}
+    >
+      <div className="px-4 pb-6 pt-3">
         {/* Capture root — cream padding so notches look intentional in the PNG/PDF */}
         <div
           ref={ticketRef}
@@ -433,6 +438,6 @@ export function OrderInvoiceSheet({
           })}
         </p>
       </div>
-    </BottomSheet>
+    </PushScreen>
   );
 }

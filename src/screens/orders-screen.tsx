@@ -574,14 +574,28 @@ function PurchaseCard({
 
 function BuyerOrderDetailScreen({ order, onClose }: { order: OrderRow | null; onClose: () => void }) {
   const { t } = useTranslation();
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+
+  // Reset invoice when leaving / switching order so back stack stays clean.
+  useEffect(() => {
+    if (!order) setInvoiceOpen(false);
+  }, [order]);
+
   return (
     <PushScreen
       open={!!order}
       onClose={onClose}
       title={order ? order.item_name : ""}
       zIndex={70}
+      swipeBackEnabled={!invoiceOpen}
     >
-      {order && <BuyerOrderDetailBody order={order} />}
+      {order && (
+        <BuyerOrderDetailBody
+          order={order}
+          invoiceOpen={invoiceOpen}
+          onInvoiceOpenChange={setInvoiceOpen}
+        />
+      )}
       {!order && <div className="p-4 text-sm text-muted-foreground">{t("orders.empty")}</div>}
     </PushScreen>
   );
@@ -612,12 +626,19 @@ function fullDate(iso: string | null, lang: string): string | null {
   });
 }
 
-function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
+function BuyerOrderDetailBody({
+  order,
+  invoiceOpen,
+  onInvoiceOpenChange,
+}: {
+  order: OrderRow;
+  invoiceOpen: boolean;
+  onInvoiceOpenChange: (open: boolean) => void;
+}) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const meta = statusMeta(order.status);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [invoiceOpen, setInvoiceOpen] = useState(false);
   const isBuyer = !!user && user.id === order.buyer_id;
   const canReview = isBuyer && order.fulfillment_status === "delivered";
   const fm = FULFILL_META[order.fulfillment_status];
@@ -682,7 +703,7 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
         <div className="my-2 h-px bg-border" />
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency, i18n.language)} bold />
         <Press
-          onClick={() => { haptic.selection(); setInvoiceOpen(true); }}
+          onClick={() => { haptic.selection(); onInvoiceOpenChange(true); }}
           className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-[13px] font-semibold"
         >
           <ReceiptText size={14} /> {t("invoice.viewCta", { defaultValue: "Voir la facture" })}
@@ -754,7 +775,7 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
       <OrderInvoiceSheet
         order={order}
         open={invoiceOpen}
-        onClose={() => setInvoiceOpen(false)}
+        onClose={() => onInvoiceOpenChange(false)}
       />
     </div>
   );
