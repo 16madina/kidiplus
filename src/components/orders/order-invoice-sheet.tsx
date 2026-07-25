@@ -18,7 +18,7 @@ import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
 import { countryName } from "@/lib/delivery-zones-data";
 import { fetchProfilesByIds, type OrderRow } from "@/lib/orders-db";
-import { shareTicketImage, shareTicketPdf } from "@/lib/invoice-export";
+import { downloadTicketPdf, shareTicketImage } from "@/lib/invoice-export";
 
 type Party = { display_name: string; handle: string };
 
@@ -138,8 +138,8 @@ export function OrderInvoiceSheet({
         title: `KiDi+ ${number}`,
         text: shareText,
       });
-      if (result === "downloaded") {
-        toast.success(t("invoice.imageSaved", { defaultValue: "Image enregistrée" }));
+      if (result === "cancelled") {
+        /* user closed the share sheet */
       }
     } catch {
       toast.error(t("invoice.exportFailed", { defaultValue: "Export impossible" }));
@@ -147,18 +147,17 @@ export function OrderInvoiceSheet({
     setBusy(null);
   };
 
-  const sharePdf = async () => {
+  const savePdf = async () => {
     if (!ticketRef.current || busy) return;
     haptic.selection();
     setBusy("pdf");
     try {
-      const result = await shareTicketPdf({
+      const result = await downloadTicketPdf({
         node: ticketRef.current,
         filename: `${number}.pdf`,
         title: `KiDi+ ${number}`,
-        text: shareText,
       });
-      if (result === "downloaded") {
+      if (result === "saved") {
         toast.success(t("invoice.pdfSaved", { defaultValue: "PDF enregistré" }));
       }
     } catch {
@@ -404,9 +403,9 @@ export function OrderInvoiceSheet({
             {t("invoice.shareImage", { defaultValue: "Partager l'image" })}
           </Press>
           <Press
-            onClick={() => void sharePdf()}
+            onClick={() => void savePdf()}
             disabled={!!busy}
-            aria-label={t("invoice.sharePdf", { defaultValue: "PDF" })}
+            aria-label={t("invoice.downloadPdf", { defaultValue: "Télécharger PDF" })}
             className="!min-h-12 !min-w-12 rounded-2xl border border-border disabled:opacity-60"
           >
             {busy === "pdf" ? (
@@ -434,7 +433,8 @@ export function OrderInvoiceSheet({
         </div>
         <p className="mt-2 px-1 text-center text-[11px] text-muted-foreground">
           {t("invoice.shareHint", {
-            defaultValue: "L'image s'ouvre dans WhatsApp, Messages… · le bouton PDF enregistre la facture.",
+            defaultValue:
+              "Partager ouvre WhatsApp / Messages… · PDF te demande où enregistrer la facture.",
           })}
         </p>
       </div>

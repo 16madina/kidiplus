@@ -1,13 +1,15 @@
-// Capture the invoice ticket DOM as PNG / PDF and share it
-// (WhatsApp, Messages, Files…) via the Web Share API when available.
+// Capture the invoice ticket DOM as PNG / PDF.
+// - Share image → OS native share sheet (WhatsApp, Messages…)
+// - Download PDF → save picker when available, else download / "Save to Files"
 
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 
 const CAPTURE_BG = "#F5F2EA";
 
 export async function captureTicketPng(node: HTMLElement): Promise<Blob> {
-  // Wait one frame so fonts / images settle before rasterising.
   await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
   const opts = {
@@ -20,7 +22,6 @@ export async function captureTicketPng(node: HTMLElement): Promise<Blob> {
   try {
     dataUrl = await toPng(node, opts);
   } catch {
-    // CORS-tainted remote images (product photo) — retry without them.
     dataUrl = await toPng(node, {
       ...opts,
       filter: (el) => !(el instanceof HTMLImageElement),
@@ -32,7 +33,16 @@ export async function captureTicketPng(node: HTMLElement): Promise<Blob> {
 }
 
 function blobToFile(blob: Blob, filename: string): File {
-  return new File([blob], filename, { type: blob.type || "image/png" });
+  return new File([blob], filename, { type: blob.type || "application/octet-stream" });
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function canShareFiles(files: File[]): Promise<boolean> {
@@ -44,9 +54,8 @@ async function canShareFiles(files: File[]): Promise<boolean> {
       return navigator.canShare({ files });
     }
   } catch {
-    /* ignore */
+    return false;
   }
-  // Older Safari: canShare missing but share({files}) often works.
   return true;
 }
 
@@ -59,61 +68,13 @@ function triggerDownload(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  window.setTimeout(() => URL.revokeObjectURL(url), 2_000);
 }
 
-/**
- * Share the ticket as a PNG image (ideal for WhatsApp).
- * Falls back to downloading the PNG when the OS cannot share files.
- */
-export async function shareTicketImage(opts: {
-  node: HTMLElement;
-  filename: string;
-  title: string;
-  text?: string;
-}): Promise<"shared" | "downloaded"> {
-  const blob = await captureTicketPng(opts.node);
-  const file = blobToFile(blob, opts.filename.endsWith(".png") ? opts.filename : `${opts.filename}.png`);
+async function buildPdfBlob(node: HTMLElement): Promise<Blob> {
+  const png = await captureTicketPng(node);
+  const dataUrl = await blobToDataUrl(png);
 
-  if (await canShareFiles([file])) {
-    try {
-      await navigator.share({
-        title: opts.title,
-        text: opts.text,
-        files: [file],
-      });
-      return "shared";
-    } catch (err) {
-      // User cancelled the sheet — treat as success (no fallback toast).
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return "shared";
-      }
-      // Fall through to download.
-    }
-  }
-
-  triggerDownload(blob, file.name);
-  return "downloaded";
-}
-
-/**
- * Build a one-page PDF from the ticket PNG and share / download it.
- */
-export async function shareTicketPdf(opts: {
-  node: HTMLElement;
-  filename: string;
-  title: string;
-  text?: string;
-}): Promise<"shared" | "downloaded"> {
-  const png = await captureTicketPng(opts.node);
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(png);
-  });
-
-  // Measure natural pixel size from the data URL.
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
     el.onload = () => resolve(el);
@@ -123,13 +84,12 @@ export async function shareTicketPdf(opts: {
 
   const pxW = img.naturalWidth || img.width;
   const pxH = img.naturalHeight || img.height;
-  // Fit on A4 portrait with small margins (mm).
   const pageW = 210;
   const pageH = 297;
   const margin = 10;
   const maxW = pageW - margin * 2;
   const maxH = pageH - margin * 2;
-  const ratio = pxW / pxH;
+  const ratio = pxW / Math.max(pxH, 1);
   let drawW = maxW;
   let drawH = drawW / ratio;
   if (drawH > maxH) {
@@ -143,11 +103,23 @@ export async function shareTicketPdf(opts: {
   pdf.setFillColor(245, 242, 234);
   pdf.rect(0, 0, pageW, pageH, "F");
   pdf.addImage(dataUrl, "PNG", x, y, drawW, drawH, undefined, "FAST");
+  return pdf.output("blob");
+}
 
-  const pdfBlob = pdf.output("blob");
-  const filename = opts.filename.endsWith(".pdf") ? opts.filename : `${opts.filename}.pdf`;
-  const file = blobToFile(pdfBlob, filename);
+/**
+ * Open the native share sheet with the ticket as a PNG (WhatsApp, etc.).
+ */
+export async function shareTicketImage(opts: {
+  node: HTMLElement;
+  filename: string;
+  title: string;
+  text?: string;
+}): Promise<"shared" | "cancelled"> {
+  const blob = await captureTicketPng(opts.node);
+  const filename = opts.filename.endsWith(".png") ? opts.filename : `${opts.filename}.png`;
+  const file = blobToFile(new Blob([blob], { type: "image/png" }), filename);
 
+  // 1) Web Share API with file — best path on iOS/Android (incl. many Cap WebViews).
   if (await canShareFiles([file])) {
     try {
       await navigator.share({
@@ -158,11 +130,107 @@ export async function shareTicketPdf(opts: {
       return "shared";
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        return "shared";
+        return "cancelled";
+      }
+      // fall through
+    }
+  }
+
+  // 2) Capacitor Share (text + title). File URIs need Filesystem; still opens
+  //    the native sheet so the user can pick WhatsApp with the caption.
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await Share.share({
+        title: opts.title,
+        text: opts.text ?? opts.title,
+        dialogTitle: opts.title,
+      });
+      // Also offer the image via a temporary download so it lands in Photos/Files.
+      triggerDownload(blob, filename);
+      return "shared";
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return "cancelled";
+    }
+  }
+
+  // 3) Last resort: Web Share text-only, then download the PNG.
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: opts.title, text: opts.text });
+      triggerDownload(blob, filename);
+      return "shared";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return "cancelled";
       }
     }
   }
 
+  triggerDownload(blob, filename);
+  return "shared";
+}
+
+/**
+ * Save the ticket as a PDF — asks where to save when the OS supports it
+ * (Chrome/Edge file picker; iOS share sheet → "Save to Files").
+ */
+export async function downloadTicketPdf(opts: {
+  node: HTMLElement;
+  filename: string;
+  title: string;
+}): Promise<"saved" | "cancelled"> {
+  const pdfBlob = await buildPdfBlob(opts.node);
+  const filename = opts.filename.endsWith(".pdf") ? opts.filename : `${opts.filename}.pdf`;
+  const file = blobToFile(new Blob([pdfBlob], { type: "application/pdf" }), filename);
+
+  // Chromium: real "Save as…" dialog.
+  const w = window as Window & {
+    showSaveFilePicker?: (opts: {
+      suggestedName?: string;
+      types?: Array<{ description: string; accept: Record<string, string[]> }>;
+    }) => Promise<FileSystemFileHandle>;
+  };
+  if (typeof w.showSaveFilePicker === "function") {
+    try {
+      const handle = await w.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: "PDF",
+            accept: { "application/pdf": [".pdf"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(pdfBlob);
+      await writable.close();
+      return "saved";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return "cancelled";
+      }
+      // fall through
+    }
+  }
+
+  // iOS / Android: share sheet → user picks "Save to Files" / Drive / etc.
+  if (await canShareFiles([file])) {
+    try {
+      await navigator.share({
+        title: opts.title,
+        files: [file],
+      });
+      return "saved";
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return "cancelled";
+      }
+    }
+  }
+
+  // Desktop Safari / fallback: browser download to default folder.
   triggerDownload(pdfBlob, filename);
-  return "downloaded";
+  return "saved";
 }
