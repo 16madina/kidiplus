@@ -762,19 +762,24 @@ export type Database = {
       lives: {
         Row: {
           abandon_push_sent_at: string | null
+          allow_bids: boolean
+          allow_buy_now: boolean
           allow_gifts: boolean
           broadcast_mode: string
           category: string | null
           cover_url: string | null
           currency: string
+          description: string | null
           egress_id: string | null
           ended_at: string | null
+          estimated_duration_min: number | null
           facebook_egress_id: string | null
           facebook_live_video_id: string | null
           facebook_watch_url: string | null
           host_last_seen_at: string | null
           id: string
           ingress_id: string | null
+          notify_followers: boolean
           reminder_buyer_15m_sent: boolean
           reminder_buyer_1h_sent: boolean
           reminder_buyer_24h_sent: boolean
@@ -794,19 +799,24 @@ export type Database = {
         }
         Insert: {
           abandon_push_sent_at?: string | null
+          allow_bids?: boolean
+          allow_buy_now?: boolean
           allow_gifts?: boolean
           broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
+          description?: string | null
           egress_id?: string | null
           ended_at?: string | null
+          estimated_duration_min?: number | null
           facebook_egress_id?: string | null
           facebook_live_video_id?: string | null
           facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
           ingress_id?: string | null
+          notify_followers?: boolean
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
@@ -826,19 +836,24 @@ export type Database = {
         }
         Update: {
           abandon_push_sent_at?: string | null
+          allow_bids?: boolean
+          allow_buy_now?: boolean
           allow_gifts?: boolean
           broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
+          description?: string | null
           egress_id?: string | null
           ended_at?: string | null
+          estimated_duration_min?: number | null
           facebook_egress_id?: string | null
           facebook_live_video_id?: string | null
           facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
           ingress_id?: string | null
+          notify_followers?: boolean
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
