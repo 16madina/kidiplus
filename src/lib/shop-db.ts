@@ -42,14 +42,42 @@ export function seedShopImagePreview(path: string, blobUrl: string) {
   localPreviewCache.set(path, blobUrl);
 }
 
-export async function resolveShopImage(value: string | null | undefined): Promise<string | null> {
+export type ShopImageSize = "thumb" | "card" | "detail" | "full";
+
+const SHOP_TRANSFORMS: Record<
+  ShopImageSize,
+  { width: number; height: number; resize: "cover"; quality: number } | null
+> = {
+  thumb: { width: 160, height: 160, resize: "cover", quality: 70 },
+  card: { width: 480, height: 480, resize: "cover", quality: 75 },
+  detail: { width: 960, height: 960, resize: "cover", quality: 80 },
+  full: null,
+};
+
+export async function resolveShopImage(
+  value: string | null | undefined,
+  size: ShopImageSize = "card",
+): Promise<string | null> {
   if (!value) return null;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;
   const local = localPreviewCache.get(value);
   if (local) return local;
-  const key = `shop-products::${value}`;
+  const key = `shop-products::${size}::${value}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+  const transform = SHOP_TRANSFORMS[size];
+  if (transform) {
+    const { data, error } = await supabase.storage
+      .from("shop-products")
+      .createSignedUrl(value, SIGN_TTL_SEC, { transform });
+    if (!error && data?.signedUrl) {
+      signedCache.set(key, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + SIGN_TTL_SEC * 1000,
+      });
+      return data.signedUrl;
+    }
+  }
   const { data, error } = await supabase.storage
     .from("shop-products")
     .createSignedUrl(value, SIGN_TTL_SEC);

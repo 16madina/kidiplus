@@ -303,6 +303,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           category: b.category,
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          allowGifts: b.allowGifts,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));

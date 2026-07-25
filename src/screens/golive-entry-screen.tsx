@@ -78,7 +78,7 @@ export function GoLiveEntryScreen({
     const entries = await Promise.all(
       rows
         .filter((r) => r.cover_url)
-        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
+        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? ""] as const),
     );
     setCovers(Object.fromEntries(entries));
   }, [user]);
@@ -104,6 +104,8 @@ export function GoLiveEntryScreen({
       b.setCategory(full.category ?? "Fashion");
       b.setScheduledAt(full.scheduled_at);
       b.setAllowGifts(full.allow_gifts !== false);
+      b.setStreamSource(full.broadcast_mode === "rtmp" ? "rtmp" : "camera");
+      b.setRtmpCreds(null);
       b.setCoverFile(null);
 
       const resolvedCover = full.cover_url
@@ -186,6 +188,26 @@ export function GoLiveEntryScreen({
       b.setProductDbIds(res.productIds ?? []);
       b.setRoomName(res.roomName ?? null);
       b.setLiveId(row.id);
+      b.setAllowGifts(full.allow_gifts !== false);
+      const useRtmp = full.broadcast_mode === "rtmp";
+      b.setStreamSource(useRtmp ? "rtmp" : "camera");
+      if (useRtmp) {
+        const { createLiveIngress } = await import("@/lib/livekit-ingress");
+        try {
+          const creds = await createLiveIngress(row.id);
+          b.setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          return;
+        }
+      } else {
+        b.setRtmpCreds(null);
+      }
       // Fire-and-forget reminder notifications
       void notifyLiveReminders(row.id);
       haptic.success();

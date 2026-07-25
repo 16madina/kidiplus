@@ -193,9 +193,11 @@ export function ViewerLiveVideo({
       try {
         const { token, url } = await getToken(room, identity, name, "viewer");
         if (cancelled) return;
-        // adaptiveStream:false — first open in Capacitor WKWebView otherwise
-        // often sticks on a single frame until background/PiP return.
-        const r = await connectRoom(url, token, { adaptiveStream: false });
+        // WKWebView: adaptiveStream often freezes the first open on one frame.
+        // Web browsers can keep adaptive bitrate; native Capacitor stays off.
+        const r = await connectRoom(url, token, {
+          adaptiveStream: !Capacitor.isNativePlatform(),
+        });
         if (cancelled) {
           await disconnectRoom(r);
           return;

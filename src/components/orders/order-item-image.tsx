@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 const DIRECT_IMAGE_RE = /^(https?:|blob:|data:)/i;
 
 async function resolveOrderImage(src: string): Promise<string | null> {
-  const fromLive = await resolveLiveImage("live-products", src).catch(() => null);
+  const fromLive = await resolveLiveImage("live-products", src, "thumb").catch(() => null);
   if (fromLive) return fromLive;
-  return resolveShopImage(src).catch(() => null);
+  return resolveShopImage(src, "thumb").catch(() => null);
 }
 
 export function OrderItemImage({

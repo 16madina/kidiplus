@@ -18,26 +18,56 @@ import {
 // Storage
 // -------------------------------------------------------------------------
 
-/** In-memory cache: `${bucket}::${path}` -> signed URL + expiry. */
+/** In-memory cache: `${bucket}::${size}::${path}` -> signed URL + expiry. */
 const signedCache = new Map<string, { url: string; expiresAt: number }>();
 
 const SIGN_TTL_SEC = 60 * 60 * 24; // 24h
+
+/** Display presets — avoid shipping multi‑MB originals into feed/card grids. */
+export type LiveImageSize = "thumb" | "card" | "detail" | "full";
+
+const IMAGE_TRANSFORMS: Record<
+  LiveImageSize,
+  { width: number; height: number; resize: "cover"; quality: number } | null
+> = {
+  thumb: { width: 160, height: 160, resize: "cover", quality: 70 },
+  card: { width: 480, height: 720, resize: "cover", quality: 75 },
+  detail: { width: 960, height: 1280, resize: "cover", quality: 80 },
+  full: null,
+};
 
 /**
  * Resolve a stored image reference to a displayable URL.
  * - Absolute http(s) URLs are returned as-is (external images / Unsplash).
  * - Bucket paths ("<uid>/xxx.jpg") get a fresh signed URL, cached in-memory.
+ * - Optional size uses Supabase image transforms when enabled; falls back to
+ *   the full signed object if transforms are unavailable.
  */
 export async function resolveLiveImage(
   bucket: "live-covers" | "live-products",
   value: string | null | undefined,
+  size: LiveImageSize = "card",
 ): Promise<string | null> {
   if (!value) return null;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;
 
-  const key = `${bucket}::${value}`;
+  const key = `${bucket}::${size}::${value}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+
+  const transform = IMAGE_TRANSFORMS[size];
+  if (transform) {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(value, SIGN_TTL_SEC, { transform });
+    if (!error && data?.signedUrl) {
+      signedCache.set(key, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + SIGN_TTL_SEC * 1000,
+      });
+      return data.signedUrl;
+    }
+  }
 
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -234,15 +264,23 @@ export async function createLiveInDb(
   return { liveId: live.id, productIds };
 }
 
-export async function endLiveInDb(liveId: string): Promise<void> {
-  await supabase
+export async function endLiveInDb(
+  liveId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase
     .from("lives")
     .update({
       status: "ended",
       ended_at: new Date().toISOString(),
       ingress_id: null,
     } as never)
-    .eq("id", liveId);
+    .eq("id", liveId)
+    .eq("status", "live")
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "not_updated" };
+  return { ok: true };
 }
 
 export async function markLiveActiveInDb(liveId: string): Promise<void> {
@@ -287,13 +325,18 @@ export type OpenLiveRow = {
   category: string | null;
   currency: string | null;
   host_last_seen_at: string | null;
+  broadcast_mode?: string | null;
+  ingress_id?: string | null;
+  allow_gifts?: boolean | null;
 };
 
 /** All currently-open lives for this seller (for reconnect banner). */
 export async function findOpenLives(sellerId: string): Promise<OpenLiveRow[]> {
   const { data } = await supabase
     .from("lives")
-    .select("id, title, started_at, room_name, cover_url, category, currency, host_last_seen_at")
+    .select(
+      "id, title, started_at, room_name, cover_url, category, currency, host_last_seen_at, broadcast_mode, ingress_id, allow_gifts",
+    )
     .eq("seller_id", sellerId)
     .eq("status", "live")
     .order("started_at", { ascending: false });
@@ -321,7 +364,7 @@ export async function expireAbandonedLivesInDb(
     const last = r.host_last_seen_at || r.started_at;
     return last < cutoff;
   });
-  await Promise.all(stale.map((r) => endLiveInDb(r.id).catch(() => {})));
+  await Promise.all(stale.map((r) => endLiveInDb(r.id)));
   return stale.length;
 }
 
@@ -396,7 +439,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
 
   // Thumbnail: live cover → seller photo → neutral marketplace fallback.
   // Never use a random product (e.g. sneaker) or pravatar as a stand-in.
-  const coverFromLive = await resolveLiveImage("live-covers", row.cover_url);
+  const coverFromLive = await resolveLiveImage("live-covers", row.cover_url, "card");
   const thumbnail = coverFromLive || avatar || FALLBACK_COVER;
 
   const category = (row.category as LiveStream["category"]) ?? "Fashion";
@@ -902,6 +945,7 @@ export type ScheduledLiveRow = {
   currency: string | null;
   status: string;
   allow_gifts?: boolean | null;
+  broadcast_mode?: string | null;
   products?: LiveProductRow[];
 };
 
@@ -979,6 +1023,7 @@ export async function updateScheduledLiveInDb(
     coverPath: string | null;
     scheduledAt: string;
     allowGifts?: boolean;
+    broadcastMode?: "camera" | "rtmp";
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -990,14 +1035,22 @@ export async function updateScheduledLiveInDb(
       cover_url: patch.coverPath,
       scheduled_at: patch.scheduledAt,
       ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
-    })
+      ...(patch.broadcastMode
+        ? { broadcast_mode: patch.broadcastMode, ...(patch.broadcastMode === "camera" ? { ingress_id: null } : {}) }
+        : {}),
+    } as never)
     .eq("id", liveId)
     .eq("status", "scheduled");
   if (error) throw error;
 
+  // Insert new products first, then delete old ones — never leave an empty list
+  // if the insert fails (previous delete-then-insert could wipe products).
+  const { data: existing } = await supabase
+    .from("live_products")
+    .select("id")
+    .eq("live_id", liveId);
+  const oldIds = (existing ?? []).map((r) => r.id as string);
 
-  // Replace products wholesale.
-  await supabase.from("live_products").delete().eq("live_id", liveId);
   if (patch.products.length > 0) {
     const rows = patch.products.map((p) => ({
       live_id: liveId,
@@ -1015,6 +1068,14 @@ export async function updateScheduledLiveInDb(
     }));
     const { error: pErr } = await supabase.from("live_products").insert(rows);
     if (pErr) throw pErr;
+  }
+
+  if (oldIds.length > 0) {
+    const { error: delErr } = await supabase
+      .from("live_products")
+      .delete()
+      .in("id", oldIds);
+    if (delErr) throw delErr;
   }
 }
 
@@ -1102,8 +1163,9 @@ export async function fetchScheduledLiveWithProducts(
 ): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
   const { data } = await supabase
     .from("lives")
-    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts")
-
+    .select(
+      "id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts, broadcast_mode",
+    )
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;
@@ -1139,7 +1201,7 @@ export async function fetchUpcomingScheduledLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
       product_count: r.live_products?.[0]?.count ?? 0,
     })),
   );
@@ -1188,7 +1250,7 @@ export async function fetchSellerLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
     })),
   );
   // Sort: live first, then scheduled (upcoming), then ended.

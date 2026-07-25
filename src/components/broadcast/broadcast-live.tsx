@@ -241,20 +241,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, [room.products, featuredId, retiredFeaturedIds]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
-  const [now, setNow] = useState(() => Date.now());
+  // Poll often for accuracy, re-render only when the second flips.
+  const [timeLeft, setTimeLeft] = useState(0);
   useEffect(() => {
-    if (!appActive || !room.auctionStart) return;
-    // Catch up immediately when returning from background — otherwise the
-    // card can sit at 00s without firing auto-end until the next tick.
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 250);
+    if (!appActive || !room.auctionStart) {
+      setTimeLeft(0);
+      return;
+    }
+    const deadlineMs = room.auctionStart.deadlineMs;
+    let last = -1;
+    const tick = () => {
+      const s = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      if (s !== last) {
+        last = s;
+        setTimeLeft(s);
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
     return () => clearInterval(t);
   }, [appActive, room.auctionStart]);
-
-  const timeLeft = useMemo(() => {
-    if (!room.auctionStart) return 0;
-    return Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000));
-  }, [room.auctionStart, now]);
 
   const activeAuction = room.auctionStart;
   const activeProduct = activeAuction
@@ -902,7 +908,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   };
 
   const endLive = async () => {
-    haptic.success();
+    if (!b.liveId) {
+      haptic.success();
+      onEnd();
+      return;
+    }
+    haptic.medium();
     b.setSession({
       title: b.title,
       category: b.category,
@@ -919,23 +930,28 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           price: Number(p.final_price ?? p.price),
         })),
     });
-    if (b.liveId) {
-      if (ytRestreaming || ytWatchUrl) {
-        await stopYoutubeRestream(b.liveId).catch(() => {});
-      }
-      if (fbRestreaming || fbWatchUrl) {
-        await stopFacebookRestream(b.liveId).catch(() => {});
-      }
-      if (ttRestreaming) {
-        await stopTiktokRestream(b.liveId).catch(() => {});
-      }
-      if (isRtmp || b.rtmpCreds) {
-        const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
-        await deleteLiveIngress(b.liveId).catch(() => {});
-      }
-      const { endLiveInDb } = await import("@/lib/lives-db");
-      await endLiveInDb(b.liveId).catch(() => {});
+    if (ytRestreaming || ytWatchUrl) {
+      await stopYoutubeRestream(b.liveId).catch(() => {});
     }
+    if (fbRestreaming || fbWatchUrl) {
+      await stopFacebookRestream(b.liveId).catch(() => {});
+    }
+    if (ttRestreaming) {
+      await stopTiktokRestream(b.liveId).catch(() => {});
+    }
+    if (isRtmp || b.rtmpCreds) {
+      const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
+      await deleteLiveIngress(b.liveId).catch(() => {});
+    }
+    const { endLiveInDb } = await import("@/lib/lives-db");
+    const ended = await endLiveInDb(b.liveId);
+    // not_updated = already ended (expiry / other device) — still leave to summary.
+    if (!ended.ok && ended.error !== "not_updated") {
+      haptic.error();
+      toast.error(t("live.endFailed", "Impossible de terminer le live — réessaie"));
+      return;
+    }
+    haptic.success();
     onEnd();
   };
 
@@ -1061,6 +1077,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onFlipBusyChange={setFlipBusy}
         onFacingApplied={(applied) => setFacing(applied)}
         onFlipRevert={(prev) => setFacing(prev)}
+        onMicSync={(enabled) => setMicOn(enabled)}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
@@ -1287,7 +1304,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         )}
       </div>
 
-      <FloatingHearts trigger={room.heartTick} />
+      <FloatingHearts useBus />
       <Confetti trigger={confettiTrigger} />
       <GiftComboFeed trigger={room.lastGift} />
       <GiftAnimationsLayer trigger={room.lastGift} />

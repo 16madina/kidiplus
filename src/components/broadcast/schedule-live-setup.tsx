@@ -357,6 +357,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
           allowGifts,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));

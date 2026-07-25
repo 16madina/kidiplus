@@ -365,7 +365,8 @@ export function RealLiveViewerScreen() {
   }, [room.products, activeAuctionId, endedProductId]);
 
   // Auction countdown from broadcast deadline (fallback: DB deadline on product).
-  const [now, setNow] = useState(Date.now());
+  // Poll often, but only re-render when the displayed second changes (~1×/s).
+  const [secondsLeft, setSecondsLeft] = useState(0);
   const deadlineMs =
     room.auctionStart?.deadlineMs ??
     (currentProduct?.mode === "auction" &&
@@ -374,13 +375,22 @@ export function RealLiveViewerScreen() {
       ? new Date(currentProduct.auction_deadline_at).getTime()
       : null);
   useEffect(() => {
-    if (!deadlineMs) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
+    if (!deadlineMs) {
+      setSecondsLeft(0);
+      return;
+    }
+    let last = -1;
+    const tick = () => {
+      const s = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      if (s !== last) {
+        last = s;
+        setSecondsLeft(s);
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
     return () => clearInterval(t);
   }, [deadlineMs]);
-  const secondsLeft = deadlineMs
-    ? Math.max(0, Math.ceil((deadlineMs - now) / 1000))
-    : 0;
   const auctionIsLive =
     !liveEnded &&
     !!currentProduct &&
@@ -1303,7 +1313,7 @@ export function RealLiveViewerScreen() {
         </ErrorBoundary>
       )}
 
-      <FloatingHearts trigger={room.heartTick} />
+      <FloatingHearts useBus />
       
       <Confetti trigger={confettiKey} />
       <WinnerReveal

@@ -75,6 +75,8 @@ export type BroadcastVideoProps = {
   onFlipBusyChange?: (busy: boolean) => void;
   /** Called after a successful live flip with the actual facing applied. */
   onFacingApplied?: (facing: CameraFacing) => void;
+  /** Sync parent mic UI when LiveKit mute/unmute fails or disagrees. */
+  onMicSync?: (enabled: boolean) => void;
 };
 
 export type BroadcastStatus =
@@ -115,6 +117,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       onFlipRevert,
       onFlipBusyChange,
       onFacingApplied,
+      onMicSync,
     },
     ref,
   ) {
@@ -669,13 +672,43 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       })();
     }, [enabled, livekit, roomShouldRun, t]);
 
-    // Toggle mic without reconnecting.
+    // Toggle mic without reconnecting — surface failures so UI matches reality.
     useEffect(() => {
       if (!livekit || videoSource === "rtmp") return;
       const room = roomRef.current;
       if (!room) return;
-      void room.localParticipant.setMicrophoneEnabled(micEnabled);
-    }, [micEnabled, livekit, videoSource]);
+      let cancelled = false;
+      void (async () => {
+        try {
+          await room.localParticipant.setMicrophoneEnabled(micEnabled);
+          if (cancelled) return;
+          const pub = room.localParticipant.getTrackPublication(
+            Track.Source.Microphone,
+          );
+          const actuallyOn = !!pub && !pub.isMuted;
+          if (actuallyOn !== micEnabled) {
+            toast.error(
+              micEnabled
+                ? t("live.micOnFailed", "Impossible d'activer le micro")
+                : t("live.micOffFailed", "Impossible de couper le micro"),
+            );
+            onMicSync?.(actuallyOn);
+          }
+        } catch (e) {
+          console.warn("[mic] setMicrophoneEnabled failed", e);
+          if (cancelled) return;
+          toast.error(
+            micEnabled
+              ? t("live.micOnFailed", "Impossible d'activer le micro")
+              : t("live.micOffFailed", "Impossible de couper le micro"),
+          );
+          onMicSync?.(!micEnabled);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [micEnabled, livekit, videoSource, onMicSync, t]);
 
     // Changement de filtre pendant le live : mettre à jour le pipeline de la
     // piste publiée (les viewers voient la nouvelle lens instantanément).

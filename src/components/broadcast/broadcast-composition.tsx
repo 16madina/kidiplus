@@ -103,15 +103,25 @@ export function BroadcastComposition({
     );
   }, [room.products, activeAuctionId, endedProductId]);
 
-  const [now, setNow] = useState(Date.now());
+  const [secondsLeft, setSecondsLeft] = useState(0);
   useEffect(() => {
-    if (!room.auctionStart) return;
-    const timer = setInterval(() => setNow(Date.now()), 250);
+    if (!room.auctionStart) {
+      setSecondsLeft(0);
+      return;
+    }
+    const deadlineMs = room.auctionStart.deadlineMs;
+    let last = -1;
+    const tick = () => {
+      const s = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      if (s !== last) {
+        last = s;
+        setSecondsLeft(s);
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 250);
     return () => clearInterval(timer);
   }, [room.auctionStart]);
-  const secondsLeft = room.auctionStart
-    ? Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000))
-    : 0;
   const auctionOnFeatured =
     !!room.auctionStart &&
     !!featured &&

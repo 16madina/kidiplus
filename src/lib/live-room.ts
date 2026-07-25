@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { bumpHeart } from "@/lib/heart-bus";
 import {
   fetchLiveProducts,
   updateLiveViewerCount,
@@ -35,7 +36,7 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   const path = normalized.image_url;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const url = await resolveLiveImage("live-products", path);
+      const url = await resolveLiveImage("live-products", path, "card");
       if (url) return { ...normalized, image_url: url };
     } catch (err) {
       console.warn("[live-room] hydrateImage error", err, path);
@@ -196,7 +197,6 @@ export type LiveRoomState = {
   /** Logged-in viewers currently in the Supabase presence channel (excludes guests + host). */
   presentViewers: LivePresenceViewer[];
   chat: ChatEvt[];
-  heartTick: number;
   products: LiveProductRow[];
   liveStatus: "live" | "ended" | null;
   auctionStart: AuctionStartEvt | null;
@@ -274,7 +274,6 @@ export function useLiveRoom(params: {
   const [viewerCount, setViewerCount] = useState(1);
   const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
   const [chat, setChat] = useState<ChatEvt[]>([]);
-  const [heartTick, setHeartTick] = useState(0);
   const [products, setProducts] = useState<LiveProductRow[]>([]);
   const [liveStatus, setLiveStatus] = useState<"live" | "ended" | null>(null);
   const [auctionStart, setAuctionStart] = useState<AuctionStartEvt | null>(null);
@@ -359,7 +358,6 @@ export function useLiveRoom(params: {
     setViewerCount(1);
     setPresentViewers([]);
     setChat([]);
-    setHeartTick(0);
     setProducts([]);
     setLiveStatus(null);
     setAuctionStart(null);
@@ -691,7 +689,7 @@ export function useLiveRoom(params: {
       });
     });
     ch.on("broadcast", { event: "heart" }, () => {
-      setHeartTick((n) => n + 1);
+      bumpHeart();
     });
     ch.on("broadcast", { event: "auction:start" }, ({ payload }) => {
       const evt = payload as AuctionStartEvt;
@@ -950,7 +948,6 @@ export function useLiveRoom(params: {
       viewerCount,
       presentViewers,
       chat,
-      heartTick,
       products,
       liveStatus,
       auctionStart,
@@ -1035,7 +1032,7 @@ export function useLiveRoom(params: {
         });
       },
       sendHeart: () => {
-        setHeartTick((n) => n + 1); // local
+        bumpHeart(); // local — out-of-band so the live screen does not re-render
         void channelRef.current?.send({ type: "broadcast", event: "heart", payload: {} });
       },
       broadcastAuctionStart: (evt) => {
@@ -1110,7 +1107,6 @@ export function useLiveRoom(params: {
       viewerCount,
       presentViewers,
       chat,
-      heartTick,
       products,
       liveStatus,
       auctionStart,

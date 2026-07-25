@@ -16,6 +16,7 @@ import {
   removeLiveReminder,
 } from "@/lib/live-reminders-db";
 import { useAuth } from "@/lib/auth-context";
+import { useAppActive } from "@/lib/app-state";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const FALLBACK_COVER =
@@ -40,16 +41,19 @@ function formatDateChip(iso: string, lang: string): string {
 
 export function UpcomingLivesRow() {
   const { t, i18n } = useTranslation();
+  const appActive = useAppActive();
   const [rows, setRows] = useState<ScheduledLiveWithSeller[]>([]);
   const [open, setOpen] = useState<ScheduledLiveWithSeller | null>(null);
 
   useEffect(() => {
+    if (!appActive) return;
     let alive = true;
     void (async () => {
       const data = await fetchUpcomingScheduledLives(20);
       if (alive) setRows(data);
     })();
     const int = setInterval(async () => {
+      if (document.visibilityState === "hidden") return;
       const data = await fetchUpcomingScheduledLives(20);
       if (alive) setRows(data);
     }, 60_000);
@@ -57,7 +61,7 @@ export function UpcomingLivesRow() {
       alive = false;
       clearInterval(int);
     };
-  }, []);
+  }, [appActive]);
 
   if (rows.length === 0) return null;
 

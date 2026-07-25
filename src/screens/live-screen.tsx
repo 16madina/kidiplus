@@ -388,6 +388,7 @@ function BroadcastFlow() {
   const {
     stage, goEntry, goSetup, goLive, goSummary, reset,
     setHost, setCurrency, setLiveId, setRoomName, setTitle, setCategory, setCover, setSession,
+    setStreamSource, setRtmpCreds, setAllowGifts,
   } = useBroadcast();
   const { profile, user } = useAuth();
   const [openLives, setOpenLives] = useState<Array<{
@@ -397,6 +398,8 @@ function BroadcastFlow() {
     cover_url: string | null;
     category: string | null;
     currency: string | null;
+    broadcast_mode?: string | null;
+    allow_gifts?: boolean | null;
   }>>([]);
   const [endingAll, setEndingAll] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -475,10 +478,35 @@ function BroadcastFlow() {
   const endAllOpen = async () => {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");
-    await Promise.all(openLives.map((d) => endLiveInDb(d.id).catch(() => {})));
-    setOpenLives([]);
+    const results = await Promise.all(openLives.map((d) => endLiveInDb(d.id)));
+    const failed = results.filter((r) => !r.ok).length;
+    if (failed === 0) {
+      setOpenLives([]);
+      toast.success(t("live.danglingEnded", "Lives précédents terminés"));
+    } else if (failed < openLives.length) {
+      const { findOpenLives } = await import("@/lib/lives-db");
+      const rows = user ? await findOpenLives(user.id) : [];
+      setOpenLives(
+        rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          room_name: r.room_name,
+          cover_url: r.cover_url,
+          category: r.category,
+          currency: r.currency,
+          broadcast_mode: r.broadcast_mode,
+          allow_gifts: r.allow_gifts,
+        })),
+      );
+      toast.error(
+        t("live.danglingEndPartial", "Certains lives n'ont pas pu être terminés"),
+      );
+    } else {
+      toast.error(
+        t("live.danglingEndFailed", "Impossible de terminer les lives"),
+      );
+    }
     setEndingAll(false);
-    toast.success(t("live.danglingEnded", "Lives précédents terminés"));
   };
 
   const reconnectToLive = async (preferredId?: string) => {
@@ -493,6 +521,8 @@ function BroadcastFlow() {
         cover_url: r.cover_url,
         category: r.category,
         currency: r.currency,
+        broadcast_mode: r.broadcast_mode,
+        allow_gifts: r.allow_gifts,
       }));
       setOpenLives(list);
     }
@@ -504,11 +534,32 @@ function BroadcastFlow() {
       const extras = list.filter((l) => l.id !== target.id);
       if (extras.length > 0) {
         const { endLiveInDb } = await import("@/lib/lives-db");
-        await Promise.all(extras.map((d) => endLiveInDb(d.id).catch(() => {})));
+        await Promise.all(extras.map((d) => endLiveInDb(d.id)));
       }
       const { markLiveActiveInDb, touchLiveHostInDb } = await import("@/lib/lives-db");
       await markLiveActiveInDb(target.id).catch(() => {});
       await touchLiveHostInDb(target.id).catch(() => {});
+
+      const isRtmp = target.broadcast_mode === "rtmp";
+      setStreamSource(isRtmp ? "rtmp" : "camera");
+      setAllowGifts(target.allow_gifts !== false);
+      if (isRtmp) {
+        const { createLiveIngress } = await import("@/lib/livekit-ingress");
+        try {
+          const creds = await createLiveIngress(target.id);
+          setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          return;
+        }
+      } else {
+        setRtmpCreds(null);
+      }
 
       setLiveId(target.id);
       setRoomName(target.room_name);
@@ -560,6 +611,8 @@ function BroadcastFlow() {
             cover_url: r.cover_url,
             category: r.category,
             currency: r.currency,
+            broadcast_mode: r.broadcast_mode,
+            allow_gifts: r.allow_gifts,
           })),
         );
       }
