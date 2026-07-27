@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus, Sparkles } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
+import { isNative } from "@/lib/native";
 
 export type HostToolRailProps = {
   micOn?: boolean;
