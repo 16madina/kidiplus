@@ -125,16 +125,14 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           ) {
             const intent = event.data.object as Stripe.PaymentIntent;
             if (intent.metadata?.kind !== "wallet_topup") {
-              const nextStatus =
-                event.type === "payment_intent.canceled" ? "cancelled" : "failed";
-              // Only touch still-pending card checkouts. Never overwrite a
-              // wallet-paid (or already settled) order if a leftover PI fails.
+              // Do NOT flip the order to failed/cancelled — a canceled or
+              // declined card attempt must leave the order payable (wallet or
+              // another card). Only detach the dead PaymentIntent.
               await admin
                 .from("orders")
-                .update({ status: nextStatus })
+                .update({ stripe_payment_intent_id: null })
                 .eq("stripe_payment_intent_id", intent.id)
-                .eq("status", "pending")
-                .neq("payment_method", "wallet");
+                .eq("status", "pending");
             }
           }
 

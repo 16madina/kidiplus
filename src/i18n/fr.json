@@ -880,6 +880,7 @@
       "rateLimited": "Trop de tentatives. Réessaie dans un instant.",
       "conversionUnavailable": "Conversion de devise indisponible. Réessaie ou paie par carte.",
       "orderNotPending": "Cette commande n'est plus en attente de paiement.",
+      "orderExpired": "Le délai de paiement est dépassé.",
       "orderNotFound": "Commande introuvable.",
       "forbidden": "Tu ne peux pas payer cette commande."
     },
@@ -894,6 +895,7 @@
     "payNow": "Payer maintenant",
     "status": {
       "pending": "En attente",
+      "awaitingPayment": "En attente de paiement",
       "paid": "Payé",
       "failed": "Échoué",
       "cancelled": "Annulé",

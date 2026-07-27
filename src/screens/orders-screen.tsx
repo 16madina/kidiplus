@@ -192,6 +192,10 @@ export function OrdersScreenContent({
     () => sales.filter((s) => s.status === "paid").length,
     [sales],
   );
+  const pendingSalesCount = useMemo(
+    () => sales.filter((s) => s.status === "pending").length,
+    [sales],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -201,12 +205,12 @@ export function OrdersScreenContent({
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")}>
             <span className="inline-flex items-center gap-1.5">
               <Store size={13} /> {t("myOrders.tabs.sales", { defaultValue: "Commandes" })}
-              {paidSalesCount > 0 && (
+              {(paidSalesCount > 0 || pendingSalesCount > 0) && (
                 <span
                   className="ml-1 rounded-full px-1.5 text-[10px] font-bold"
                   style={{ backgroundColor: "oklch(0.94 0.06 60)", color: "oklch(0.42 0.14 60)" }}
                 >
-                  {paidSalesCount}
+                  {paidSalesCount + pendingSalesCount}
                 </span>
               )}
             </span>
@@ -295,7 +299,21 @@ export function OrdersScreenContent({
       <PaymentSheet
         order={payOrder}
         onClose={() => setPayOrder(null)}
-        onPaid={() => setPayOrder(null)}
+        onPaid={(paid) => {
+          setPayOrder(null);
+          setPurchases((os) =>
+            os.map((x) =>
+              x.id === paid.id
+                ? { ...x, status: "paid", payment_method: "wallet", paid_at: new Date().toISOString() }
+                : x,
+            ),
+          );
+          setOpenPurchase((cur) =>
+            cur && cur.id === paid.id
+              ? { ...cur, status: "paid", payment_method: "wallet", paid_at: new Date().toISOString() }
+              : cur,
+          );
+        }}
       />
       {reviewOrder && (
         <LeaveReviewSheet
@@ -380,8 +398,9 @@ function SalesList({
   onOpen: (o: OrderRow) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const paid = orders.filter((o) => o.status === "paid");
-  if (paid.length === 0) {
+  // Show paid (to ship) + pending (awaiting buyer payment). Hide failed/cancelled noise.
+  const visible = orders.filter((o) => o.status === "paid" || o.status === "pending");
+  if (visible.length === 0) {
     return (
       <EmptyState
         icon={<Store size={22} className="text-muted-foreground" />}
@@ -391,9 +410,12 @@ function SalesList({
   }
   return (
     <ul className="space-y-2">
-      {paid.map((o) => {
+      {visible.map((o) => {
         const buyer = buyers[o.buyer_id];
-        const fm = FULFILL_META[o.fulfillment_status];
+        const isPending = o.status === "pending";
+        const fm = isPending
+          ? { bg: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)", key: "orders.status.pending" }
+          : FULFILL_META[o.fulfillment_status];
         const snap = asSnapshot(o.address_snapshot);
         const destination = snap
           ? [snap.city, snap.country ? countryName(snap.country, i18n.language) : null]
@@ -412,7 +434,9 @@ function SalesList({
                       className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                       style={{ backgroundColor: fm.bg, color: fm.color }}
                     >
-                      {t(fm.key)}
+                      {isPending
+                        ? t("orders.status.awaitingPayment", { defaultValue: "En attente de paiement" })
+                        : t(fm.key)}
                     </span>
                   </div>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -454,8 +478,11 @@ function PurchaseCard({
 }) {
   const { t, i18n } = useTranslation();
   const meta = statusMeta(order.status);
-  const isAuctionPending =
-    order.status === "pending" && order.kind === "auction" && !!order.payment_deadline;
+  const deadlineOk =
+    !order.payment_deadline || hoursLeft(order.payment_deadline) > 0;
+  // Any unpaid order the buyer can still settle (pending, or failed after a card attempt).
+  const canPayNow =
+    (order.status === "pending" || order.status === "failed") && deadlineOk;
   const isTimeoutCancel =
     order.status === "cancelled" && order.cancelled_reason === "payment_timeout";
   const hrs = order.payment_deadline ? hoursLeft(order.payment_deadline) : null;
@@ -498,7 +525,7 @@ function PurchaseCard({
                   </span>
                 )}
               </div>
-              {isAuctionPending && order.payment_deadline && (
+              {canPayNow && order.payment_deadline && (
                 <p
                   className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
                   style={{
@@ -512,7 +539,7 @@ function PurchaseCard({
             </div>
           </div>
         </Press>
-        {isAuctionPending && (
+        {canPayNow && (
           <div className="border-t border-border p-2">
             <Press
               onClick={onPay}
