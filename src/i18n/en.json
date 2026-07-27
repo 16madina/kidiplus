@@ -734,7 +734,11 @@
       "cardDeclined": "Card declined. Check the details or try another card.",
       "currencyNotSupported": "Currency not supported by this payment method.",
       "invalidAmount": "Invalid amount.",
-      "rateLimited": "Too many attempts. Please try again shortly."
+      "rateLimited": "Too many attempts. Please try again shortly.",
+      "conversionUnavailable": "Currency conversion unavailable. Try again or pay by card.",
+      "orderNotPending": "This order is no longer awaiting payment.",
+      "orderNotFound": "Order not found.",
+      "forbidden": "You can't pay for this order."
     },
     "toasts": {
       "confirmed": "Payment confirmed 🎉"

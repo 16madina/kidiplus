@@ -98,11 +98,14 @@ export const Route = createFileRoute("/api/stripe-webhook")({
             if (intent.metadata?.kind !== "wallet_topup") {
               const nextStatus =
                 event.type === "payment_intent.canceled" ? "cancelled" : "failed";
+              // Only touch still-pending card checkouts. Never overwrite a
+              // wallet-paid (or already settled) order if a leftover PI fails.
               await admin
                 .from("orders")
                 .update({ status: nextStatus })
                 .eq("stripe_payment_intent_id", intent.id)
-                .eq("status", "pending");
+                .eq("status", "pending")
+                .neq("payment_method", "wallet");
             }
           }
 

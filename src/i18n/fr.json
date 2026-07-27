@@ -734,7 +734,11 @@
       "cardDeclined": "Carte refusée. Vérifie les informations ou essaie une autre carte.",
       "currencyNotSupported": "Devise non supportée par le mode de paiement.",
       "invalidAmount": "Montant invalide.",
-      "rateLimited": "Trop de tentatives. Réessaie dans un instant."
+      "rateLimited": "Trop de tentatives. Réessaie dans un instant.",
+      "conversionUnavailable": "Conversion de devise indisponible. Réessaie ou paie par carte.",
+      "orderNotPending": "Cette commande n'est plus en attente de paiement.",
+      "orderNotFound": "Commande introuvable.",
+      "forbidden": "Tu ne peux pas payer cette commande."
     },
     "toasts": {
       "confirmed": "Paiement confirmé 🎉"

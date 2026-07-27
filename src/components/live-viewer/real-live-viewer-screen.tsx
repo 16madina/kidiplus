@@ -26,6 +26,7 @@ import { canDeliver } from "@/lib/delivery-eligibility";
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
+import { payOrderWithWallet } from "@/lib/wallet-db";
 import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
 import { LiveChat } from "./live-chat";
 import { LiveViewersSheet } from "./live-viewers-sheet";
@@ -458,6 +459,13 @@ export function RealLiveViewerScreen() {
         toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
       } else if (evt.orderId) {
         void (async () => {
+          // Fallback auto-pay: finalize may skip when currencies differ on older
+          // server code — try wallet once before opening the sheet.
+          const paid = await payOrderWithWallet(evt.orderId!);
+          if (paid.ok) {
+            toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+            return;
+          }
           const order = await fetchOrderById(evt.orderId!);
           if (order) setPendingOrder(order);
         })();
