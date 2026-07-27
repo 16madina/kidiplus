@@ -9,7 +9,7 @@ import UIKit
  * The Capacitor WebView keeps the full live UI; this is a second viewer whose
  * frames go to AVSampleBufferDisplayLayer (LiveKit minimal-pip pattern).
  */
-final class LivePipSession: NSObject {
+final class LivePipSession: NSObject, @unchecked Sendable {
     static let shared = LivePipSession()
 
     private let room = Room()
@@ -19,6 +19,12 @@ final class LivePipSession: NSObject {
     private var modeListener: ((Bool) -> Void)?
     private var eligible = false
     private var connected = false
+    private var connectInFlight = false
+    /// Kept for silent-drop recovery: if the room disconnects while the user
+    /// browses the app (mini player), we reconnect with the same session so
+    /// leaving the app doesn't open a black, silent PiP bubble.
+    private var sessionUrl: String?
+    private var sessionToken: String?
     private var hostTrack: VideoTrack?
     private var hasRenderedFrame = false
     private var resignObserver: NSObjectProtocol?
@@ -53,6 +59,8 @@ final class LivePipSession: NSObject {
         print("[KiDi+] LivePipSession setEligible=\(on) url=\(url != nil) token=\(token != nil)")
         if !on {
             eligible = false
+            sessionUrl = nil
+            sessionToken = nil
             cancelPipRetries()
             await teardown()
             return
@@ -61,11 +69,15 @@ final class LivePipSession: NSObject {
             // Never leave eligible=true without a real LiveKit session — that
             // caused empty PiP bubbles when leaving the app with no live open.
             eligible = false
+            sessionUrl = nil
+            sessionToken = nil
             print("[KiDi+] LivePipSession enable ignored — missing url/token (publish web JS?)")
             await teardown()
             return
         }
         eligible = true
+        sessionUrl = url
+        sessionToken = token
         await MainActor.run {
             self.ensureSourceViewsAttached()
         }
@@ -99,6 +111,7 @@ final class LivePipSession: NSObject {
                 self.schedulePipRetries()
                 return
             }
+            // Must be visible before startPictureInPicture / auto-inline.
             self.ensureSourceViewsAttached()
             self.ensurePipController(forceRebuild: false)
             guard let pip = self.pipController else {
@@ -120,15 +133,25 @@ final class LivePipSession: NSObject {
             } else {
                 possible = true
             }
+            // If still "impossible", rebuild the controller once — stale
+            // ContentSource after hide/show of the source view is common.
+            if !possible {
+                print("[KiDi+] PiP not possible yet — rebuilding controller")
+                self.ensurePipController(forceRebuild: true)
+                self.pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+            }
+            let controller = self.pipController ?? pip
             print("[KiDi+] starting Picture in Picture… possible=\(possible)")
-            pip.startPictureInPicture()
+            controller.startPictureInPicture()
             self.schedulePipRetries()
         }
     }
 
     private func schedulePipRetries() {
         cancelPipRetries()
-        let delays: [TimeInterval] = [0.4, 1.0, 2.0, 4.0]
+        // Aggressive retries while suspended — first frames / track subscribe
+        // often land a beat after Home.
+        let delays: [TimeInterval] = [0.25, 0.6, 1.2, 2.0, 3.5, 5.5]
         for delay in delays {
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
@@ -139,6 +162,7 @@ final class LivePipSession: NSObject {
                     return
                 }
                 print("[KiDi+] PiP retry after \(delay)s")
+                self.ensureSourceViewsAttached()
                 self.startPipIfPossible()
             }
             pipRetryWorkItems.append(work)
@@ -169,9 +193,80 @@ final class LivePipSession: NSObject {
         return wasPip
     }
 
+    private func activatePipAudioSession(reason: String) {
+        AudioManager.shared.isSpeakerOutputPreferred = true
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(
+                .playback,
+                mode: .moviePlayback,
+                options: []
+            )
+            try session.setActive(true)
+            print("[KiDi+] PiP audio session active (\(reason))")
+        } catch {
+            print("[KiDi+] PiP audio session failed (\(reason)): \(error)")
+        }
+    }
+
+    /// Force-subscribe remote audio + video. Stale / racing unsubscribes are the
+    /// usual cause of "video without sound" or "sound without video" in system PiP.
+    private func ensureAllRemoteMediaSubscribed(reason: String) {
+        print("[KiDi+] ensureAllRemoteMediaSubscribed (\(reason)) remotes=\(room.remoteParticipants.count)")
+        for participant in room.remoteParticipants.values {
+            for publication in participant.trackPublications.values {
+                guard let remote = publication as? RemoteTrackPublication else { continue }
+                Task {
+                    do {
+                        try await remote.set(subscribed: true)
+                        if publication.kind == .audio {
+                            print("[KiDi+] LivePipSession audio force-subscribed (\(reason))")
+                        } else if let track = publication.track as? VideoTrack {
+                            await MainActor.run {
+                                self.setHostTrack(track)
+                            }
+                        }
+                    } catch {
+                        print("[KiDi+] LivePipSession force-subscribe failed (\(reason)): \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Reconnect the native room if it silently dropped while the app was in
+    /// the foreground (network blip / idle disconnect during the in-app mini
+    /// player). Without this, `connected` went stale and leaving the app
+    /// produced a black, silent PiP bubble with nothing recovering it.
+    private func reconnectIfNeeded(reason: String) {
+        guard eligible, !connected, !connectInFlight else { return }
+        guard let url = sessionUrl, let token = sessionToken else { return }
+        print("[KiDi+] LivePipSession reconnecting (\(reason))")
+        Task { await self.connect(url: url, token: token) }
+    }
+
+    private func prepareForBackgroundPip(reason: String) {
+        activatePipAudioSession(reason: reason)
+        reconnectIfNeeded(reason: reason)
+        ensureAllRemoteMediaSubscribed(reason: reason)
+        ensureSourceViewsAttached()
+        // Drop any stale black frame left from a previous PiP cycle.
+        previewController.flushForPipHandoff()
+        videoCallController.flushForPipHandoff()
+        startPipIfPossible()
+    }
+
     private func connect(url: String, token: String) async {
+        if connectInFlight { return }
+        connectInFlight = true
+        defer { connectInFlight = false }
         if connected {
             await teardownRoomOnly()
+        }
+        // Ensure LiveKit can play remote host audio in the background PiP bubble.
+        // Without this, video PiP can appear while playout stays silent.
+        await MainActor.run {
+            self.activatePipAudioSession(reason: "pre-connect")
         }
         room.add(delegate: self)
         do {
@@ -179,7 +274,8 @@ final class LivePipSession: NSObject {
             connected = true
             print("[KiDi+] LivePipSession connected, remotes=\(room.remoteParticipants.count)")
             await MainActor.run {
-                self.bindExistingRemoteVideo()
+                self.bindExistingRemoteTracks()
+                self.ensureAllRemoteMediaSubscribed(reason: "post-connect")
             }
         } catch {
             print("[KiDi+] LivePipSession connect failed: \(error)")
@@ -209,12 +305,24 @@ final class LivePipSession: NSObject {
         connected = false
     }
 
-    private func bindExistingRemoteVideo() {
+    private func bindExistingRemoteTracks() {
         for participant in room.remoteParticipants.values {
             for publication in participant.trackPublications.values {
+                // Keep audio + video subscribed so host A/V both keep playing in system PiP.
+                if let remote = publication as? RemoteTrackPublication {
+                    Task {
+                        do {
+                            try await remote.set(subscribed: true)
+                            if publication.kind == .audio {
+                                print("[KiDi+] LivePipSession audio track subscribed")
+                            }
+                        } catch {
+                            print("[KiDi+] LivePipSession subscribe failed: \(error)")
+                        }
+                    }
+                }
                 if let track = publication.track as? VideoTrack {
                     setHostTrack(track)
-                    return
                 }
             }
         }
@@ -325,18 +433,11 @@ final class LivePipSession: NSObject {
                 queue: .main
             ) { [weak self] _ in
                 guard let self else { return }
-                // Reactivate audio so background PiP is allowed.
-                do {
-                    try AVAudioSession.sharedInstance().setCategory(
-                        .playback,
-                        mode: .moviePlayback,
-                        options: []
-                    )
-                    try AVAudioSession.sharedInstance().setActive(true)
-                } catch {
-                    print("[KiDi+] AVAudioSession reactivate failed: \(error)")
-                }
-                self.startPipIfPossible()
+                // Hand exclusive playback to the native LiveKit session.
+                // The WebView A/V is muted from JS while inactive — otherwise
+                // WKWebView and native LiveKit fight AVAudioSession and you get
+                // either silent video or audio with a frozen PiP frame.
+                self.prepareForBackgroundPip(reason: "willResignActive")
             }
         }
         if backgroundObserver == nil {
@@ -345,7 +446,8 @@ final class LivePipSession: NSObject {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.startPipIfPossible()
+                guard let self else { return }
+                self.prepareForBackgroundPip(reason: "didEnterBackground")
             }
         }
         if activeObserver == nil {
@@ -356,14 +458,13 @@ final class LivePipSession: NSObject {
             ) { [weak self] _ in
                 guard let self else { return }
                 self.cancelPipRetries()
-                // Hide the native sample-buffer source BEFORE stopping system
-                // PiP so it doesn't flash as a "splash/screenshot" over the
-                // WebView when returning to the live.
-                self.previewController.view?.isHidden = true
-                self.previewController.view?.alpha = 0
+                // Stop system PiP first, THEN hide the native source — hiding
+                // while still active produced a black flash / stuck surface.
                 if self.isInPip {
                     self.stopPip()
                 }
+                self.previewController.view?.isHidden = true
+                self.previewController.view?.alpha = 0
             }
         }
     }
@@ -374,11 +475,40 @@ final class LivePipSession: NSObject {
 }
 
 extension LivePipSession: RoomDelegate {
+    func room(_ room: Room, didUpdateConnectionState connectionState: ConnectionState, from oldConnectionState: ConnectionState) {
+        print("[KiDi+] LivePipSession connectionState \(oldConnectionState) → \(connectionState)")
+        switch connectionState {
+        case .connected:
+            connected = true
+        case .disconnected:
+            connected = false
+            if eligible {
+                DispatchQueue.main.async {
+                    self.reconnectIfNeeded(reason: "state-disconnected")
+                }
+            }
+        default:
+            // connecting / reconnecting — LiveKit is handling it, don't stomp.
+            break
+        }
+    }
+
     func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
+        if publication.kind == .audio {
+            print("[KiDi+] LivePipSession remote audio subscribed")
+            Task { @MainActor in
+                self.activatePipAudioSession(reason: "audio-subscribed")
+            }
+            return
+        }
         guard let track = publication.track as? VideoTrack else { return }
         Task { @MainActor in
             self.setHostTrack(track)
         }
+    }
+
+    func room(_ room: Room, participant: RemoteParticipant, didUnpublishTrack publication: RemoteTrackPublication) {
+        // no-op — keep PiP session alive if host briefly republishes
     }
 }
 
@@ -386,6 +516,13 @@ extension LivePipSession: AVPictureInPictureControllerDelegate {
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         print("[KiDi+] PiP did start")
         cancelPipRetries()
+        // Re-claim audio the moment the bubble appears — WebView often still
+        // holds the session for a beat after resignActive.
+        activatePipAudioSession(reason: "pip-did-start")
+        ensureAllRemoteMediaSubscribed(reason: "pip-did-start")
+        // Force fresh frames into the PiP layers (avoids a stuck black surface).
+        previewController.flushForPipHandoff()
+        videoCallController.flushForPipHandoff()
         emitMode(true)
     }
 
@@ -422,6 +559,15 @@ private final class LivePipSampleView: UIView {
         }
     }
 
+    /// Drop stale/black frames so PiP gets a fresh keyframe stream.
+    func flushForPipHandoff() {
+        if #available(iOS 17.0, *) {
+            sampleBufferDisplayLayer.sampleBufferRenderer.flush()
+        } else {
+            sampleBufferDisplayLayer.flushAndRemoveImage()
+        }
+    }
+
     /// Match LiveKit's SampleBufferVideoRenderer: CATransform3D rotation,
     /// never mirrored for a remote viewer (mirroring caused the "selfie" look).
     func applyRotationIfNeeded(_ rotation: VideoRotation) {
@@ -440,19 +586,25 @@ private final class LivePipSampleView: UIView {
     }
 }
 
-private final class LivePipPreviewController: UIViewController, VideoRenderer {
+private final class LivePipPreviewController: UIViewController, VideoRenderer, @unchecked Sendable {
     private lazy var renderingView = LivePipSampleView()
 
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
+        if #available(iOS 15.0, *) {
+            renderingView.sampleBufferDisplayLayer.preventsDisplaySleepDuringVideoPlayback = true
+        }
         view = renderingView
     }
 
-    var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize {
-        let s = view.bounds.size
-        return s.width > 1 && s.height > 1 ? s : CGSize(width: 118, height: 210)
+    func flushForPipHandoff() {
+        renderingView.flushForPipHandoff()
     }
+
+    // Keep frames flowing even when the source view is tiny / briefly hidden —
+    // adaptive stream was pausing video before Home→PiP could start.
+    var isAdaptiveStreamEnabled: Bool { false }
+    var adaptiveStreamSize: CGSize { CGSize(width: 270, height: 480) }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }
@@ -464,20 +616,25 @@ private final class LivePipPreviewController: UIViewController, VideoRenderer {
     }
 }
 
-private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewController, VideoRenderer {
+private final class LivePipVideoCallController: AVPictureInPictureVideoCallViewController, VideoRenderer, @unchecked Sendable {
     private lazy var renderingView = LivePipSampleView()
 
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
+        if #available(iOS 15.0, *) {
+            renderingView.sampleBufferDisplayLayer.preventsDisplaySleepDuringVideoPlayback = true
+        }
         view = renderingView
-        preferredContentSize = CGSize(width: 9, height: 16)
+        // Real landscape-ish portrait size — 9×16 pts made iOS open an empty black bubble.
+        preferredContentSize = CGSize(width: 270, height: 480)
     }
 
-    var isAdaptiveStreamEnabled: Bool { true }
-    var adaptiveStreamSize: CGSize {
-        let s = view.bounds.size
-        return s.width > 1 && s.height > 1 ? s : CGSize(width: 270, height: 480)
+    func flushForPipHandoff() {
+        renderingView.flushForPipHandoff()
     }
+
+    var isAdaptiveStreamEnabled: Bool { false }
+    var adaptiveStreamSize: CGSize { CGSize(width: 270, height: 480) }
 
     func render(frame: VideoFrame) {
         guard let sampleBuffer = frame.toCMSampleBuffer() else { return }

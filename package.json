@@ -18,14 +18,14 @@
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.3.0",
-    "@capacitor/android": "^8.4.1",
+    "@capacitor/android": "^8.4.2",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/camera": "^8.2.0",
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
     "@capacitor/haptics": "^8.0.2",
-    "@capacitor/ios": "^8.4.1",
+    "@capacitor/ios": "^8.4.2",
     "@capacitor/keyboard": "^8.0.5",
     "@capacitor/push-notifications": "^8.1.1",
     "@capacitor/share": "^8.0.1",
@@ -64,6 +64,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.10",
+    "@snap/camera-kit": "^1.18.0",
     "@stripe/react-stripe-js": "^6.7.0",
     "@stripe/stripe-js": "^9.9.0",
     "@supabase/supabase-js": "^2.110.2",
@@ -81,8 +82,10 @@
     "entities": "4.5.0",
     "firebase": "^12.15.0",
     "framer-motion": "^12.42.2",
+    "html-to-image": "^1.11.13",
     "i18next": "^26.3.4",
     "input-otp": "^1.4.2",
+    "jspdf": "^4.2.1",
     "livekit-client": "^2.20.0",
     "livekit-server-sdk": "^2.16.0",
     "lucide-react": "^0.575.0",
@@ -104,9 +107,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.7.1",
+    "@lovable.dev/vite-tanstack-config": "2.7.7",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -125,7 +127,8 @@
   },
   "pnpm": {
     "overrides": {
-      "entities": "4.5.0"
+      "entities": "4.5.0",
+      "tar": "^7.5.19"
     }
   }
 }

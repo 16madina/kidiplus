@@ -21,16 +21,21 @@ export type ActiveSanction = {
 export type MyModerationState = {
   status: ModerationStatus;
   active_sanction: ActiveSanction | null;
+  is_frozen: boolean;
+  frozen_reason: string | null;
 };
 
 export async function fetchMyModerationState(): Promise<MyModerationState> {
   const { data, error } = await sb.rpc("my_moderation_state");
-  if (error || !data) return { status: "active", active_sanction: null };
+  if (error || !data) return { status: "active", active_sanction: null, is_frozen: false, frozen_reason: null };
   return {
     status: (data.status ?? "active") as ModerationStatus,
     active_sanction: (data.active_sanction ?? null) as ActiveSanction | null,
+    is_frozen: Boolean(data.is_frozen),
+    frozen_reason: (data.frozen_reason ?? null) as string | null,
   };
 }
+
 
 // ---- Admin messages (user side) ----
 
@@ -162,10 +167,10 @@ export const SUSPENSION_DURATIONS: Array<{ key: string; ms: number; labelKey: st
 
 // Hook: current user's moderation state, refreshed on auth changes.
 export function useMyModerationState(userId: string | null | undefined) {
-  const [state, setState] = useState<MyModerationState>({ status: "active", active_sanction: null });
+  const [state, setState] = useState<MyModerationState>({ status: "active", active_sanction: null, is_frozen: false, frozen_reason: null });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!userId) { setState({ status: "active", active_sanction: null }); setLoading(false); return; }
+    if (!userId) { setState({ status: "active", active_sanction: null, is_frozen: false, frozen_reason: null }); setLoading(false); return; }
     let alive = true;
     const load = async () => {
       const s = await fetchMyModerationState();
@@ -177,4 +182,61 @@ export function useMyModerationState(userId: string | null | undefined) {
     return () => { alive = false; window.clearInterval(id); };
   }, [userId]);
   return { state, loading, refresh: async () => setState(await fetchMyModerationState()) };
+}
+
+// ---- Anti-fraud helpers ----
+
+export async function adminFreezeUser(userId: string, reason: string) {
+  const { data, error } = await sb.rpc("admin_freeze_user", { _user_id: userId, _reason: reason });
+  if (error) return { ok: false as const, error: error.message };
+  return data as { ok: boolean; error?: string };
+}
+
+export async function adminUnfreezeUser(userId: string) {
+  const { data, error } = await sb.rpc("admin_unfreeze_user", { _user_id: userId });
+  if (error) return { ok: false as const, error: error.message };
+  return data as { ok: boolean; error?: string };
+}
+
+export type PayoutRiskSignal = { code: string; label: string };
+export type PayoutRisk = {
+  ok: true;
+  level: "green" | "yellow" | "red";
+  signals: PayoutRiskSignal[];
+  seller_age_days: number | null;
+  total_sales: number;
+  top_buyer_pct: number | null;
+  top_buyer_handle: string | null;
+  cycle_hours: number | null;
+  prev_payouts: number;
+  disputes: number;
+  chargebacks: number;
+  is_frozen: boolean;
+};
+
+export async function fetchPayoutRisk(payoutId: string): Promise<PayoutRisk | null> {
+  const { data, error } = await sb.rpc("admin_compute_payout_risk", { _payout_id: payoutId });
+  if (error || !data?.ok) return null;
+  return data as PayoutRisk;
+}
+
+export type SellerRecentOrder = {
+  id: string;
+  status: string;
+  total: number;
+  currency: string;
+  created_at: string;
+  paid_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  item_name: string | null;
+  buyer_id: string;
+  buyer_handle: string | null;
+  buyer_name: string | null;
+};
+
+export async function fetchSellerRecentOrders(userId: string, limit = 20): Promise<SellerRecentOrder[]> {
+  const { data, error } = await sb.rpc("admin_seller_recent_orders", { _user_id: userId, _limit: limit });
+  if (error || !data?.ok) return [];
+  return (data.rows ?? []) as SellerRecentOrder[];
 }

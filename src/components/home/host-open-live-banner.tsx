@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Radio } from "lucide-react";
 import { Press } from "@/components/press";
 import { useAuth } from "@/lib/auth-context";
+import { useAppActive } from "@/lib/app-state";
 import { navigateTab } from "@/lib/push-router";
 import type { OpenLiveRow } from "@/lib/lives-db";
 
@@ -28,10 +29,12 @@ export function requestResumeHostLive(liveId?: string | null) {
 export function HostOpenLiveBanner({ className }: { className?: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const appActive = useAppActive();
   const [open, setOpen] = useState<OpenLiveRow | null>(null);
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
+  const lastHousekeepRef = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { housekeep?: boolean }) => {
     if (!user) {
       setOpen(null);
       return;
@@ -41,8 +44,15 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
       findOpenLives,
       notifyAbsentHostLivesInDb,
     } = await import("@/lib/lives-db");
-    await notifyAbsentHostLivesInDb(2, 5).catch(() => 0);
-    await expireAbandonedLivesInDb(user.id, 5).catch(() => 0);
+    // Expire/notify are heavier — run on mount and at most every 2 min.
+    const now = Date.now();
+    const shouldHousekeep =
+      opts?.housekeep === true || now - lastHousekeepRef.current > 120_000;
+    if (shouldHousekeep) {
+      lastHousekeepRef.current = now;
+      await notifyAbsentHostLivesInDb(2, 5).catch(() => 0);
+      await expireAbandonedLivesInDb(user.id, 5).catch(() => 0);
+    }
     const rows = await findOpenLives(user.id);
     const row = rows[0] ?? null;
     setOpen(row);
@@ -56,10 +66,11 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
   }, [user]);
 
   useEffect(() => {
-    void refresh();
+    if (!appActive) return;
+    void refresh({ housekeep: true });
     const iv = window.setInterval(() => { void refresh(); }, 30_000);
     return () => window.clearInterval(iv);
-  }, [refresh]);
+  }, [refresh, appActive]);
 
   if (!open) return null;
 
@@ -100,8 +111,16 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
             <Press
               onClick={async () => {
                 const { endLiveInDb } = await import("@/lib/lives-db");
-                await endLiveInDb(open.id).catch(() => {});
+                const { toast } = await import("sonner");
+                const res = await endLiveInDb(open.id);
+                if (!res.ok) {
+                  toast.error(
+                    t("live.endFailed", "Impossible de terminer le live — réessaie"),
+                  );
+                  return;
+                }
                 setOpen(null);
+                toast.success(t("live.danglingEnded", "Lives précédents terminés"));
               }}
               className="!min-h-8 h-8 rounded-full px-3 text-[12px] font-bold text-white"
               style={{

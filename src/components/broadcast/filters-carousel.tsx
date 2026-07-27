@@ -5,8 +5,10 @@
 // caméra locale (via le FilterContext). Un bouton croix ferme le carrousel ;
 // le filtre reste actif tant que le host ne repasse pas sur "Aucun".
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { useFilter } from "@/lib/filters/filter-context";
@@ -17,10 +19,32 @@ const GOLD = "oklch(0.85 0.18 90)";
 export type FiltersCarouselProps = {
   open: boolean;
   onClose: () => void;
+  /** When set, shows a clear done CTA (setup filter try-on). */
+  doneLabel?: string;
+  /** Extra hint above the strip (e.g. try-on on face). */
+  hint?: string;
 };
 
-export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
-  const { lenses, activeLens, setActiveLens } = useFilter();
+export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarouselProps) {
+  const {
+    lenses,
+    activeLens,
+    setActiveLens,
+    loadLenses,
+    lensesLoading,
+    lensesError,
+  } = useFilter();
+
+  // Charge les vraies lenses Snap (AR) à la première ouverture du carrousel.
+  useEffect(() => {
+    if (open) loadLenses();
+  }, [open, loadLenses]);
+
+  useEffect(() => {
+    if (open && lensesError) {
+      toast.error(lensesError, { id: "snap-lenses-error" });
+    }
+  }, [open, lensesError]);
 
   return (
     <AnimatePresence>
@@ -30,17 +54,22 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 200, opacity: 0 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-40 px-3 pb-6 pt-3"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-50 px-3 pb-6 pt-3"
           style={{
             paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 55%, rgba(0,0,0,0) 100%)",
           }}
         >
-          <div className="mb-2 flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
+          {hint && (
+            <p className="mb-2 px-2 text-center text-[12px] font-semibold text-white/85">
+              {hint}
+            </p>
+          )}
+          <div className="mb-2 flex items-center justify-between gap-2 px-2">
+            <div className="min-w-0 flex items-center gap-2">
               <span className="text-[13px] font-bold text-white">Filtres</span>
-              <span className="text-[11px] text-white/60">
+              <span className="truncate text-[11px] text-white/60">
                 {activeLens.lensId === "none" ? "Aucun" : activeLens.name}
               </span>
             </div>
@@ -49,16 +78,34 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
                 haptic.selection();
                 onClose();
               }}
-              aria-label="Fermer les filtres"
-              className="!min-h-8 !min-w-8 h-8 w-8 rounded-full text-white grid place-items-center"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.5)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
+              aria-label={doneLabel ?? "Fermer les filtres"}
+              className={
+                doneLabel
+                  ? "!min-h-9 h-9 shrink-0 rounded-full px-3.5 text-[12px] font-bold inline-flex items-center gap-1.5"
+                  : "!min-h-8 !min-w-8 h-8 w-8 rounded-full text-white grid place-items-center"
+              }
+              style={
+                doneLabel
+                  ? {
+                      background: GOLD,
+                      color: "#10162B",
+                    }
+                  : {
+                      backgroundColor: "rgba(0,0,0,0.5)",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }
+              }
             >
-              <X size={14} />
+              {doneLabel ? (
+                <>
+                  <Check size={14} strokeWidth={3} />
+                  {doneLabel}
+                </>
+              ) : (
+                <X size={14} />
+              )}
             </Press>
           </div>
 
@@ -66,6 +113,17 @@ export function FiltersCarousel({ open, onClose }: FiltersCarouselProps) {
             className="flex gap-2 overflow-x-auto pb-1"
             style={{ scrollbarWidth: "none" }}
           >
+            {lensesLoading && (
+              <div
+                className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.55)",
+                  border: "2px solid rgba(255,255,255,0.14)",
+                }}
+              >
+                <Loader2 size={18} className="animate-spin text-white/70" />
+              </div>
+            )}
             {lenses.map((lens) => (
               <LensTile
                 key={lens.lensId}
@@ -108,10 +166,34 @@ function LensTile({
         transition: "border-color 0.15s, background 0.15s",
       }}
     >
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="text-[22px] leading-none">{lens.icon}</span>
+      {lens.iconUrl && (
+        <img
+          src={lens.iconUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full rounded-2xl object-cover"
+          draggable={false}
+          onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+        />
+      )}
+      <div
+        className="relative flex flex-col items-center gap-0.5"
+        style={
+          lens.iconUrl
+            ? {
+                position: "absolute",
+                inset: 0,
+                justifyContent: "flex-end",
+                paddingBottom: 3,
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 45%)",
+                borderRadius: 14,
+              }
+            : undefined
+        }
+      >
+        {!lens.iconUrl && <span className="text-[22px] leading-none">{lens.icon}</span>}
         <span
-          className="text-[9px] font-semibold leading-tight"
+          className="max-w-[60px] truncate text-[9px] font-semibold leading-tight"
           style={{ color: active ? GOLD : "white" }}
         >
           {lens.name}

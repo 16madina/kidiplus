@@ -8,20 +8,27 @@ import { hideNativeSplash, isNative } from "@/lib/native";
  * Intro splash with brand audio ("qui dit plus ?").
  *
  * Strategy (no tap required, never blocks the app):
- * 1. Prefer unmuted autoplay — Capacitor WebViews already allow this
- *    (Android: setMediaPlaybackRequiresUserGesture(false);
- *     iOS Capacitor: mediaTypesRequiringUserActionForPlayback = []).
- * 2. If the OS still rejects audible autoplay (browser tab, Low Power Mode,
- *    etc.), fall back to muted video so the animation always plays.
+ * 1. Prefer same-origin `/splash.mp4` (bundled in `public/`, reliable on App Store).
+ * 2. Fall back to the Lovable CDN absolute URL.
+ * 3. Prefer unmuted autoplay in Capacitor; if blocked, muted fallback.
+ * 4. Generous watchdogs — cold start + cellular must not skip the intro.
  */
+function splashSources(): string[] {
+  const cdnPath = splashAsset.url;
+  const absCdn = /^https?:\/\//i.test(cdnPath)
+    ? cdnPath
+    : `https://kidiplus.com${cdnPath.startsWith("/") ? "" : "/"}${cdnPath}`;
+  // Same-origin first after deploy; absolute CDN as backup.
+  return ["/splash.mp4", absCdn];
+}
+
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [exiting, setExiting] = useState(false);
-  // Video stays fully transparent until the 'playing' event fires — this
-  // guarantees the Android WebView default play-button placeholder can
-  // never be seen (it only draws on the <video> element itself).
   const [videoVisible, setVideoVisible] = useState(false);
   const videoVisibleRef = useRef(false);
+  const sourceIdxRef = useRef(0);
+  const sources = useRef(splashSources()).current;
 
   useEffect(() => {
     const v = videoRef.current;
@@ -34,8 +41,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.clearTimeout(timeout);
       window.clearTimeout(skipTimeout);
       window.clearTimeout(playingWatchdog);
-      // Safety net: if we never fired 'playing' (autoplay blocked, decode
-      // error…) still drop the native splash so the app becomes visible.
       void hideNativeSplash();
       setExiting(true);
       window.setTimeout(onDone, 260);
@@ -70,23 +75,22 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
     applyInlinePlaybackFlags();
 
-    const timeout = window.setTimeout(finish, 6500);
+    // Hard ceiling — never block the app forever (video is ~3–5s).
+    const timeout = window.setTimeout(finish, 12_000);
     let skipTimeout = 0;
+    // Cold start on cellular can take several seconds before first frame.
     const playingWatchdog = window.setTimeout(() => {
       if (!videoVisibleRef.current) finish();
-    }, 1500);
+    }, 8_000);
 
     const tryPlay = () => {
       applyInlinePlaybackFlags();
-      // Want sound first — especially in the native app shell.
       setMuted(false);
       const p = v.play();
       if (p && typeof p.then === "function") {
         p.then(() => {
-          // Audible autoplay accepted.
           console.debug("[splash] playing with sound", { native: isNative() });
         }).catch(() => {
-          // OS blocked audible autoplay — keep the animation, drop audio.
           console.debug("[splash] audible autoplay blocked → muted fallback");
           setMuted(true);
           const mutedPlay = v.play();
@@ -98,14 +102,35 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         });
       }
     };
+
+    const tryNextSource = () => {
+      if (sourceIdxRef.current + 1 >= sources.length) return false;
+      sourceIdxRef.current += 1;
+      const next = sources[sourceIdxRef.current];
+      console.warn("[splash] switching source", next);
+      v.src = next;
+      v.load();
+      tryPlay();
+      return true;
+    };
+
+    const onError = () => {
+      if (!tryNextSource()) {
+        skipTimeout = window.setTimeout(finish, 400);
+      }
+    };
+
+    // Start with first source.
+    if (v.getAttribute("src") !== sources[0]) {
+      v.src = sources[0];
+      v.load();
+    }
     tryPlay();
     window.requestAnimationFrame(tryPlay);
 
     const onPlaying = () => {
       videoVisibleRef.current = true;
       setVideoVisible(true);
-      // The first video frame is on screen — safe to hide the native
-      // Capacitor splash now (no white flash between the two).
       void hideNativeSplash();
     };
 
@@ -113,6 +138,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     v.addEventListener("canplay", tryPlay);
     v.addEventListener("playing", onPlaying);
     v.addEventListener("ended", finish);
+    v.addEventListener("error", onError);
     return () => {
       window.clearTimeout(timeout);
       window.clearTimeout(skipTimeout);
@@ -121,8 +147,9 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       v.removeEventListener("canplay", tryPlay);
       v.removeEventListener("playing", onPlaying);
       v.removeEventListener("ended", finish);
+      v.removeEventListener("error", onError);
     };
-  }, [onDone]);
+  }, [onDone, sources]);
 
   return (
     <motion.div
@@ -132,7 +159,6 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
       style={{ isolation: "isolate", backgroundColor: "#10162B", pointerEvents: exiting ? "none" : "auto" }}
     >
-      {/* Plain navy backdrop behind the video — no logo fallback, per design. */}
       <div
         aria-hidden
         className="absolute inset-0"
@@ -141,7 +167,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
       <video
         ref={videoRef}
-        src={splashAsset.url}
+        src={sources[0]}
         autoPlay
         playsInline
         {...({ "webkit-playsinline": "true", "x5-playsinline": "true" } as Record<string, string>)}

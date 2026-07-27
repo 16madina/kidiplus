@@ -8,31 +8,66 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LiveStream } from "@/lib/live-mock";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
+import {
+  normalizeCondition,
+  parseStringArray,
+  type ProductCondition,
+} from "@/lib/live-product-options";
 
 // -------------------------------------------------------------------------
 // Storage
 // -------------------------------------------------------------------------
 
-/** In-memory cache: `${bucket}::${path}` -> signed URL + expiry. */
+/** In-memory cache: `${bucket}::${size}::${path}` -> signed URL + expiry. */
 const signedCache = new Map<string, { url: string; expiresAt: number }>();
 
 const SIGN_TTL_SEC = 60 * 60 * 24; // 24h
+
+/** Display presets — avoid shipping multi‑MB originals into feed/card grids. */
+export type LiveImageSize = "thumb" | "card" | "detail" | "full";
+
+const IMAGE_TRANSFORMS: Record<
+  LiveImageSize,
+  { width: number; height: number; resize: "cover"; quality: number } | null
+> = {
+  thumb: { width: 160, height: 160, resize: "cover", quality: 70 },
+  card: { width: 480, height: 720, resize: "cover", quality: 75 },
+  detail: { width: 960, height: 1280, resize: "cover", quality: 80 },
+  full: null,
+};
 
 /**
  * Resolve a stored image reference to a displayable URL.
  * - Absolute http(s) URLs are returned as-is (external images / Unsplash).
  * - Bucket paths ("<uid>/xxx.jpg") get a fresh signed URL, cached in-memory.
+ * - Optional size uses Supabase image transforms when enabled; falls back to
+ *   the full signed object if transforms are unavailable.
  */
 export async function resolveLiveImage(
   bucket: "live-covers" | "live-products",
   value: string | null | undefined,
+  size: LiveImageSize = "card",
 ): Promise<string | null> {
   if (!value) return null;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;
 
-  const key = `${bucket}::${value}`;
+  const key = `${bucket}::${size}::${value}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+
+  const transform = IMAGE_TRANSFORMS[size];
+  if (transform) {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(value, SIGN_TTL_SEC, { transform });
+    if (!error && data?.signedUrl) {
+      signedCache.set(key, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + SIGN_TTL_SEC * 1000,
+      });
+      return data.signedUrl;
+    }
+  }
 
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -97,6 +132,16 @@ export type CreateLiveInput = {
   currency?: string;
   /** Whether viewers can send virtual gifts during the live. */
   allowGifts?: boolean;
+  /** camera = in-app WebRTC; rtmp = Restream/OBS via LiveKit Ingress. */
+  broadcastMode?: "camera" | "rtmp";
+  /** Optional short description shown to viewers (scheduled lives). */
+  description?: string | null;
+  /** Estimated duration in minutes (scheduled lives). */
+  estimatedDurationMin?: number | null;
+  /** Scheduled-live options — persisted so edit round-trips them. */
+  allowBids?: boolean;
+  allowBuyNow?: boolean;
+  notifyFollowers?: boolean;
 
   products: Array<{
     name: string;
@@ -108,8 +153,65 @@ export type CreateLiveInput = {
     timerSeconds: number;
     position: number;
     shopProductId?: string | null;
+    description?: string | null;
+    brand?: string | null;
+    condition?: ProductCondition | null;
+    colors?: string[];
+    sizes?: string[];
+    extraImages?: string[];
+    bidIncrement?: number | null;
   }>;
 };
+
+/** Shared optional columns written on live_products insert. */
+function liveProductOptionColumns(p: {
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  extraImages?: string[];
+  bidIncrement?: number | null;
+}) {
+  return {
+    description: p.description?.trim() || null,
+    brand: p.brand?.trim() || null,
+    condition: p.condition ?? null,
+    colors: parseStringArray(p.colors ?? []),
+    sizes: parseStringArray(p.sizes ?? []),
+    extra_images: parseStringArray(p.extraImages ?? []),
+    bid_increment:
+      typeof p.bidIncrement === "number" && Number.isFinite(p.bidIncrement) && p.bidIncrement > 0
+        ? p.bidIncrement
+        : null,
+  };
+}
+
+/** Upload extra product image slots (paths or keep remote URLs). */
+export async function uploadExtraLiveProductImages(args: {
+  userId: string;
+  productName: string;
+  extraImages?: string[];
+  extraImageFiles?: (File | null | undefined)[];
+}): Promise<string[]> {
+  const urls = args.extraImages ?? [];
+  const files = args.extraImageFiles ?? [];
+  const out: string[] = [];
+  const n = Math.max(urls.length, files.length);
+  for (let i = 0; i < n; i++) {
+    const file = files[i] ?? null;
+    const url = urls[i];
+    if (file) {
+      out.push(await uploadLiveImage("live-products", file, args.userId));
+    } else if (url && /^blob:/i.test(url)) {
+      const f = await blobUrlToFile(url, `${args.productName || "product"}-extra-${i}.jpg`);
+      out.push(await uploadLiveImage("live-products", f, args.userId));
+    } else if (url) {
+      out.push(url);
+    }
+  }
+  return out;
+}
 
 export type CreatedLive = {
   liveId: string;
@@ -130,6 +232,8 @@ export async function createLiveInDb(
       room_name: input.roomName,
       status: "live",
       host_last_seen_at: new Date().toISOString(),
+      broadcast_mode: input.broadcastMode ?? "camera",
+      ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
     })
     .select("id")
@@ -149,6 +253,7 @@ export async function createLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
       ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { data: prods, error: pErr } = await supabase
@@ -167,11 +272,23 @@ export async function createLiveInDb(
   return { liveId: live.id, productIds };
 }
 
-export async function endLiveInDb(liveId: string): Promise<void> {
-  await supabase
+export async function endLiveInDb(
+  liveId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase
     .from("lives")
-    .update({ status: "ended", ended_at: new Date().toISOString() })
-    .eq("id", liveId);
+    .update({
+      status: "ended",
+      ended_at: new Date().toISOString(),
+      ingress_id: null,
+    } as never)
+    .eq("id", liveId)
+    .eq("status", "live")
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "not_updated" };
+  return { ok: true };
 }
 
 export async function markLiveActiveInDb(liveId: string): Promise<void> {
@@ -216,13 +333,18 @@ export type OpenLiveRow = {
   category: string | null;
   currency: string | null;
   host_last_seen_at: string | null;
+  broadcast_mode?: string | null;
+  ingress_id?: string | null;
+  allow_gifts?: boolean | null;
 };
 
 /** All currently-open lives for this seller (for reconnect banner). */
 export async function findOpenLives(sellerId: string): Promise<OpenLiveRow[]> {
   const { data } = await supabase
     .from("lives")
-    .select("id, title, started_at, room_name, cover_url, category, currency, host_last_seen_at")
+    .select(
+      "id, title, started_at, room_name, cover_url, category, currency, host_last_seen_at, broadcast_mode, ingress_id, allow_gifts",
+    )
     .eq("seller_id", sellerId)
     .eq("status", "live")
     .order("started_at", { ascending: false });
@@ -250,7 +372,7 @@ export async function expireAbandonedLivesInDb(
     const last = r.host_last_seen_at || r.started_at;
     return last < cutoff;
   });
-  await Promise.all(stale.map((r) => endLiveInDb(r.id).catch(() => {})));
+  await Promise.all(stale.map((r) => endLiveInDb(r.id)));
   return stale.length;
 }
 
@@ -307,13 +429,12 @@ type LivesRow = {
   } | null;
 };
 
+/** Last-resort card art when the live has no cover and the seller has no avatar. */
 const FALLBACK_COVER =
-  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=70";
+  "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=70";
 
 /** Map a lives row + resolved cover URL into the shared LiveStream shape. */
 async function rowToStream(row: LivesRow): Promise<LiveStream> {
-  const cover =
-    (await resolveLiveImage("live-covers", row.cover_url)) ?? FALLBACK_COVER;
   const sellerName =
     row.seller?.display_name?.trim() ||
     row.seller?.handle ||
@@ -321,9 +442,13 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
   // Avatars live in the `avatars` bucket (not `live-covers`). Route through
   // resolveAvatarUrl so both absolute URLs and bucket paths work, matching
   // the resolution used on the profile screen and elsewhere.
-  const avatar =
-    (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) ||
-    `https://i.pravatar.cc/80?u=${encodeURIComponent(row.seller_id)}`;
+  // Empty string when missing — UI shows seller initials (never a random face).
+  const avatar = (await resolveAvatarUrl(row.seller?.avatar_url ?? null)) || "";
+
+  // Thumbnail: live cover → seller photo → neutral marketplace fallback.
+  // Never use a random product (e.g. sneaker) or pravatar as a stand-in.
+  const coverFromLive = await resolveLiveImage("live-covers", row.cover_url, "card");
+  const thumbnail = coverFromLive || avatar || FALLBACK_COVER;
 
   const category = (row.category as LiveStream["category"]) ?? "Fashion";
   const cur = (row.currency ?? "EUR").toUpperCase();
@@ -332,7 +457,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     seller: sellerName,
     avatar,
     title: row.title,
-    thumbnail: cover,
+    thumbnail,
     viewers: Math.max(1, row.viewer_count || 1),
     category,
     roomName: row.room_name,
@@ -340,6 +465,7 @@ async function rowToStream(row: LivesRow): Promise<LiveStream> {
     sellerId: row.seller_id,
     currency: (cur === "XOF" || cur === "CAD" || cur === "EUR" ? cur : "EUR") as
       LiveStream["currency"],
+    startedAt: row.started_at ?? undefined,
   };
 }
 
@@ -456,7 +582,6 @@ export async function fetchLiveById(id: string): Promise<LiveStream | null> {
 // -------------------------------------------------------------------------
 
 export type LiveProductRow = {
-
   id: string;
   live_id: string;
   name: string;
@@ -475,7 +600,31 @@ export type LiveProductRow = {
   auction_deadline_at: string | null;
   /** Incremented each time start_auction runs on this product row. */
   auction_round?: number;
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[] | null;
+  sizes?: string[] | null;
+  extra_images?: string[] | null;
+  bid_increment?: number | null;
 };
+
+/** Normalize JSON array / condition fields coming from PostgREST. */
+export function normalizeLiveProductRow(row: LiveProductRow): LiveProductRow {
+  return {
+    ...row,
+    description: row.description ?? null,
+    brand: row.brand ?? null,
+    condition: normalizeCondition(row.condition),
+    colors: parseStringArray(row.colors),
+    sizes: parseStringArray(row.sizes),
+    extra_images: parseStringArray(row.extra_images),
+    bid_increment:
+      typeof row.bid_increment === "number" && Number.isFinite(row.bid_increment)
+        ? row.bid_increment
+        : null,
+  };
+}
 
 
 export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[]> {
@@ -484,7 +633,7 @@ export async function fetchLiveProducts(liveId: string): Promise<LiveProductRow[
     .select("*")
     .eq("live_id", liveId)
     .order("position", { ascending: true });
-  return (data ?? []) as LiveProductRow[];
+  return ((data ?? []) as LiveProductRow[]).map(normalizeLiveProductRow);
 }
 
 /** Append a product mid-live (called from the host dock).
@@ -501,8 +650,17 @@ export async function createLiveProductInDb(args: {
   stock: number;
   timerSeconds: number;
   shopProductId?: string | null;
+  description?: string | null;
+  brand?: string | null;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  extraImages?: string[];
+  extraImageFiles?: (File | null)[];
+  bidIncrement?: number | null;
 }): Promise<{ ok: boolean; error?: string; id?: string; imagePath?: string | null }> {
   let imagePath: string | null = null;
+  let extraImages: string[] = [];
   try {
     if (args.imageFile) {
       imagePath = await uploadLiveImage("live-products", args.imageFile, args.userId);
@@ -512,6 +670,12 @@ export async function createLiveProductInDb(args: {
     } else {
       imagePath = args.imageUrl || null;
     }
+    extraImages = await uploadExtraLiveProductImages({
+      userId: args.userId,
+      productName: args.name,
+      extraImages: args.extraImages,
+      extraImageFiles: args.extraImageFiles,
+    });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -536,6 +700,7 @@ export async function createLiveProductInDb(args: {
       timer_seconds: args.timerSeconds,
       status: "upcoming",
       position,
+      ...liveProductOptionColumns({ ...args, extraImages }),
       ...(args.shopProductId ? { shop_product_id: args.shopProductId } : {}),
     })
     .select("id")
@@ -551,14 +716,25 @@ export async function createLiveProductInDb(args: {
  *    countdown, and any late-joining viewer read the SAME absolute value. */
 export async function startAuctionInDb(
   productId: string,
-): Promise<{ ok: boolean; deadlineMs?: number; timerSec?: number; error?: string }> {
+): Promise<{ ok: boolean; deadlineMs?: number; timerSec?: number; auctionRound?: number; error?: string }> {
   const { data, error } = await supabase.rpc("start_auction", {
     _product_id: productId,
   } as never);
   if (error) return { ok: false, error: error.message };
-  const r = (data ?? {}) as { ok?: boolean; deadline_ms?: number; timer_sec?: number; error?: string };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    deadline_ms?: number;
+    timer_sec?: number;
+    auction_round?: number;
+    error?: string;
+  };
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, deadlineMs: Number(r.deadline_ms), timerSec: Number(r.timer_sec) };
+  return {
+    ok: true,
+    deadlineMs: Number(r.deadline_ms),
+    timerSec: Number(r.timer_sec),
+    ...(r.auction_round != null ? { auctionRound: Number(r.auction_round) } : {}),
+  };
 }
 
 
@@ -622,12 +798,24 @@ export async function expireOverdueOrders(): Promise<number> {
 }
 
 /** Set fixed-price row to active (opens buying). Idempotent. */
-export async function activateFixedInDb(productId: string): Promise<void> {
-  await supabase.from("live_products").update({ status: "active" }).eq("id", productId);
+export async function activateFixedInDb(
+  productId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("live_products")
+    .update({ status: "active" })
+    .eq("id", productId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-export async function stopFixedInDb(productId: string): Promise<void> {
-  await supabase.from("live_products").update({ status: "upcoming" }).eq("id", productId);
+export async function stopFixedInDb(
+  productId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("live_products")
+    .update({ status: "upcoming" })
+    .eq("id", productId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 /** Relaunch an unsold auction product: sends it back to the queue as
@@ -659,6 +847,8 @@ export async function placeBidInDb(args: {
   currentPrice?: number;
   minNext?: number;
   maxAmount?: number;
+  extended?: boolean;
+  deadlineMs?: number;
 }> {
   const { data, error } = await supabase.rpc("place_live_bid", {
     _live_id: args.liveId,
@@ -670,6 +860,7 @@ export async function placeBidInDb(args: {
   const result = data as {
     ok?: boolean; error?: string; amount?: number;
     current_price?: number; min_next?: number; max_amount?: number;
+    extended?: boolean; deadline?: string | null;
   } | null;
   if (!result?.ok) return {
     ok: false,
@@ -678,19 +869,29 @@ export async function placeBidInDb(args: {
     minNext: result?.min_next !== undefined ? Number(result.min_next) : undefined,
     maxAmount: result?.max_amount !== undefined ? Number(result.max_amount) : undefined,
   };
-  return { ok: true, amount: Number(result.amount) };
+  return {
+    ok: true,
+    amount: Number(result.amount),
+    extended: !!result.extended,
+    deadlineMs: result.deadline ? new Date(result.deadline).getTime() : undefined,
+  };
 }
 
+/** @deprecated Prefer createLiveOrder from orders-db — kept for legacy callers. */
 export async function purchaseFixedPriceRpc(
   productId: string,
-  buyerIdentity: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.rpc("purchase_fixed_price", {
+  _buyerIdentity?: string,
+): Promise<{ ok: boolean; error?: string; orderId?: string }> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (n: string, a: object) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("purchase_fixed_price", {
     _product_id: productId,
-    _buyer_identity: buyerIdentity,
+    _buyer_identity: _buyerIdentity ?? null,
   });
   if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = (data ?? {}) as { ok?: boolean; error?: string; order_id?: string };
+  if (!r.ok) return { ok: false, error: r.error ?? "purchase_failed" };
+  return { ok: true, orderId: r.order_id };
 }
 
 // -------------------------------------------------------------------------
@@ -772,6 +973,12 @@ export type ScheduledLiveRow = {
   currency: string | null;
   status: string;
   allow_gifts?: boolean | null;
+  broadcast_mode?: string | null;
+  description?: string | null;
+  estimated_duration_min?: number | null;
+  allow_bids?: boolean | null;
+  allow_buy_now?: boolean | null;
+  notify_followers?: boolean | null;
   products?: LiveProductRow[];
 };
 
@@ -799,9 +1006,20 @@ export async function createScheduledLiveInDb(
       room_name: input.roomName,
       status: "scheduled",
       scheduled_at: input.scheduledAt,
+      broadcast_mode: input.broadcastMode ?? "camera",
+      ingress_id: null,
       ...(input.currency ? { currency: input.currency } : {}),
       ...(typeof input.allowGifts === "boolean" ? { allow_gifts: input.allowGifts } : {}),
-    })
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.estimatedDurationMin !== undefined
+        ? { estimated_duration_min: input.estimatedDurationMin }
+        : {}),
+      ...(typeof input.allowBids === "boolean" ? { allow_bids: input.allowBids } : {}),
+      ...(typeof input.allowBuyNow === "boolean" ? { allow_buy_now: input.allowBuyNow } : {}),
+      ...(typeof input.notifyFollowers === "boolean"
+        ? { notify_followers: input.notifyFollowers }
+        : {}),
+    } as never)
     .select("id")
     .single();
   if (error || !live) throw error ?? new Error("Failed to schedule live");
@@ -820,6 +1038,8 @@ export async function createScheduledLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
+      ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { data: prods, error: pErr } = await supabase
       .from("live_products")
@@ -845,6 +1065,12 @@ export async function updateScheduledLiveInDb(
     coverPath: string | null;
     scheduledAt: string;
     allowGifts?: boolean;
+    broadcastMode?: "camera" | "rtmp";
+    description?: string | null;
+    estimatedDurationMin?: number | null;
+    allowBids?: boolean;
+    allowBuyNow?: boolean;
+    notifyFollowers?: boolean;
     products: CreateLiveInput["products"];
   },
 ): Promise<void> {
@@ -856,14 +1082,31 @@ export async function updateScheduledLiveInDb(
       cover_url: patch.coverPath,
       scheduled_at: patch.scheduledAt,
       ...(typeof patch.allowGifts === "boolean" ? { allow_gifts: patch.allowGifts } : {}),
-    })
+      ...(patch.broadcastMode
+        ? { broadcast_mode: patch.broadcastMode, ...(patch.broadcastMode === "camera" ? { ingress_id: null } : {}) }
+        : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(patch.estimatedDurationMin !== undefined
+        ? { estimated_duration_min: patch.estimatedDurationMin }
+        : {}),
+      ...(typeof patch.allowBids === "boolean" ? { allow_bids: patch.allowBids } : {}),
+      ...(typeof patch.allowBuyNow === "boolean" ? { allow_buy_now: patch.allowBuyNow } : {}),
+      ...(typeof patch.notifyFollowers === "boolean"
+        ? { notify_followers: patch.notifyFollowers }
+        : {}),
+    } as never)
     .eq("id", liveId)
     .eq("status", "scheduled");
   if (error) throw error;
 
+  // Insert new products first, then delete old ones — never leave an empty list
+  // if the insert fails (previous delete-then-insert could wipe products).
+  const { data: existing } = await supabase
+    .from("live_products")
+    .select("id")
+    .eq("live_id", liveId);
+  const oldIds = (existing ?? []).map((r) => r.id as string);
 
-  // Replace products wholesale.
-  await supabase.from("live_products").delete().eq("live_id", liveId);
   if (patch.products.length > 0) {
     const rows = patch.products.map((p) => ({
       live_id: liveId,
@@ -876,9 +1119,19 @@ export async function updateScheduledLiveInDb(
       timer_seconds: p.timerSeconds,
       status: "upcoming" as const,
       position: p.position,
+      ...liveProductOptionColumns(p),
+      ...(p.shopProductId ? { shop_product_id: p.shopProductId } : {}),
     }));
     const { error: pErr } = await supabase.from("live_products").insert(rows);
     if (pErr) throw pErr;
+  }
+
+  if (oldIds.length > 0) {
+    const { error: delErr } = await supabase
+      .from("live_products")
+      .delete()
+      .in("id", oldIds);
+    if (delErr) throw delErr;
   }
 }
 
@@ -892,6 +1145,24 @@ export async function cancelScheduledLiveInDb(liveId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Start window: 15 min before → 60 min after the scheduled slot. */
+export const SCHEDULED_START_EARLY_MS = 15 * 60_000;
+export const SCHEDULED_START_LATE_MS = 60 * 60_000;
+
+export type ScheduledStartWindow = "upcoming" | "ready" | "expired" | "none";
+
+export function scheduledStartWindow(
+  scheduledAt: string | null | undefined,
+  nowMs: number = Date.now(),
+): ScheduledStartWindow {
+  if (!scheduledAt) return "none";
+  const t = new Date(scheduledAt).getTime();
+  if (!Number.isFinite(t)) return "none";
+  if (nowMs < t - SCHEDULED_START_EARLY_MS) return "upcoming";
+  if (nowMs <= t + SCHEDULED_START_LATE_MS) return "ready";
+  return "expired";
+}
+
 /** Flip a scheduled live to 'live' and return the row so the caller can broadcast. */
 export async function startScheduledLiveInDb(liveId: string): Promise<{
   ok: boolean;
@@ -899,6 +1170,18 @@ export async function startScheduledLiveInDb(liveId: string): Promise<{
   productIds?: string[];
   error?: string;
 }> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from("lives")
+    .select("id, room_name, scheduled_at, status")
+    .eq("id", liveId)
+    .eq("status", "scheduled")
+    .maybeSingle();
+  if (fetchErr || !existing) return { ok: false, error: fetchErr?.message ?? "not_found" };
+
+  const window = scheduledStartWindow(existing.scheduled_at);
+  if (window === "upcoming") return { ok: false, error: "too_early" };
+  if (window === "expired") return { ok: false, error: "expired" };
+
   const { data, error } = await supabase
     .from("lives")
     .update({ status: "live", started_at: new Date().toISOString() })
@@ -936,13 +1219,14 @@ export async function fetchScheduledLiveWithProducts(
 ): Promise<(ScheduledLiveRow & { products: LiveProductRow[] }) | null> {
   const { data } = await supabase
     .from("lives")
-    .select("id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts")
-
+    .select(
+      "id, seller_id, title, category, cover_url, scheduled_at, currency, status, allow_gifts, broadcast_mode, description, estimated_duration_min, allow_bids, allow_buy_now, notify_followers",
+    )
     .eq("id", liveId)
     .maybeSingle();
   if (!data) return null;
   const prods = await fetchLiveProducts(liveId);
-  return { ...(data as ScheduledLiveRow), products: prods };
+  return { ...(data as unknown as ScheduledLiveRow), products: prods };
 }
 
 /** Public feed: upcoming scheduled lives visible to buyers. */
@@ -973,16 +1257,16 @@ export async function fetchUpcomingScheduledLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
       product_count: r.live_products?.[0]?.count ?? 0,
     })),
   );
   return resolved;
 }
 
-/** Opportunistic cleanup: cancel scheduled lives whose slot passed > 24h ago. */
+/** Opportunistic cleanup: delete scheduled lives past the start grace window. */
 export async function cancelStaleScheduledLives(): Promise<void> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - SCHEDULED_START_LATE_MS).toISOString();
   await supabase
     .from("lives")
     .delete()
@@ -1022,7 +1306,7 @@ export async function fetchSellerLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url)) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
     })),
   );
   // Sort: live first, then scheduled (upcoming), then ended.

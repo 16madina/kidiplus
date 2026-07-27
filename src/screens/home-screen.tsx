@@ -11,6 +11,7 @@ import { makeStreams, type LiveStream } from "@/lib/live-mock";
 import {
   applyHomeCategory,
   applyHomeFilter,
+  sortLivesNewestFirst,
   HOME_CATEGORY_META,
   type HomeCategory,
   type HomeFilter,
@@ -169,10 +170,14 @@ export function HomeScreen() {
     //    Real lives keep top billing so the feed is not misleading when it has
     //    real content; samples fill the tail.
     const samplesForCategory = sampleLivesForCategory(category, scopedReal.length);
-    const combined = [...scopedReal, ...samplesForCategory];
+    // Real lives always above review samples. Newest first (demo card stays
+    // pinned above this list in the grid).
+    const realNewest = sortLivesNewestFirst(scopedReal);
+    const rankedReal =
+      category === "Pour toi" ? rankForYou(realNewest) : realNewest;
+    const combined = [...rankedReal, ...samplesForCategory];
 
-    const base = category === "Pour toi" ? rankForYou(combined) : combined;
-    const withFilter = applyHomeFilter(base, filter);
+    const withFilter = applyHomeFilter(combined, filter);
     // "Uniquement en direct" toggle from the filter sheet — hide scheduled cards.
     return liveOnly ? withFilter.filter((s) => !s.scheduled) : withFilter;
   }, [realLives, category, filter, rankForYou, blockedIds, liveOnly]);

@@ -65,5 +65,8 @@ export function bustAvatarCache(url: string | null, version?: string | number | 
 }
 
 export function invalidateAvatar(value: string | null | undefined) {
-  if (value) cache.delete(value);
+  if (!value) return;
+  const path = avatarStoragePath(value);
+  if (path) cache.delete(path);
+  cache.delete(value);
 }

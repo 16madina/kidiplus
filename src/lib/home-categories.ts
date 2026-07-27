@@ -115,6 +115,19 @@ export function applyHomeCategory(
   return streams.filter((s) => set.has(s.category));
 }
 
+/** Newest real lives first (ISO `startedAt`); fictitious samples keep their relative order at the end. */
+export function sortLivesNewestFirst(streams: LiveStream[]): LiveStream[] {
+  const real = streams.filter((s) => !s.fictitious);
+  const samples = streams.filter((s) => s.fictitious);
+  real.sort((a, b) => {
+    const ta = a.startedAt ? Date.parse(a.startedAt) : 0;
+    const tb = b.startedAt ? Date.parse(b.startedAt) : 0;
+    if (tb !== ta) return tb - ta;
+    return (b.viewers ?? 0) - (a.viewers ?? 0);
+  });
+  return [...real, ...samples];
+}
+
 export function applyHomeFilter(
   streams: LiveStream[],
   filter: HomeFilter,
@@ -124,9 +137,12 @@ export function applyHomeFilter(
       return streams;
     case "Achat immédiat":
       return streams.filter((_, i) => i % 2 === 0);
-    case "Populaires":
-      return [...streams].sort((a, b) => b.viewers - a.viewers);
+    case "Populaires": {
+      const real = streams.filter((s) => !s.fictitious);
+      const samples = streams.filter((s) => s.fictitious);
+      return [...real].sort((a, b) => b.viewers - a.viewers).concat(samples);
+    }
     case "Nouveautés":
-      return [...streams].reverse();
+      return sortLivesNewestFirst(streams);
   }
 }

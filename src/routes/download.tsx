@@ -1,11 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { EMAIL_CONFIG } from '@/lib/email/config'
+import kidiPlusLogo from '@/assets/img/brands/kidi-plus-logo.png'
 
 /**
  * Landing page for app download links (App Store + Play Store).
- * App Store URL stays disabled until YOUR_APP_STORE_ID is replaced in
- * EMAIL_CONFIG. Play Store uses the Android package id.
  */
 export const Route = createFileRoute('/download')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -71,7 +70,7 @@ function DownloadPage() {
       }}
     >
       <img
-        src="/kidi-plus-logo.png"
+        src={kidiPlusLogo}
         alt="KIDI+"
         style={{ width: 120, height: 'auto' }}
       />
@@ -113,7 +112,11 @@ function DownloadPage() {
       </div>
 
       <a
-        href={next?.startsWith('/') ? next : 'https://kidiplus.com'}
+        href={
+          next?.startsWith('/')
+            ? `${next}${next.includes('?') ? '&' : '?'}web=1`
+            : 'https://kidiplus.com'
+        }
         style={{
           marginTop: 8,
           fontSize: 13,

@@ -4,7 +4,7 @@
 // country), delivery zone & fee, and a copy-to-clipboard button so the
 // seller can paste the address into a courier app.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,8 @@ import {
   MapPin,
   PackageCheck,
   UserRound,
+  Truck,
+  ReceiptText,
 } from "lucide-react";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
@@ -21,6 +23,8 @@ import { CountryFlag } from "@/components/country-flag";
 import { haptic } from "@/lib/haptics";
 import { formatMoney } from "@/lib/money";
 import type { OrderRow } from "@/lib/orders-db";
+import { OrderItemImage } from "@/components/orders/order-item-image";
+import { OrderInvoiceSheet } from "@/components/orders/order-invoice-sheet";
 import { formatAddressLine, isCompactAddressCountry } from "@/lib/delivery";
 import { countryName } from "@/lib/delivery-zones-data";
 
@@ -46,6 +50,13 @@ function digitsOnly(s: string | null | undefined): string {
   return (s ?? "").replace(/[^0-9+]/g, "");
 }
 
+function fullDate(iso: string | null, lang: string): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString(lang, {
+    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
 async function copy(text: string, msg: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -67,6 +78,7 @@ export function SellerOrderDetailSheet({
 }) {
   const { t, i18n } = useTranslation();
   const snap = useMemo(() => asSnapshot(order?.address_snapshot), [order]);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   if (!order) return null;
   const compact = isCompactAddressCountry(snap?.country);
   const isPaid = order.status === "paid";
@@ -101,11 +113,7 @@ export function SellerOrderDetailSheet({
 
         {/* Item summary */}
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border p-3">
-          {order.item_image ? (
-            <img src={order.item_image} alt="" className="h-14 w-14 rounded-xl object-cover" />
-          ) : (
-            <div className="h-14 w-14 rounded-xl bg-muted" />
-          )}
+          <OrderItemImage src={order.item_image} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold">{order.item_name}</p>
             <p className="text-[11px] text-muted-foreground">
@@ -248,19 +256,61 @@ export function SellerOrderDetailSheet({
           </section>
         )}
 
+        {/* Order dates recap */}
+        <section className="mt-4 rounded-2xl border border-border p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            <Truck size={12} />
+            {t("orderDetail.shippingTitle", { defaultValue: "Livraison" })}
+          </div>
+          <div className="space-y-1 text-[13px]">
+            <p>
+              <span className="font-semibold">{t("orderDetail.orderedOn", { defaultValue: "Commandé le" })}:</span>{" "}
+              {fullDate(order.created_at, i18n.language)}
+            </p>
+            {order.paid_at && (
+              <p>
+                <span className="font-semibold">{t("orderDetail.paidOn", { defaultValue: "Payé le" })}:</span>{" "}
+                {fullDate(order.paid_at, i18n.language)}
+              </p>
+            )}
+            <p>
+              <span className="font-semibold">{t("orderDetail.shippedOn", { defaultValue: "Expédié le" })}:</span>{" "}
+              {fullDate(order.shipped_at, i18n.language) ??
+                t("orderDetail.notYetShipped", { defaultValue: "pas encore expédié" })}
+            </p>
+            <p>
+              <span className="font-semibold">{t("orderDetail.deliveredOn", { defaultValue: "Reçu le" })}:</span>{" "}
+              {fullDate(order.delivered_confirmed_at, i18n.language) ??
+                t("orderDetail.notYetDelivered", { defaultValue: "pas encore reçu" })}
+            </p>
+          </div>
+        </section>
+
+        <Press
+          onClick={() => { haptic.selection(); setInvoiceOpen(true); }}
+          className="!min-h-10 mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-[13px] font-semibold"
+        >
+          <ReceiptText size={14} /> {t("invoice.viewCta", { defaultValue: "Voir la facture" })}
+        </Press>
+
         {canShip && (
           <Press
             onClick={() => {
               onShip?.(order.id);
               onClose();
             }}
-            className="!min-h-12 mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[15px] font-bold text-white"
+            className="!min-h-12 mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-[15px] font-bold text-white"
             style={{ backgroundColor: "oklch(0.55 0.16 260)" }}
           >
             <PackageCheck size={16} /> {t("orders.shipCta")}
           </Press>
         )}
       </div>
+      <OrderInvoiceSheet
+        order={order}
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
+      />
     </BottomSheet>
   );
 }

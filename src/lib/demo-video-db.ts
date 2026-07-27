@@ -15,12 +15,34 @@
 import { supabase } from "@/integrations/supabase/client";
 import demoVideoAsset from "@/assets/demo-video.mov.asset.json";
 import demoCoverAsset from "@/assets/demo-live-cover.jpg.asset.json";
+import { DEMO_LIVE_POSTER_DATA_URI } from "@/assets/demo-live-poster-data";
+// Same pattern as bottom-tab-bar Live badge: Vite-hashed same-origin URL.
+// `/__l5e/` CDN paths fail on some mobile browsers; large data-URIs fail on iOS.
+import demoPosterBundledUrl from "@/assets/img/demo-live-poster.jpg";
 
 export const DEMO_VIDEO_FALLBACK_URL = demoVideoAsset.url;
-export const DEMO_COVER_FALLBACK_URL = demoCoverAsset.url;
+
+/** Vite-bundled ~42KB jpg — primary poster (works on iPhone + Capacitor). */
+export const DEMO_COVER_BUNDLED_URL = demoPosterBundledUrl;
+/** Lovable CDN relative path — secondary fallback on kidiplus.com. */
+export const DEMO_COVER_LOVABLE_URL = demoCoverAsset.url;
+/** Same-origin public file (copied into `public/`). */
+export const DEMO_COVER_PUBLIC_URL = "/demo-live-poster.jpg";
+/** Tiny data-URI fallback — iOS Safari rejects large data URIs (~150KB+). */
+export const DEMO_COVER_DATA_URI = DEMO_LIVE_POSTER_DATA_URI;
+
+/**
+ * Default poster for the home demo card.
+ * Prefer the Vite-bundled asset (same as Live tab badge). CDN / public /
+ * data-URI are only fallbacks when that URL fails to load.
+ */
+export const DEMO_COVER_FALLBACK_URL = DEMO_COVER_BUNDLED_URL;
+export const DEMO_COVER_ABSOLUTE_URL =
+  "https://kidiplus.com" + DEMO_COVER_LOVABLE_URL;
 
 export const DEMO_VIDEO_CONFIG_KEY = "demo_video_url";
-export const DEMO_COVER_CONFIG_KEY = "demo_cover_url";
+// v2: ignore stale `demo_cover_url` Storage overrides that broke the home card.
+export const DEMO_COVER_CONFIG_KEY = "demo_cover_url_v2";
 export const DEMO_VERSION_CONFIG_KEY = "demo_version";
 
 export const DEMO_VIDEO_BUCKET = "demo-videos";
@@ -47,14 +69,18 @@ export async function fetchDemoConfig(): Promise<DemoConfig> {
   (data ?? []).forEach((r) => map.set(r.key, r.value));
   return {
     videoUrl: map.get(DEMO_VIDEO_CONFIG_KEY) || DEMO_VIDEO_FALLBACK_URL,
-    coverUrl: map.get(DEMO_COVER_CONFIG_KEY) || DEMO_COVER_FALLBACK_URL,
+    coverUrl: (() => {
+      const remote = map.get(DEMO_COVER_CONFIG_KEY);
+      if (remote && /^https?:\/\//i.test(remote)) return remote;
+      return DEMO_COVER_FALLBACK_URL;
+    })(),
     version: map.get(DEMO_VERSION_CONFIG_KEY) || "0",
   };
 }
 
 /** Append `?v=<version>` to a URL (preserving any existing query string). */
 export function withVersion(url: string, version: string): string {
-  if (!url) return url;
+  if (!url || url.startsWith("data:")) return url;
   return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(version);
 }
 

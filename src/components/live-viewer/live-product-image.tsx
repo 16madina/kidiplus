@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
-import { resolveLiveImage } from "@/lib/lives-db";
+import { resolveLiveImage, type LiveImageSize } from "@/lib/lives-db";
 import { cn } from "@/lib/utils";
 
 const DIRECT_IMAGE_RE = /^(https?:|blob:|data:)/i;
@@ -12,6 +12,7 @@ export function LiveProductImage({
   placeholderClassName,
   iconClassName,
   draggable = false,
+  size = "card",
 }: {
   src: string | null | undefined;
   alt?: string;
@@ -19,6 +20,7 @@ export function LiveProductImage({
   placeholderClassName?: string;
   iconClassName?: string;
   draggable?: boolean;
+  size?: LiveImageSize;
 }) {
   const [displaySrc, setDisplaySrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -47,7 +49,7 @@ export function LiveProductImage({
       for (const delay of delays) {
         if (delay) await new Promise((r) => setTimeout(r, delay));
         if (!alive) return;
-        const signed = await resolveLiveImage("live-products", src);
+        const signed = await resolveLiveImage("live-products", src, size);
         if (signed) {
           if (alive) setDisplaySrc(signed);
           return;
@@ -59,7 +61,7 @@ export function LiveProductImage({
     return () => {
       alive = false;
     };
-  }, [src]);
+  }, [src, size]);
 
   if (!displaySrc || failed) {
     return (

@@ -58,18 +58,28 @@ export function ModeratorDock({
 
   const doStartAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
+    if (activeAuction && activeAuction.productId !== p.id) {
+      toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
+      return;
+    }
     haptic.medium();
     setBusy(true);
     try {
       const res = await startAuctionInDb(p.id);
       if (!res.ok || !res.deadlineMs) {
-        toast.error(res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère"));
+        const err = res.error ?? "";
+        toast.error(
+          err === "auction_already_running"
+            ? t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord.")
+            : (res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère")),
+        );
         return;
       }
       broadcastAuctionStart({
         productId: p.id,
         deadlineMs: res.deadlineMs,
         timerSec: res.timerSec ?? p.timer_seconds,
+        ...(res.auctionRound != null ? { auctionRound: res.auctionRound } : {}),
       });
       toast.success(t("moderator.auctionStarted", "Enchère démarrée"));
       setOpen(false);
@@ -81,8 +91,12 @@ export function ModeratorDock({
   const doToggleFixed = async (p: LiveProductRow) => {
     if (p.mode !== "fixed") return;
     haptic.medium();
-    if (p.status === "active") await stopFixedInDb(p.id);
-    else await activateFixedInDb(p.id);
+    const res =
+      p.status === "active" ? await stopFixedInDb(p.id) : await activateFixedInDb(p.id);
+    if (!res.ok) {
+      haptic.error();
+      toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+    }
   };
 
   const persistProduct = async (
@@ -100,6 +114,14 @@ export function ModeratorDock({
       stock: p.stock,
       timerSeconds: p.timerSec,
       shopProductId: p.shopProductId ?? null,
+      description: p.description ?? null,
+      brand: p.brand ?? null,
+      condition: p.condition ?? null,
+      colors: p.colors ?? [],
+      sizes: p.sizes ?? [],
+      extraImages: p.extraImages,
+      extraImageFiles: p.extraImageFiles,
+      bidIncrement: p.bidIncrement ?? null,
     });
     if (!res.ok) {
       toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
@@ -258,6 +280,10 @@ export function ModeratorDock({
                               style={{ backgroundColor: "oklch(0.62 0.24 20)" }}
                             >
                               {t("live.live", "En cours")}
+                            </span>
+                          ) : activeAuction ? (
+                            <span className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-bold text-muted-foreground">
+                              {t("live.waitOtherAuction", "Enchère en cours")}
                             </span>
                           ) : (
                             <Press

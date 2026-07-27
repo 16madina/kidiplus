@@ -9,6 +9,7 @@ import { useSellerProfile } from "@/lib/seller-profile-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { pushStatusBarLight } from "@/lib/native";
+import { liveShareUrl } from "@/lib/deep-links";
 import { logLiveInteraction } from "@/lib/interactions-db";
 import { useAppActive } from "@/lib/app-state";
 import { usePush } from "@/lib/push";
@@ -33,6 +34,7 @@ import { RealLiveViewerScreen } from "./real-live-viewer-screen";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { GiftTraySheet } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { GiftComboFeed } from "./gift-combo-feed";
 import { BottomSheet } from "./bottom-sheet";
 import { WinnerReveal } from "./winner-reveal";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
@@ -100,7 +102,10 @@ function MockLiveViewerScreen() {
         const roll = Math.random();
         const nextMsg =
           roll < 0.12
-            ? systemMessage(`@${randomBidder()} a rejoint le live 👋`)
+            ? {
+                ...systemMessage(randomBidder()),
+                systemKind: "join" as const,
+              }
             : nextChatMessage();
         const next = [...prev, nextMsg];
         return next.length > 60 ? next.slice(next.length - 60) : next;
@@ -152,16 +157,24 @@ function MockLiveViewerScreen() {
   const [secondsLeft, setSecondsLeft] = useState(AUCTION_SECONDS);
   const [lastBidder, setLastBidder] = useState<string | undefined>();
   const [confettiKey, setConfettiKey] = useState(0);
+  const celebratedProductRef = useRef<string | null>(null);
+  // After switching demos / re-opening, skip celebrating a leftover secondsLeft===0
+  // until the timer is fresh again.
+  const skipCelebrateRef = useRef(false);
   const currentIndex = products.findIndex((p) => p.status === "current");
   const currentProduct = currentIndex >= 0 ? products[currentIndex] : null;
 
   // reset countdown when product changes / when active stream changes
   useEffect(() => {
     if (!active) return;
+    skipCelebrateRef.current = true;
+    celebratedProductRef.current = null;
+    setWinnerReveal(null);
+    setConfettiKey(0);
     setProducts(makeProducts());
     setSecondsLeft(AUCTION_SECONDS);
     setLastBidder(undefined);
-  }, [active]);
+  }, [active?.id]);
 
   // countdown tick (paused when app is backgrounded)
   useEffect(() => {
@@ -221,7 +234,15 @@ function MockLiveViewerScreen() {
   // Countdown hits zero -> sold, advance to next product
   useEffect(() => {
     if (!currentProduct || currentProduct.mode !== "auction") return;
-    if (secondsLeft > 0) return;
+    if (secondsLeft > 0) {
+      skipCelebrateRef.current = false;
+      return;
+    }
+    // Don't replay a previous round's zero-timer when entering / swiping demos.
+    if (skipCelebrateRef.current) return;
+    if (celebratedProductRef.current === currentProduct.id) return;
+    celebratedProductRef.current = currentProduct.id;
+
     const winner = lastBidder ?? randomBidder();
     const isMe = winner === "toi";
     // mark sold, advance
@@ -253,6 +274,7 @@ function MockLiveViewerScreen() {
         // If we ran out of products, loop back to the top so the sample
         // live never runs out of auction rounds during review.
         if (!next.some((p) => p.status === "current")) {
+          celebratedProductRef.current = null;
           return next.map((p, i) =>
             i === 0 ? { ...p, status: "current" as const, price: p.startBid } : p,
           );
@@ -262,7 +284,7 @@ function MockLiveViewerScreen() {
       setSecondsLeft(AUCTION_SECONDS);
       setLastBidder(undefined);
     }, 1600);
-  }, [secondsLeft, currentProduct, lastBidder]);
+  }, [secondsLeft, currentProduct?.id, currentProduct?.mode, currentProduct?.name, currentProduct?.price, lastBidder]);
 
   // Follow toggle + viewer count
   const [following, setFollowing] = useState(false);
@@ -639,8 +661,9 @@ function MockLiveViewerScreen() {
               aria-label={t("live.share", "Partager")}
               onClick={async () => {
                 haptic.light();
-                const shareUrl =
-                  typeof window !== "undefined" ? window.location.origin : "https://kidiplus.com";
+                const shareUrl = active.liveId
+                  ? liveShareUrl(active.liveId)
+                  : "https://kidiplus.com";
                 const title = `${active.seller} — Kidi+`;
                 const text = t("live.shareText", {
                   defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴",
@@ -801,6 +824,7 @@ function MockLiveViewerScreen() {
       </div>
 
       {/* Gift animations overlay */}
+      <GiftComboFeed trigger={giftEvt} />
       <GiftAnimationsLayer trigger={giftEvt} />
 
       {/* Floating hearts */}

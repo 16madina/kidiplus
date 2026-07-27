@@ -80,3 +80,23 @@ export async function confirmOrderPayment(pi: string): Promise<ConfirmOrderResul
   if (r.ok) return { ok: true, orderId: String(r.body.orderId) };
   return { ok: false, error: String(r.body?.error ?? `http_${r.status}`) };
 }
+
+/** Cancel a leftover Stripe PI after wallet payment (best-effort). */
+export async function cancelOrderPaymentIntent(orderId: string): Promise<void> {
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    if (!token) return;
+    await fetch("/api/checkout/cancel-intent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...paymentsEnvHeaders(),
+      },
+      body: JSON.stringify({ orderId }),
+    });
+  } catch {
+    /* ignore — webhook refund is the backstop */
+  }
+}

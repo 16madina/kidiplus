@@ -88,6 +88,8 @@ export type AdminPayoutRow = {
   requested_at: string;
   processed_at: string | null;
   source?: "seller" | "referral";
+  paypal_batch_id?: string | null;
+  paypal_error?: string | null;
 };
 
 
@@ -152,6 +154,53 @@ export async function fetchAdminLives(status: string | null = null): Promise<Adm
   const { data, error } = await sb.rpc("admin_list_lives", { _status: status, _limit: 100 });
   if (error || !data) return [];
   return (data.rows ?? []) as AdminLiveRow[];
+}
+
+export type AdminRiskAlertRow = {
+  id: string;
+  user_id: string | null;
+  kind: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  user_handle: string | null;
+  user_name: string | null;
+  is_verified: boolean;
+  risk_restricted: boolean;
+};
+
+export async function fetchAdminRiskAlerts(
+  status: "open" | "resolved" | "all" = "open",
+  limit = 50,
+  offset = 0,
+): Promise<{ rows: AdminRiskAlertRow[]; total: number }> {
+  const { data, error } = await sb.rpc("admin_list_risk_alerts", {
+    _status: status,
+    _limit: limit,
+    _offset: offset,
+  });
+  if (error || !data || data.ok === false) return { rows: [], total: 0 };
+  return {
+    rows: (data.rows ?? []) as AdminRiskAlertRow[],
+    total: Number(data.total ?? 0),
+  };
+}
+
+export async function resolveAdminRiskAlert(alertId: string): Promise<boolean> {
+  const { data, error } = await sb.rpc("admin_resolve_risk_alert", { _alert_id: alertId });
+  return !error && data?.ok === true;
+}
+
+export async function setAdminRiskRestricted(
+  userId: string,
+  restricted: boolean,
+): Promise<boolean> {
+  const { data, error } = await sb.rpc("admin_set_risk_restricted", {
+    _user_id: userId,
+    _restricted: restricted,
+  });
+  return !error && data?.ok === true;
 }
 
 // Indicative EUR conversion for the "≈ EUR" grand total only. Never used

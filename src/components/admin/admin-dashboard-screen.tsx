@@ -10,20 +10,22 @@ import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
   Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
-  HeartHandshake,
+  HeartHandshake, Shield, Send, RefreshCw,
 } from "lucide-react";
+import { fetchPaypalConfig, sendPaypalPayout, checkPaypalPayoutStatus } from "@/lib/paypal-payout-client";
 import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { haptic } from "@/lib/haptics";
 import {
   fetchOverviewStats, fetchAdminUsers, fetchAdminUserDetail,
   fetchAdminPayouts, fetchAdminOrders, fetchAdminLives,
+  fetchAdminRiskAlerts, resolveAdminRiskAlert, setAdminRiskRestricted,
   approxEurTotal,
   type OverviewStats, type AdminUserRow, type AdminPayoutRow,
-  type AdminOrderRow, type AdminLiveRow, type CurrencyMap,
+  type AdminOrderRow, type AdminLiveRow, type AdminRiskAlertRow, type CurrencyMap,
 } from "@/lib/admin-db";
 import {
   adminProcessPayout, subscribeAllPayouts,
@@ -36,9 +38,12 @@ import {
 } from "./moderation-pieces";
 import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
+import { OrderItemImage } from "@/components/orders/order-item-image";
+import { PayoutRiskBadge } from "./payout-risk-badge";
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral";
+
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -60,6 +65,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "payments" && open && <PaymentsTab />}
             {tab === "lives" && open && <LivesTab />}
             {tab === "reports" && open && <ReportsTab />}
+            {tab === "risk" && open && <RiskTab />}
             {tab === "verify" && open && <VerificationsTab />}
             {tab === "referral" && open && <AdminReferralPanel />}
           </div>
@@ -81,6 +87,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "users",    icon: <UsersIcon size={14} />,       label: t("admin.tabs.users") },
     { id: "push",     icon: <Bell size={14} />,            label: "Push" },
     { id: "reports",  icon: <Flag size={14} />,            label: t("admin.tabs.reports") },
+    { id: "risk",     icon: <Shield size={14} />,          label: t("admin.tabs.risk", "Risque") },
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
@@ -612,6 +619,10 @@ function PaymentsTab() {
                     <pre className="whitespace-pre-wrap break-all text-[11px] text-muted-foreground">{destText}</pre>
                     <Copy size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                   </button>
+                  {(p.status === "requested" || p.status === "processing") && (
+                    <PayoutRiskBadge payoutId={p.id} sellerId={p.seller_id} sellerHandle={p.seller_handle ?? null} />
+                  )}
+
 
                   {p.status === "paid" && p.proof_url && (
                     <ProofThumbnail path={p.proof_url} />
@@ -624,16 +635,21 @@ function PaymentsTab() {
                   )}
 
                   {isActionable ? (
-                    <div className="mt-2 flex gap-2">
-                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "paid" }); }}
-                        className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
-                        style={{ backgroundColor: "oklch(0.62 0.16 155)" }}>
-                        <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
-                      </Press>
-                      <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "rejected" }); }}
-                        className="flex-1 rounded-xl border py-2 text-[13px] font-bold">
-                        <span className="inline-flex items-center gap-1"><X size={14} />{t("admin.reject")}</span>
-                      </Press>
+                    <div className="mt-2 space-y-2">
+                      {p.method === "paypal" && (
+                        <PaypalSendBlock payout={p} onDone={() => void loadPayouts()} />
+                      )}
+                      <div className="flex gap-2">
+                        <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "paid" }); }}
+                          className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
+                          style={{ backgroundColor: "oklch(0.62 0.16 155)" }}>
+                          <span className="inline-flex items-center gap-1"><Check size={14} />{t("admin.markPaid")}</span>
+                        </Press>
+                        <Press onClick={() => { haptic.medium(); setSheetTarget({ row: p, action: "rejected" }); }}
+                          className="flex-1 rounded-xl border py-2 text-[13px] font-bold">
+                          <span className="inline-flex items-center gap-1"><X size={14} />{t("admin.reject")}</span>
+                        </Press>
+                      </div>
                     </div>
                   ) : (
                     <p className="mt-2 text-right text-[11px] font-semibold uppercase text-muted-foreground">{t(`payout.status.${p.status}`)}</p>
@@ -660,9 +676,7 @@ function PaymentsTab() {
           <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
             {orders.map((o) => (
               <li key={o.id} className="flex items-center gap-2 p-2.5">
-                {o.item_image
-                  ? <img src={o.item_image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
-                  : <div className="h-9 w-9 shrink-0 rounded-lg bg-muted" />}
+                <OrderItemImage src={o.item_image} className="h-9 w-9 shrink-0 rounded-lg object-cover" iconSize={14} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{o.item_name}</p>
                   <p className="truncate text-[10px] text-muted-foreground">@{o.buyer_handle ?? "?"} → @{o.seller_handle ?? "?"} · {o.status === "cancelled" && o.cancelled_reason === "payment_timeout" ? t("orders.status.paymentTimeout") : t(`orders.status.${o.status}`, o.status)} · {o.payment_method}</p>
@@ -865,6 +879,127 @@ function LivesTab() {
   );
 }
 
+// ---------- Risk / anti-fraud ----------
+
+function RiskTab() {
+  const { t, i18n } = useTranslation();
+  const [rows, setRows] = useState<AdminRiskAlertRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"open" | "resolved" | "all">("open");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const r = await fetchAdminRiskAlerts(filter, 50, 0);
+    setRows(r.rows);
+    setTotal(r.total);
+    setLoading(false);
+  };
+  useEffect(() => {
+    void load();
+  }, [filter]);
+
+  return (
+    <Section title={t("admin.risk.title", "Alertes risque")}>
+      <div className="mb-3 flex gap-1">
+        {(["open", "resolved", "all"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              setFilter(k);
+            }}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+              filter === k ? "bg-foreground text-background" : "bg-muted"
+            }`}
+          >
+            {t(`admin.risk.filter.${k}`, k)}
+          </button>
+        ))}
+      </div>
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        {t("admin.risk.count", "{{count}} alerte(s)", { count: total })}
+      </p>
+      {loading ? (
+        <Loader2 className="mx-auto my-8 animate-spin" size={20} />
+      ) : rows.length === 0 ? (
+        <p className="py-8 text-center text-[13px] text-muted-foreground">
+          {t("admin.risk.empty", "Aucune alerte.")}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((a) => (
+            <li key={a.id} className="rounded-2xl border border-border p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold">{a.kind}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    @{a.user_handle ?? "?"} · {a.user_name ?? "—"}
+                    {a.is_verified ? " · ✓" : ""}
+                    {a.risk_restricted ? ` · ${t("admin.risk.frozen", "gelé")}` : ""}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    {new Date(a.created_at).toLocaleString(i18n.language)}
+                  </p>
+                  <pre className="mt-1 max-h-20 overflow-auto whitespace-pre-wrap break-all text-[10px] text-muted-foreground">
+                    {JSON.stringify(a.detail ?? {}, null, 0)}
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {!a.resolved_at && (
+                  <Press
+                    disabled={busyId === a.id}
+                    onClick={async () => {
+                      setBusyId(a.id);
+                      const ok = await resolveAdminRiskAlert(a.id);
+                      setBusyId(null);
+                      if (ok) {
+                        toast.success(t("admin.risk.resolved", "Alerte résolue"));
+                        void load();
+                      } else toast.error(t("admin.risk.resolveFail", "Échec"));
+                    }}
+                    className="!min-h-8 rounded-full bg-muted px-3 text-[11px] font-semibold"
+                  >
+                    {t("admin.risk.resolve", "Résoudre")}
+                  </Press>
+                )}
+                {a.user_id && (
+                  <Press
+                    disabled={busyId === a.id}
+                    onClick={async () => {
+                      setBusyId(a.id);
+                      const next = !a.risk_restricted;
+                      const ok = await setAdminRiskRestricted(a.user_id!, next);
+                      setBusyId(null);
+                      if (ok) {
+                        toast.success(
+                          next
+                            ? t("admin.risk.freezeOn", "Compte gelé (paiements)")
+                            : t("admin.risk.freezeOff", "Gel levé"),
+                        );
+                        void load();
+                      } else toast.error(t("admin.risk.resolveFail", "Échec"));
+                    }}
+                    className="!min-h-8 rounded-full px-3 text-[11px] font-semibold text-white"
+                    style={{ backgroundColor: a.risk_restricted ? "oklch(0.55 0.12 155)" : "oklch(0.55 0.2 25)" }}
+                  >
+                    {a.risk_restricted
+                      ? t("admin.risk.unfreeze", "Lever le gel")
+                      : t("admin.risk.freeze", "Geler")}
+                  </Press>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
 // ---------- Verifications ----------
 
 function VerificationsTab() {
@@ -940,5 +1075,143 @@ function VerificationsTab() {
       })}
     </ul>
   );
+}
+
+// ---------- PayPal send block (per payout row, admin-only) ----------
+
+function PaypalSendBlock({ payout, onDone }: { payout: AdminPayoutRow; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [cfg, setCfg] = useState<{ configured: boolean; mode: "sandbox" | "live" | null } | null>(null);
+  const [busy, setBusy] = useState<"send" | "check" | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  useEffect(() => { void fetchPaypalConfig().then(setCfg); }, []);
+
+  const currency = (payout.currency ?? "").toUpperCase();
+  const isBridgedXof = currency === "XOF";
+  const eurEquivalent = isBridgedXof ? convertMoney(Number(payout.amount), "XOF", "EUR") : null;
+  const email = (payout.destination?.paypalEmail ?? payout.destination?.email ?? "").toString().trim();
+  const hasBatch = !!payout.paypal_batch_id;
+
+  const doSend = async () => {
+    setBusy("send");
+    haptic.medium();
+    const r = await sendPaypalPayout(payout.id);
+    setBusy(null);
+    setConfirmOpen(false);
+    if (r.ok) {
+      haptic.success();
+      toast.success(r.alreadySent ? t("admin.paypal.alreadySent", "Déjà envoyé — vérification du statut…") : t("admin.paypal.sent", "Envoyé via PayPal — vérification du statut…"));
+      // Kick off a status check after a moment
+      setTimeout(() => void doCheck(true), 2500);
+      onDone();
+    } else {
+      haptic.warning();
+      toast.error(r.message ?? mapErr(r.error, t));
+    }
+  };
+
+  const doCheck = async (silent = false) => {
+    setBusy("check");
+    const r = await checkPaypalPayoutStatus(payout.id);
+    setBusy(null);
+    if (r.ok) {
+      if (r.outcome === "success") { haptic.success(); toast.success(t("admin.paypal.paid", "Payé via PayPal ✓")); onDone(); return; }
+      if (r.outcome === "unclaimed") { haptic.warning(); toast.error(t("admin.paypal.unclaimed", "Cet email n'a pas de compte PayPal.")); onDone(); return; }
+      if (r.outcome === "failed") { haptic.warning(); toast.error(r.errors ?? t("admin.paypal.failed", "Échec du paiement PayPal.")); onDone(); return; }
+      if (!silent) toast.message(t("admin.paypal.processing", "En cours de traitement chez PayPal…"));
+    } else if (!silent) {
+      toast.error(r.message ?? mapErr(r.error, t));
+    }
+  };
+
+  if (!cfg) return null;
+
+  if (!cfg.configured) {
+    return (
+      <div className="rounded-xl border border-dashed border-border p-2 text-center text-[11px] text-muted-foreground" title="Configurer PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET / PAYPAL_MODE dans les secrets.">
+        {t("admin.paypal.notConfigured", "API PayPal non configurée")}
+      </div>
+    );
+  }
+
+
+  if (payout.status === "processing" || hasBatch) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 p-2">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold">{t("admin.paypal.pending", "PayPal — en cours")}</p>
+          {payout.paypal_batch_id && (
+            <p className="truncate text-[10px] text-muted-foreground">Batch: {payout.paypal_batch_id}</p>
+          )}
+          {payout.paypal_error && (
+            <p className="mt-0.5 text-[10px] text-destructive">{payout.paypal_error}</p>
+          )}
+        </div>
+        <Press onClick={() => void doCheck(false)} disabled={busy !== null}
+          className="rounded-full border px-3 py-1 text-[12px] font-semibold">
+          {busy === "check" ? <Loader2 size={12} className="animate-spin" /> : (
+            <span className="inline-flex items-center gap-1"><RefreshCw size={12} />{t("admin.paypal.refresh", "Vérifier")}</span>
+          )}
+        </Press>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Press onClick={() => { if (!email) { toast.error(t("admin.paypal.noEmail", "Email PayPal manquant sur ce retrait.")); return; } setConfirmOpen(true); }}
+        disabled={busy !== null}
+        className="w-full rounded-xl py-2 text-[13px] font-bold text-white"
+        style={{ backgroundColor: "oklch(0.55 0.18 260)" }}>
+        <span className="inline-flex items-center justify-center gap-1.5">
+          <Send size={14} />
+          {t("admin.paypal.send", "💸 Envoyer via PayPal")}
+          {cfg.mode === "sandbox" && <span className="ml-1 rounded bg-white/25 px-1.5 py-0.5 text-[9px] uppercase">sandbox</span>}
+        </span>
+      </Press>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/50 p-4" onClick={() => setConfirmOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-background p-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-[15px] font-bold">{t("admin.paypal.confirmTitle", "Envoyer via PayPal ?")}</h4>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {t("admin.paypal.confirmBody", "Confirme l'envoi immédiat vers le compte PayPal du vendeur.")}
+            </p>
+            <div className="mt-3 space-y-1 rounded-xl bg-muted p-3 text-[13px]">
+              <div className="flex justify-between"><span className="text-muted-foreground">{t("common.amount", "Montant")}</span><span className="font-bold">{formatMoney(Number(payout.amount), normalizeCurrency(payout.currency))}</span></div>
+              {isBridgedXof && eurEquivalent !== null && (
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("admin.paypal.sentAsEur", "Envoyé (EUR)")}</span><span className="font-bold">≈ {formatMoney(eurEquivalent, "EUR")}</span></div>
+              )}
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Email</span><span className="truncate font-semibold">{email || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-semibold uppercase">{cfg.mode}</span></div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Press onClick={() => setConfirmOpen(false)} className="flex-1 rounded-xl border py-2 text-[13px] font-semibold">
+                {t("common.cancel", "Annuler")}
+              </Press>
+              <Press onClick={() => void doSend()} disabled={busy === "send"}
+                className="flex-1 rounded-xl py-2 text-[13px] font-bold text-white"
+                style={{ backgroundColor: "oklch(0.55 0.18 260)" }}>
+                {busy === "send" ? <Loader2 size={14} className="inline animate-spin" /> : t("admin.paypal.confirm", "Confirmer l'envoi")}
+              </Press>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function mapErr(code: string, t: any): string {
+  switch (code) {
+    case "unauthorized": return String(t("errors.unauthorized", "Non autorisé"));
+    case "forbidden": return String(t("errors.forbidden", "Accès refusé"));
+    case "paypal_not_configured": return String(t("admin.paypal.notConfigured", "API PayPal non configurée"));
+    case "currency_not_supported": return String(t("admin.paypal.currencyUnsupported", "Devise non supportée par PayPal."));
+    case "invalid_email": return String(t("admin.paypal.noEmail", "Email PayPal invalide."));
+    case "already_processed": return String(t("admin.paypal.alreadyProcessed", "Ce retrait est déjà traité."));
+    default: return code;
+  }
 }
 

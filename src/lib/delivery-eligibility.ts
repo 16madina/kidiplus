@@ -4,11 +4,12 @@
 // seller's delivery settings + country and a buyer's default-address
 // country, can the buyer bid/buy in this live?
 //
-// A missing buyer address never blocks — the payment sheet already prompts
-// for one at checkout time.
+// Missing address returns reason "no_address". The live CTA stays the
+// normal bid/buy button; the first click opens the address form.
 
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { zonesForCountry } from "@/lib/delivery";
+import { normalizeCountryCode } from "@/lib/delivery-zones-data";
 
 export type EligibilityInput = {
   settings: SellerDeliverySettings | null;
@@ -18,24 +19,25 @@ export type EligibilityInput = {
 
 export type EligibilityResult = {
   eligible: boolean;
-  reason?: "no_country_coverage" | "courier_country_mismatch";
+  reason?: "no_address" | "no_country_coverage" | "courier_country_mismatch";
 };
 
-const norm = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+const norm = (s: string | null | undefined) => normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
 
 export function canDeliver({
   settings,
   sellerCountry,
   buyerCountry,
 }: EligibilityInput): EligibilityResult {
+  const buyer = norm(buyerCountry);
+  // Same rule for everyone — never let "no address" skip the gate while
+  // an addressed buyer in another country is blocked.
+  if (!buyer) return { eligible: false, reason: "no_address" };
+
   // No settings on the seller → treat as flat/0 (delivers everywhere).
   if (!settings || settings.mode === "flat") return { eligible: true };
 
-  const buyer = norm(buyerCountry);
-
   if (settings.mode === "courier") {
-    // Address prompt happens at checkout when no default is set.
-    if (!buyer) return { eligible: true };
     const seller = norm(sellerCountry);
     if (!seller) return { eligible: true }; // seller country unknown → don't gate
     return buyer === seller
@@ -46,8 +48,7 @@ export function canDeliver({
   // zones
   const zones = Array.isArray(settings.zones) ? settings.zones : [];
   if (zones.length === 0) return { eligible: true }; // seller hasn't configured yet
-  if (!buyer) return { eligible: true }; // ask at checkout
-  const inCountry = zonesForCountry(zones, buyer);
+  const inCountry = zonesForCountry(zones, buyer, sellerCountry);
   return inCountry.length > 0
     ? { eligible: true }
     : { eligible: false, reason: "no_country_coverage" };

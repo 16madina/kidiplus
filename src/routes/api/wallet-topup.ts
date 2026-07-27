@@ -99,6 +99,35 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "invalid_amount", currency, min: MIN_AMOUNT, max: MAX_AMOUNT }, 400, origin);
         }
         const amount = roundForCurrency(raw, currency);
+
+        // Anti-fraud: moderation + daily top-up cap (no consume — consume on credit).
+        const { data: riskRaw, error: riskErr } = await admin.rpc("risk_assert_can_topup", {
+          _user_id: userId,
+          _amount: amount,
+          _currency: currency,
+        });
+        if (riskErr) {
+          return json({ error: "risk_check_failed" }, 500, origin);
+        }
+        const risk = riskRaw as { ok?: boolean; error?: string; cap?: number; used?: number } | null;
+        if (!risk?.ok) {
+          const code = risk?.error ?? "daily_limit";
+          const status =
+            code === "account_banned" || code === "account_suspended" || code === "risk_restricted"
+              ? 403
+              : 429;
+          return json(
+            {
+              error: code,
+              cap: risk?.cap,
+              used: risk?.used,
+              currency,
+            },
+            status,
+            origin,
+          );
+        }
+
         const amountMinor = toStripeMinor(amount, currency);
 
         const stripe = createStripeClient(envHint);

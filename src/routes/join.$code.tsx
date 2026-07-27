@@ -1,17 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { EMAIL_CONFIG } from '@/lib/email/config'
+import { isNative } from '@/lib/native'
 
 /**
  * Referral share landing: https://kidiplus.com/join/CODE
  *
  * Behavior:
  *  - Stores the referral code in localStorage so the signup screen can prefill it.
- *  - On mobile, tries to open the native app via the custom scheme
- *    (kidiplus://join/CODE). If the app isn't installed, falls back to the
- *    download page after a short delay.
- *  - On desktop, redirects to the download page (with the code preserved in
- *    the URL so users on desktop still see it).
+ *  - Already in the native app → stay in-app (no store redirect).
+ *  - On mobile web, tries kidiplus://join/CODE then falls back to /download?ref=.
+ *  - On desktop, redirects to the download page with the code preserved.
  */
 export const Route = createFileRoute('/join/$code')({
   ssr: false,
@@ -36,9 +35,11 @@ export const Route = createFileRoute('/join/$code')({
 
 function JoinPage() {
   const { code } = Route.useParams()
+  const navigate = useNavigate()
   const [fallback, setFallback] = useState(false)
 
-  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, '')}/download?ref=${encodeURIComponent(code)}`
+  // FALLBACK_URL is already https://kidiplus.com/download — do not append /download again.
+  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, '')}?ref=${encodeURIComponent(code)}`
   const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://join/${encodeURIComponent(code)}`
 
   useEffect(() => {
@@ -49,6 +50,12 @@ function JoinPage() {
       window.localStorage.setItem('kidi.referral_code', code)
     } catch {
       /* ignore */
+    }
+
+    // Universal Link already opened the app — don't bounce to the stores.
+    if (isNative()) {
+      void navigate({ to: '/', replace: true })
+      return
     }
 
     const ua = window.navigator.userAgent || ''
@@ -70,7 +77,7 @@ function JoinPage() {
 
     window.location.href = appUrl
     return () => window.clearTimeout(timer)
-  }, [appUrl, downloadUrl, code])
+  }, [appUrl, downloadUrl, code, navigate])
 
   return (
     <main

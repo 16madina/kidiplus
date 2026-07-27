@@ -80,14 +80,43 @@ export const Route = createFileRoute("/api/stripe-webhook")({
               const orderId = intent.metadata?.orderId;
               const q = admin
                 .from("orders")
-                .update({ status: "paid", paid_at: new Date().toISOString() })
+                .update({
+                  status: "paid",
+                  paid_at: new Date().toISOString(),
+                  payment_method: "card",
+                  stripe_payment_intent_id: intent.id,
+                })
                 .eq("stripe_payment_intent_id", intent.id)
                 .neq("status", "paid")
                 .select("id");
               const res = orderId ? await q.eq("id", orderId) : await q;
-              // Credit the seller for each newly-paid order (idempotent RPC).
-              for (const row of (res.data ?? []) as Array<{ id: string }>) {
+              const updated = (res.data ?? []) as Array<{ id: string }>;
+              for (const row of updated) {
                 await admin.rpc("credit_seller_earning", { _order_id: row.id });
+              }
+              // Double-pay guard: order already paid (e.g. wallet) but this
+              // card PI still succeeded → auto-refund the card capture.
+              if (updated.length === 0 && orderId) {
+                const { data: existing } = await admin
+                  .from("orders")
+                  .select("id, status, payment_method, stripe_payment_intent_id")
+                  .eq("id", orderId)
+                  .maybeSingle();
+                const alreadyPaidElsewhere =
+                  existing?.status === "paid" &&
+                  (existing.payment_method === "wallet" ||
+                    (existing.stripe_payment_intent_id != null &&
+                      existing.stripe_payment_intent_id !== intent.id));
+                if (alreadyPaidElsewhere) {
+                  try {
+                    await stripe.refunds.create({
+                      payment_intent: intent.id,
+                      reason: "duplicate",
+                    });
+                  } catch {
+                    /* logged by Stripe dashboard; order stays paid once */
+                  }
+                }
               }
             }
           } else if (

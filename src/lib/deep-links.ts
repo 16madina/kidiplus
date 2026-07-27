@@ -12,9 +12,14 @@ export function isAllowedDeepLinkPath(pathname: string): boolean {
   if (pathname.startsWith("/live/")) return true;
   if (pathname.startsWith("/join/")) return true;
   if (pathname === "/open" || pathname.startsWith("/open/")) return true;
+  if (pathname === "/paypal-return" || pathname.startsWith("/paypal-return/")) return true;
+  if (pathname === "/paypal-done" || pathname.startsWith("/paypal-done/")) return true;
+  if (pathname === "/wallet" || pathname.startsWith("/wallet/")) return true;
   if (pathname === "/auth-callback" || pathname.startsWith("/auth-callback/")) return true;
   if (pathname === "/reset-password" || pathname.startsWith("/reset-password/")) return true;
   if (pathname === "/download" || pathname.startsWith("/download/")) return true;
+  if (pathname === "/youtube-connected" || pathname.startsWith("/youtube-connected/")) return true;
+  if (pathname === "/facebook-connected" || pathname.startsWith("/facebook-connected/")) return true;
   return false;
 }
 
@@ -57,4 +62,18 @@ export function pathFromDeepLinkUrl(raw: string): string | null {
 /** Public https share URL for a live (Universal Link). */
 export function liveShareUrl(liveId: string): string {
   return `https://kidiplus.com/live/${encodeURIComponent(liveId)}`;
+}
+
+/** Description blurb for YouTube / Facebook Live — drives downloads. */
+export function liveSocialDescription(opts: {
+  title?: string | null;
+  liveId: string;
+}): string {
+  const title = (opts.title ?? "").trim() || "Live shopping KiDi+";
+  const url = liveShareUrl(opts.liveId);
+  return (
+    `${title}\n\n` +
+    `Enchéris et achète en direct sur KiDi+ 👇\n${url}\n\n` +
+    `Télécharge l’app KiDi+ pour participer aux enchères.`
+  );
 }

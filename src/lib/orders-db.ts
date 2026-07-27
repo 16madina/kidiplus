@@ -1,9 +1,9 @@
 // Orders data layer — client-side (browser Supabase client).
-// Writes are restricted by RLS to (buyer_id = auth.uid(), status='pending').
-// Status transitions (paid/failed) happen server-side via /api/stripe-webhook.
+// Pending orders are created via the SECURITY DEFINER RPC `create_live_order`
+// (amounts, fees, delivery eligibility all computed server-side). Status
+// transitions (paid/failed) happen via /api/stripe-webhook.
 
 import { supabase } from "@/integrations/supabase/client";
-import { computeFees } from "@/lib/fees";
 
 export type OrderStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
 export type OrderKind = "auction" | "fixed";
@@ -33,7 +33,6 @@ export type OrderRow = {
   paid_at: string | null;
   payment_deadline: string | null;
   cancelled_reason: string | null;
-  // Delivery + escrow (added in Migration 1)
   delivery_fee: number;
   delivery_mode: DeliveryMode | null;
   delivery_zone: string | null;
@@ -45,69 +44,98 @@ export type OrderRow = {
   refund_status: "pending_manual" | "refunded_wallet" | "refunded_card" | "none" | null;
 };
 
-export type CreatePendingOrderInput = {
-  buyerId: string;
-  sellerId: string;
-  liveId: string | null;
-  productId: string | null;
+export type CreateLiveOrderInput = {
+  productId: string;
   kind: OrderKind;
-  itemName: string;
-  itemImage: string | null;
-  amount: number; // item price expressed in the live/order currency
-  /** Currency of the live (falls back to EUR). Order & fees use this. */
+  color?: string | null;
+  size?: string | null;
+};
+
+function parseOrder(raw: unknown): OrderRow | null {
+  if (!raw || typeof raw !== "object") return null;
+  return raw as OrderRow;
+}
+
+/**
+ * Create a pending checkout order. Price, fees and delivery are derived on
+ * the server from the product row + buyer address — the client cannot supply
+ * a forged amount.
+ */
+export async function createLiveOrder(
+  input: CreateLiveOrderInput,
+): Promise<{ ok: true; order: OrderRow } | { ok: false; error: string }> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (n: string, a: object) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("create_live_order", {
+    _product_id: input.productId,
+    _kind: input.kind,
+    _color: input.color ?? null,
+    _size: input.size ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    error?: string;
+    order?: unknown;
+    order_id?: string;
+  };
+  if (!r.ok) return { ok: false, error: r.error ?? "create_failed" };
+  const order = parseOrder(r.order);
+  if (order) return { ok: true, order };
+  if (r.order_id) {
+    const fetched = await fetchOrderById(r.order_id);
+    if (fetched) return { ok: true, order: fetched };
+  }
+  return { ok: false, error: "order_missing" };
+}
+
+/** @deprecated Prefer createLiveOrder — kept for call-site migration. */
+export async function createPendingOrder(input: {
+  productId: string;
+  kind: OrderKind;
+  color?: string | null;
+  size?: string | null;
+  // Legacy ignored fields (server derives them):
+  buyerId?: string;
+  sellerId?: string;
+  liveId?: string | null;
+  itemName?: string;
+  itemImage?: string | null;
+  amount?: number;
   currency?: string;
-  /** Delivery (all optional — omit when not applicable, e.g. digital goods). */
   deliveryFee?: number;
   deliveryMode?: DeliveryMode | null;
   deliveryZone?: string | null;
   addressId?: string | null;
   addressSnapshot?: Record<string, unknown> | null;
-};
-
-/**
- * Insert a pending order for the current user. Fee math is derived from
- * src/lib/fees.ts in the order's currency so the checkout summary and DB
- * numbers stay in lockstep. A DB trigger also stamps the live's currency
- * on insert as a belt-and-braces safety.
- */
-export async function createPendingOrder(
-  input: CreatePendingOrderInput,
-): Promise<{ ok: true; order: OrderRow } | { ok: false; error: string }> {
-  const deliveryFee = Number(input.deliveryFee ?? 0);
-  const fees = computeFees(input.amount, deliveryFee, input.currency ?? "EUR");
-  const { data, error } = await supabase
-    .from("orders")
-    .insert({
-      buyer_id: input.buyerId,
-      seller_id: input.sellerId,
-      live_id: input.liveId,
-      product_id: input.productId,
-      kind: input.kind,
-      item_name: input.itemName,
-      item_image: input.itemImage,
-      amount: fees.amount,
-      platform_fee: fees.platformFee,
-      processing_fee: 0,
-      seller_net: fees.sellerNet,
-      total: fees.total,
-      currency: fees.currency,
-      status: "pending",
-      payment_method: "card",
-      delivery_fee: fees.shipping,
-      delivery_mode: input.deliveryMode ?? null,
-      delivery_zone: input.deliveryZone ?? null,
-      address_id: input.addressId ?? null,
-      address_snapshot: (input.addressSnapshot ?? null) as never,
-    } as never)
-    .select("*")
-    .single();
-  if (error || !data) return { ok: false, error: error?.message ?? "insert failed" };
-  return { ok: true, order: data as OrderRow };
+}): Promise<{ ok: true; order: OrderRow } | { ok: false; error: string }> {
+  return createLiveOrder({
+    productId: input.productId,
+    kind: input.kind,
+    color: input.color ?? null,
+    size: input.size ?? null,
+  });
 }
 
 export async function fetchOrderById(orderId: string): Promise<OrderRow | null> {
   const { data } = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
   return (data ?? null) as OrderRow | null;
+}
+
+/** Attach selected color/size on a pending order (item_name + address_snapshot). */
+export async function setOrderProductOptions(
+  orderId: string,
+  opts: { color?: string | null; size?: string | null },
+): Promise<{ ok: true; itemName?: string } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc("set_order_product_options", {
+    _order_id: orderId,
+    _color: opts.color ?? undefined,
+    _size: opts.size ?? undefined,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string; item_name?: string };
+  if (!r.ok) return { ok: false, error: r.error ?? "update_failed" };
+  return { ok: true, itemName: r.item_name };
 }
 
 export async function fetchMyOrders(buyerId: string, limit = 50): Promise<OrderRow[]> {

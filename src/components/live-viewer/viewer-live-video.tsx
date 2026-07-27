@@ -3,6 +3,7 @@
 // host is not connected yet, or after they leave.
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
 import {
   RoomEvent,
   Track,
@@ -14,7 +15,13 @@ import {
   type RemoteParticipant,
 } from "@/lib/livekit";
 import { useAppActive } from "@/lib/app-state";
-import { getInSystemPip, getPipHold, useMediaSessionActive } from "@/lib/pip-session";
+import {
+  getInSystemPip,
+  getPipHold,
+  useInSystemPip,
+  useMediaSessionActive,
+  usePipHold,
+} from "@/lib/pip-session";
 import { Room } from "livekit-client";
 
 export type ViewerLiveVideoProps = {
@@ -44,6 +51,20 @@ function kickPlayback(
   void audio?.play()?.catch(() => {});
 }
 
+/** Prefer RTMP Ingress publisher (rtmp-host-*) when several remotes publish video. */
+function pickRemoteVideoTrack(room: Room): RemoteTrack | null {
+  let fallback: RemoteTrack | null = null;
+  for (const p of room.remoteParticipants.values()) {
+    for (const pub of p.trackPublications.values()) {
+      const track = pub.track;
+      if (!track || track.kind !== Track.Kind.Video) continue;
+      if (p.identity.startsWith("rtmp-host-")) return track;
+      if (!fallback) fallback = track;
+    }
+  }
+  return fallback;
+}
+
 /** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
 function reattachRemoteMedia(
   room: Room,
@@ -62,13 +83,7 @@ function reattachRemoteMedia(
       const track = pub.track;
       if (!track) return;
       try {
-        if (track.kind === Track.Kind.Video && video) {
-          if (hard) {
-            try { track.detach(video); } catch { /* ignore */ }
-          }
-          track.attach(video);
-          gotVideo = true;
-        } else if (track.kind === Track.Kind.Audio && audio) {
+        if (track.kind === Track.Kind.Audio && audio) {
           if (hard) {
             try { track.detach(audio); } catch { /* ignore */ }
           }
@@ -79,6 +94,18 @@ function reattachRemoteMedia(
       }
     });
   });
+  const videoTrack = pickRemoteVideoTrack(room);
+  if (videoTrack && video) {
+    try {
+      if (hard) {
+        try { videoTrack.detach(video); } catch { /* ignore */ }
+      }
+      videoTrack.attach(video);
+      gotVideo = true;
+    } catch {
+      /* ignore */
+    }
+  }
   if (hard && video?.srcObject) {
     const stream = video.srcObject;
     video.srcObject = null;
@@ -99,15 +126,29 @@ export function ViewerLiveVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
+  const hadLiveRef = useRef(false);
   const [status, setStatus] = useState<ViewerStatus>("connecting");
   const appActive = useAppActive();
   // Keep LiveKit connected in Android system PiP even though Capacitor
   // reports the app as inactive while the PiP window is showing.
   const sessionActive = useMediaSessionActive(appActive);
+  const inSystemPip = useInSystemPip();
+  const pipHold = usePipHold();
+  const isIosNative = (() => {
+    try {
+      return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+    } catch {
+      return false;
+    }
+  })();
 
   useEffect(() => {
     onStatus?.(status);
   }, [status, onStatus]);
+
+  useEffect(() => {
+    if (status === "live") hadLiveRef.current = true;
+  }, [status]);
 
   useEffect(() => {
     if (!sessionActive) return;
@@ -152,18 +193,40 @@ export function ViewerLiveVideo({
       try {
         const { token, url } = await getToken(room, identity, name, "viewer");
         if (cancelled) return;
-        // adaptiveStream:false — first open in Capacitor WKWebView otherwise
-        // often sticks on a single frame until background/PiP return.
-        const r = await connectRoom(url, token, { adaptiveStream: false });
+        // WKWebView: adaptiveStream often freezes the first open on one frame.
+        // Web browsers can keep adaptive bitrate; native Capacitor stays off.
+        const r = await connectRoom(url, token, {
+          adaptiveStream: !Capacitor.isNativePlatform(),
+        });
         if (cancelled) {
           await disconnectRoom(r);
           return;
         }
         roomRef.current = r;
 
-        const attachTrack = (track: RemoteTrack) => {
+        const attachTrack = (
+          track: RemoteTrack,
+          participant?: RemoteParticipant,
+        ) => {
           if (cancelled) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
+            // Prefer RTMP Ingress publisher over other remote cameras.
+            if (
+              participant &&
+              !participant.identity.startsWith("rtmp-host-") &&
+              roomRef.current
+            ) {
+              const preferred = pickRemoteVideoTrack(roomRef.current);
+              if (
+                preferred &&
+                preferred !== track &&
+                [...roomRef.current.remoteParticipants.values()].some((p) =>
+                  p.identity.startsWith("rtmp-host-"),
+                )
+              ) {
+                return;
+              }
+            }
             const el = videoRef.current;
             track.attach(el);
             const kick = () => kickPlayback(el, audioRef.current);
@@ -190,10 +253,13 @@ export function ViewerLiveVideo({
           }
         };
 
-        r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-          if (cancelled) return;
-          attachTrack(track);
-        });
+        r.on(
+          RoomEvent.TrackSubscribed,
+          (track: RemoteTrack, _pub, participant: RemoteParticipant) => {
+            if (cancelled) return;
+            attachTrack(track, participant);
+          },
+        );
 
         r.on(
           RoomEvent.TrackUnsubscribed,
@@ -255,7 +321,7 @@ export function ViewerLiveVideo({
             } catch {
               /* ignore */
             }
-            if (pub.track) attachTrack(pub.track);
+            if (pub.track) attachTrack(pub.track, p);
           });
         });
 
@@ -289,9 +355,60 @@ export function ViewerLiveVideo({
     }
   }, [appActive]);
 
+  // iOS system PiP uses a SECOND native LiveKit room. Mute WebView A/V only
+  // after native PiP is confirmed (`inSystemPip`) — NOT merely on resignActive.
+  // Muting early left a black silent bubble while the native session was still
+  // connecting / waiting for its first frame.
+  useEffect(() => {
+    const audio = audioRef.current;
+    const video = videoRef.current;
+    const nativeOwnsAv = isIosNative && inSystemPip;
+    if (nativeOwnsAv) {
+      if (audio) {
+        audio.muted = true;
+        try { audio.pause(); } catch { /* ignore */ }
+      }
+      if (video) {
+        try { video.pause(); } catch { /* ignore */ }
+      }
+      return;
+    }
+    if (audio) audio.muted = false;
+    // App backgrounded but native PiP not up yet — keep WebView playing so
+    // there's no black gap; iOS may still freeze WKWebView, native takes over.
+    const r = roomRef.current;
+    if (!r) return;
+    if (reattachRemoteMedia(r, video, audio, true) || hadLiveRef.current) {
+      setStatus("live");
+    }
+  }, [isIosNative, inSystemPip, appActive, pipHold]);
+
+  // Android WebView PiP: keep kicking BOTH elements — otherwise the bubble
+  // often keeps only one of video/audio after the Activity resize.
+  useEffect(() => {
+    if (!inSystemPip && !(pipHold && !appActive)) return;
+    if (isIosNative) return;
+    const kick = () => {
+      const r = roomRef.current;
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
+      else kickPlayback(videoRef.current, audioRef.current);
+    };
+    kick();
+    const t1 = window.setTimeout(kick, 200);
+    const t2 = window.setTimeout(kick, 800);
+    const iv = window.setInterval(kick, 1500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearInterval(iv);
+    };
+  }, [inSystemPip, pipHold, appActive, isIosNative]);
+
   // First paint as "live" can still leave WKWebView paused. Soft kicks + stall watchdog.
   useEffect(() => {
     if (status !== "live") return;
+    // Don't fight the native PiP session on iOS (only once bubble is confirmed).
+    if (isIosNative && inSystemPip) return;
     const soft = () => {
       const r = roomRef.current;
       if (r) {
@@ -313,6 +430,7 @@ export function ViewerLiveVideo({
     let lastTime = -1;
     let stallTicks = 0;
     const watch = window.setInterval(() => {
+      if (isIosNative && (getInSystemPip() || (!appActive && getPipHold()))) return;
       const v = videoRef.current;
       const r = roomRef.current;
       if (!v || !r) return;
@@ -337,7 +455,7 @@ export function ViewerLiveVideo({
       window.clearTimeout(t3);
       window.clearInterval(watch);
     };
-  }, [status]);
+  }, [status, isIosNative, inSystemPip, appActive, pipHold]);
 
   const showPoster = status !== "live";
 

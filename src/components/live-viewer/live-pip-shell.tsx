@@ -61,7 +61,7 @@ export function LivePipShell({ children }: { children: ReactNode }) {
           ? "fixed z-[55] max-w-none overflow-hidden bg-black shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
           : inSystemPip
             ? "fixed inset-0 z-[2147483000] max-w-none overflow-hidden bg-black"
-            : "fixed inset-0 z-[60] mx-auto w-full max-w-xl overflow-hidden bg-black"
+            : "fixed inset-0 z-[60] w-full max-w-none overflow-hidden bg-black"
       }
       style={
         floatingMini

@@ -17,9 +17,8 @@ import { pushStatusBarLight } from "@/lib/native";
 import { liveShareUrl } from "@/lib/deep-links";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
-import { placeBidInDb, purchaseFixedPriceRpc, type LiveProductRow } from "@/lib/lives-db";
-import { createPendingOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
-import { resolveDeliveryForCheckout } from "@/lib/delivery-checkout";
+import { placeBidInDb, type LiveProductRow } from "@/lib/lives-db";
+import { createLiveOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
 import { fetchDeliverySettings } from "@/lib/delivery-db";
 import { fetchDefaultAddress } from "@/lib/addresses-db";
 import { canDeliver } from "@/lib/delivery-eligibility";
@@ -27,19 +26,28 @@ import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
 import { payOrderWithWallet } from "@/lib/wallet-db";
-import { formatMoney, nextBidAmount, normalizeCurrency } from "@/lib/money";
+import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/lib/money";
+import {
+  conditionLabel,
+  formatProductMetaLine,
+  variantSelectionState,
+} from "@/lib/live-product-options";
 import { LiveChat } from "./live-chat";
 import { LiveViewersSheet } from "./live-viewers-sheet";
 import { FloatingHearts } from "./floating-hearts";
 import { AuctionCard } from "./auction-card";
 import { CustomBidStepper } from "./custom-bid-stepper";
 import { ProductsSheet } from "./products-sheet";
+import { VariantPickerSheet } from "./variant-picker-sheet";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
+import { AddressFormSheet } from "@/components/buyer/address-form-sheet";
 import { WalletPill } from "@/components/wallet/wallet-pill";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import { Confetti } from "./confetti";
 import { WinnerReveal } from "./winner-reveal";
 import { SuddenDeathFlash } from "./sudden-death-flash";
+import { AuctionFinalCountdown } from "./auction-final-countdown";
+import { BidPulseFlash } from "./bid-pulse-flash";
 import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
@@ -57,8 +65,9 @@ import { ModeratorDock } from "./moderator-dock";
 import { FollowButton } from "@/components/follow-button";
 import { GiftTraySheet, useGiftError } from "./gift-tray-sheet";
 import { GiftAnimationsLayer } from "./gift-animations";
+import { GiftComboFeed } from "./gift-combo-feed";
 import { sendGiftRpc } from "@/lib/live-gifts-db";
-import { giftByKey, type GiftKey } from "@/lib/gifts";
+import type { GiftKey } from "@/lib/gifts";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { logLiveInteraction } from "@/lib/interactions-db";
 
@@ -66,38 +75,56 @@ import { logLiveInteraction } from "@/lib/interactions-db";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
-function SellerAvatar({ src, name, size }: { src: string; name: string; size: "md" | "lg" }) {
-  const [failed, setFailed] = useState(false);
-  const initial = (name.trim()[0] || "?").toUpperCase();
-  const box = size === "lg" ? "h-16 w-16 text-[24px]" : "h-10 w-10 text-[16px]";
-  if (!failed) {
-    return (
-      <img
-        src={src}
-        alt=""
-        onError={() => setFailed(true)}
-        className={`${box} shrink-0 rounded-full object-cover ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
-        draggable={false}
-      />
-    );
-  }
+function SellerAvatar({ src, name, size }: { src: string; name: string; size: "sm" | "md" | "lg" }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    parts.length >= 2
+      ? ((parts[0][0] || "") + (parts[1][0] || "")).toUpperCase()
+      : (parts[0]?.[0] || "?").toUpperCase();
+  const box =
+    size === "lg"
+      ? "h-16 w-16 text-[24px]"
+      : size === "sm"
+        ? "h-9 w-9 text-[12px]"
+        : "h-10 w-10 text-[16px]";
+  const showImg = !!src.trim() && failedSrc !== src;
+  // Initials circle is ALWAYS painted; the photo overlays it once it actually
+  // loads. Rendering a bare <img> meant a slow / expired / blocked avatar URL
+  // painted nothing at all — the "host avatar disappeared" bug.
   return (
     <span
-      className={`${box} grid shrink-0 place-items-center rounded-full font-black ${size === "lg" ? "ring-2 ring-white/80" : "ring-2 ring-white/90"}`}
-      style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+      className={`${box} relative grid shrink-0 place-items-center overflow-hidden rounded-full font-black ring-2 ring-white/90`}
+      style={{ backgroundColor: "oklch(0.72 0.16 70)", color: "#10162B" }}
     >
-      {initial}
+      {initials || "?"}
+      {showImg && (
+        <img
+          src={src}
+          alt=""
+          onError={() => setFailedSrc(src)}
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
+      )}
     </span>
   );
 }
 
-function toProduct(row: LiveProductRow, activeId: string | null): Product {
+function toProduct(
+  row: LiveProductRow,
+  activeId: string | null,
+  t: (key: string, fallback: string) => string,
+): Product {
   const status: Product["status"] =
     row.status === "sold" || row.status === "out" || row.status === "unsold"
       ? "sold"
       : row.id === activeId
         ? "current"
         : "upcoming";
+  const colors = row.colors ?? [];
+  const sizes = row.sizes ?? [];
+  const cond = conditionLabel(row.condition ?? null, t);
   return {
     id: row.id,
     name: row.name,
@@ -107,6 +134,15 @@ function toProduct(row: LiveProductRow, activeId: string | null): Product {
     price: Number(row.price),
     status,
     winner: row.sold_to_identity ?? undefined,
+    metaLine: formatProductMetaLine({
+      brand: row.brand,
+      colors,
+      sizes,
+      conditionText: cond,
+    }),
+    description: row.description,
+    colors,
+    sizes,
   };
 }
 
@@ -130,7 +166,7 @@ export function RealLiveViewerScreen() {
   const { requireAuth, openAuth } = useAuthPrompt();
   const { requestWithPrePrompt } = usePush();
 
-  const { currency: walletCurrency } = useWallet();
+  const { currency: walletCurrency, refresh: refreshWallet, balance: walletBalance } = useWallet();
   const liveCurrency = normalizeCurrency(active?.currency ?? "EUR");
   const formatLive = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
@@ -189,23 +225,40 @@ export function RealLiveViewerScreen() {
   const [sellerSettings, setSellerSettings] = useState<SellerDeliverySettings | null>(null);
   const [sellerCountry, setSellerCountry] = useState<string | null>(null);
   const [sellerVerified, setSellerVerified] = useState(false);
+  const [sellerAvatarUrl, setSellerAvatarUrl] = useState<string | null>(null);
   const [buyerCountry, setBuyerCountry] = useState<string | null>(null);
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+  const refreshBuyerCountry = useCallback(async () => {
+    if (!user?.id) { setBuyerCountry(null); return; }
+    const addr = await fetchDefaultAddress(user.id);
+    setBuyerCountry(addr?.country ?? null);
+  }, [user?.id]);
   useEffect(() => {
     if (!active?.sellerId) return;
     let cancelled = false;
     void (async () => {
       const [settings, sellerProfile] = await Promise.all([
         fetchDeliverySettings(active.sellerId!),
-        supabase.from("profiles").select("country, is_verified").eq("id", active.sellerId!).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("country, is_verified, avatar_url")
+          .eq("id", active.sellerId!)
+          .maybeSingle(),
       ]);
       if (cancelled) return;
       setSellerSettings(settings);
-      const p = sellerProfile.data as { country?: string | null; is_verified?: boolean } | null;
+      const p = sellerProfile.data as {
+        country?: string | null;
+        is_verified?: boolean;
+        avatar_url?: string | null;
+      } | null;
       setSellerCountry(p?.country ?? null);
       setSellerVerified(!!p?.is_verified);
+      const resolved = p?.avatar_url ? await resolveAvatarUrl(p.avatar_url) : null;
+      if (!cancelled) setSellerAvatarUrl(resolved || active.avatar || null);
     })();
     return () => { cancelled = true; };
-  }, [active?.sellerId]);
+  }, [active?.sellerId, active?.avatar]);
   useEffect(() => {
     if (!user?.id) { setBuyerCountry(null); return; }
     let cancelled = false;
@@ -215,11 +268,20 @@ export function RealLiveViewerScreen() {
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+  // Address edited outside the live (settings screen, other tab) — re-read it
+  // when the app/tab comes back so the delivery gate reflects reality.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshBuyerCountry();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshBuyerCountry]);
   const eligibility = useMemo(
     () => canDeliver({ settings: sellerSettings, sellerCountry, buyerCountry }),
     [sellerSettings, sellerCountry, buyerCountry],
   );
-  const deliveryBlockedLabel = eligibility.eligible
+  const deliveryBlockedLabel = eligibility.eligible || eligibility.reason === "no_address"
     ? undefined
     : t("delivery.notInYourCountry", "Livraison indisponible dans ton pays 🌍");
 
@@ -276,34 +338,89 @@ export function RealLiveViewerScreen() {
     return () => clearTimeout(t);
   }, [liveEnded, chromeHidden, close]);
 
-  // Featured product: server auction pick, else the next 'upcoming' product
-  // by position. Never loops back to earlier items — matches host behavior.
-  const activeAuctionId = room.auctionStart?.productId ?? null;
+  // Featured product: active auction wins; otherwise the next playable item
+  // after any just-ended product (never stay on the finished article).
+  // Prefer a DB-active auction even if the auction:start broadcast was missed
+  // (Assi-style "En attente du vendeur" while friends can still bid).
+  const dbActiveAuction = useMemo(
+    () =>
+      room.products.find(
+        (p) =>
+          p.mode === "auction" &&
+          p.status === "active" &&
+          !!p.auction_deadline_at,
+      ) ?? null,
+    [room.products],
+  );
+  const activeAuctionId = room.auctionStart?.productId ?? dbActiveAuction?.id ?? null;
+  const endedProductId = room.lastAuctionEnd?.productId ?? null;
   const currentProduct = useMemo(() => {
-    if (activeAuctionId) return room.products.find((p) => p.id === activeAuctionId) ?? null;
+    if (activeAuctionId) {
+      return room.products.find((p) => p.id === activeAuctionId) ?? null;
+    }
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
-    return sorted.find((p) => p.status === "upcoming") ?? null;
-  }, [room.products, activeAuctionId]);
+    const playable = (p: (typeof sorted)[number]) =>
+      p.id !== endedProductId &&
+      p.status !== "sold" &&
+      p.status !== "out" &&
+      p.status !== "unsold";
+    if (endedProductId) {
+      const idx = sorted.findIndex((p) => p.id === endedProductId);
+      const next = sorted.slice(idx + 1).find(playable);
+      if (next) return next;
+    }
+    return sorted.find((p) => p.status === "upcoming" && playable(p))
+      ?? sorted.find(playable)
+      ?? null;
+  }, [room.products, activeAuctionId, endedProductId]);
 
-  // Auction countdown from broadcast deadline.
-  const [now, setNow] = useState(Date.now());
+  // Auction countdown from broadcast deadline (fallback: DB deadline on product).
+  // Poll often, but only re-render when the displayed second changes (~1×/s).
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const deadlineMs =
+    room.auctionStart?.deadlineMs ??
+    (currentProduct?.mode === "auction" &&
+    currentProduct.status === "active" &&
+    currentProduct.auction_deadline_at
+      ? new Date(currentProduct.auction_deadline_at).getTime()
+      : null);
   useEffect(() => {
-    if (!room.auctionStart) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
+    if (!deadlineMs) {
+      setSecondsLeft(0);
+      return;
+    }
+    let last = -1;
+    const tick = () => {
+      const s = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      if (s !== last) {
+        last = s;
+        setSecondsLeft(s);
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
     return () => clearInterval(t);
-  }, [room.auctionStart]);
-  const secondsLeft = room.auctionStart
-    ? Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000))
-    : 0;
+  }, [deadlineMs]);
+  const auctionIsLive =
+    !liveEnded &&
+    !!currentProduct &&
+    currentProduct.mode === "auction" &&
+    (
+      (!!room.auctionStart && room.auctionStart.productId === currentProduct.id) ||
+      (currentProduct.status === "active" && !!currentProduct.auction_deadline_at)
+    );
 
-  // Local chat (welcome msg) + real room chat merged.
+  // Local chat tip — shown once on join, then fades so it never sticks forever.
   const [localMessages, setLocalMessages] = useState<ChatMsg[]>([]);
   useEffect(() => {
-    if (!active) return;
-    setLocalMessages([
-      systemMessage(t("live.chatIntro", `Bienvenue dans le live de ${active.seller} 👋`)),
-    ]);
-  }, [active, t]);
+    if (!active?.liveId) return;
+    const intro = systemMessage(t("live.chatIntro", "Sois respectueux dans le chat 💛"));
+    setLocalMessages([intro]);
+    const timer = window.setTimeout(() => {
+      setLocalMessages((prev) => prev.filter((m) => m.id !== intro.id));
+    }, 5500);
+    return () => window.clearTimeout(timer);
+  }, [active?.liveId, t]);
   // Personal blocks — used to filter chat messages in real time and to
   // auto-close the live if the viewer opens a stream by an already-blocked
   // host (see the guard further down). Hoisted before `messages` memo.
@@ -322,10 +439,14 @@ export function RealLiveViewerScreen() {
           user: c.user,
           color: c.color,
           text: c.text,
+          source: c.source,
+          externalId: c.externalId,
           system: c.system,
+          systemKind: c.systemKind,
           userId: c.userId,
           isModerator: !!c.isModerator,
           isHost: !!c.isHost || (!!c.userId && c.userId === active?.sellerId),
+          replyTo: c.replyTo,
         })),
     ],
     [localMessages, room.chat, chatMutes, blockedIdsForChat, active?.sellerId],
@@ -344,31 +465,26 @@ export function RealLiveViewerScreen() {
     if (!active?.liveId) { toast.error(t("pay.errors.notSignedIn")); return; }
 
     if (liveEnded) return;
+    // Close the tray first so combo + full-screen anim aren't hidden behind it.
+    setGiftTrayOpen(false);
     setSendingGift(true);
     haptic.medium();
     const res = await sendGiftRpc(active.liveId, key);
     setSendingGift(false);
     if (!res.ok) {
       if (res.error === "insufficient_funds") setTopupOpen(true);
+      else setGiftTrayOpen(true);
       showGiftError(res.error);
       return;
     }
     haptic.success();
-    // Local echo + broadcast to everyone in the room. Also inserts a chat line.
-    room.broadcastGift({ giftKey: key, senderId: user.id, senderName: displayName });
-    const gDef = giftByKey(key);
-    const emoji = gDef?.emoji ?? "🎁";
-    const giftName = t(gDef?.nameKey ?? "gifts.name.rose");
-    setLocalMessages((prev) => [
-      ...prev,
-      {
-        id: `gift-${res.giftId}`,
-        user: "",
-        color: "",
-        text: `${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: displayName, gift: giftName })}`,
-        system: true,
-      },
-    ]);
+    // Use DB gift id so broadcast + postgres backup dedupe to one animation + chat.
+    room.broadcastGift({
+      id: res.giftId,
+      giftKey: key,
+      senderId: user.id,
+      senderName: displayName,
+    });
   };
 
 
@@ -385,18 +501,67 @@ export function RealLiveViewerScreen() {
     productName: string | null;
   } | null>(null);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  const settledEndIdsRef = useRef<Set<string>>(new Set());
+  // Only celebrate ends that arrive after we joined this live session.
+  // Prevents replaying a leftover lastAuctionEnd (or a stale broadcast) when
+  // opening / rejoining a live after someone already won.
+  const joinedAtRef = useRef(Date.now());
+  const productsRef = useRef(room.products);
+  productsRef.current = room.products;
+
+  useEffect(() => {
+    joinedAtRef.current = Date.now();
+    seenEndIdsRef.current = new Set();
+    settledEndIdsRef.current = new Set();
+    setWinnerReveal(null);
+    setConfettiKey(0);
+  }, [active?.liveId]);
+
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
     // Only dedupe by unique endId — same buyer may win the same item many times.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
-    if (seenEndIdsRef.current.has(endId)) return;
+    // Stale end from before this viewer session (rejoin / swipe leak).
+    const ts = evt.ts ?? 0;
+    if (ts > 0 && ts < joinedAtRef.current - 2500) return;
+
+    const settleWinnerPayment = () => {
+      if (!user || evt.winnerId !== user.id || !active?.liveId || !active?.sellerId) return;
+      if (settledEndIdsRef.current.has(endId)) return;
+      if (!evt.autoPaid && !evt.orderId) return;
+      settledEndIdsRef.current.add(endId);
+      if (evt.autoPaid) {
+        toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+        void refreshWallet();
+        return;
+      }
+      void (async () => {
+        // Fallback auto-pay if finalize skipped (e.g. older server / FX).
+        const paid = await payOrderWithWallet(evt.orderId!);
+        if (paid.ok) {
+          toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+          void refreshWallet();
+          return;
+        }
+        const order = await fetchOrderById(evt.orderId!);
+        if (order) setPendingOrder(order);
+        void refreshWallet();
+      })();
+    };
+
+    // Host sends a second frame with the same endId after finalize (order /
+    // auto-pay). Skip confetti replay; only settle payment.
+    if (seenEndIdsRef.current.has(endId)) {
+      settleWinnerPayment();
+      return;
+    }
     seenEndIdsRef.current.add(endId);
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
       if (first) seenEndIdsRef.current.delete(first);
     }
-    const prod = room.products.find((p) => p.id === evt.productId);
+    const prod = productsRef.current.find((p) => p.id === evt.productId);
 
     if (!evt.winnerName || !evt.winnerId) {
       // Unsold — central reveal, no confetti, no sale line.
@@ -447,69 +612,48 @@ export function RealLiveViewerScreen() {
       }
     })();
 
-    // If I won and this is a real live with a known seller, either celebrate
-    // an auto-paid wallet purchase or open the payment sheet.
+    // Prefer host finalize settlement (auto-pay / order id). Only fall back to
+    // client-created pending order if that second frame never arrives.
     if (
       user &&
       evt.winnerId === user.id &&
       active?.liveId &&
       active?.sellerId
     ) {
-      if (evt.autoPaid) {
-        toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
-      } else if (evt.orderId) {
-        void (async () => {
-          // Fallback auto-pay: finalize may skip when currencies differ on older
-          // server code — try wallet once before opening the sheet.
-          const paid = await payOrderWithWallet(evt.orderId!);
-          if (paid.ok) {
-            toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
-            return;
-          }
-          const order = await fetchOrderById(evt.orderId!);
-          if (order) setPendingOrder(order);
-        })();
+      if (evt.autoPaid || evt.orderId) {
+        settleWinnerPayment();
       } else {
-        const prod = room.products.find((p) => p.id === evt.productId);
-        if (prod) {
+        window.setTimeout(() => {
+          if (settledEndIdsRef.current.has(endId)) return;
+          const prodRow = productsRef.current.find((p) => p.id === evt.productId);
+          if (!prodRow || !active?.sellerId || !active?.liveId) return;
           void (async () => {
-            const dr = await resolveDeliveryForCheckout({
-              sellerId: active.sellerId!,
-              buyerId: user.id,
-            });
-            if (!dr.ok) {
-              // Auction can't auto-resolve — surface a toast; buyer must
-              // set a default address / a matching zone before paying.
-              const msg =
-                dr.reason === "no_address"
-                  ? t("delivery.noAddressBlock")
-                  : t("delivery.zoneMismatch");
-              toast.error(msg);
-              return;
-            }
-            const res = await createPendingOrder({
-              buyerId: user.id,
-              sellerId: active.sellerId!,
-              liveId: active.liveId!,
-              productId: prod.id,
+            if (settledEndIdsRef.current.has(endId)) return;
+            settledEndIdsRef.current.add(endId);
+            const colors = prodRow.colors ?? [];
+            const sizes = prodRow.sizes ?? [];
+            const sel = variantSelectionState(colors, sizes);
+            const variant =
+              sel.needsPick ? undefined : { color: sel.color, size: sel.size };
+            // Server derives price/fees/delivery — client cannot forge amounts.
+            const res = await createLiveOrder({
+              productId: prodRow.id,
               kind: "auction",
-              itemName: prod.name,
-              itemImage: prod.image_url,
-              amount: evt.finalPrice,
-              currency: liveCurrency,
-              deliveryFee: dr.delivery.deliveryFee,
-              deliveryMode: dr.delivery.deliveryMode,
-              deliveryZone: dr.delivery.deliveryZone,
-              addressId: dr.delivery.addressId,
-              addressSnapshot: dr.delivery.addressSnapshot,
+              color: variant?.color ?? null,
+              size: variant?.size ?? null,
             });
             if (res.ok) setPendingOrder(res.order);
-            else toast.error(res.error);
+            else if (res.error === "no_address") {
+              toast.error(t("delivery.noAddressBlock"));
+              setAddressFormOpen(true);
+            } else {
+              toast.error(res.error);
+            }
           })();
-        }
+        }, 3500);
       }
     }
-  }, [room.lastAuctionEnd, t, user, active, room.products, liveCurrency, formatLive]);
+  }, [room.lastAuctionEnd, t, user, active?.liveId, active?.sellerId, liveCurrency, formatLive, refreshWallet]);
 
   // Sudden-death flash + haptic when the deadline is extended by a late bid.
   const [suddenDeathTick, setSuddenDeathTick] = useState(0);
@@ -590,10 +734,18 @@ export function RealLiveViewerScreen() {
 
   const doBid = async (customAmount?: number) => {
     if (liveEnded) return;
-    if (!currentProduct || currentProduct.mode !== "auction" || !room.auctionStart) return;
+    if (!currentProduct || currentProduct.mode !== "auction" || !auctionIsLive) return;
     if (!user) { openAuth(); return; }
-    if (secondsLeft <= 0) return;
-    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
+    // Local clock may already read 0 while DB status is still active — still allow.
+    if (!eligibility.eligible) {
+      if (eligibility.reason === "no_address") {
+        toast.error(t("delivery.noAddressBlock"));
+        setAddressFormOpen(true);
+        return;
+      }
+      toast.error(deliveryBlockedLabel!);
+      return;
+    }
     if (
       room.lastBid?.productId === currentProduct.id &&
       room.lastBid.auctionRound === (currentProduct.auction_round ?? 1) &&
@@ -612,6 +764,20 @@ export function RealLiveViewerScreen() {
         : Number(currentProduct.price);
     const quickAmount = nextBidAmount(freshest, liveCurrency);
     const sendAmount = customAmount ?? quickAmount;
+
+    // Bids are a purchase commitment — require enough wallet balance (in the
+    // buyer's wallet currency) before placing. Open top-up instead of bidding.
+    const needInWallet = convertMoney(sendAmount, liveCurrency, walletCurrency);
+    if (!(walletBalance >= needInWallet)) {
+      toast.error(
+        t(
+          "live.bidInsufficientFunds",
+          "Solde insuffisant — recharge ton portefeuille pour enchérir",
+        ),
+      );
+      setTopupOpen(true);
+      return;
+    }
 
     const attempt = async (amount: number) =>
       placeBidInDb({
@@ -646,6 +812,23 @@ export function RealLiveViewerScreen() {
         }));
         return;
       }
+      if (res.error === "auction_ended" || res.error === "auction_not_active") {
+        toast.error(t("live.auctionEndedBid", "L'enchère est terminée."));
+        return;
+      }
+      if (res.error === "no_address") {
+        toast.error(t("delivery.noAddressBlock"));
+        setAddressFormOpen(true);
+        return;
+      }
+      if (
+        res.error === "no_country_coverage" ||
+        res.error === "courier_country_mismatch" ||
+        res.error === "delivery_blocked"
+      ) {
+        toast.error(t("delivery.noCountryCoverage"));
+        return;
+      }
       toast.error(res.error === "already_highest" ? t("live.highestBidder") : (res.error ?? t("live.bidFailed")));
       return;
     }
@@ -662,54 +845,66 @@ export function RealLiveViewerScreen() {
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
 
-  // Fixed-price flow: reserve stock atomically, then open the payment sheet.
-  // Note (phase 1): if the buyer abandons payment, stock is not automatically
-  // returned. A future phase should refund stock on payment_intent.canceled.
-  const startFixedPurchase = async (p: LiveProductRow) => {
+  // Fixed-price flow: optional variant pick → server creates order (stock +
+  // fees + delivery). Abandoned payments restore stock via expire_overdue_orders.
+  const [variantPick, setVariantPick] = useState<{
+    product: LiveProductRow;
+    colors: string[];
+    sizes: string[];
+  } | null>(null);
+
+  const completeFixedPurchase = async (
+    p: LiveProductRow,
+    variant?: { color?: string; size?: string },
+  ) => {
     if (liveEnded) return;
     if (!user) { openAuth(); return; }
     if (!active?.liveId || !active?.sellerId) return;
-    if (!eligibility.eligible) { toast.error(deliveryBlockedLabel!); return; }
-    // Resolve delivery BEFORE reserving stock so we don't hold stock the
-    // buyer can't actually pay for.
-    const dr = await resolveDeliveryForCheckout({
-      sellerId: active.sellerId,
-      buyerId: user.id,
-    });
-    if (!dr.ok) {
-      const msg =
-        dr.reason === "no_address"
-          ? t("delivery.noAddressBlock")
-          : dr.reason === "no_country_coverage"
-            ? t("delivery.noCountryCoverage")
-            : t("delivery.zoneMismatch");
-      toast.error(msg);
+    if (!eligibility.eligible) {
+      if (eligibility.reason === "no_address") {
+        toast.error(t("delivery.noAddressBlock"));
+        setAddressFormOpen(true);
+        return;
+      }
+      toast.error(deliveryBlockedLabel!);
       return;
     }
-    const res = await purchaseFixedPriceRpc(p.id, user.id);
-    if (!res.ok) { toast.error(res.error ?? "Achat impossible"); return; }
-    const order = await createPendingOrder({
-      buyerId: user.id,
-      sellerId: active.sellerId,
-      liveId: active.liveId,
+    const order = await createLiveOrder({
       productId: p.id,
       kind: "fixed",
-      itemName: p.name,
-      itemImage: p.image_url,
-      amount: Number(p.price),
-      currency: liveCurrency,
-      deliveryFee: dr.delivery.deliveryFee,
-      deliveryMode: dr.delivery.deliveryMode,
-      deliveryZone: dr.delivery.deliveryZone,
-      addressId: dr.delivery.addressId,
-      addressSnapshot: dr.delivery.addressSnapshot,
+      color: variant?.color ?? null,
+      size: variant?.size ?? null,
     });
-    if (order.ok) setPendingOrder(order.order);
-    else toast.error(order.error);
+    if (order.ok) {
+      setPendingOrder(order.order);
+      return;
+    }
+    if (order.error === "no_address") {
+      toast.error(t("delivery.noAddressBlock"));
+      setAddressFormOpen(true);
+      return;
+    }
+    if (order.error === "no_country_coverage" || order.error === "courier_country_mismatch") {
+      toast.error(t("delivery.noCountryCoverage"));
+      return;
+    }
+    toast.error(order.error === "out_of_stock" ? t("live.outOfStock", "Rupture de stock") : (order.error ?? "Achat impossible"));
+  };
+
+  const startFixedPurchase = async (p: LiveProductRow) => {
+    const colors = p.colors ?? [];
+    const sizes = p.sizes ?? [];
+    const sel = variantSelectionState(colors, sizes);
+    if (sel.needsPick) {
+      setVariantPick({ product: p, colors, sizes });
+      return;
+    }
+    await completeFixedPurchase(p, { color: sel.color, size: sel.size });
   };
 
   // Composer
   const [draft, setDraft] = useState("");
+  const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const send = () => {
     if (liveEnded) return;
     if (isGuest) { openAuth(); return; }
@@ -719,8 +914,18 @@ export function RealLiveViewerScreen() {
     }
     const txt = draft.trim();
     if (!txt) return;
-    room.sendChat(txt);
+    room.sendChat(
+      txt,
+      replyTo
+        ? {
+            user: replyTo.user,
+            text: replyTo.text,
+            ...(replyTo.userId ? { userId: replyTo.userId } : {}),
+          }
+        : undefined,
+    );
     setDraft("");
+    setReplyTo(null);
   };
 
 
@@ -784,8 +989,8 @@ export function RealLiveViewerScreen() {
     close();
     return null;
   }
-  const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId));
-  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId) : null;
+  const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId, t));
+  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
 
   return (
     <LivePipShell>
@@ -815,100 +1020,86 @@ export function RealLiveViewerScreen() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
         style={{ height: "45%", backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }} />
 
-      <div className="absolute inset-x-0 top-0 z-30 pt-safe">
-        <div className="flex items-start justify-between gap-2 px-3 pt-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Press
-              onClick={() => openSeller(active.sellerId ?? active.seller)}
-              aria-label={`Voir le profil de ${active.seller}`}
-              className="!block shrink-0 p-0"
-            >
-              <SellerAvatar src={active.avatar} name={active.seller} size="md" />
-            </Press>
-            <div className="min-w-0">
+      <div className="absolute inset-x-0 top-0 z-30 pt-safe kp-live-safe-x">
+        <div className="flex items-start gap-1.5 px-2 pt-2">
+          {/* Left: one fixed-width column (avatar, name, follow stacked).
+              A flexible side-by-side layout let the follow button overflow
+              under the wallet pill on narrow phones (iPhone 15) while wider
+              ones (Pro Max) looked fine — stacking keeps every screen equal. */}
+          <div className="flex min-w-0 flex-1 items-start">
+            <div className="flex w-[4.75rem] shrink-0 flex-col items-center gap-1">
               <Press
                 onClick={() => openSeller(active.sellerId ?? active.seller)}
-                className="!block !min-h-0 max-w-full p-0 text-left"
+                aria-label={`Voir la boutique de ${active.seller}`}
+                className="!inline-flex !min-h-0 !min-w-0 flex-col items-center gap-0.5 p-0"
               >
-                <p className="flex items-center gap-1 truncate text-[14px] font-bold text-white"
-                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  <span className="truncate">{active.seller}</span>
-                  <VerifiedBadge verified={sellerVerified} size={13} />
-                </p>
+                <span className="relative">
+                  <SellerAvatar
+                    src={sellerAvatarUrl || active.avatar || ""}
+                    name={active.seller || "?"}
+                    size="sm"
+                  />
+                  <VerifiedBadge
+                    verified={sellerVerified}
+                    size={12}
+                    className="absolute -bottom-0.5 -right-0.5"
+                  />
+                </span>
+                <span
+                  className="line-clamp-1 max-w-[4.75rem] text-center text-[10px] font-bold leading-tight text-white"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}
+                >
+                  {active.seller}
+                </span>
               </Press>
-              <Press
-                onClick={() => {
-                  haptic.selection();
-                  setViewersSheetOpen(true);
-                }}
-                aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-                className="!block !min-h-0 p-0 text-left"
-              >
-                <p className="text-[11px] text-white/80" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                  {displayViewers} {t("live.viewers", { count: displayViewers })}
-                </p>
-              </Press>
+              <FollowButton
+                sellerId={active.sellerId ?? null}
+                size="sm"
+                variant="solid"
+                tone="live"
+              />
             </div>
-            <FollowButton sellerId={active.sellerId ?? null} size="sm" variant="solid" />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <WalletPill onTap={() => requireAuth(() => setTopupOpen(true))} />
+          {/* Right: keep compact — share lives in the ⋯ menu to free room for the avatar. */}
+          <div className="flex shrink-0 items-center gap-1">
+            <WalletPill compact onTap={() => requireAuth(() => setTopupOpen(true))} />
             <Press
               onClick={() => {
                 haptic.selection();
                 setViewersSheetOpen(true);
               }}
               aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-              className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-white tabular-nums"
+              className="!min-h-0 flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-white tabular-nums"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
             >
-              <Eye size={13} />{displayViewers}
-            </Press>
-
-            <Press
-              aria-label={t("live.share")}
-              onClick={async () => {
-                haptic.light();
-                const shareUrl = active?.liveId
-                  ? liveShareUrl(active.liveId)
-                  : "https://kidiplus.com";
-                const title = `${active.seller} — Kidi+`;
-                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
-                try {
-                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
-                  if (nav && typeof nav.share === "function") {
-                    await nav.share({ title, text, url: shareUrl });
-                  } else if (nav && nav.clipboard) {
-                    await nav.clipboard.writeText(shareUrl);
-                    toast.success(t("live.shareCopied", "Lien copié"));
-                  }
-                } catch { /* user cancelled */ }
-              }}
-              className="h-9 w-9 rounded-full text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <Share2 size={16} />
+              <Eye size={12} />
+              {displayViewers}
             </Press>
             <Press aria-label="More" onClick={() => setMoreOpen(true)}
-              className="h-9 w-9 rounded-full text-white"
+              className="!min-h-0 h-8 w-8 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <MoreVertical size={16} />
+              <MoreVertical size={15} />
             </Press>
             <Press
               aria-label={t("live.leave")}
               onClick={() => { haptic.light(); close(); }}
-              className="h-9 w-9 rounded-full text-white"
+              className="!min-h-0 h-8 w-8 rounded-full text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-              <X size={18} />
+              <X size={16} />
             </Press>
           </div>
         </div>
       </div>
 
 
-      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
+      {/* z-[28] sits above the pager drag layer (z-25) so chat scroll / report /
+          reply stay tappable; composer chrome below remains z-30. */}
+      <div className="absolute inset-x-0 z-[28]" style={{ bottom: "calc(env(safe-area-inset-bottom) + 138px)" }}>
         <LiveChat
           messages={messages}
+          bottomOffset={0}
+          height="38dvh"
           moderation={{
             canModerate: isModerator,
             // Even regular viewers can now open the message menu — Apple 1.2
@@ -918,6 +1109,11 @@ export function RealLiveViewerScreen() {
             selfUserId: user?.id ?? null,
             hostUserId: active.sellerId ?? null,
             mutedIds: chatMutes,
+            onReply: (msg) => {
+              if (isGuest) { openAuth(); return; }
+              haptic.light();
+              setReplyTo(msg);
+            },
             onReportMessage: (messageId) => {
               requireAuth(() => setReportMessageId(messageId));
             },
@@ -953,32 +1149,110 @@ export function RealLiveViewerScreen() {
         />
       </div>
 
-      {currentAsProduct ? (
-        <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
-          {/* When the featured product is upcoming (no auction active),
-              show an explicit "next item soon" hint above the disabled card
-              so viewers don't stare at empty space between rounds. */}
-          {!liveEnded && !room.auctionStart && currentProduct?.status === "upcoming" && (
-            <div
-              className="mb-2 rounded-2xl px-3 py-2 text-center text-[12px] font-semibold text-white"
-              style={{
-                background: "rgba(15, 15, 20, 0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              ⏳ {t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}
+      <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 px-3 pb-safe"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
+        {replyTo && !isGuest && (
+          <div
+            className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-semibold">{t("live.replyingTo", { name: replyTo.user, defaultValue: "Réponse à {{name}}" })}</span>
+              <span className="text-white/65"> · {replyTo.text}</span>
             </div>
-          )}
+            <Press
+              onClick={() => setReplyTo(null)}
+              aria-label={t("common.cancel", "Annuler")}
+              className="!min-h-7 h-7 w-7 shrink-0 rounded-full text-white/80"
+            >
+              <X size={14} />
+            </Press>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+        {isGuest ? (
+          // Guest composer: read-only chat + prompt-to-sign-in bar. Guests
+          // physically cannot send chat data (canPublishData=false on the
+          // LiveKit token, and RLS blocks all live-writes), so we replace
+          // the input with a tap-to-sign-in surface rather than a disabled
+          // control that would silently swallow taps.
+          <Press
+            onClick={() => openAuth()}
+            aria-label={t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+            className="!min-h-10 h-10 flex-1 rounded-full px-4 text-left text-[13px] font-semibold text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.14)",
+            }}
+          >
+            {t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
+          </Press>
+        ) : (
+          <>
+            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={
+                  replyTo
+                    ? t("live.replyPlaceholder", { name: replyTo.user, defaultValue: "Répondre à {{name}}…" })
+                    : t("live.chatPlaceholder")
+                }
+                disabled={liveEnded}
+                className="w-full rounded-full px-3.5 py-2 text-[13px] text-white outline-none placeholder:text-white/55"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                }}
+              />
+            </form>
+            <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
+              className="h-10 w-10 rounded-full text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)" }}>
+              <Send size={16} />
+            </Press>
+          </>
+        )}
+        <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
+          className="h-10 w-10 rounded-full text-white"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.14)" }}>
+          <Heart size={16} fill="currentColor" />
+        </Press>
+        <Press
+          onClick={liveEnded ? undefined : () => {
+            if (isGuest) { openAuth(); return; }
+            haptic.light();
+            setGiftTrayOpen(true);
+          }}
+          disabled={liveEnded}
+          aria-label={t("gifts.open", "Cadeaux")}
+          className="h-10 w-10 rounded-full text-white"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid oklch(0.75 0.14 85 / 0.45)",
+          }}>
+          <Gift size={16} />
+        </Press>
+        </div>
+
+        {currentAsProduct ? (
           <AuctionCard
             product={currentAsProduct}
             secondsLeft={secondsLeft}
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
-            auctionActive={
-              !liveEnded && !!room.auctionStart && room.auctionStart.productId === currentAsProduct.id
-            }
+            auctionActive={auctionIsLive && currentAsProduct.id === currentProduct?.id}
             isHighestBidder={
               !!user &&
               room.lastBid?.productId === currentAsProduct.id &&
@@ -987,11 +1261,19 @@ export function RealLiveViewerScreen() {
             }
             disabled={liveEnded}
             deliveryBlockedLabel={deliveryBlockedLabel}
+            waitingLabel={
+              !liveEnded &&
+              !auctionIsLive &&
+              currentProduct?.status === "upcoming"
+                ? `⏳ ${t("live.nextItemSoon", { name: currentAsProduct.name, defaultValue: "Prochain article bientôt… {{name}}" })}`
+                : undefined
+            }
             lastBidder={
               room.lastBid &&
               room.lastBid.productId === currentAsProduct.id &&
               room.lastBid.auctionRound === (currentProduct?.auction_round ?? 1)
-                ? room.lastBid.bidderName : undefined
+                ? room.lastBid.bidderName
+                : undefined
             }
             onBid={() => { void doBid(); }}
             onOpenProducts={() => setShowProducts(true)}
@@ -1015,95 +1297,21 @@ export function RealLiveViewerScreen() {
               ) : null
             }
           />
-        </div>
-      ) : (
-        // No active auction AND no upcoming product left — everything has
-        // been auctioned. Show a friendly closing state so the viewer
-        // understands why the featured area is empty.
-        !liveEnded && room.products.length > 0 && (
-          <div className="absolute inset-x-0 z-30 px-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)" }}>
+        ) : (
+          !liveEnded && room.products.length > 0 ? (
             <div
-              className="rounded-2xl px-3 py-3 text-center text-[13px] font-semibold text-white"
+              className="rounded-full px-3 py-2.5 text-center text-[13px] font-semibold text-white/90"
               style={{
-                background: "rgba(15, 15, 20, 0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                backgroundColor: "rgba(0,0,0,0.32)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.14)",
               }}
             >
-              ✨ {t("live.allSold", "Tous les articles sont passés")}
+              {t("live.waitingForSeller")}
             </div>
-          </div>
-        )
-      )}
-
-      <div className="absolute inset-x-0 bottom-0 z-30 flex items-center gap-2 px-3 pb-safe"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
-        {isGuest ? (
-          // Guest composer: read-only chat + prompt-to-sign-in bar. Guests
-          // physically cannot send chat data (canPublishData=false on the
-          // LiveKit token, and RLS blocks all live-writes), so we replace
-          // the input with a tap-to-sign-in surface rather than a disabled
-          // control that would silently swallow taps.
-          <Press
-            onClick={() => openAuth()}
-            aria-label={t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
-            className="!min-h-11 h-11 flex-1 rounded-full px-4 text-left text-[14px] font-semibold text-white"
-            style={{
-              backgroundColor: "rgba(0,0,0,0.5)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          >
-            {t("auth.prompt.chatCta", { defaultValue: "Connecte-toi pour participer au chat" })}
-          </Press>
-        ) : (
-          <>
-            <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex-1">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder={t("live.chatPlaceholder")}
-                disabled={liveEnded}
-                className="w-full rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.5)",
-                  backdropFilter: "blur(14px)",
-                  WebkitBackdropFilter: "blur(14px)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                }}
-              />
-            </form>
-            <Press onClick={liveEnded ? undefined : send} disabled={liveEnded} aria-label={t("live.sendMessage")}
-              className="h-11 w-11 rounded-full text-white"
-              style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-              <Send size={17} />
-            </Press>
-          </>
+          ) : null
         )}
-        <Press onClick={liveEnded ? undefined : fireHeart} disabled={liveEnded} aria-label="Cœur"
-          className="h-11 w-11 rounded-full text-white"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-          <Heart size={17} fill="currentColor" />
-        </Press>
-        <Press
-          onClick={liveEnded ? undefined : () => {
-            if (isGuest) { openAuth(); return; }
-            haptic.light();
-            setGiftTrayOpen(true);
-          }}
-          disabled={liveEnded}
-          aria-label={t("gifts.open", "Cadeaux")}
-          className="h-11 w-11 rounded-full text-white"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            border: "1px solid oklch(0.75 0.14 85 / 0.5)",
-          }}>
-          <Gift size={17} />
-        </Press>
       </div>
 
 
@@ -1122,7 +1330,7 @@ export function RealLiveViewerScreen() {
         </ErrorBoundary>
       )}
 
-      <FloatingHearts trigger={room.heartTick} />
+      <FloatingHearts useBus />
       
       <Confetti trigger={confettiKey} />
       <WinnerReveal
@@ -1138,6 +1346,19 @@ export function RealLiveViewerScreen() {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+      <AuctionFinalCountdown
+        secondsLeft={secondsLeft}
+        active={auctionIsLive}
+        density="app"
+      />
+      <BidPulseFlash
+        text={
+          room.lastBid
+            ? `${room.lastBid.bidderName} · ${formatLive(room.lastBid.amount)}`
+            : null
+        }
+        pulseKey={room.lastBid?.ts ?? 0}
+      />
 
       <LiveViewersSheet
         open={viewersSheetOpen}
@@ -1161,9 +1382,43 @@ export function RealLiveViewerScreen() {
         disabled={liveEnded}
         deliveryBlockedLabel={deliveryBlockedLabel}
       />
+      <VariantPickerSheet
+        open={!!variantPick}
+        onClose={() => setVariantPick(null)}
+        productName={variantPick?.product.name ?? ""}
+        colors={variantPick?.colors ?? []}
+        sizes={variantPick?.sizes ?? []}
+        onConfirm={(v) => {
+          const p = variantPick?.product;
+          setVariantPick(null);
+          if (p) void completeFixedPurchase(p, v);
+        }}
+      />
       <PaymentSheet
         order={pendingOrder}
         onClose={() => setPendingOrder(null)}
+        productColors={
+          pendingOrder?.product_id
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.colors ?? [])
+            : []
+        }
+        productSizes={
+          pendingOrder?.product_id
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.sizes ?? [])
+            : []
+        }
+        onOrderPatched={(o) => setPendingOrder(o)}
+      />
+      <AddressFormSheet
+        open={addressFormOpen}
+        onClose={() => setAddressFormOpen(false)}
+        userId={user?.id ?? ""}
+        currency={profile?.currency ?? liveCurrency}
+        defaultCountry={profile?.country ?? null}
+        onSaved={() => {
+          setAddressFormOpen(false);
+          void refreshBuyerCountry();
+        }}
       />
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
       <GiftTraySheet
@@ -1175,12 +1430,36 @@ export function RealLiveViewerScreen() {
         onSend={(k) => doSendGift(k)}
         onTopUp={() => { setGiftTrayOpen(false); setTopupOpen(true); }}
       />
+      <GiftComboFeed trigger={room.lastGift} />
       <GiftAnimationsLayer trigger={room.lastGift} />
 
       {moreOpen && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50" onClick={() => setMoreOpen(false)}>
           <div className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+            <Press
+              onClick={async () => {
+                setMoreOpen(false);
+                haptic.light();
+                const shareUrl = active?.liveId
+                  ? liveShareUrl(active.liveId)
+                  : "https://kidiplus.com";
+                const title = `${active.seller} — Kidi+`;
+                const text = t("live.shareText", { defaultValue: "Rejoins le live de {{name}} sur Kidi+ 🔴", name: active.seller });
+                try {
+                  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
+                  if (nav && typeof nav.share === "function") {
+                    await nav.share({ title, text, url: shareUrl });
+                  } else if (nav && nav.clipboard) {
+                    await nav.clipboard.writeText(shareUrl);
+                    toast.success(t("live.shareCopied", "Lien copié"));
+                  }
+                } catch { /* user cancelled */ }
+              }}
+              className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]"
+            >
+              <Share2 size={18} /> {t("live.share")}
+            </Press>
             <Press onClick={() => { setMoreOpen(false); requireAuth(() => { if (confirm(t("report.confirm", { defaultValue: "Signaler ce live ? Notre équipe examinera ton signalement." }))) setReportOpen(true); }); }}
               className="!min-h-12 flex h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px]">
               <Flag size={18} /> {t("report.action")}
@@ -1220,7 +1499,7 @@ export function RealLiveViewerScreen() {
             className="absolute inset-0 z-[80] grid place-items-center bg-black/85 px-6 text-center text-white"
           >
             <div className="flex max-w-xs flex-col items-center">
-              <SellerAvatar src={active.avatar} name={active.seller} size="lg" />
+              <SellerAvatar src={sellerAvatarUrl || active.avatar || ""} name={active.seller} size="lg" />
               <h2 className="mt-4 text-[24px] font-black leading-tight">{t("live.endedTitle")}</h2>
               <p className="mt-2 text-[14px] text-white/75">{active.seller}</p>
               <Press

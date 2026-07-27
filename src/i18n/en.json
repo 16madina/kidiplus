@@ -1,4 +1,18 @@
 {
+  "risk": {
+    "errors": {
+      "dailyLimit": "Daily limit reached. Try again tomorrow.",
+      "restricted": "Payments temporarily blocked. Contact support.",
+      "banned": "Account banned — payments disabled.",
+      "suspended": "Account suspended — payments disabled.",
+      "verificationRequired": "Withdrawals are for verified accounts only.",
+      "sellerGiftLimit": "This seller has reached today’s gift limit.",
+     "payoutDailyLimit": "Daily limit reached: {{used}} already withdrawn today out of {{cap}} allowed.",
+     "payoutWeeklyLimit": "Weekly limit reached: {{used}} already withdrawn in the last 7 days out of {{cap}} allowed."
+    },
+    "payoutNeedsVerify": "To withdraw earnings, your account must be verified. Request certification from your seller profile.",
+    "payoutLimitsHint": "Withdrawal caps: {{day}} / day · {{week}} / 7 days. Get certified (badge) or complete KYC to raise these limits."
+  },
   "follow": {
     "follow": "Follow",
     "following": "Following"
@@ -65,6 +79,14 @@
     "fixed": "Fixed",
     "auction": "Auction",
     "added": "Item added",
+    "catalogPrice": "Catalog price · sold in live (auction or fixed)",
+    "configHint": "Pick auction or fixed price, quantity for this live, then Options for colors / sizes.",
+    "stockAvailable": "Shop stock: {{n}}",
+    "qtyForLive": "Qty for this live",
+    "pickColors": "Colors for this live",
+    "pickSizes": "Sizes for this live",
+    "optionsEmpty": "No options in shop — you can set them here",
+    "optionsHintEditShop": "Add colors / sizes in My shop to reuse them here.",
     "updated": "Item updated",
     "imageOnly": "Image only",
     "imageTooBig": "Image too large (max 5 MB)"
@@ -288,11 +310,18 @@
     "following": "Following",
     "chatPlaceholder": "Write a message…",
     "sendMessage": "Send",
+    "userJoined": "{{name}} joined",
+    "reply": "Reply",
+    "replyingTo": "Replying to {{name}}",
+    "replyPlaceholder": "Reply to {{name}}…",
     "bid": "Bid",
     "bidAt": "Bid {{amount}}",
     "highestBidder": "Highest bid: you 🏆",
+    "youLead": "You're leading 🏆",
     "bidFailed": "Bid failed. Try again.",
+    "bidInsufficientFunds": "Insufficient balance — top up your wallet to bid",
     "buy": "Buy",
+    "buyNowPrice": "Buy {{amount}}",
     "buyNow": "Buy now",
     "sold": "SOLD",
     "soldTo": "Sold to {{name}}",
@@ -391,12 +420,25 @@
       "cover": "Cover",
       "changeCover": "Change cover",
       "addCover": "Add cover",
+      "addCoverShort": "Photo *",
       "category": "Category",
       "products": "Products",
       "addProduct": "Add product",
       "start": "Go live",
       "starting": "Starting…",
       "readyHelp": "Add at least one product to go live.",
+      "deliveryPrompt": {
+        "title": "Have you set up Delivery?",
+        "body1": "If you haven’t configured your delivery options yet, set them up now.",
+        "body2": "If you skip this, buyers from any country can place orders — and you will be required to deliver to those countries.",
+        "configure": "Set up Delivery",
+        "continueAnyway": "Continue without setting up",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "coverRequired": "Add a cover photo (you don't have a profile picture)",
+        "coverRequiredHint": "Cover photo required (no profile picture)"
+      },
       "productSheet": {
         "title": "Add product",
         "name": "Product name",
@@ -441,6 +483,86 @@
       "revenue": "Revenue",
       "newFollowers": "New followers",
       "close": "Close"
+    },
+    "rtmp": {
+      "toggleTitle": "Multi-platform (Restream / OBS)",
+      "toggleHint": "Stream from Restream to TikTok, Facebook, YouTube and KiDi+ at the same time.",
+      "on": "ON",
+      "off": "OFF",
+      "previewTitle": "Restream / OBS mode",
+      "previewBody": "No in-app camera. You go live from Restream; KiDi+ receives the RTMP feed.",
+      "createFailed": "Could not create the RTMP link",
+      "title": "Multi-platform",
+      "subtitle": "Paste these into Restream (Custom RTMP destination), then go live from Restream.",
+      "step1": "Install the Restream app (phone or computer).",
+      "step2": "Connect TikTok, Facebook, YouTube in Restream.",
+      "step3": "Add a Custom RTMP destination with the URL and key below.",
+      "step4": "Go live in Restream — video appears here and for KiDi+ viewers.",
+      "serverUrl": "RTMP URL (Server)",
+      "streamKey": "Stream key",
+      "copiedUrl": "URL copied",
+      "copiedKey": "Stream key copied",
+      "show": "Show",
+      "hide": "Hide",
+      "securityNote": "Don’t share your stream key. It lets anyone publish to this live.",
+      "done": "I’ve set up Restream",
+      "openCreds": "RTMP keys",
+      "waiting": "Waiting for Restream feed…"
+    },
+    "youtube": {
+      "connectTitle": "YouTube",
+      "connectHint": "Connect your account to also stream on YouTube",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connectedAs": "Connected · {{channel}}",
+      "connectedToast": "YouTube connected",
+      "disconnectedToast": "YouTube disconnected",
+      "connectFailed": "YouTube connection failed",
+      "needConnect": "Connect YouTube in setup before streaming",
+      "goLive": "Stream to YouTube",
+      "liveBadge": "YouTube ON",
+      "notConnected": "YouTube",
+      "working": "YouTube…",
+      "started": "Also live on YouTube",
+      "stopped": "YouTube stream stopped",
+      "startFailed": "Could not stream to YouTube",
+      "disclaimerTitle": "Before connecting YouTube",
+      "disclaimerBody1": "KiDi+ streams to your YouTube channel. YouTube may refuse a live based on its rules (verification, history, account restrictions).",
+      "disclaimerBody2": "If YouTube blocks the live, that is usually not a KiDi+ bug — it is a limit of the YouTube account."
+    },
+    "facebook": {
+      "connectTitle": "Facebook",
+      "connectHint": "Connect a Page to also stream on Facebook",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connectedAs": "Page · {{page}}",
+      "needPage": "Account linked — pick your Page",
+      "choosePage": "Page",
+      "changePage": "Change",
+      "pickPageTitle": "Which Facebook Page?",
+      "pickPageHint": "Your KiDi+ live will stream to this Page.",
+      "pickPageToast": "Pick your Facebook Page",
+      "pageSelected": "Page “{{page}}” selected",
+      "noPages": "No Pages found…",
+      "connectedToast": "Facebook connected",
+      "disconnectedToast": "Facebook disconnected",
+      "connectFailed": "Facebook connection failed",
+      "needConnect": "Connect a Facebook Page in setup before streaming",
+      "goLive": "Stream to Facebook",
+      "liveBadge": "Facebook ON",
+      "notConnected": "Facebook",
+      "working": "Facebook…",
+      "started": "Also live on Facebook",
+      "stopped": "Facebook stream stopped",
+      "startFailed": "Could not stream to Facebook",
+      "disclaimerTitle": "Before connecting Facebook",
+      "disclaimerBody1": "KiDi+ streams to a Facebook Page. The Page must be allowed to go live (Meta rules: Live eligibility, account in good standing, etc.).",
+      "disclaimerBody2": "If the Page is not eligible, connection may succeed but streaming will fail. That is not a KiDi+ bug — it is a Meta limit on your Page."
+    },
+    "social": {
+      "disclaimerBody3": "Viewers on those platforms will see the video feed; clickable auctions stay on KiDi+.",
+      "disclaimerContinue": "Continue",
+      "disclaimerCancel": "Cancel"
     }
   },
   "golive": {
@@ -454,6 +576,9 @@
       "myScheduled": "My scheduled lives",
       "emptyScheduled": "No scheduled lives yet.",
       "startNowPill": "It's time!",
+      "expired": "Expired",
+      "expiredToast": "This scheduled live has expired",
+      "tooEarlyToast": "You can start 15 minutes before the scheduled time",
       "startNowShort": "Start",
       "cancelled": "Live cancelled",
       "confirmCancelTitle": "Cancel this scheduled live?",
@@ -478,6 +603,7 @@
       "editTitle": "Edit live",
       "subtitle": "Prepare your live, add your items and announce it to your community.",
       "coverTitle": "Cover image",
+      "coverTitleRequired": "Cover image *",
       "addCover": "Add an image",
       "infoTitle": "Live details",
       "titleLabel": "Live title",
@@ -540,7 +666,8 @@
     "title": "Activity",
     "tabs": {
       "notifications": "Notifications",
-      "orders": "Orders"
+      "orders": "Orders",
+      "messages": "Messages"
     },
     "orderStatus": {
       "paid": "Paid",
@@ -559,6 +686,19 @@
       "notifications": "No notifications yet.",
       "orders": "No orders yet."
     }
+  },
+  "dm": {
+    "title": "Message",
+    "messageButton": "Message",
+    "you": "You",
+    "send": "Send",
+    "inputPlaceholder": "Write a message…",
+    "emptyThread": "Send your first message to start the conversation.",
+    "emptyInboxTitle": "No messages",
+    "emptyInboxBody": "Contact a seller from their profile to start a conversation.",
+    "errorBlocked": "You can't message this user.",
+    "errorSuspended": "Your account can't send messages right now.",
+    "blockedNotice": "You blocked this user. Unblock them to resume the conversation."
   },
   "auth": {
     "welcome": {
@@ -656,9 +796,12 @@
     "logout": "Sign out",
     "currency": "Currency",
     "chooseCurrency": "Choose currency",
-    "currencyHint": "Wallet currency can only change when the balance is zero.",
+    "currencyHint": "Live prices stay in the seller's currency — your wallet follows your currency.",
     "currencyUpdated": "Currency updated",
-    "currencyWalletLocked": "Profile currency updated. Wallet unchanged (non-zero balance)."
+    "currencyWalletLocked": "Profile currency updated. The wallet could not be converted — try again.",
+    "currencyConvertConfirm": "Your balance of {{from}} will be converted to ≈ {{to}} (indicative rate). Continue?",
+    "currencyConverted": "Currency updated — new balance: {{balance}}",
+    "currencyBalanceNote": "Your current balance ({{balance}}) will be converted automatically at the indicative rate."
   },
   "errors": {
     "generic": "Something went wrong.",
@@ -843,6 +986,8 @@
     "paypalEmail": "PayPal email address",
     "paypalEmailPlaceholder": "you@example.com",
     "paypalHint": "The email associated with your PayPal account.",
+    "paypalXofHint": "You'll receive ≈ {{eur}} on your PayPal (official fixed rate, no markup).",
+    "paypalReceived": "Received on PayPal",
     "submit": "Confirm request",
     "confirmTitle": "Confirm withdrawal",
     "successTitle": "Request sent ✅",
@@ -888,8 +1033,27 @@
       "payments": "Payments",
       "lives": "Lives",
       "reports": "Reports",
+      "risk": "Risk",
       "verify": "Verify",
       "referral": "Referrals"
+    },
+    "risk": {
+      "title": "Risk alerts",
+      "empty": "No alerts.",
+      "count": "{{count}} alert(s)",
+      "resolve": "Resolve",
+      "resolved": "Alert resolved",
+      "resolveFail": "Failed",
+      "freeze": "Freeze",
+      "unfreeze": "Unfreeze",
+      "freezeOn": "Account frozen (payments)",
+      "freezeOff": "Freeze lifted",
+      "frozen": "frozen",
+      "filter": {
+        "open": "Open",
+        "resolved": "Resolved",
+        "all": "All"
+      }
     },
     "toDo": {
       "title": "To handle",
@@ -976,6 +1140,10 @@
       "title": "Account permanently banned",
       "body": "Your account has been banned following a violation of KiDi+ community guidelines.",
       "support": "For any question, contact support@kidiplus.com"
+    },
+    "frozen": {
+      "title": "Account under review",
+      "body": "Withdrawals, wallet purchases and gifts are temporarily blocked. Contact support if needed."
     },
     "types": {
       "warning": "Warning",
@@ -1177,6 +1345,7 @@
     "custom": {
       "title": "Custom bid",
       "open": "Custom bid",
+      "short": "Max",
       "close": "Close",
       "decrease": "Decrease",
       "increase": "Increase",
@@ -1215,7 +1384,8 @@
     "saved": "Address saved",
     "confirmDelete": "Delete this address?",
     "fields": {
-      "label": "Label (Home, Office…)",
+      "label": "Address label (optional)",
+      "labelPlaceholder": "e.g. Home, Office…",
       "fullName": "Full name",
       "phone": "Phone",
       "country": "Country",
@@ -1234,6 +1404,8 @@
     "communeRequired": "Neighborhood / commune is required.",
     "streetRequired": "Street address is required.",
     "postalRequired": "Postal code is required.",
+    "postalInvalid": "Invalid postal code for this country (e.g. {{example}}).",
+    "streetPlaceholder": "e.g. 2290 Brébeuf Street",
     "pickCountry": "Pick a country",
     "landmarkPlaceholder": "e.g. behind the pharmacy, blue building",
     "chooseForCheckout": "Choose an address",
@@ -1248,6 +1420,41 @@
     "phoneCopied": "Phone copied",
     "awaitingPayment": "Address is visible as soon as the order is paid.",
     "noAddress": "No delivery address recorded yet. Contact the buyer."
+  },
+  "orderDetail": {
+    "deliveryAddress": "Delivery address",
+    "shippingTitle": "Delivery",
+    "orderedOn": "Ordered on",
+    "paidOn": "Paid on",
+    "shippedOn": "Shipped on",
+    "deliveredOn": "Received on",
+    "notYetShipped": "not shipped yet",
+    "notYetDelivered": "not received yet"
+  },
+  "invoice": {
+    "title": "Invoice",
+    "viewCta": "View invoice",
+    "seller": "Seller",
+    "buyer": "Buyer",
+    "stampPaid": "Paid",
+    "stampPending": "Pending",
+    "paidOn": "Paid on",
+    "paidVia": "Paid on {{date}} · {{method}}",
+    "pendingNote": "Payment pending — the invoice will be validated after payment.",
+    "payWallet": "KiDi+ Wallet",
+    "payCard": "Bank card",
+    "thanks": "Thank you for your trust 💛",
+    "share": "Share",
+    "shareImage": "Share image",
+    "sharePdf": "PDF",
+    "downloadPdf": "Download PDF",
+    "shareHint": "Share opens WhatsApp / Messages… · PDF asks where to save the invoice.",
+    "imageSaved": "Image saved",
+    "pdfSaved": "PDF saved",
+    "exportFailed": "Export failed",
+    "copy": "Copy",
+    "copied": "Invoice copied",
+    "copyFailed": "Copy failed"
   },
   "delivery": {
     "title": "Delivery",
@@ -1268,11 +1475,15 @@
     "flatFee": "Flat fee",
     "zones": "Delivery zones",
     "addZone": "Add zone",
+    "courierShort": "paid to courier",
+    "quickAddPlaceholder": "Type a zone then Enter — e.g. Cocody, Yopougon…",
+    "quickAddHint": "Add your zones above — they chain up, then adjust fees below.",
     "zoneName": "Zone name",
     "zoneFee": "Fee",
     "removeZone": "Remove",
     "saveCta": "Save",
     "saved": "Settings saved",
+    "saveFailed": "Could not save. Please try again.",
     "fee": "Delivery",
     "courierNote": "Delivery fee: paid to the courier 🛵",
     "chooseZone": "Choose a zone",
@@ -1282,6 +1493,7 @@
     "zoneCountry": "Country",
     "searchCountry": "Search a country",
     "noCountryFound": "No country found",
+    "zonesRequired": "Add at least one zone (country) before saving.",
     "sellerZones": "Delivery zones"
   },
   "escrow": {
@@ -1427,5 +1639,33 @@
       "assignBtn": "Confirm assignment",
       "assigned": "Assigned to @{{h}}"
     }
+  },
+  "productOptions": {
+    "title": "Options",
+    "subtitle": "Brand, condition, colors, sizes",
+    "brand": "Brand",
+    "brandPlaceholder": "e.g. Nike, Zara…",
+    "conditionLabel": "Condition",
+    "condition": {
+      "new": "New",
+      "likeNew": "Like new",
+      "good": "Good condition",
+      "used": "Used"
+    },
+    "colors": "Colors",
+    "sizes": "Sizes",
+    "customColor": "Other color",
+    "customSize": "Other size",
+    "quantity": "Quantity",
+    "duration": "Duration (s)",
+    "bidIncrement": "Bid increment (optional)",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "Briefly describe your item…",
+    "coverPhoto": "Cover",
+    "addPhoto": "Add",
+    "photosHint": "Up to 3 photos — the 1st is the cover",
+    "pickVariant": "Choose your variant",
+    "confirmVariant": "Continue",
+    "pickRequired": "Pick a color / size"
   }
 }

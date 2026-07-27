@@ -65,7 +65,7 @@ import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
 import { fetchMyPromoCodes } from "@/lib/referrals-db";
 
-import { formatMoneyShort, normalizeCurrency } from "@/lib/money";
+import { convertMoney, formatMoney, formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
 
 import { haptic } from "@/lib/haptics";
@@ -122,6 +122,24 @@ function ProfileScreenAuthed() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
+
+  // Soft URL routes (/wallet, /orders, …) → open the matching overlay.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const section = (e as CustomEvent<string>).detail;
+      haptic.light();
+      if (section === "wallet") setWalletOpen(true);
+      else if (section === "orders") setOrdersOpen(true);
+      else if (section === "earnings") setSalesOpen(true);
+      else if (section === "shop") setShopOpen(true);
+      else if (section === "sell") {
+        if (profile?.is_seller) setShopOpen(true);
+        else void becomeSeller().catch(() => {});
+      }
+    };
+    window.addEventListener("kidi:open-section", onOpen as EventListener);
+    return () => window.removeEventListener("kidi:open-section", onOpen as EventListener);
+  }, [profile?.is_seller, becomeSeller]);
 
   useEffect(() => {
     if (!profile?.id) { setIsInfluencer(false); return; }
@@ -969,30 +987,71 @@ function LangRow({ label, active, onClick }: { label: string; active: boolean; o
 /* ================= Currency selector ================= */
 
 function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { profile, updateProfile, refreshProfile } = useAuth();
+  const { balance, currency: walletCurrency, refresh: refreshWallet } = useWallet();
   const current = profile?.currency ?? "EUR";
+  const [busy, setBusy] = useState(false);
 
-  const choose = async (c: "XOF" | "EUR" | "CAD") => {
+  type Cur = "XOF" | "EUR" | "CAD" | "USD" | "GBP";
+
+  const choose = async (c: Cur) => {
+    if (busy) return;
     if (c === current) { onClose(); return; }
+
+    // Non-zero wallet: confirm the conversion with the estimated new balance.
+    const hasBalance = balance > 0;
+    if (hasBalance) {
+      const est = convertMoney(balance, walletCurrency, c);
+      const ok = window.confirm(
+        t("settings.currencyConvertConfirm", {
+          defaultValue:
+            "Ton solde de {{from}} sera converti en ≈ {{to}} (taux indicatif). Continuer ?",
+          from: formatMoney(balance, walletCurrency, i18n.language),
+          to: formatMoney(est, c, i18n.language),
+        }),
+      );
+      if (!ok) return;
+    }
+
     haptic.light();
+    setBusy(true);
     try {
       await updateProfile({ currency: c });
       const { supabase } = await import("@/integrations/supabase/client");
-      const { error } = await supabase.from("wallets").update({ currency: c }).eq("user_id", profile!.id);
-      if (error) toast.message(t("settings.currencyWalletLocked"));
-      else toast.success(t("settings.currencyUpdated"));
+      // Server-side conversion: wallet balance + seller earnings follow the
+      // profile currency atomically (audited in wallet_transactions).
+      const { data, error } = await (supabase as never as {
+        rpc: (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>;
+      }).rpc("convert_my_wallet_currency");
+      const res = (data ?? {}) as { ok?: boolean; converted?: boolean; new_balance?: number };
+      if (error || res.ok === false) {
+        toast.message(t("settings.currencyWalletLocked"));
+      } else if (res.converted) {
+        toast.success(
+          t("settings.currencyConverted", {
+            defaultValue: "Devise mise à jour — nouveau solde : {{balance}}",
+            balance: formatMoney(Number(res.new_balance ?? 0), c, i18n.language),
+          }),
+        );
+      } else {
+        toast.success(t("settings.currencyUpdated"));
+      }
       await refreshProfile();
+      await refreshWallet();
     } catch (err) {
       toast.error(String(err));
     }
+    setBusy(false);
     onClose();
   };
 
-  const rows: Array<{ code: "XOF" | "EUR" | "CAD"; label: string }> = [
+  const rows: Array<{ code: Cur; label: string }> = [
     { code: "EUR", label: "🇪🇺 EUR — Euro" },
     { code: "XOF", label: "🇨🇮 FCFA (XOF)" },
     { code: "CAD", label: "🇨🇦 CAD — Dollar canadien" },
+    { code: "USD", label: "🇺🇸 USD — Dollar américain" },
+    { code: "GBP", label: "🇬🇧 GBP — Livre sterling" },
   ];
 
   return (
@@ -1007,6 +1066,15 @@ function CurrencySheet({ open, onClose }: { open: boolean; onClose: () => void }
           ))}
         </div>
         <p className="mt-3 px-2 text-[12px] text-muted-foreground">{t("settings.currencyHint")}</p>
+        {balance > 0 && (
+          <p className="mt-2 px-2 text-[12px] text-muted-foreground">
+            {t("settings.currencyBalanceNote", {
+              defaultValue:
+                "Ton solde actuel ({{balance}}) sera converti automatiquement au taux indicatif.",
+              balance: formatMoney(balance, walletCurrency, i18n.language),
+            })}
+          </p>
+        )}
       </div>
     </PushScreen>
   );

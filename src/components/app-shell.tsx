@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { BottomTabBar } from "./bottom-tab-bar";
+import { closeTopPushScreen } from "./push-screen";
 import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
@@ -28,6 +29,7 @@ import { LanguageProvider } from "@/i18n/language-context";
 import { WalletProvider } from "@/lib/wallet-context";
 
 import { bootstrapNative } from "@/lib/native";
+import { NativeUpdateGate } from "@/components/native-update-gate";
 import { LiveViewerScreen } from "./live-viewer/live-viewer-screen";
 import { LivePipController } from "./live-viewer/live-pip-controller";
 import { SellerProfileScreen } from "./seller-profile/seller-profile-screen";
@@ -72,6 +74,7 @@ export function AppShell() {
               <SellerProfileProvider>
                 <LiveViewerProvider>
                   <PushDeniedBanner />
+                  <NativeUpdateGate />
                   <AuthGate />
                   <AnimatePresence>
                     {!splashDone && (
@@ -186,6 +189,62 @@ function AppShellInner() {
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
   }, []);
 
+  // Soft profile URLs (/wallet, /orders, …) stash a section then redirect here.
+  // Also resume `kidi.pending_path` on web (native bootstrap already handles Capacitor).
+  // Web PayPal return lands on /?paypal_done=1&status=…
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const { takeSoftSection, softSectionFromPath, stashSoftSection, dispatchOpenSection } =
+        await import("@/lib/soft-profile-routes");
+      try {
+        const pending = window.localStorage.getItem("kidi.pending_path");
+        if (pending?.startsWith("/")) {
+          window.localStorage.removeItem("kidi.pending_path");
+          const mapped = softSectionFromPath(pending.split("?")[0] ?? pending);
+          if (mapped) stashSoftSection(mapped);
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const u = new URL(window.location.href);
+        if (u.searchParams.get("paypal_done") === "1") {
+          const status = u.searchParams.get("status") ?? "ok";
+          sessionStorage.setItem(
+            "kidi:paypal_done",
+            JSON.stringify({
+              status,
+              amount: u.searchParams.get("amount"),
+              currency: u.searchParams.get("currency"),
+              duplicate: u.searchParams.get("duplicate") === "1",
+            }),
+          );
+          stashSoftSection("wallet");
+          u.searchParams.delete("paypal_done");
+          u.searchParams.delete("status");
+          u.searchParams.delete("amount");
+          u.searchParams.delete("currency");
+          u.searchParams.delete("duplicate");
+          u.searchParams.delete("reason");
+          window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}` || "/");
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      const section = takeSoftSection();
+      if (!section) return;
+      setActive("profile");
+      // Let Profile / Guest mount, then open overlay or auth.
+      setTimeout(() => {
+        if (!cancelled) dispatchOpenSection(section);
+      }, 80);
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, []);
+
 
 
 
@@ -203,6 +262,18 @@ function AppShellInner() {
               new CustomEvent("kidi:resume-host-live", {
                 detail: { live_id: p.live_id ?? null },
               }),
+            );
+          } catch {}
+        }, 80);
+        return;
+      }
+      if (kind === "chat" && p.thread_id) {
+        // Direct message → activity tab, Messages inbox opens the thread.
+        setActive("activity");
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("kidi:open-dm", { detail: { thread_id: p.thread_id } }),
             );
           } catch {}
         }, 80);
@@ -258,6 +329,9 @@ function AppShellInner() {
         minimizeLive();
         return;
       }
+      // Close the top-most stacked screen (orders, order detail, settings…)
+      // before touching tabs — otherwise back "skipped" pages.
+      if (closeTopPushScreen()) return;
       if (liveMinimized) {
         closeLive();
         return;
@@ -279,7 +353,11 @@ function AppShellInner() {
 
   return (
     <div
-      className="relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
+      className={
+        immersive || liveFullScreen
+          ? "relative mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-background"
+          : "relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
+      }
       style={{ isolation: "isolate" }}
     >
       <div data-kp-shell-chrome>
@@ -335,7 +413,10 @@ function AppShellInner() {
 
       <Toaster
         position="top-center"
-        offset={16}
+        // Sonner uses `mobileOffset` below 600px (phones) and ignores `offset`.
+        // Keep toasts below the home header (safe-area + ~56px bar).
+        offset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
+        mobileOffset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
         duration={3000}
         visibleToasts={3}
         toastOptions={{

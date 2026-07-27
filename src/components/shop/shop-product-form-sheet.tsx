@@ -11,15 +11,27 @@ import {
   updateShopProduct,
   uploadShopProductImage,
   resolveShopImage,
+  formatShopError,
   MAX_SHOP_IMAGES,
   MIN_SHOP_IMAGES,
   type ShopProduct,
 } from "@/lib/shop-db";
 import { currencySymbol } from "@/lib/money";
+import {
+  ProductOptionsFields,
+  type ProductOptionsValue,
+} from "@/components/product-options-fields";
 
 // Local slot representation while the sheet is open.
 // `path` is the storage path once known; `preview` is what we show.
 type ImgSlot = { path: string | null; preview: string };
+
+const EMPTY_OPTIONS: ProductOptionsValue = {
+  brand: "",
+  condition: null,
+  colors: [],
+  sizes: [],
+};
 
 export function ShopProductFormSheet({
   open,
@@ -41,6 +53,7 @@ export function ShopProductFormSheet({
   const [description, setDescription] = useState("");
   const [priceStr, setPriceStr] = useState<string>("");
   const [stockStr, setStockStr] = useState<string>("1");
+  const [options, setOptions] = useState<ProductOptionsValue>(EMPTY_OPTIONS);
   const [slots, setSlots] = useState<ImgSlot[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
@@ -53,6 +66,12 @@ export function ShopProductFormSheet({
       setDescription(editing.description ?? "");
       setPriceStr(String(Number(editing.price)));
       setStockStr(String(editing.stock));
+      setOptions({
+        brand: editing.brand ?? "",
+        condition: editing.condition ?? null,
+        colors: editing.colors ?? [],
+        sizes: editing.sizes ?? [],
+      });
       // Resolve stored paths to signed URLs for preview.
       const paths = editing.images.length > 0 ? editing.images : (editing.image_url ? [editing.image_url] : []);
       setSlots(paths.map((p) => ({ path: p, preview: "" })));
@@ -64,6 +83,7 @@ export function ShopProductFormSheet({
       setDescription("");
       setPriceStr(currency === "XOF" ? "1000" : "20");
       setStockStr("1");
+      setOptions(EMPTY_OPTIONS);
       setSlots([]);
     }
   }, [open, editing, currency]);
@@ -89,7 +109,7 @@ export function ShopProductFormSheet({
       const path = await uploadShopProductImage(f, user.id);
       setSlots((prev) => prev.map((s, i) => (i === idx ? { path, preview: localUrl } : s)));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(formatShopError(err));
       setSlots((prev) => prev.filter((_, i) => i !== idx));
       try { URL.revokeObjectURL(localUrl); } catch { /* ignore */ }
     } finally {
@@ -133,6 +153,12 @@ export function ShopProductFormSheet({
     if (!user || !canSave || saving) return;
     setSaving(true);
     try {
+      const optionPatch = {
+        brand: options.brand.trim() || null,
+        condition: options.condition,
+        colors: options.colors,
+        sizes: options.sizes,
+      };
       if (editing) {
         await updateShopProduct(editing.id, {
           name: name.trim(),
@@ -140,6 +166,7 @@ export function ShopProductFormSheet({
           price: priceNum,
           stock: stockNum,
           imagePaths: uploadedPaths,
+          ...optionPatch,
         });
         toast.success(t("shop.updated", { defaultValue: "Article modifié" }));
         onSaved?.({
@@ -150,6 +177,10 @@ export function ShopProductFormSheet({
           stock: stockNum,
           image_url: uploadedPaths[0] ?? null,
           images: uploadedPaths,
+          brand: optionPatch.brand,
+          condition: optionPatch.condition,
+          colors: optionPatch.colors,
+          sizes: optionPatch.sizes,
         });
       } else {
         const p = await createShopProduct(user.id, {
@@ -159,6 +190,7 @@ export function ShopProductFormSheet({
           price: priceNum,
           currency,
           stock: stockNum,
+          ...optionPatch,
         });
         toast.success(t("shop.added", { defaultValue: "Article ajouté" }));
         onSaved?.(p);
@@ -166,7 +198,7 @@ export function ShopProductFormSheet({
       haptic.success();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(formatShopError(err));
     } finally {
       setSaving(false);
     }
@@ -176,7 +208,7 @@ export function ShopProductFormSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={92}>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-6">
+      <div className="flex flex-col px-5 pb-6">
         <div className="flex items-center justify-between pt-1 pb-4">
           <h2 className="text-[20px] font-bold">
             {editing ? t("shop.editItem", { defaultValue: "Modifier l'article" }) : t("shop.add", { defaultValue: "Ajouter un article" })}
@@ -302,6 +334,18 @@ export function ShopProductFormSheet({
             />
           </Field>
         </div>
+
+        <ProductOptionsFields
+          value={options}
+          onChange={setOptions}
+          defaultOpen={Boolean(
+            editing &&
+              (editing.brand ||
+                editing.condition ||
+                (editing.colors?.length ?? 0) > 0 ||
+                (editing.sizes?.length ?? 0) > 0),
+          )}
+        />
 
         <Press
           onClick={save}

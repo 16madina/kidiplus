@@ -9,7 +9,7 @@
 //    Realtime subscription pushes the new balance to the pill — we just
 //    animate confetti + haptic and close.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wallet, AlertCircle, Loader2, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
-import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal } from "@/lib/money";
+import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal, convertMoney } from "@/lib/money";
 import {
   confirmWalletTopup,
   markPendingTopup,
@@ -39,8 +39,18 @@ import {
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
+import {
+  createPaypalTopup,
+  capturePaypalTopup,
+  markPendingPaypalOrder,
+  readPendingPaypalOrder,
+  clearPendingPaypalOrder,
+  mapPaypalTopupError,
+} from "@/lib/paypal-topup-client";
+import { isNative } from "@/lib/native";
+import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
-type PaymentMethod = "card" | "wave" | "orange" | "djamo";
+type PaymentMethod = "card" | "wave" | "orange" | "djamo" | "paypal";
 
 
 
@@ -48,6 +58,7 @@ type Step =
   | { kind: "amount" }
   | { kind: "loading" }
   | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null>; amount: number }
+  | { kind: "paypal_waiting"; amount: number; orderId: string }
   | { kind: "verifying"; amount: number }
   | { kind: "done"; amount: number }
   | { kind: "not_configured" }
@@ -93,6 +104,19 @@ export function TopUpSheet({
           }
         })();
       }
+      // Recovery: a previously-created PayPal order that the user approved
+      // but whose /paypal-return capture never ran (killed app, bad network).
+      const pendingPp = readPendingPaypalOrder();
+      if (pendingPp) {
+        void (async () => {
+          const r = await capturePaypalTopup(pendingPp);
+          if (r.ok) {
+            clearPendingPaypalOrder();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cur]);
@@ -108,8 +132,209 @@ export function TopUpSheet({
     chosenAmount >= MIN_AMOUNT &&
     chosenAmount <= MAX_AMOUNT;
 
+  const paypalFinishedRef = useRef(false);
+  const paypalPollBusyRef = useRef(false);
+
+  const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
+    if (paypalFinishedRef.current) return;
+    paypalFinishedRef.current = true;
+    clearPendingPaypalOrder();
+    await refresh();
+    haptic.success();
+    setConfettiKey((k) => k + 1);
+    setStep({ kind: "done", amount });
+    if (!duplicate) toast.success(t("wallet.topup.success"));
+    setTimeout(onClose, 1400);
+  };
+
+  const closePaypalBrowser = () => {
+    if (!isNative()) return;
+    void import("@capacitor/browser").then(({ Browser }) => {
+      void Browser.close().catch(() => {});
+      // SFSafariViewController sometimes ignores the first close.
+      setTimeout(() => {
+        void Browser.close().catch(() => {});
+      }, 400);
+    });
+  };
+
+  const tryCapturePendingPaypal = async (
+    orderId: string,
+    amount: number,
+    opts?: { silent?: boolean },
+  ) => {
+    if (paypalFinishedRef.current) return;
+    if (opts?.silent && paypalPollBusyRef.current) return;
+    if (opts?.silent) paypalPollBusyRef.current = true;
+    try {
+      if (!opts?.silent) setStep({ kind: "verifying", amount });
+      const r = await capturePaypalTopup(orderId);
+      if (r.ok) {
+        closePaypalBrowser();
+        await finishPaypalSuccess(r.amount || amount, r.duplicate);
+        return;
+      }
+      if (paypalFinishedRef.current) return;
+      // Still pending — keep waiting UI without thrashing state on silent polls.
+      if (!opts?.silent) setStep({ kind: "paypal_waiting", amount, orderId });
+    } finally {
+      if (opts?.silent) paypalPollBusyRef.current = false;
+    }
+  };
+
+  // After PayPal returns: deep link, browser close, OR polling (server already
+  // credited on /api/paypal-topup/return — we just need to dismiss the overlay).
+  useEffect(() => {
+    if (!open) {
+      paypalFinishedRef.current = false;
+      return;
+    }
+
+    const onDone = (ev: Event) => {
+      if (paypalFinishedRef.current) return;
+      const detail = (ev as CustomEvent<{
+        ok?: boolean;
+        status?: string;
+        amount?: number;
+        duplicate?: boolean;
+      }>).detail;
+      if (!detail) return;
+      try { sessionStorage.removeItem("kidi:paypal_done"); } catch { /* ignore */ }
+      closePaypalBrowser();
+      if (detail.ok || detail.status === "ok") {
+        void finishPaypalSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+        return;
+      }
+      paypalFinishedRef.current = true;
+      clearPendingPaypalOrder();
+      if (detail.status === "cancelled") {
+        toast.message(
+          t("wallet.topup.paypalCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+        );
+      } else if (detail.status === "pending") {
+        toast.message(
+          t("wallet.topup.paypalPendingHint", {
+            defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+          }),
+        );
+        void refresh();
+      }
+      onClose();
+    };
+    window.addEventListener("kidi:paypal-topup-done", onDone);
+
+    let removeBrowserListener: (() => void) | undefined;
+    let removeAppState: (() => void) | undefined;
+    let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+    const resumeFromPending = () => {
+      if (paypalFinishedRef.current) return;
+      try {
+        const raw = sessionStorage.getItem("kidi:paypal_done");
+        if (raw) {
+          const done = JSON.parse(raw) as {
+            status?: string;
+            amount?: string | null;
+            duplicate?: boolean;
+          };
+          sessionStorage.removeItem("kidi:paypal_done");
+          closePaypalBrowser();
+          if (done.status === "ok") {
+            void finishPaypalSuccess(Number(done.amount ?? chosenAmount), !!done.duplicate);
+            return;
+          }
+          if (done.status === "cancelled" || done.status === "error") {
+            paypalFinishedRef.current = true;
+            clearPendingPaypalOrder();
+            onClose();
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const pending = readPendingPaypalOrder();
+      if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+    };
+
+    if (isNative()) {
+      void import("@capacitor/browser").then(({ Browser }) => {
+        const sub = Browser.addListener("browserFinished", () => {
+          resumeFromPending();
+        });
+        void sub.then((h) => {
+          removeBrowserListener = () => {
+            void h.remove();
+          };
+        });
+      });
+      void import("@capacitor/app").then(({ App }) => {
+        const sub = App.addListener("appStateChange", (s: { isActive: boolean }) => {
+          if (s.isActive) resumeFromPending();
+        });
+        void sub.then((h) => {
+          removeAppState = () => {
+            void h.remove();
+          };
+        });
+      });
+
+      // While SFSafariViewController is open, the WebView keeps running.
+      // Server credits on return URL → poll until capture is ok, then close the overlay.
+      pollTimer = setInterval(() => {
+        if (paypalFinishedRef.current) return;
+        const pending = readPendingPaypalOrder();
+        if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+      }, 1600);
+    }
+
+    return () => {
+      window.removeEventListener("kidi:paypal-topup-done", onDone);
+      removeBrowserListener?.();
+      removeAppState?.();
+      if (pollTimer) clearInterval(pollTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, chosenAmount]);
+
+  const startPaypal = async () => {
+    setStep({ kind: "loading" });
+    const created = await createPaypalTopup(chosenAmount, { native: isNative() });
+    if (!created.ok) {
+      setStep({ kind: "error", message: mapPaypalTopupError(created.error, created.message) });
+      return;
+    }
+    if (!created.approveUrl) {
+      setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      return;
+    }
+    markPendingPaypalOrder(created.orderId);
+    // Native: system browser. Server return hands off via kidiplus://paypal-done
+    // (Universal Links often fail inside SFSafariViewController).
+    // Web: PayPal returns to /api/paypal-topup/return then redirects home.
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        setStep({ kind: "paypal_waiting", amount: chosenAmount, orderId: created.orderId });
+        await Browser.open({
+          url: created.approveUrl,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
+      } catch {
+        setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
+      }
+    } else {
+      window.location.assign(created.approveUrl);
+    }
+  };
+
   const startPayment = async () => {
     if (!valid) return;
+    if (selectedMethod === "paypal") {
+      void startPaypal();
+      return;
+    }
     setStep({ kind: "loading" });
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -191,6 +416,16 @@ export function TopUpSheet({
     }
   };
 
+  // Vite hashed same-origin URL (CSP-safe). Do NOT use data: URIs — blocked on Lovable.
+  const logoBadge = (
+    <img
+      src={kidiPlusLogo}
+      alt="KiDi+"
+      className="h-14 w-auto max-w-[220px] object-contain drop-shadow-sm"
+      draggable={false}
+    />
+  );
+
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={82}>
       <div className="relative flex h-full flex-col px-5 pb-5 pt-2">
@@ -204,6 +439,19 @@ export function TopUpSheet({
               exit={{ opacity: 0 }}
               className="flex flex-1 flex-col items-center justify-center gap-3"
             >
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05, duration: 0.25 }}
+                className="flex flex-col items-center gap-3"
+              >
+                {logoBadge}
+                <div
+                  className="h-1.5 w-28 rounded-full"
+                  style={{ backgroundColor: "oklch(0.72 0.2 155)", boxShadow: "0 0 16px oklch(0.72 0.2 155 / 0.45)" }}
+                  aria-hidden
+                />
+              </motion.div>
               <motion.div
                 initial={{ scale: 0.4 }}
                 animate={{ scale: 1 }}
@@ -252,6 +500,16 @@ export function TopUpSheet({
 
               {step.kind === "amount" || step.kind === "error" || step.kind === "not_configured" || step.kind === "loading" ? (
                 <>
+                  {step.kind !== "amount" && (
+                    <div className="mb-4 flex flex-col items-center gap-2">
+                      {logoBadge}
+                      {step.kind === "loading" && (
+                        <p className="text-[13px] font-semibold text-muted-foreground">
+                          {t("wallet.topup.preparing", { defaultValue: "Préparation du paiement…" })}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {/* Preset amounts */}
                   <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("wallet.topup.chooseAmount")}
@@ -305,6 +563,28 @@ export function TopUpSheet({
                     active={selectedMethod === "card"}
                     onClick={() => setSelectedMethod("card")}
                   />
+                  <MethodRow
+                    brand="paypal"
+                    label={t("pay.method.paypal", { defaultValue: "PayPal" })}
+                    subtitle={
+                      cur === "XOF"
+                        ? t("wallet.topup.paypalXofSub", {
+                            defaultValue: "Débité en euros : ≈ {{eur}} (taux fixe officiel)",
+                            eur: formatMoney(convertMoney(chosenAmount, "XOF", "EUR"), "EUR", i18n.language),
+                          })
+                        : t("pay.method.paypalSub", { defaultValue: "Payer avec ton compte PayPal" })
+                    }
+                    active={selectedMethod === "paypal"}
+                    onClick={() => setSelectedMethod("paypal")}
+                  />
+                  {cur === "XOF" && selectedMethod === "paypal" && (
+                    <p className="mt-1 px-1 text-[11px] leading-snug text-muted-foreground">
+                      {t("wallet.topup.paypalXofHint", {
+                        defaultValue:
+                          "PayPal fonctionne en euros — ton solde reste en FCFA, la conversion est automatique (taux fixe officiel).",
+                      })}
+                    </p>
+                  )}
                   {cur === "XOF" && (
                     <>
                       <MethodRow
@@ -356,9 +636,21 @@ export function TopUpSheet({
                       onClick={startPayment}
                       disabled={!valid || step.kind === "loading"}
                       className="w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
+                      style={selectedMethod === "paypal" ? { backgroundColor: "#003087", color: "white" } : undefined}
                     >
                       {step.kind === "loading" ? (
                         <Loader2 className="mx-auto animate-spin" size={18} />
+                      ) : selectedMethod === "paypal" ? (
+                        cur === "XOF"
+                          ? t("wallet.topup.paypalCtaBridge", {
+                              defaultValue: "Payer {{amount}} (≈ {{eur}}) avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                              eur: formatMoney(convertMoney(chosenAmount, "XOF", "EUR"), "EUR", i18n.language),
+                            })
+                          : t("wallet.topup.paypalCta", {
+                              defaultValue: "Payer {{amount}} avec PayPal",
+                              amount: formatMoney(chosenAmount, cur, i18n.language),
+                            })
                       ) : (
                         t("wallet.topup.continueCta", {
                           amount: formatMoney(chosenAmount, cur, i18n.language),
@@ -379,8 +671,42 @@ export function TopUpSheet({
                   amountLabel={formatMoney(step.amount, cur, i18n.language)}
                   onSuccess={(pi) => { void handleSuccess(step.amount, pi); }}
                 />
+              ) : step.kind === "paypal_waiting" ? (
+                <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
+                  <Loader2 className="animate-spin text-primary" size={28} />
+                  <p className="text-[15px] font-semibold">
+                    {t("wallet.topup.paypalWaiting", { defaultValue: "Paiement PayPal en cours…" })}
+                  </p>
+                  <p className="max-w-[280px] text-[12px] text-muted-foreground">
+                    {t("wallet.topup.paypalWaitingHint", {
+                      defaultValue:
+                        "Termine le paiement dans PayPal. Dès qu'il est confirmé, ferme la fenêtre (Done / ✕) — KiDi+ se met à jour tout seul.",
+                    })}
+                  </p>
+                  <Press
+                    onClick={() => {
+                      closePaypalBrowser();
+                      void tryCapturePendingPaypal(step.orderId, step.amount);
+                    }}
+                    className="mt-1 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-bold text-primary-foreground"
+                  >
+                    {t("wallet.topup.paypalConfirmCta", { defaultValue: "J'ai payé — revenir" })}
+                  </Press>
+                  <button
+                    type="button"
+                    className="text-[12px] text-muted-foreground underline"
+                    onClick={() => {
+                      clearPendingPaypalOrder();
+                      setStep({ kind: "amount" });
+                    }}
+                  >
+                    {t("common.cancel", { defaultValue: "Annuler" })}
+                  </button>
+                </div>
               ) : step.kind === "verifying" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
                   <Loader2 className="animate-spin" size={28} />
                   <p className="text-[15px] font-semibold">
                     {t("wallet.topup.verifying", { defaultValue: "Vérification du paiement…" })}

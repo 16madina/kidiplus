@@ -166,9 +166,10 @@ function FloatingPill({
 
 function LiveScreenAuthed() {
   const { t } = useTranslation();
-  const { profile, loading, becomeSeller } = useAuth();
+  const { profile, loading, becomeSeller, refreshProfile, user } = useAuth();
   const [flipping, setFlipping] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const activateSeller = async () => {
     setConfirmOpen(false);
@@ -190,12 +191,42 @@ function LiveScreenAuthed() {
     }
   };
 
+  const retryProfile = async () => {
+    setRetrying(true);
+    try {
+      await refreshProfile();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
-
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="animate-spin text-muted-foreground" size={22} />
+      </div>
+    );
+  }
+
+  // After the profiles.email lockdown, a failed profile fetch used to leave
+  // profile=null forever → infinite spinner on this tab. Show a retry instead.
+  if (!profile) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-[14px] text-muted-foreground">
+          {user
+            ? t("live.profileLoadFailed", "Impossible de charger ton profil. Réessaie.")
+            : t("auth.prompt.signIn", "Connecte-toi pour continuer")}
+        </p>
+        {user && (
+          <Press
+            onClick={() => void retryProfile()}
+            className="!min-h-10 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-[13px] font-bold text-primary-foreground"
+          >
+            {retrying ? <Loader2 size={16} className="animate-spin" /> : null}
+            {t("common.retry", "Réessayer")}
+          </Press>
+        )}
       </div>
     );
   }
@@ -357,6 +388,7 @@ function BroadcastFlow() {
   const {
     stage, goEntry, goSetup, goLive, goSummary, reset,
     setHost, setCurrency, setLiveId, setRoomName, setTitle, setCategory, setCover, setSession,
+    setStreamSource, setRtmpCreds, setAllowGifts,
   } = useBroadcast();
   const { profile, user } = useAuth();
   const [openLives, setOpenLives] = useState<Array<{
@@ -366,6 +398,8 @@ function BroadcastFlow() {
     cover_url: string | null;
     category: string | null;
     currency: string | null;
+    broadcast_mode?: string | null;
+    allow_gifts?: boolean | null;
   }>>([]);
   const [endingAll, setEndingAll] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -378,13 +412,101 @@ function BroadcastFlow() {
     }
   }, [user, profile, setHost, setCurrency]);
 
+  // After Facebook/YouTube OAuth, restore setup screen (SPA remounts on `/`).
+  useEffect(() => {
+    let cancelled = false;
+    void import("@/lib/broadcast-oauth-return").then(
+      ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+        if (cancelled) return;
+        let shouldRestore = false;
+        try {
+          const u = new URL(window.location.href);
+          if (u.searchParams.get("golive") === "setup") {
+            shouldRestore = true;
+            u.searchParams.delete("golive");
+            // Keep facebook=/youtube= flags for connect cards to toast.
+            window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+          }
+        } catch {
+          /* ignore */
+        }
+        const stashed = takeBroadcastOAuthReturn();
+        if (stashed?.stage === "setup" || stashed?.stage === "live" || shouldRestore) {
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // Only on mount after OAuth return
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Native deep-link return while the Live tab is already mounted.
+  useEffect(() => {
+    const onFb = () => {
+      void import("@/lib/broadcast-oauth-return").then(
+        ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+          const stashed = takeBroadcastOAuthReturn();
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        },
+      );
+    };
+    const onYt = () => {
+      void import("@/lib/broadcast-oauth-return").then(
+        ({ takeBroadcastOAuthReturn, navigateToLiveTab }) => {
+          const stashed = takeBroadcastOAuthReturn();
+          navigateToLiveTab();
+          if (stashed?.stage === "live") goLive();
+          else goSetup();
+        },
+      );
+    };
+    window.addEventListener("kidi:facebook-connected", onFb);
+    window.addEventListener("kidi:youtube-connected", onYt);
+    return () => {
+      window.removeEventListener("kidi:facebook-connected", onFb);
+      window.removeEventListener("kidi:youtube-connected", onYt);
+    };
+  }, [goSetup, goLive]);
+
   const endAllOpen = async () => {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");
-    await Promise.all(openLives.map((d) => endLiveInDb(d.id).catch(() => {})));
-    setOpenLives([]);
+    const results = await Promise.all(openLives.map((d) => endLiveInDb(d.id)));
+    const failed = results.filter((r) => !r.ok).length;
+    if (failed === 0) {
+      setOpenLives([]);
+      toast.success(t("live.danglingEnded", "Lives précédents terminés"));
+    } else if (failed < openLives.length) {
+      const { findOpenLives } = await import("@/lib/lives-db");
+      const rows = user ? await findOpenLives(user.id) : [];
+      setOpenLives(
+        rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          room_name: r.room_name,
+          cover_url: r.cover_url,
+          category: r.category,
+          currency: r.currency,
+          broadcast_mode: r.broadcast_mode,
+          allow_gifts: r.allow_gifts,
+        })),
+      );
+      toast.error(
+        t("live.danglingEndPartial", "Certains lives n'ont pas pu être terminés"),
+      );
+    } else {
+      toast.error(
+        t("live.danglingEndFailed", "Impossible de terminer les lives"),
+      );
+    }
     setEndingAll(false);
-    toast.success(t("live.danglingEnded", "Lives précédents terminés"));
   };
 
   const reconnectToLive = async (preferredId?: string) => {
@@ -399,6 +521,8 @@ function BroadcastFlow() {
         cover_url: r.cover_url,
         category: r.category,
         currency: r.currency,
+        broadcast_mode: r.broadcast_mode,
+        allow_gifts: r.allow_gifts,
       }));
       setOpenLives(list);
     }
@@ -410,11 +534,32 @@ function BroadcastFlow() {
       const extras = list.filter((l) => l.id !== target.id);
       if (extras.length > 0) {
         const { endLiveInDb } = await import("@/lib/lives-db");
-        await Promise.all(extras.map((d) => endLiveInDb(d.id).catch(() => {})));
+        await Promise.all(extras.map((d) => endLiveInDb(d.id)));
       }
       const { markLiveActiveInDb, touchLiveHostInDb } = await import("@/lib/lives-db");
       await markLiveActiveInDb(target.id).catch(() => {});
       await touchLiveHostInDb(target.id).catch(() => {});
+
+      const isRtmp = target.broadcast_mode === "rtmp";
+      setStreamSource(isRtmp ? "rtmp" : "camera");
+      setAllowGifts(target.allow_gifts !== false);
+      if (isRtmp) {
+        const { createLiveIngress } = await import("@/lib/livekit-ingress");
+        try {
+          const creds = await createLiveIngress(target.id);
+          setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          return;
+        }
+      } else {
+        setRtmpCreds(null);
+      }
 
       setLiveId(target.id);
       setRoomName(target.room_name);
@@ -466,6 +611,8 @@ function BroadcastFlow() {
             cover_url: r.cover_url,
             category: r.category,
             currency: r.currency,
+            broadcast_mode: r.broadcast_mode,
+            allow_gifts: r.allow_gifts,
           })),
         );
       }

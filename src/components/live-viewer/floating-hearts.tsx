@@ -1,31 +1,52 @@
 // Floating hearts overlay — chemin ultra-rapide :
-//   - Aucun state React, aucun re-render (immunise contre le fps drop
-//     quand des milliers de cœurs arrivent).
+//   - Aucun state React parent : bus out-of-band (ou trigger prop pour le mock).
 //   - Chaque cœur = un <div> ajouté directement au DOM avec une
 //     animation CSS keyframe, retiré sur `animationend`.
 //   - Coalescence via rAF + cap dur du nombre de cœurs simultanés.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import {
+  getHeartTick,
+  subscribeHeartTick,
+} from "@/lib/heart-bus";
 
 const MAX_LIVE = 18;              // cœurs simultanément à l'écran
 const MAX_SPAWNS_PER_FRAME = 2;   // évite le fork bomb visuel
 const HEART_TTL_MS = 1500;
 
+function useHeartBusTick(enabled: boolean): number {
+  return useSyncExternalStore(
+    enabled ? subscribeHeartTick : () => () => {},
+    enabled ? getHeartTick : () => 0,
+    () => 0,
+  );
+}
+
 export function FloatingHearts({
   trigger,
+  useBus = false,
 }: {
-  /** Increment this number to spawn a heart. */
-  trigger: number;
+  /** Increment this number to spawn a heart (mock / local-only). */
+  trigger?: number;
+  /** Subscribe to the shared heart bus (real live host + viewer). */
+  useBus?: boolean;
 }) {
+  const busTick = useHeartBusTick(useBus);
+  const effective = useBus ? busTick : (trigger ?? 0);
   const containerRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef(0);
   const liveCountRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const lastTriggerRef = useRef(trigger);
+  /** null until first observe — avoid spawning a backlog from a prior live. */
+  const lastTriggerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (trigger === 0) return;
-    const delta = Math.max(1, trigger - lastTriggerRef.current);
-    lastTriggerRef.current = trigger;
+    if (lastTriggerRef.current === null) {
+      lastTriggerRef.current = effective;
+      return;
+    }
+    if (effective === lastTriggerRef.current) return;
+    const delta = Math.max(1, effective - lastTriggerRef.current);
+    lastTriggerRef.current = effective;
     pendingRef.current = Math.min(pendingRef.current + delta, MAX_LIVE * 2);
 
     if (rafRef.current != null) return;
@@ -50,7 +71,7 @@ export function FloatingHearts({
       }
     };
     rafRef.current = requestAnimationFrame(flush);
-  }, [trigger]);
+  }, [effective]);
 
   useEffect(() => {
     return () => {

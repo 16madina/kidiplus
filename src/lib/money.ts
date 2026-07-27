@@ -1,13 +1,13 @@
 // Multi-currency money layer.
 //
-// Supported currencies: XOF (FCFA — zero-decimal), EUR, CAD.
-// One live = one currency. Wallets are per-user. Conversions here are
-// INDICATIVE only (fixed reference rates) — never used for real settlement.
+// Supported currencies: XOF (FCFA — zero-decimal), EUR, CAD, USD, GBP.
+// One live = one currency. Wallets are per-user. Reference rates mirror
+// public.fx_rate server-side — keep the two in sync.
 
-export type Currency = "XOF" | "EUR" | "CAD";
+export type Currency = "XOF" | "EUR" | "CAD" | "USD" | "GBP";
 export type Locale = "fr" | "en" | string;
 
-const SUPPORTED: readonly Currency[] = ["XOF", "EUR", "CAD"] as const;
+const SUPPORTED: readonly Currency[] = ["XOF", "EUR", "CAD", "USD", "GBP"] as const;
 
 export function normalizeCurrency(input: string | null | undefined): Currency {
   const c = (input ?? "").toUpperCase();
@@ -39,7 +39,7 @@ export function toStripeMinor(amount: number, currency: Currency): number {
 
 function intlLocale(currency: Currency, locale: Locale): string {
   const lang = (locale || "fr").toLowerCase().slice(0, 2);
-  if (lang === "en") return "en-GB";
+  if (lang === "en") return currency === "USD" ? "en-US" : "en-GB";
   return currency === "CAD" ? "fr-CA" : "fr-FR";
 }
 
@@ -88,11 +88,20 @@ export function formatMoneyShort(
   const cur = normalizeCurrency(currency);
   if (isZeroDecimal(cur)) return formatMoney(amount, cur, locale);
   if (Number.isInteger(amount)) {
-    const symbol = cur === "EUR" ? "€" : cur === "CAD" ? "$ CA" : cur;
     const lang = (locale || "fr").slice(0, 2);
     if (lang === "en") {
-      return cur === "EUR" ? `€${amount}` : cur === "CAD" ? `CA$${amount}` : `${amount} ${cur}`;
+      if (cur === "EUR") return `€${amount}`;
+      if (cur === "CAD") return `CA$${amount}`;
+      if (cur === "USD") return `$${amount}`;
+      if (cur === "GBP") return `£${amount}`;
+      return `${amount} ${cur}`;
     }
+    const symbol =
+      cur === "EUR" ? "€"
+      : cur === "CAD" ? "$ CA"
+      : cur === "USD" ? "$ US"
+      : cur === "GBP" ? "£"
+      : cur;
     return `${amount} ${symbol}`;
   }
   return formatMoney(amount, cur, locale);
@@ -113,6 +122,8 @@ const XOF_COUNTRIES = [
   "guinee-bissau", "guinée-bissau", "guinea-bissau", "gw",
 ];
 const CAD_COUNTRIES = ["canada", "ca"];
+const USD_COUNTRIES = ["etats-unis", "états-unis", "united states", "usa", "us"];
+const GBP_COUNTRIES = ["royaume-uni", "united kingdom", "uk", "gb", "angleterre", "england"];
 const EUR_COUNTRIES = [
   "france", "fr",
   "belgique", "belgium", "be",
@@ -133,6 +144,8 @@ export function currencyForCountry(country: string | null | undefined): Currency
   const c = country.toLowerCase();
   if (XOF_COUNTRIES.some((k) => c.includes(k))) return "XOF";
   if (CAD_COUNTRIES.some((k) => c.includes(k) || c.endsWith(k))) return "CAD";
+  if (USD_COUNTRIES.some((k) => c.includes(k) || c === k)) return "USD";
+  if (GBP_COUNTRIES.some((k) => c.includes(k) || c === k)) return "GBP";
   if (EUR_COUNTRIES.some((k) => c.includes(k))) return "EUR";
   return "EUR";
 }
@@ -154,6 +167,8 @@ export function bidRulesFor(currency: Currency): BidRules {
     case "XOF": return { step: 500, smallStep: 250, threshold: 5000 };
     case "CAD": return { step: 1, smallStep: 1, threshold: 0 };
     case "EUR":
+    case "USD":
+    case "GBP":
     default:    return { step: 1, smallStep: 0.5, threshold: 10 };
   }
 }
@@ -173,14 +188,17 @@ export function bidStepFor(currentPrice: number, currency: Currency): number {
 
 /** Sane upper cap: max(100× start price, currency floor). Mirrors server enforcement. */
 export function maxBidAmount(startPrice: number, currency: Currency): number {
-  const floor = currency === "XOF" ? 1_000_000 : currency === "CAD" ? 3000 : 2000;
+  const floor =
+    currency === "XOF" ? 1_000_000 : currency === "CAD" ? 3000 : 2000;
   return Math.max((startPrice || 0) * 100, floor);
 }
 
 export function topUpPresets(currency: Currency): number[] {
   switch (currency) {
     case "XOF": return [2000, 5000, 10000, 25000];
-    case "CAD": return [5, 10, 25, 50];
+    case "CAD":
+    case "USD":
+    case "GBP": return [5, 10, 25, 50];
     case "EUR":
     default:    return [5, 10, 25, 50];
   }
@@ -189,7 +207,9 @@ export function topUpPresets(currency: Currency): number[] {
 export function topUpLimits(currency: Currency): { min: number; max: number } {
   switch (currency) {
     case "XOF": return { min: 1000, max: 300000 };
-    case "CAD": return { min: 2, max: 500 };
+    case "CAD":
+    case "USD":
+    case "GBP": return { min: 2, max: 500 };
     case "EUR":
     default:    return { min: 2, max: 500 };
   }
@@ -204,10 +224,13 @@ export function topUpLimits(currency: Currency): { min: number; max: number } {
 export const FX_MARGIN = 0.015;
 
 // 1 EUR references (XOF is an official BCEAO peg — no margin).
+// Mirror public.fx_rate server-side when touching these.
 const EUR_TO: Record<Currency, number> = {
   EUR: 1,
   XOF: 655.957,
   CAD: 1.47,
+  USD: 1.09,
+  GBP: 0.85,
 };
 
 function isPegPair(from: Currency, to: Currency): boolean {
@@ -267,5 +290,7 @@ export function currencySymbol(currency: string | null | undefined): string {
   const c = normalizeCurrency(currency);
   if (c === "EUR") return "€";
   if (c === "CAD") return "$ CA";
+  if (c === "USD") return "$ US";
+  if (c === "GBP") return "£";
   return "FCFA";
 }

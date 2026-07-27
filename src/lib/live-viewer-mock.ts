@@ -32,16 +32,29 @@ const MESSAGES = [
 
 const rand = (n: number) => Math.floor(Math.random() * n);
 
+export type ChatSource = "kidi" | "youtube" | "facebook";
+
 export type ChatMsg = {
   id: string;
   user: string;
   color: string;
   text: string;
   system?: boolean;
+  /** Structured system lines — UI localizes (e.g. join). */
+  systemKind?: "join";
   /** Profile UUID when the sender is signed in — needed for mute/block. */
   userId?: string;
   isModerator?: boolean;
   isHost?: boolean;
+  /** Origin platform when the line was repatriated from social restream. */
+  source?: ChatSource;
+  /** Platform message id (YouTube / Facebook) for reply + dedupe. */
+  externalId?: string;
+  replyTo?: {
+    user: string;
+    userId?: string;
+    text: string;
+  };
 };
 
 let msgId = 0;
@@ -81,6 +94,11 @@ export type Product = {
   price: number; // current or fixed
   status: "upcoming" | "current" | "sold";
   winner?: string;
+  /** Compact meta under the name (brand · color · size · condition). */
+  metaLine?: string;
+  description?: string | null;
+  colors?: string[];
+  sizes?: string[];
 };
 
 const PRODUCT_POOL: Omit<Product, "id" | "status">[] = [

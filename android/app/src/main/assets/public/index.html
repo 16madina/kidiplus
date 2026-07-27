@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0C1122" />
+    <title>KiDi+</title>
+    <style>
+      html,body{margin:0;height:100%;background:#0C1122;color:#E8C46A;
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        display:flex;align-items:center;justify-content:center;overflow:hidden;
+        text-align:center;padding:24px;box-sizing:border-box}
+      .wrap{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:320px}
+      .brand{font-size:32px;letter-spacing:.12em;font-weight:600;opacity:.92}
+      .spinner{width:22px;height:22px;border:2px solid rgba(232,196,106,.25);
+        border-top-color:#E8C46A;border-radius:50%;animation:spin .9s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div id="loading" class="spinner" aria-label="Chargement"></div>
+    </div>
+    <script>
+      try { console.log('[kidiplus-native] waiting for Capacitor server.url'); } catch(_) {}
+    </script>
+  </body>
+</html>

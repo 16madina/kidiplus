@@ -7,7 +7,7 @@ import {
   Clock,
   Timer,
   Plus,
-  GripVertical,
+  Trash2,
   Gavel,
   ShoppingBag,
   Bell,
@@ -34,11 +34,18 @@ import { makeRoomName } from "@/lib/livekit";
 import {
   blobUrlToFile,
   createScheduledLiveInDb,
+  fetchScheduledLiveWithProducts,
   updateScheduledLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
+import { useAuth } from "@/lib/auth-context";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { DeliverySetupPromptDialog } from "./delivery-setup-prompt-dialog";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
+import { fetchDeliverySettings } from "@/lib/delivery-db";
+import { isSellerDeliveryConfigured } from "@/lib/delivery";
 
 const GOLD = "oklch(0.82 0.14 85)";
 const GOLD_DIM = "oklch(0.82 0.14 85 / 0.35)";
@@ -140,6 +147,7 @@ function Toggle({
 export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   const { t, i18n } = useTranslation();
   const b = useBroadcast();
+  const { profile } = useAuth();
 
   const tabVisible = useContext(TabVisibilityContext);
   useImmersiveScope(tabVisible);
@@ -151,18 +159,52 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
     return () => tracker.disposeAll();
   }, []);
 
-  // Local-only extras (not persisted server-side).
+  // Prefill cover from profile avatar when available (same as instant go-live).
+  useEffect(() => {
+    if (!profile?.avatar_url) return;
+    if (b.cover || b.coverFile) return;
+    let cancelled = false;
+    void resolveAvatarUrl(profile.avatar_url).then((url) => {
+      if (!cancelled && url && !b.cover && !b.coverFile) b.setCover(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.avatar_url]);
+
   const [description, setDescription] = useState("");
   const [durationMin, setDurationMin] = useState(45);
   const [allowBids, setAllowBids] = useState(true);
   const [allowBuyNow, setAllowBuyNow] = useState(true);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
+
+  // Edit mode: reload persisted options (the form context only carries
+  // title/category/cover/products — these live on the DB row).
+  useEffect(() => {
+    if (b.mode !== "edit" || !b.editingLiveId) return;
+    let cancelled = false;
+    void fetchScheduledLiveWithProducts(b.editingLiveId).then((full) => {
+      if (cancelled || !full) return;
+      setDescription(full.description ?? "");
+      if (full.estimated_duration_min != null) setDurationMin(full.estimated_duration_min);
+      setAllowBids(full.allow_bids !== false);
+      setAllowBuyNow(full.allow_buy_now !== false);
+      setNotifyFollowers(full.notify_followers !== false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [b.mode, b.editingLiveId]);
   const allowGifts = b.allowGifts;
   const setAllowGifts = b.setAllowGifts;
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [showCatMenu, setShowCatMenu] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [deliveryPromptOpen, setDeliveryPromptOpen] = useState(false);
+  const [deliverySettingsOpen, setDeliverySettingsOpen] = useState(false);
+  const deliverySkippedRef = useRef(false);
 
 
   // Kept for the datetime min/max clamps used by the split date/time inputs.
@@ -185,7 +227,12 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   
   const scheduleValid =
     !!b.scheduledAt && new Date(b.scheduledAt).getTime() > Date.now() + 60_000;
-  const canLaunch = b.title.trim().length > 0 && b.products.length > 0 && scheduleValid;
+  const hasProfileAvatar = !!profile?.avatar_url?.trim();
+  const hasCover = !!(b.coverFile || (b.cover && String(b.cover).trim()));
+  const coverRequired = !hasProfileAvatar;
+  const coverOk = !coverRequired || hasCover;
+  const canLaunch =
+    b.title.trim().length > 0 && b.products.length > 0 && scheduleValid && coverOk;
 
   
   const onCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,6 +297,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         } else {
           imagePath = p.image || null;
         }
+        const { uploadExtraLiveProductImages } = await import("@/lib/lives-db");
+        const extraImages = await uploadExtraLiveProductImages({
+          userId: b.hostIdentity!,
+          productName: p.name,
+          extraImages: p.extraImages,
+          extraImageFiles: p.extraImageFiles,
+        });
         return {
           name: p.name,
           imagePath,
@@ -259,6 +313,14 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           stock: p.stock,
           timerSeconds: p.timerSec,
           position: index,
+          shopProductId: p.shopProductId ?? null,
+          description: p.description ?? null,
+          brand: p.brand ?? null,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages,
+          bidIncrement: p.bidIncrement ?? null,
         };
       }),
     );
@@ -270,11 +332,37 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
   };
 
   const launch = async () => {
-    if (!canLaunch || launching) return;
+    if (launching) return;
+    if (!coverOk) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.coverRequired",
+          "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        ),
+      );
+      coverInputRef.current?.click();
+      return;
+    }
+    if (!canLaunch) return;
     if (!b.hostIdentity) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
     }
+
+    if (!deliverySkippedRef.current) {
+      const settings = await fetchDeliverySettings(b.hostIdentity);
+      if (!isSellerDeliveryConfigured(settings)) {
+        setDeliveryPromptOpen(true);
+        return;
+      }
+    }
+
+    await runLaunch();
+  };
+
+  const runLaunch = async () => {
+    if (launching || !b.hostIdentity) return;
     haptic.medium();
     setLaunching(true);
     try {
@@ -287,6 +375,12 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
           allowGifts,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
+          description: description.trim() || null,
+          estimatedDurationMin: durationMin,
+          allowBids,
+          allowBuyNow,
+          notifyFollowers,
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -300,7 +394,13 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           allowGifts,
+          description: description.trim() || null,
+          estimatedDurationMin: durationMin,
+          allowBids,
+          allowBuyNow,
+          notifyFollowers,
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
@@ -415,18 +515,34 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         </div>
 
         {/* 1 — Cover */}
-        <Card step={1} title={t("schedule.form.coverTitle", "Image de couverture")}>
+        <Card
+          step={1}
+          title={
+            coverRequired
+              ? t("schedule.form.coverTitleRequired", "Image de couverture *")
+              : t("schedule.form.coverTitle", "Image de couverture")
+          }
+        >
           <label
             htmlFor="schedule-cover-input"
             className="relative flex h-40 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl"
             style={{
               background: "rgba(255,255,255,0.03)",
-              border: `1.5px dashed ${GOLD_DIM}`,
+              border: `1.5px dashed ${coverRequired && !hasCover ? "oklch(0.68 0.19 25)" : GOLD_DIM}`,
             }}
             aria-label={t("schedule.form.addCover", "Ajouter une image")}
           >
             {b.cover ? (
-              <img src={b.cover} alt="" className="h-full w-full object-cover" />
+              <img
+                key={b.cover}
+                src={b.cover}
+                alt=""
+                className="h-full w-full object-cover"
+                ref={(el) => {
+                  if (el?.complete) el.setAttribute("data-loaded", "true");
+                }}
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              />
             ) : (
               <div className="pointer-events-none flex flex-col items-center gap-3">
                 <ImageIcon size={36} color="rgba(255,255,255,0.35)" />
@@ -452,6 +568,14 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               onChange={onCoverFile}
             />
           </label>
+          {coverRequired && !hasCover && (
+            <p className="mt-2 text-[12px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.coverRequiredHint",
+                "Photo de couverture obligatoire (pas de photo de profil)",
+              )}
+            </p>
+          )}
         </Card>
 
 
@@ -631,7 +755,16 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               >
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
                   {p.image ? (
-                    <img src={p.image} alt="" className="h-full w-full object-cover" />
+                    <img
+                      key={p.image || p.id}
+                      src={p.image}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      ref={(el) => {
+                        if (el?.complete) el.setAttribute("data-loaded", "true");
+                      }}
+                      onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                    />
                   ) : (
                     <div className="grid h-full w-full place-items-center bg-white/5">
                       <ImageIcon size={14} color="white" opacity={0.4} />
@@ -659,7 +792,7 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
                   className="grid h-8 w-8 place-items-center rounded-md text-white/50 hover:text-white"
                   aria-label={t("common.remove")}
                 >
-                  <GripVertical size={16} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             ))}
@@ -724,13 +857,15 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
         <div className="flex flex-col items-center gap-2 pt-1">
           <Press
             onClick={launch}
-            disabled={!canLaunch || launching}
+            disabled={launching}
             hapticOnTap={false}
-            className="!min-h-14 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold disabled:opacity-40"
+            aria-disabled={!canLaunch || undefined}
+            className="!min-h-14 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold"
             style={{
               background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
               color: "black",
               boxShadow: "0 10px 30px oklch(0.82 0.14 85 / 0.35)",
+              opacity: launching ? 0.6 : canLaunch ? 1 : 0.45,
             }}
           >
             <CalendarIcon size={18} />
@@ -776,6 +911,23 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
           }
           setShowShopPicker(false);
         }}
+      />
+      <DeliverySetupPromptDialog
+        open={deliveryPromptOpen}
+        onCancel={() => setDeliveryPromptOpen(false)}
+        onConfigure={() => {
+          setDeliveryPromptOpen(false);
+          setDeliverySettingsOpen(true);
+        }}
+        onContinue={() => {
+          deliverySkippedRef.current = true;
+          setDeliveryPromptOpen(false);
+          void runLaunch();
+        }}
+      />
+      <SellerDeliverySettingsScreen
+        open={deliverySettingsOpen}
+        onClose={() => setDeliverySettingsOpen(false)}
       />
     </motion.div>
   );

@@ -30,6 +30,10 @@ import { fetchSellerLives, fetchLiveById, type SellerLiveEntry } from "@/lib/liv
 import { listSellerReviews, type SellerReview } from "@/lib/reviews-db";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReferredBadge } from "@/components/referred-badge";
+import { MessageCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
+import { DmChatScreen } from "@/components/dm/dm-chat-screen";
 
 type SellerProfile = {
   id: string;
@@ -221,6 +225,15 @@ function SellerProfileInner({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [dmOpen, setDmOpen] = useState(false);
+  const { user } = useAuth();
+  const { openAuth } = useAuthPrompt();
+
+  const openDm = () => {
+    haptic.light();
+    if (!user) { openAuth(); return; }
+    setDmOpen(true);
+  };
 
   const handleBlock = async () => {
     if (blocking) return;
@@ -415,8 +428,28 @@ function SellerProfileInner({
                   }
                 />
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex items-center gap-2">
                 <FollowButton sellerId={profile.id} size="md" />
+                {user?.id !== profile.id && (
+                  <Press
+                    onClick={openDm}
+                    className="rounded-full font-bold"
+                    style={{
+                      height: 40,
+                      paddingLeft: 16,
+                      paddingRight: 16,
+                      fontSize: 13,
+                      border: "1.5px solid var(--border)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      minHeight: 0,
+                    }}
+                  >
+                    <MessageCircle size={14} />
+                    <span>{t("dm.messageButton", { defaultValue: "Message" })}</span>
+                  </Press>
+                )}
               </div>
             </div>
           </motion.div>
@@ -516,6 +549,17 @@ function SellerProfileInner({
         targetType="user"
         targetId={profile.id}
       />
+
+      <DmChatScreen
+        open={dmOpen}
+        onClose={() => setDmOpen(false)}
+        target={{
+          otherId: profile.id,
+          otherName: profile.display_name,
+          otherAvatarUrl: profile.avatar_url,
+          otherIsVerified: profile.is_verified,
+        }}
+      />
     </>
   );
 }
@@ -613,6 +657,11 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
             </div>
             <div className="p-2">
               <p className="truncate text-[13px] font-medium">{p.name}</p>
+              {(p.brand || (p.colors?.length ?? 0) > 0 || (p.sizes?.length ?? 0) > 0 || p.condition) ? (
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {[p.brand, p.colors?.[0], p.sizes?.[0]].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
               <p className="text-[13px] font-bold">{formatMoney(Number(p.price), cur, lang)}</p>
               <p className="text-[11px] text-muted-foreground">{t("sellerProfile.availableInLives", { defaultValue: "Disponible pendant les lives" })}</p>
             </div>

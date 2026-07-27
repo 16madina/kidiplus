@@ -72,10 +72,10 @@ export function GuestActivityScreen() {
 
         {/* Feature grid */}
         <div className="mt-8 grid w-full grid-cols-4 gap-2">
-          <Feature icon={<Bell size={20} />} label={t("guestActivity.feat.notifs", { defaultValue: "Notifications en direct" })} />
-          <Feature icon={<Package size={20} />} label={t("guestActivity.feat.orders", { defaultValue: "Suivi de commandes" })} />
-          <Feature icon={<Wallet size={20} />} label={t("guestActivity.feat.escrow", { defaultValue: "Escrow sécurisé" })} />
-          <Feature icon={<ShieldAlert size={20} />} label={t("guestActivity.feat.disputes", { defaultValue: "Gestion des litiges" })} />
+          <Feature icon={<Bell size={20} />} label={t("guestActivity.feat.notifs", { defaultValue: "Notifications en direct" })} onClick={go} />
+          <Feature icon={<Package size={20} />} label={t("guestActivity.feat.orders", { defaultValue: "Suivi de commandes" })} onClick={go} />
+          <Feature icon={<Wallet size={20} />} label={t("guestActivity.feat.escrow", { defaultValue: "Escrow sécurisé" })} onClick={go} />
+          <Feature icon={<ShieldAlert size={20} />} label={t("guestActivity.feat.disputes", { defaultValue: "Gestion des litiges" })} onClick={go} />
         </div>
 
         {/* Trust footer */}
@@ -100,9 +100,17 @@ export function GuestActivityScreen() {
   );
 }
 
-function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
+function Feature({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <Press onClick={onClick} className="flex flex-col items-center gap-1.5 !min-h-0">
       <div
         className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-[#10162B]/70 backdrop-blur"
         style={{ boxShadow: "0 2px 8px rgba(16,22,43,0.06)" }}
@@ -110,6 +118,6 @@ function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
         {icon}
       </div>
       <p className="text-[10.5px] font-semibold leading-tight text-[#10162B]/70">{label}</p>
-    </div>
+    </Press>
   );
 }

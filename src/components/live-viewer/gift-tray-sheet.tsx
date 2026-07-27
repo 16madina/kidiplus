@@ -196,6 +196,15 @@ export function useGiftError() {
       unauthorized: t("gifts.err.auth", "Connecte-toi pour envoyer un cadeau"),
       unknown_gift: t("gifts.err.unknown", "Cadeau inconnu"),
       conversion_unavailable: t("gifts.err.conversion", "Conversion indisponible pour cette devise"),
+      daily_limit: t("risk.errors.dailyLimit", "Limite journalière atteinte. Réessaie demain."),
+      seller_gift_limit: t(
+        "risk.errors.sellerGiftLimit",
+        "Ce vendeur a atteint sa limite de cadeaux du jour.",
+      ),
+      risk_restricted: t(
+        "risk.errors.restricted",
+        "Paiements temporairement bloqués. Contacte le support.",
+      ),
       unknown: t("gifts.err.unknown", "Envoi impossible"),
     };
     toast.error(map[err] ?? map.unknown);

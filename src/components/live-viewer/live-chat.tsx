@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Ban, VolumeX, Flag } from "lucide-react";
+import { ChevronDown, Ban, VolumeX, Flag, Reply } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
 import { Press } from "@/components/press";
@@ -9,6 +9,8 @@ import { Press } from "@/components/press";
 // que Framer Motion `layout` déclenche un reflow O(n) sur chaque burst.
 const VISIBLE_MSGS = 40;
 const BURST_THRESHOLD_PER_SEC = 30;
+/** TikTok-style: "X a rejoint" flashes then leaves the chat. */
+const JOIN_TTL_MS = 3_000;
 
 export type LiveChatModeration = {
   /** True when the current viewer is host/moderator: shows the "Mute" action. */
@@ -27,19 +29,30 @@ export type LiveChatModeration = {
   onBlockUser?: (userId: string, displayName: string) => void;
   /** Called with the message id when the viewer taps "Signaler". */
   onReportMessage?: (messageId: string) => void;
+  /** Reply to a comment (TikTok-style). */
+  onReply?: (msg: ChatMsg) => void;
 };
 
 export function LiveChat({
   messages,
   moderation,
+  /** Lift chat above bottom chrome (composer / bid bar). */
+  bottomOffset,
+  /** Visible chat stack height. */
+  height = "36dvh",
 }: {
   messages: ChatMsg[];
   moderation?: LiveChatModeration;
+  bottomOffset?: string | number;
+  height?: string | number;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [showJump, setShowJump] = useState(false);
   const [menuMsg, setMenuMsg] = useState<ChatMsg | null>(null);
+  const [expiredJoins, setExpiredJoins] = useState<Set<string>>(() => new Set());
+  const joinTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const unpinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lastCountRef = useRef(messages.length);
   const lastTsRef = useRef(performance.now());
@@ -58,10 +71,41 @@ export function LiveChat({
     }
   }, [messages]);
 
-  const visible = useMemo(
-    () => (messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages),
-    [messages],
-  );
+  // Expire join announcements after a few seconds so they don't clutter chat.
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.systemKind !== "join") continue;
+      if (expiredJoins.has(m.id) || joinTimersRef.current.has(m.id)) continue;
+      joinTimersRef.current.set(
+        m.id,
+        setTimeout(() => {
+          joinTimersRef.current.delete(m.id);
+          setExpiredJoins((prev) => {
+            if (prev.has(m.id)) return prev;
+            const next = new Set(prev);
+            next.add(m.id);
+            return next;
+          });
+        }, JOIN_TTL_MS),
+      );
+    }
+  }, [messages, expiredJoins]);
+
+  useEffect(() => {
+    return () => {
+      for (const t of joinTimersRef.current.values()) clearTimeout(t);
+      joinTimersRef.current.clear();
+      if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
+    };
+  }, []);
+
+  const visible = useMemo(() => {
+    const base =
+      messages.length > VISIBLE_MSGS ? messages.slice(-VISIBLE_MSGS) : messages;
+    return base.filter(
+      (m) => !(m.systemKind === "join" && expiredJoins.has(m.id)),
+    );
+  }, [messages, expiredJoins]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -69,9 +113,18 @@ export function LiveChat({
     const onScroll = () => {
       const distFromBottom =
         el.scrollHeight - el.scrollTop - el.clientHeight;
-      const isPinned = distFromBottom < 24;
+      const isPinned = distFromBottom < 32;
       setPinned(isPinned);
       setShowJump(!isPinned);
+      // TikTok-like: if the host glances up then stops, resume live follow.
+      if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
+      if (!isPinned) {
+        unpinTimerRef.current = setTimeout(() => {
+          setPinned(true);
+          setShowJump(false);
+          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        }, 4_000);
+      }
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -84,11 +137,12 @@ export function LiveChat({
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: burstMode ? "auto" : "smooth" });
     });
-  }, [messages, pinned, burstMode]);
+  }, [messages, pinned, burstMode, visible.length]);
 
   const jumpDown = () => {
     const el = scrollerRef.current;
     if (!el) return;
+    if (unpinTimerRef.current) clearTimeout(unpinTimerRef.current);
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setPinned(true);
     setShowJump(false);
@@ -97,30 +151,45 @@ export function LiveChat({
   const maskStyle = useMemo(
     () => ({
       maskImage:
-        "linear-gradient(to bottom, transparent 0%, black 40px, black 100%)",
+        "linear-gradient(to bottom, transparent 0%, black 28px, black 100%)",
       WebkitMaskImage:
-        "linear-gradient(to bottom, transparent 0%, black 40px, black 100%)",
+        "linear-gradient(to bottom, transparent 0%, black 28px, black 100%)",
     }),
     [],
   );
 
-  // Menu opens whenever the viewer can either moderate OR report the message.
-  // Apple 1.2: any signed-in user must be able to flag/block chat UGC — so
-  // `canActOn` returns true for regular viewers too when `canReport` is set.
-  const canActOn = (m: ChatMsg) => {
+  const canModerateMsg = (m: ChatMsg) => {
     if (!m.userId || m.system) return false;
     if (m.userId === moderation?.selfUserId) return false;
     if (m.userId === moderation?.hostUserId) return false;
-    return !!(moderation?.canModerate || moderation?.canReport);
+    return !!moderation?.canModerate;
   };
+
+  const canReportMsg = (m: ChatMsg) => {
+    if (!m.userId || m.system) return false;
+    if (m.userId === moderation?.selfUserId) return false;
+    return !!moderation?.canReport;
+  };
+
+  const canReplyMsg = (m: ChatMsg) => {
+    if (m.system || !moderation?.onReply) return false;
+    if (m.userId && m.userId === moderation.selfUserId) return false;
+    return !!m.user;
+  };
+
+  const canOpenMenu = (m: ChatMsg) =>
+    canReplyMsg(m) || canModerateMsg(m) || canReportMsg(m);
 
   const { t } = useTranslation();
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-start px-3">
+    <div
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-start px-3"
+      style={{ bottom: bottomOffset ?? 0 }}
+    >
       <div
         className="pointer-events-auto flex w-[85%] max-w-[420px] flex-col"
-        style={{ height: "40dvh" }}
+        style={{ height }}
       >
         <div
           ref={scrollerRef}
@@ -131,13 +200,13 @@ export function LiveChat({
             WebkitOverflowScrolling: "touch",
           }}
         >
-          <div className="flex flex-col justify-end gap-1.5 pt-8">
+          <div className="flex flex-col justify-end gap-1.5 pt-6">
             {burstMode ? (
               visible.map((m) => (
                 <div key={m.id}>
                   <ChatBubble
                     msg={m}
-                    canModerate={canActOn(m)}
+                    interactive={canOpenMenu(m)}
                     alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
                     onOpenMenu={() => setMenuMsg(m)}
                   />
@@ -150,12 +219,16 @@ export function LiveChat({
                     key={m.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
+                    exit={
+                      m.systemKind === "join"
+                        ? { opacity: 0, y: -6, transition: { duration: 0.35 } }
+                        : { opacity: 0 }
+                    }
                     transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
                   >
                     <ChatBubble
                       msg={m}
-                      canModerate={canActOn(m)}
+                      interactive={canOpenMenu(m)}
                       alreadyMuted={!!(m.userId && moderation?.mutedIds?.has(m.userId))}
                       onOpenMenu={() => setMenuMsg(m)}
                     />
@@ -173,18 +246,19 @@ export function LiveChat({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.15 }}
-              className="pointer-events-auto mb-1 self-start"
+              className="pointer-events-auto z-30 mb-1 self-start"
             >
               <Press
                 onClick={jumpDown}
                 className="!min-h-8 rounded-full px-3 text-xs font-semibold text-white"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.55)",
+                  backgroundColor: "rgba(0,0,0,0.7)",
                   backdropFilter: "blur(10px)",
                   WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                Nouveaux messages
+                {t("live.newComments", "Nouveaux commentaires")}
                 <ChevronDown size={14} className="ml-1" />
               </Press>
             </motion.div>
@@ -193,7 +267,7 @@ export function LiveChat({
       </div>
 
       <AnimatePresence>
-        {menuMsg && menuMsg.userId && (
+        {menuMsg && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -214,8 +288,21 @@ export function LiveChat({
                 {" · "}
                 <span className="line-clamp-1">{menuMsg.text}</span>
               </div>
-              {/* Signaler — visible pour tout viewer connecté (Apple 1.2). */}
-              {moderation?.onReportMessage && (
+              {canReplyMsg(menuMsg) && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
+                  onClick={() => {
+                    const msg = menuMsg;
+                    setMenuMsg(null);
+                    moderation?.onReply?.(msg);
+                  }}
+                >
+                  <Reply size={18} />
+                  {t("live.reply", "Répondre")}
+                </button>
+              )}
+              {canReportMsg(menuMsg) && moderation?.onReportMessage && (
                 <button
                   type="button"
                   className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold active:bg-black/5"
@@ -229,7 +316,7 @@ export function LiveChat({
                   {t("report.action", "Signaler")}
                 </button>
               )}
-              {moderation?.canModerate &&
+              {canModerateMsg(menuMsg) &&
                 !(menuMsg.userId && moderation?.mutedIds?.has(menuMsg.userId)) && (
                 <button
                   type="button"
@@ -245,19 +332,21 @@ export function LiveChat({
                   {t("moderator.muteInLive", "Couper les commentaires")}
                 </button>
               )}
-              <button
-                type="button"
-                className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-black/5"
-                onClick={() => {
-                  const id = menuMsg.userId!;
-                  const name = menuMsg.user;
-                  setMenuMsg(null);
-                  moderation?.onBlockUser?.(id, name);
-                }}
-              >
-                <Ban size={18} />
-                {t("moderator.blockUser", "Bloquer")}
-              </button>
+              {(canModerateMsg(menuMsg) || canReportMsg(menuMsg)) && menuMsg.userId && (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[15px] font-semibold text-red-600 active:bg-black/5"
+                  onClick={() => {
+                    const id = menuMsg.userId!;
+                    const name = menuMsg.user;
+                    setMenuMsg(null);
+                    moderation?.onBlockUser?.(id, name);
+                  }}
+                >
+                  <Ban size={18} />
+                  {t("moderator.blockUser", "Bloquer")}
+                </button>
+              )}
               <button
                 type="button"
                 className="w-full border-t px-4 py-3.5 text-[15px] font-semibold text-muted-foreground active:bg-black/5"
@@ -275,16 +364,25 @@ export function LiveChat({
 
 const ChatBubble = memo(function ChatBubble({
   msg,
-  canModerate,
+  interactive,
   alreadyMuted,
   onOpenMenu,
 }: {
   msg: ChatMsg;
-  canModerate?: boolean;
+  interactive?: boolean;
   alreadyMuted?: boolean;
   onOpenMenu?: () => void;
 }) {
+  const { t } = useTranslation();
+
   if (msg.system) {
+    const label =
+      msg.systemKind === "join"
+        ? t("live.userJoined", {
+            name: msg.text,
+            defaultValue: "{{name}} a rejoint",
+          })
+        : msg.text;
     return (
       <div
         className="self-start rounded-full px-2.5 py-1 text-[11px] font-semibold text-white"
@@ -295,22 +393,22 @@ const ChatBubble = memo(function ChatBubble({
           textShadow: "0 1px 3px rgba(0,0,0,0.6)",
         }}
       >
-        {msg.text}
+        {label}
       </div>
     );
   }
 
   const open = () => {
-    if (canModerate) onOpenMenu?.();
+    if (interactive) onOpenMenu?.();
   };
 
   return (
     <button
       type="button"
-      disabled={!canModerate}
+      disabled={!interactive}
       onClick={open}
       onContextMenu={(e) => {
-        if (!canModerate) return;
+        if (!interactive) return;
         e.preventDefault();
         open();
       }}
@@ -324,9 +422,30 @@ const ChatBubble = memo(function ChatBubble({
         {msg.user.slice(0, 1).toUpperCase()}
       </div>
       <div className="min-w-0 text-[13px] leading-snug">
+        {msg.replyTo ? (
+          <div className="mb-0.5 truncate text-[11px] font-medium text-white/65">
+            ↪ {msg.replyTo.user}
+            {msg.replyTo.text ? ` · ${msg.replyTo.text}` : ""}
+          </div>
+        ) : null}
         <span className="font-semibold" style={{ color: msg.color }}>
           {msg.user}
         </span>
+        {msg.source === "youtube" ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-white"
+            style={{ backgroundColor: "oklch(0.55 0.22 25)" }}
+          >
+            YT
+          </span>
+        ) : msg.source === "facebook" ? (
+          <span
+            className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-white"
+            style={{ backgroundColor: "oklch(0.5 0.14 260)" }}
+          >
+            FB
+          </span>
+        ) : null}
         {msg.isHost ? (
           <span
             className="ml-1 inline-flex align-middle items-center rounded px-1 py-px text-[9px] font-black tracking-wide text-black"

@@ -19,17 +19,48 @@ import { formatMoney } from "@/lib/money";
 import { TopUpSheet } from "./topup-sheet";
 import type { WalletTxRow } from "@/lib/wallet-db";
 import { confirmWalletTopup, readPendingTopup, clearPendingTopup } from "@/lib/payment-confirm";
+import { clearPendingPaypalOrder } from "@/lib/paypal-topup-client";
 
 export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const { balance, currency, transactions, refresh } = useWallet();
   const [topupOpen, setTopupOpen] = useState(false);
 
-  // Recovery: if a previous top-up succeeded on Stripe but our server
-  // never got the confirm call (network drop, page reload, webhook not
-  // yet configured), retry it when the wallet screen mounts.
+  // Recovery: Stripe pending confirm + PayPal deep-link result.
   useEffect(() => {
     if (!open) return;
+
+    try {
+      const raw = sessionStorage.getItem("kidi:paypal_done");
+      if (raw) {
+        sessionStorage.removeItem("kidi:paypal_done");
+        clearPendingPaypalOrder();
+        const done = JSON.parse(raw) as {
+          status?: string;
+          amount?: string | null;
+          currency?: string | null;
+          duplicate?: boolean;
+        };
+        void refresh();
+        if (done.status === "ok") {
+          if (!done.duplicate) toast.success(t("wallet.topup.success"));
+        } else if (done.status === "cancelled") {
+          toast.message(
+            t("wallet.topup.paypalCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+          );
+        } else if (done.status === "pending") {
+          toast.message(
+            t("wallet.topup.paypalPendingHint", {
+              defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+            }),
+          );
+        }
+        setTopupOpen(false);
+      }
+    } catch {
+      /* ignore */
+    }
+
     const pending = readPendingTopup();
     if (!pending) return;
     void (async () => {

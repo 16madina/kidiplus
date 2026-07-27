@@ -32,6 +32,8 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { FollowButton } from "@/components/follow-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReferredBadge } from "@/components/referred-badge";
+import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sheet";
+import { haptic } from "@/lib/haptics";
 
 type CategorySort = "recommended" | "popular" | "alpha";
 const CATEGORY_SORTS: CategorySort[] = ["recommended", "popular", "alpha"];
@@ -94,6 +96,7 @@ export function SearchScreen() {
   const [productResults, setProductResults] = useState<ShopProductWithSeller[]>([]);
   const [productImgs, setProductImgs] = useState<Record<string, string | null>>({});
   const [productLoading, setProductLoading] = useState(false);
+  const [productDetail, setProductDetail] = useState<ShopProductWithSeller | null>(null);
 
   // Trends: derived from currently-live streams grouped by category.
   const [trends, setTrends] = useState<TrendItem[]>([]);
@@ -374,7 +377,8 @@ export function SearchScreen() {
                   <Press
                     onClick={() => {
                       commitRecent(query);
-                      openSeller(p.seller_handle || p.seller_display_name);
+                      haptic.selection();
+                      setProductDetail(p);
                     }}
                     className="!block h-full w-full overflow-hidden rounded-2xl bg-muted p-0 text-left"
                   >
@@ -682,6 +686,12 @@ export function SearchScreen() {
           )}
         </AnimatePresence>
       </div>
+
+      <ShopProductDetailSheet
+        open={!!productDetail}
+        onClose={() => setProductDetail(null)}
+        product={productDetail}
+      />
     </div>
   );
 }

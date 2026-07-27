@@ -4,6 +4,7 @@
 // order snapshotting. It has NO Supabase calls (see delivery-db.ts).
 
 import { normalizeCurrency, type Currency } from "@/lib/money";
+import { normalizeCountryCode } from "@/lib/delivery-zones-data";
 
 export type DeliveryMode = "zones" | "flat" | "courier";
 
@@ -27,6 +28,18 @@ export const DEFAULT_DELIVERY_SETTINGS: Omit<SellerDeliverySettings, "seller_id"
   zones: [],
 };
 
+/** True when the seller has saved real delivery settings (not the implicit
+ *  worldwide free-flat fallback used when no row exists yet). */
+export function isSellerDeliveryConfigured(
+  settings: SellerDeliverySettings | null | undefined,
+): boolean {
+  if (!settings) return false;
+  if (settings.mode === "zones" && (!settings.zones || settings.zones.length === 0)) {
+    return false;
+  }
+  return true;
+}
+
 /** Legacy currency-based compact heuristic (kept for back-compat).
  *  Prefer `isCompactAddressCountry` which decides per address. */
 export function isCompactAddressCurrency(currency: string | null | undefined): boolean {
@@ -46,7 +59,7 @@ const COMPACT_COUNTRIES = new Set([
 ]);
 
 export function isCompactAddressCountry(country: string | null | undefined): boolean {
-  const c = (country ?? "").trim().toUpperCase();
+  const c = normalizeCountryCode(country) ?? (country ?? "").trim().toUpperCase();
   if (!c) return false;
   return COMPACT_COUNTRIES.has(c);
 }
@@ -129,19 +142,26 @@ const normText = (s: string | null | undefined) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const normCountry = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+const normCountry = (s: string | null | undefined) =>
+  normalizeCountryCode(s) ?? (s ?? "").trim().toUpperCase();
 
-/** Zones filtered to the buyer's country. Zones with an empty/legacy country
- *  are treated as matching (backwards compatible). */
+/** Zones filtered to the buyer's country. Legacy zones without a country only
+ *  match buyers in the seller's own country (mirrors resolve_buyer_delivery) —
+ *  never "worldwide by accident". When the seller country is unknown, legacy
+ *  zones still match to avoid over-blocking; the server has the final say. */
 export function zonesForCountry(
   zones: DeliveryZone[],
   country: string | null | undefined,
+  sellerCountry?: string | null,
 ): DeliveryZone[] {
   const c = normCountry(country);
   if (!c) return zones;
+  const seller = normCountry(sellerCountry);
   return zones.filter((z) => {
     const zc = normCountry(z.country);
-    return !zc || zc === c;
+    if (zc) return zc === c;
+    // Legacy row without a country: seller's own country only.
+    return seller ? c === seller : true;
   });
 }
 

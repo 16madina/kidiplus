@@ -1,4 +1,18 @@
 {
+  "risk": {
+    "errors": {
+      "dailyLimit": "Limite journalière atteinte. Réessaie demain.",
+      "restricted": "Paiements temporairement bloqués. Contacte le support.",
+      "banned": "Compte banni — paiements impossibles.",
+      "suspended": "Compte suspendu — paiements impossibles.",
+      "verificationRequired": "Retrait réservé aux comptes certifiés.",
+      "sellerGiftLimit": "Ce vendeur a atteint sa limite de cadeaux du jour.",
+     "payoutDailyLimit": "Limite journalière atteinte : {{used}} déjà retiré aujourd'hui sur {{cap}} autorisés.",
+     "payoutWeeklyLimit": "Limite hebdomadaire atteinte : {{used}} déjà retiré ces 7 derniers jours sur {{cap}} autorisés."
+    },
+    "payoutNeedsVerify": "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur.",
+    "payoutLimitsHint": "Plafonds retrait : {{day}} / jour · {{week}} / 7 jours. Certifie ton compte (badge) ou complète le KYC pour augmenter ces limites."
+  },
   "follow": {
     "follow": "Suivre",
     "following": "Abonné"
@@ -65,6 +79,14 @@
     "fixed": "Prix fixe",
     "auction": "Enchère",
     "added": "Article ajouté",
+    "catalogPrice": "Prix catalogue · vendu en live (enchère ou prix fixe)",
+    "configHint": "Choisis enchère ou prix fixe, la quantité pour ce live, puis Options pour couleurs / tailles.",
+    "stockAvailable": "Stock boutique : {{n}}",
+    "qtyForLive": "Qté pour ce live",
+    "pickColors": "Couleurs pour ce live",
+    "pickSizes": "Tailles pour ce live",
+    "optionsEmpty": "Aucune option en boutique — tu peux en ajouter ici",
+    "optionsHintEditShop": "Ajoute couleurs / tailles dans Ma boutique pour les retrouver ici.",
     "updated": "Article modifié",
     "imageOnly": "Image uniquement",
     "imageTooBig": "Image trop lourde (max 5 Mo)"
@@ -288,11 +310,18 @@
     "following": "Abonné",
     "chatPlaceholder": "Écris un message…",
     "sendMessage": "Envoyer",
+    "userJoined": "{{name}} a rejoint",
+    "reply": "Répondre",
+    "replyingTo": "Réponse à {{name}}",
+    "replyPlaceholder": "Répondre à {{name}}…",
     "bid": "Enchérir",
     "bidAt": "Enchérir à {{amount}}",
     "highestBidder": "Meilleure enchère : toi 🏆",
+    "youLead": "Tu mènes 🏆",
     "bidFailed": "Enchère impossible. Réessaie.",
+    "bidInsufficientFunds": "Solde insuffisant — recharge ton portefeuille pour enchérir",
     "buy": "Acheter",
+    "buyNowPrice": "Acheter {{amount}}",
     "buyNow": "Acheter maintenant",
     "sold": "VENDU",
     "soldTo": "Vendu à {{name}}",
@@ -391,12 +420,25 @@
       "cover": "Couverture",
       "changeCover": "Changer la couverture",
       "addCover": "Ajouter une couverture",
+      "addCoverShort": "Photo *",
       "category": "Catégorie",
       "products": "Produits",
       "addProduct": "Ajouter un produit",
       "start": "Lancer le live",
       "starting": "Démarrage…",
       "readyHelp": "Ajoute au moins un produit pour lancer ton live.",
+      "deliveryPrompt": {
+        "title": "As-tu configuré la livraison ?",
+        "body1": "Si tu n’as pas encore réglé tes options de livraison, configure-les maintenant.",
+        "body2": "Sinon, les acheteurs de n’importe quel pays pourront commander — et tu seras obligé·e de livrer dans ces pays.",
+        "configure": "Configurer la livraison",
+        "continueAnyway": "Continuer sans configurer",
+        "cancel": "Annuler"
+      },
+      "errors": {
+        "coverRequired": "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        "coverRequiredHint": "Photo de couverture obligatoire (pas de photo de profil)"
+      },
       "productSheet": {
         "title": "Ajouter un produit",
         "name": "Nom du produit",
@@ -441,6 +483,86 @@
       "revenue": "Chiffre d'affaires",
       "newFollowers": "Nouveaux abonnés",
       "close": "Fermer"
+    },
+    "rtmp": {
+      "toggleTitle": "Multi-plateformes (Restream / OBS)",
+      "toggleHint": "Diffuse depuis Restream vers TikTok, Facebook, YouTube et KiDi+ en même temps.",
+      "on": "ON",
+      "off": "OFF",
+      "previewTitle": "Mode Restream / OBS",
+      "previewBody": "Pas de caméra dans KiDi+. Tu lances le live depuis Restream ; KiDi+ reçoit le flux RTMP.",
+      "createFailed": "Impossible de créer le lien RTMP",
+      "title": "Multi-plateformes",
+      "subtitle": "Colle ces infos dans Restream (destination Custom RTMP), puis lance le live depuis Restream.",
+      "step1": "Installe l’app Restream (téléphone ou ordi).",
+      "step2": "Connecte TikTok, Facebook, YouTube dans Restream.",
+      "step3": "Ajoute une destination Custom RTMP avec l’URL et la clé ci-dessous.",
+      "step4": "Lance le live dans Restream — la vidéo apparaît ici et chez les viewers KiDi+.",
+      "serverUrl": "URL RTMP (Server)",
+      "streamKey": "Clé de stream (Stream key)",
+      "copiedUrl": "URL copiée",
+      "copiedKey": "Clé copiée",
+      "show": "Voir",
+      "hide": "Masquer",
+      "securityNote": "Ne partage pas ta clé de stream. Elle donne le droit de publier sur ce live.",
+      "done": "J’ai configuré Restream",
+      "openCreds": "Clés RTMP",
+      "waiting": "En attente du flux Restream…"
+    },
+    "youtube": {
+      "connectTitle": "YouTube",
+      "connectHint": "Connecte ton compte pour diffuser aussi sur YouTube",
+      "connect": "Connecter",
+      "disconnect": "Déconnecter",
+      "connectedAs": "Connecté · {{channel}}",
+      "connectedToast": "YouTube connecté",
+      "disconnectedToast": "YouTube déconnecté",
+      "connectFailed": "Connexion YouTube échouée",
+      "needConnect": "Connecte YouTube dans le setup avant de diffuser",
+      "goLive": "Diffuser sur YouTube",
+      "liveBadge": "YouTube ON",
+      "notConnected": "YouTube",
+      "working": "YouTube…",
+      "started": "En direct aussi sur YouTube",
+      "stopped": "Diffusion YouTube arrêtée",
+      "startFailed": "Impossible de diffuser sur YouTube",
+      "disclaimerTitle": "Avant de connecter YouTube",
+      "disclaimerBody1": "KiDi+ diffuse vers ta chaîne YouTube. YouTube peut refuser un live selon ses règles (vérification, historique, restrictions du compte).",
+      "disclaimerBody2": "Si YouTube bloque le live, ce n’est en général pas un bug KiDi+ — c’est une limite du compte YouTube."
+    },
+    "facebook": {
+      "connectTitle": "Facebook",
+      "connectHint": "Connecte une Page pour diffuser aussi sur Facebook",
+      "connect": "Connecter",
+      "disconnect": "Déconnecter",
+      "connectedAs": "Page · {{page}}",
+      "needPage": "Compte lié — choisis ta Page",
+      "choosePage": "Page",
+      "changePage": "Changer",
+      "pickPageTitle": "Quelle Page Facebook ?",
+      "pickPageHint": "Le live KiDi+ sera diffusé sur cette Page.",
+      "pickPageToast": "Choisis ta Page Facebook",
+      "pageSelected": "Page « {{page}} » sélectionnée",
+      "noPages": "Aucune Page trouvée…",
+      "connectedToast": "Facebook connecté",
+      "disconnectedToast": "Facebook déconnecté",
+      "connectFailed": "Connexion Facebook échouée",
+      "needConnect": "Connecte une Page Facebook dans le setup avant de diffuser",
+      "goLive": "Diffuser sur Facebook",
+      "liveBadge": "Facebook ON",
+      "notConnected": "Facebook",
+      "working": "Facebook…",
+      "started": "En direct aussi sur Facebook",
+      "stopped": "Diffusion Facebook arrêtée",
+      "startFailed": "Impossible de diffuser sur Facebook",
+      "disclaimerTitle": "Avant de connecter Facebook",
+      "disclaimerBody1": "KiDi+ diffuse vers une Page Facebook. La Page doit être autorisée à faire des lives (règles Meta : éligibilité Live, compte en règle, etc.).",
+      "disclaimerBody2": "Si la Page n’est pas éligible, la connexion peut réussir mais la diffusion échouera. Ce n’est pas un bug KiDi+ — c’est une limite Meta sur ta Page."
+    },
+    "social": {
+      "disclaimerBody3": "Les viewers sur ces plateformes verront le flux vidéo ; les enchères cliquables restent sur KiDi+.",
+      "disclaimerContinue": "Continuer",
+      "disclaimerCancel": "Annuler"
     }
   },
   "golive": {
@@ -454,6 +576,9 @@
       "myScheduled": "Mes lives programmés",
       "emptyScheduled": "Aucun live programmé pour le moment.",
       "startNowPill": "C'est l'heure !",
+      "expired": "Expiré",
+      "expiredToast": "Ce live programmé a expiré",
+      "tooEarlyToast": "Tu pourras démarrer 15 min avant l'heure",
       "startNowShort": "Démarrer",
       "cancelled": "Live annulé",
       "confirmCancelTitle": "Annuler ce live programmé ?",
@@ -478,6 +603,7 @@
       "editTitle": "Modifier le live",
       "subtitle": "Prépare ton live, ajoute tes articles et annonce-le à ta communauté.",
       "coverTitle": "Image de couverture",
+      "coverTitleRequired": "Image de couverture *",
       "addCover": "Ajouter une image",
       "infoTitle": "Informations du live",
       "titleLabel": "Titre du live",
@@ -540,7 +666,8 @@
     "title": "Activité",
     "tabs": {
       "notifications": "Notifications",
-      "orders": "Commandes"
+      "orders": "Commandes",
+      "messages": "Messages"
     },
     "orderStatus": {
       "paid": "Payé",
@@ -559,6 +686,19 @@
       "notifications": "Aucune notification pour l'instant.",
       "orders": "Aucune commande pour l'instant."
     }
+  },
+  "dm": {
+    "title": "Message",
+    "messageButton": "Message",
+    "you": "Toi",
+    "send": "Envoyer",
+    "inputPlaceholder": "Écris un message…",
+    "emptyThread": "Envoie ton premier message pour démarrer la conversation.",
+    "emptyInboxTitle": "Aucun message",
+    "emptyInboxBody": "Contacte un vendeur depuis son profil pour démarrer une conversation.",
+    "errorBlocked": "Vous ne pouvez pas échanger avec cet utilisateur.",
+    "errorSuspended": "Ton compte ne permet pas d'envoyer des messages.",
+    "blockedNotice": "Tu as bloqué cet utilisateur. Débloque-le pour reprendre la conversation."
   },
   "auth": {
     "welcome": {
@@ -656,9 +796,12 @@
     "logout": "Se déconnecter",
     "currency": "Devise",
     "chooseCurrency": "Choisir la devise",
-    "currencyHint": "La devise du portefeuille ne peut changer que si le solde est à 0.",
+    "currencyHint": "Les prix des lives restent dans la devise du vendeur — ton wallet suit ta devise.",
     "currencyUpdated": "Devise mise à jour",
-    "currencyWalletLocked": "Devise du profil mise à jour. Le portefeuille reste inchangé (solde non nul)."
+    "currencyWalletLocked": "Devise du profil mise à jour. Le portefeuille n'a pas pu être converti — réessaie.",
+    "currencyConvertConfirm": "Ton solde de {{from}} sera converti en ≈ {{to}} (taux indicatif). Continuer ?",
+    "currencyConverted": "Devise mise à jour — nouveau solde : {{balance}}",
+    "currencyBalanceNote": "Ton solde actuel ({{balance}}) sera converti automatiquement au taux indicatif."
   },
   "errors": {
     "generic": "Une erreur est survenue.",
@@ -843,6 +986,8 @@
     "paypalEmail": "Adresse e-mail PayPal",
     "paypalEmailPlaceholder": "prenom@exemple.com",
     "paypalHint": "L'e-mail associé à ton compte PayPal.",
+    "paypalXofHint": "Tu recevras ≈ {{eur}} sur ton PayPal (taux fixe officiel, sans marge).",
+    "paypalReceived": "Reçu sur PayPal",
     "submit": "Confirmer la demande",
     "confirmTitle": "Confirmer le retrait",
     "successTitle": "Demande envoyée ✅",
@@ -888,8 +1033,27 @@
       "payments": "Paiements",
       "lives": "Lives",
       "reports": "Signalements",
+      "risk": "Risque",
       "verify": "Certifs",
       "referral": "Parrainage"
+    },
+    "risk": {
+      "title": "Alertes risque",
+      "empty": "Aucune alerte.",
+      "count": "{{count}} alerte(s)",
+      "resolve": "Résoudre",
+      "resolved": "Alerte résolue",
+      "resolveFail": "Échec",
+      "freeze": "Geler",
+      "unfreeze": "Lever le gel",
+      "freezeOn": "Compte gelé (paiements)",
+      "freezeOff": "Gel levé",
+      "frozen": "gelé",
+      "filter": {
+        "open": "Ouvertes",
+        "resolved": "Résolues",
+        "all": "Toutes"
+      }
     },
     "toDo": {
       "title": "À traiter",
@@ -976,6 +1140,10 @@
       "title": "Compte suspendu définitivement",
       "body": "Ton compte a été suspendu suite à une violation des règles de la communauté KiDi+.",
       "support": "Pour toute question, contacte support@kidiplus.com"
+    },
+    "frozen": {
+      "title": "Compte en vérification",
+      "body": "Les retraits, achats via portefeuille et cadeaux sont temporairement bloqués. Contacte le support si besoin."
     },
     "types": {
       "warning": "Avertissement",
@@ -1177,6 +1345,7 @@
     "custom": {
       "title": "Enchère personnalisée",
       "open": "Enchère personnalisée",
+      "short": "Max",
       "close": "Fermer",
       "decrease": "Diminuer",
       "increase": "Augmenter",
@@ -1215,7 +1384,8 @@
     "saved": "Adresse enregistrée",
     "confirmDelete": "Supprimer cette adresse ?",
     "fields": {
-      "label": "Nom (Maison, Bureau…)",
+      "label": "Nom de l'adresse (optionnel)",
+      "labelPlaceholder": "Ex : Maison, Bureau…",
       "fullName": "Nom complet",
       "phone": "Téléphone",
       "country": "Pays",
@@ -1234,6 +1404,8 @@
     "communeRequired": "La commune / quartier est requise.",
     "streetRequired": "L'adresse (rue) est requise.",
     "postalRequired": "Le code postal est requis.",
+    "postalInvalid": "Code postal invalide pour ce pays (ex : {{example}}).",
+    "streetPlaceholder": "Ex : 2290 rue de Brébeuf",
     "pickCountry": "Choisir un pays",
     "landmarkPlaceholder": "Ex : derrière la pharmacie, immeuble bleu",
     "chooseForCheckout": "Choisir une adresse",
@@ -1248,6 +1420,41 @@
     "phoneCopied": "Téléphone copié",
     "awaitingPayment": "L'adresse sera visible dès que la commande est payée.",
     "noAddress": "Cette commande n'a pas encore d'adresse enregistrée. Contacte l'acheteur."
+  },
+  "orderDetail": {
+    "deliveryAddress": "Adresse de livraison",
+    "shippingTitle": "Livraison",
+    "orderedOn": "Commandé le",
+    "paidOn": "Payé le",
+    "shippedOn": "Expédié le",
+    "deliveredOn": "Reçu le",
+    "notYetShipped": "pas encore expédié",
+    "notYetDelivered": "pas encore reçu"
+  },
+  "invoice": {
+    "title": "Facture",
+    "viewCta": "Voir la facture",
+    "seller": "Vendeur",
+    "buyer": "Acheteur",
+    "stampPaid": "Payée",
+    "stampPending": "En attente",
+    "paidOn": "Payée le",
+    "paidVia": "Payée le {{date}} · {{method}}",
+    "pendingNote": "Paiement en attente — la facture sera validée après règlement.",
+    "payWallet": "Wallet KiDi+",
+    "payCard": "Carte bancaire",
+    "thanks": "Merci pour ta confiance 💛",
+    "share": "Partager",
+    "shareImage": "Partager l'image",
+    "sharePdf": "PDF",
+    "downloadPdf": "Télécharger PDF",
+    "shareHint": "Partager ouvre WhatsApp / Messages… · PDF te demande où enregistrer la facture.",
+    "imageSaved": "Image enregistrée",
+    "pdfSaved": "PDF enregistré",
+    "exportFailed": "Export impossible",
+    "copy": "Copier",
+    "copied": "Facture copiée",
+    "copyFailed": "Copie impossible"
   },
   "delivery": {
     "title": "Livraison",
@@ -1268,11 +1475,15 @@
     "flatFee": "Tarif fixe",
     "zones": "Zones de livraison",
     "addZone": "Ajouter une zone",
+    "courierShort": "au livreur",
+    "quickAddPlaceholder": "Tape une zone puis Entrée — ex : Cocody, Yopougon…",
+    "quickAddHint": "Ajoute tes zones ci-dessus — elles s'enchaînent, puis ajuste les frais en dessous.",
     "zoneName": "Nom de la zone",
     "zoneFee": "Prix",
     "removeZone": "Retirer",
     "saveCta": "Enregistrer",
     "saved": "Paramètres enregistrés",
+    "saveFailed": "Enregistrement impossible. Réessaie.",
     "fee": "Livraison",
     "courierNote": "Frais de livraison : à payer au livreur 🛵",
     "chooseZone": "Choisir une zone",
@@ -1282,6 +1493,7 @@
     "zoneCountry": "Pays",
     "searchCountry": "Rechercher un pays",
     "noCountryFound": "Aucun pays trouvé",
+    "zonesRequired": "Ajoute au moins une zone (pays) avant d'enregistrer.",
     "sellerZones": "Zones livrées"
   },
   "escrow": {
@@ -1427,5 +1639,33 @@
       "assignBtn": "Confirmer l'assignation",
       "assigned": "Assigné à @{{h}}"
     }
+  },
+  "productOptions": {
+    "title": "Options",
+    "subtitle": "Marque, état, couleurs, tailles",
+    "brand": "Marque",
+    "brandPlaceholder": "ex : Nike, Zara…",
+    "conditionLabel": "État",
+    "condition": {
+      "new": "Neuf",
+      "likeNew": "Comme neuf",
+      "good": "Bon état",
+      "used": "Occasion"
+    },
+    "colors": "Couleurs",
+    "sizes": "Tailles",
+    "customColor": "Autre couleur",
+    "customSize": "Autre taille",
+    "quantity": "Quantité",
+    "duration": "Durée (s)",
+    "bidIncrement": "Incrément par enchère (optionnel)",
+    "description": "Description (optionnel)",
+    "descriptionPlaceholder": "Décris brièvement ton produit…",
+    "coverPhoto": "Couverture",
+    "addPhoto": "Ajouter",
+    "photosHint": "Jusqu’à 3 photos — la 1ʳᵉ est la couverture",
+    "pickVariant": "Choisis ta variante",
+    "confirmVariant": "Continuer",
+    "pickRequired": "Choisis une couleur / taille"
   }
 }

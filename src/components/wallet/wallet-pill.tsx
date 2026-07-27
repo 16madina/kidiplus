@@ -12,10 +12,13 @@ import { formatMoneyShort } from "@/lib/money";
 export function WalletPill({
   onTap,
   tone = "glass",
+  compact = false,
 }: {
   onTap: () => void;
   /** `glass` = translucent black over video; `solid` = card-style for headers */
   tone?: "glass" | "solid";
+  /** Tighter chip for crowded live top bars. */
+  compact?: boolean;
 }) {
   const { balance, currency } = useWalletSafe();
 
@@ -40,7 +43,11 @@ export function WalletPill({
     <Press
       onClick={onTap}
       aria-label={formatMoneyShort(balance, currency)}
-      className="!min-h-8 rounded-full px-2.5 py-1"
+      className={
+        compact
+          ? "!min-h-0 h-8 max-w-[7.5rem] shrink-0 rounded-full px-2 py-0"
+          : "!min-h-8 rounded-full px-2.5 py-1"
+      }
       style={
         tone === "glass"
           ? {
@@ -60,10 +67,14 @@ export function WalletPill({
       <motion.span
         animate={bumped ? { scale: [1, 1.15, 1] } : undefined}
         transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-        className="flex items-center gap-1.5 text-[12.5px] font-bold tabular-nums"
+        className={
+          compact
+            ? "flex max-w-full items-center gap-1 truncate text-[11px] font-bold tabular-nums"
+            : "flex items-center gap-1.5 text-[12.5px] font-bold tabular-nums"
+        }
       >
-        <Wallet size={13} color="#c8a24a" />
-        <motion.span>{label}</motion.span>
+        <Wallet size={compact ? 12 : 13} color="#c8a24a" className="shrink-0" />
+        <motion.span className="truncate">{label}</motion.span>
       </motion.span>
     </Press>
   );

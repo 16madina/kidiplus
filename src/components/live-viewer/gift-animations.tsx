@@ -14,6 +14,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { giftByKey, type GiftKey } from "@/lib/gifts";
+import { isGiftAnimStale, rememberGiftAnim } from "@/lib/gift-anim-seen";
 import { EASE_IOS } from "@/lib/motion";
 import type { GiftEvt } from "@/lib/live-room";
 
@@ -35,16 +36,12 @@ const isTier3 = (k: string) => k === "rocket" || k === "lion";
 export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   const [active, setActive] = useState<QueueItem[]>([]);
   const queueRef = useRef<QueueItem[]>([]);
-  const seenRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!trigger) return;
-    if (seenRef.current.has(trigger.id)) return;
-    seenRef.current.add(trigger.id);
-    if (seenRef.current.size > 200) {
-      const arr = Array.from(seenRef.current);
-      seenRef.current = new Set(arr.slice(arr.length - 100));
-    }
+    if (!trigger?.id) return;
+    // Skip history / remount replays of the same lastGift.
+    if (isGiftAnimStale(trigger.ts)) return;
+    if (!rememberGiftAnim(trigger.id)) return;
     const item: QueueItem = { ...trigger, animId: `${trigger.id}-${Date.now()}` };
     setActive((prev) => {
       const t3Playing = prev.some((a) => isTier3(a.giftKey));
@@ -62,7 +59,7 @@ export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
       }
       return [...prev, item];
     });
-  }, [trigger]);
+  }, [trigger?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- id is the dedupe key
 
   const dropItem = (animId: string) => {
     setActive((prev) => {
@@ -84,7 +81,8 @@ export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden" aria-hidden>
+    // Above gift tray (z-70) so the sender sees the animation while / after sending.
+    <div className="pointer-events-none absolute inset-0 z-[85] overflow-hidden" aria-hidden>
       <AnimatePresence>
         {active.map((item) => (
           <GiftAnim key={item.animId} item={item} onDone={() => dropItem(item.animId)} />
@@ -105,18 +103,20 @@ function GiftAnim({ item, onDone }: { item: QueueItem; onDone: () => void }) {
   }, [dur, onDone]);
 
   switch (key) {
-    case "rose":    return <RoseAnim name={item.senderName} dur={dur} />;
-    case "heart":   return <HeartAnim name={item.senderName} dur={dur} />;
-    case "diamond": return <DiamondAnim name={item.senderName} dur={dur} />;
-    case "crown":   return <CrownAnim name={item.senderName} dur={dur} />;
-    case "rocket":  return <RocketAnim name={item.senderName} dur={dur} />;
+    // Sender name lives in GiftComboFeed (TikTok-style corner), not here —
+    // except Lion which keeps a full-width celebration banner.
+    case "rose":    return <RoseAnim dur={dur} />;
+    case "heart":   return <HeartAnim dur={dur} />;
+    case "diamond": return <DiamondAnim dur={dur} />;
+    case "crown":   return <CrownAnim dur={dur} />;
+    case "rocket":  return <RocketAnim dur={dur} />;
     case "lion":    return <LionAnim name={item.senderName} dur={dur} />;
     default:        return null;
   }
 }
 
 /* ---------- Rose (tier 1) — gentle petals ---------- */
-function RoseAnim({ name, dur }: { name: string; dur: number }) {
+function RoseAnim({ dur }: { dur: number }) {
   const petals = useMemo(
     () =>
       Array.from({ length: 5 }, (_, i) => ({
@@ -154,13 +154,12 @@ function RoseAnim({ name, dur }: { name: string; dur: number }) {
           {p.emoji}
         </motion.span>
       ))}
-      <NameBanner name={name} emoji="🌹" bottom={110} />
     </motion.div>
   );
 }
 
 /* ---------- Cœur d'or (tier 1) — two-beat pulse ---------- */
-function HeartAnim({ name, dur }: { name: string; dur: number }) {
+function HeartAnim({ dur }: { dur: number }) {
   const sparkles = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => {
@@ -216,13 +215,12 @@ function HeartAnim({ name, dur }: { name: string; dur: number }) {
           </motion.span>
         ))}
       </div>
-      <NameBanner name={name} emoji="💛" bottom={110} />
     </motion.div>
   );
 }
 
 /* ---------- Diamant (tier 2) — drop + glint + sparkle burst ---------- */
-function DiamondAnim({ name, dur }: { name: string; dur: number }) {
+function DiamondAnim({ dur }: { dur: number }) {
   const burst = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => {
@@ -305,13 +303,12 @@ function DiamondAnim({ name, dur }: { name: string; dur: number }) {
           </motion.span>
         ))}
       </div>
-      <NameBanner name={name} emoji="💎" bottom={110} />
     </motion.div>
   );
 }
 
 /* ---------- Couronne (tier 2) — descend + shine sweep + gold rain ---------- */
-function CrownAnim({ name, dur }: { name: string; dur: number }) {
+function CrownAnim({ dur }: { dur: number }) {
   const rain = useMemo(
     () =>
       Array.from({ length: 22 }, (_, i) => ({
@@ -373,13 +370,12 @@ function CrownAnim({ name, dur }: { name: string; dur: number }) {
           </motion.div>
         </div>
       </motion.div>
-      <NameBanner name={name} emoji="👑" bottom={110} large />
     </motion.div>
   );
 }
 
 /* ---------- Fusée (tier 3) — diagonal flight + trail + subtle shake ---------- */
-function RocketAnim({ name, dur }: { name: string; dur: number }) {
+function RocketAnim({ dur }: { dur: number }) {
   const trail = useMemo(() => Array.from({ length: 14 }, (_, i) => i), []);
   return (
     <motion.div
@@ -443,7 +439,6 @@ function RocketAnim({ name, dur }: { name: string; dur: number }) {
       >
         🚀
       </motion.span>
-      <NameBanner name={name} emoji="🚀" bottom={90} large />
     </motion.div>
   );
 }
@@ -562,38 +557,3 @@ function LionAnim({ name, dur }: { name: string; dur: number }) {
   );
 }
 
-/* ---------- Shared name chip ---------- */
-function NameBanner({
-  name,
-  emoji,
-  bottom,
-  large = false,
-}: {
-  name: string;
-  emoji: string;
-  bottom: number;
-  large?: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: [0, 1, 1, 0], y: [12, 0, 0, -6] }}
-      transition={{ duration: 2, ease: EASE_IOS, times: [0, 0.15, 0.75, 1] }}
-      className="absolute inset-x-0 flex justify-center"
-      style={{ bottom }}
-    >
-      <div
-        className={`flex items-center gap-1 rounded-full text-white ${large ? "px-4 py-1.5 text-[15px]" : "px-3 py-1 text-[13px]"} font-bold`}
-        style={{
-          backgroundColor: "rgba(0,0,0,0.55)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-        }}
-      >
-        <span>{name}</span>
-        <span>{emoji}</span>
-      </div>
-    </motion.div>
-  );
-}

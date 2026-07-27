@@ -50,14 +50,29 @@ export const AUCTION_EXTENSION_RESET_SECONDS = 10;
  * Minimum payout amount per currency. Single source of truth used by both
  * the withdraw sheet (UI validation + hint text) and mirrored in the
  * `request_payout` SQL function.
- *
- * TEST VALUE — restore XOF to 5000 before public launch.
  */
 export const PAYOUT_MINIMUMS: Record<Currency, number> = {
-  XOF: 100, // TEST VALUE — restore to 5000 before public launch
+  XOF: 5000,
   EUR: 10,
   CAD: 15,
+  USD: 12,
+  GBP: 10,
 };
+
+/**
+ * Anti-fraud / AML limits. Mirrored in the SQL functions
+ * `credit_wallet_topup` and `request_payout`. Update both together.
+ */
+export const MAX_WALLET_BALANCE: Record<Currency, number> = {
+  XOF: 1_000_000,
+  EUR: 2_000,
+  CAD: 3_000,
+  USD: 2_200,
+  GBP: 1_800,
+};
+export const MAX_TOPUP_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;
+export const MAX_PAYOUT_PER_DAY: Record<Currency, number> = MAX_WALLET_BALANCE;
+
 
 export function payoutMinimumFor(currency: string | null | undefined): number {
   return PAYOUT_MINIMUMS[normalizeCurrency(currency)];

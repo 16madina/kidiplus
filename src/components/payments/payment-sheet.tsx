@@ -30,6 +30,7 @@ import { payOrderWithWallet } from "@/lib/wallet-db";
 import { convertMoney, formatMoney, normalizeCurrency } from "@/lib/money";
 import { TopUpSheet } from "@/components/wallet/topup-sheet";
 import {
+  cancelOrderPaymentIntent,
   confirmOrderPayment,
   markPendingOrder,
   clearPendingOrder,
@@ -39,6 +40,9 @@ import {
 import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
+import { OrderItemImage } from "@/components/orders/order-item-image";
+import { setOrderProductOptions } from "@/lib/orders-db";
+import { variantSelectionState } from "@/lib/live-product-options";
 
 
 
@@ -61,10 +65,17 @@ export function PaymentSheet({
   order,
   onClose,
   onPaid,
+  productColors = [],
+  productSizes = [],
+  onOrderPatched,
 }: {
   order: OrderRow | null;
   onClose: () => void;
   onPaid?: (order: OrderRow) => void;
+  /** Available color options for the live product (auction wins). */
+  productColors?: string[];
+  productSizes?: string[];
+  onOrderPatched?: (order: OrderRow) => void;
 }) {
   const { t, i18n } = useTranslation();
   const { balance, currency: walletCurrencyRaw } = useWallet();
@@ -76,6 +87,61 @@ export function PaymentSheet({
   const [cardSelected, setCardSelected] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
   const autoTriedRef = useRef<string | null>(null);
+  const variantState = variantSelectionState(productColors, productSizes);
+  const existingOpts = (order?.address_snapshot?.product_options ?? null) as
+    | { color?: string | null; size?: string | null }
+    | null;
+  const [pickedColor, setPickedColor] = useState<string | undefined>();
+  const [pickedSize, setPickedSize] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!order) {
+      setPickedColor(undefined);
+      setPickedSize(undefined);
+      return;
+    }
+    setPickedColor(
+      existingOpts?.color ??
+        variantState.color ??
+        (productColors.length === 1 ? productColors[0] : undefined),
+    );
+    setPickedSize(
+      existingOpts?.size ??
+        variantState.size ??
+        (productSizes.length === 1 ? productSizes[0] : undefined),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
+  const needsVariant =
+    order?.status === "pending" &&
+    (productColors.length > 1 || productSizes.length > 1);
+  const variantReady =
+    !needsVariant ||
+    ((productColors.length <= 1 || !!pickedColor) &&
+      (productSizes.length <= 1 || !!pickedSize));
+
+  const ensureVariantOnOrder = async (): Promise<boolean> => {
+    if (!order || !needsVariant) return true;
+    if (!variantReady) {
+      toast.error(
+        t("productOptions.pickRequired", "Choisis une couleur / taille"),
+      );
+      return false;
+    }
+    const r = await setOrderProductOptions(order.id, {
+      color: pickedColor,
+      size: pickedSize,
+    });
+    if (!r.ok) {
+      toast.error(r.error);
+      return false;
+    }
+    if (r.itemName) {
+      onOrderPatched?.({ ...order, item_name: r.itemName });
+    }
+    return true;
+  };
 
   const walletDebit = useMemo(() => {
     const total = Number(order?.total ?? 0);
@@ -89,6 +155,7 @@ export function PaymentSheet({
     (ord: OrderRow, debitAmount?: number, debitCurrency?: string) => {
       haptic.success();
       setState({ kind: "done" });
+      void cancelOrderPaymentIntent(ord.id);
       const debitLabel =
         debitAmount !== undefined && debitCurrency
           ? formatMoney(debitAmount, debitCurrency, i18n.language)
@@ -149,26 +216,25 @@ export function PaymentSheet({
       });
     }
 
-    // Auto-debit once per order when the displayed wallet covers the total.
+    // Auto-debit once per order when wallet covers total and no variant pick needed.
     if (autoTriedRef.current === order.id) return;
     autoTriedRef.current = order.id;
-    if (!walletEnough) return;
+    if (!walletEnough || needsVariant) return;
     let cancelled = false;
     void (async () => {
       const ok = await tryWalletPay(order, { silent: true });
       if (cancelled || ok) return;
-      // Keep sheet open for card / top-up if auto-pay failed silently.
     })();
     return () => {
       cancelled = true;
     };
-    // walletEnough / tryWalletPay intentionally omitted from deps: we only
-    // auto-try once when the order id first appears.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id]);
 
   const startCardCheckout = useCallback(async () => {
     if (!order || state.kind === "card_loading" || state.kind === "ready") return;
+    const okVariant = await ensureVariantOnOrder();
+    if (!okVariant) return;
     setCardSelected(true);
     setState({ kind: "card_loading" });
     try {
@@ -213,7 +279,7 @@ export function PaymentSheet({
     } catch {
       setState({ kind: "error", message: t("pay.errors.network") });
     }
-  }, [order, state.kind, t]);
+  }, [order, state.kind, t]); // ensureVariantOnOrder reads latest picks via closure
 
   const handleSuccess = async (paymentIntentId: string) => {
     if (!order) return;
@@ -278,15 +344,7 @@ export function PaymentSheet({
 
                 {/* Summary */}
                 <div className="mt-4 flex items-center gap-3 rounded-2xl border p-3">
-                  {order.item_image ? (
-                    <img
-                      src={order.item_image}
-                      alt=""
-                      className="h-16 w-16 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 rounded-xl bg-muted" />
-                  )}
+                  <OrderItemImage src={order.item_image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{order.item_name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -294,6 +352,64 @@ export function PaymentSheet({
                     </p>
                   </div>
                 </div>
+
+                {needsVariant && (
+                  <div className="mt-4 space-y-3 rounded-2xl border p-3">
+                    <p className="text-[13px] font-semibold">
+                      {t("productOptions.pickVariant", "Choisis ta variante")}
+                    </p>
+                    {productColors.length > 1 && (
+                      <div className="flex flex-wrap gap-2">
+                        {productColors.map((c) => {
+                          const active = pickedColor === c;
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                haptic.selection();
+                                setPickedColor(c);
+                              }}
+                              className="min-h-9 rounded-full px-3 text-[12px] font-semibold"
+                              style={{
+                                background: active ? "oklch(0.18 0.04 260)" : "var(--muted)",
+                                color: active ? "white" : "var(--foreground)",
+                                border: active ? "none" : "1px solid var(--border)",
+                              }}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {productSizes.length > 1 && (
+                      <div className="flex flex-wrap gap-2">
+                        {productSizes.map((s) => {
+                          const active = pickedSize === s;
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                haptic.selection();
+                                setPickedSize(s);
+                              }}
+                              className="min-h-9 rounded-full px-3 text-[12px] font-semibold"
+                              style={{
+                                background: active ? "oklch(0.18 0.04 260)" : "var(--muted)",
+                                color: active ? "white" : "var(--foreground)",
+                                border: active ? "none" : "1px solid var(--border)",
+                              }}
+                            >
+                              {s}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Fees breakdown: item + delivery (or courier note) = total */}
                 <dl className="mt-4 space-y-2 text-sm">
@@ -329,6 +445,8 @@ export function PaymentSheet({
                       busy={walletBusy}
                       onPay={async () => {
                         if (!order || walletBusy) return;
+                        const okVariant = await ensureVariantOnOrder();
+                        if (!okVariant) return;
                         await tryWalletPay(order);
                       }}
                       onTopUp={() => setTopupOpen(true)}
@@ -417,6 +535,8 @@ export function PaymentSheet({
                       clientSecret={state.clientSecret}
                       stripePromise={state.stripePromise}
                       totalLabel={fmt(Number(order.total))}
+                      disabled={!variantReady}
+                      beforeConfirm={ensureVariantOnOrder}
                       onSuccess={(pi) => { void handleSuccess(pi); }}
                     />
                   )}
@@ -479,23 +599,23 @@ function WalletMethodRow({
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
         <div className="text-[11px] text-muted-foreground tabular-nums">
-                      {formatMoney(balance, wc, locale)}
-                    </div>
-                    {crossCurrency && (
-                      <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
-                        {t("wallet.debitHint", {
-                          defaultValue: "Débit : {{amount}}",
-                          amount: formatMoney(debit, wc, locale),
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  {busy ? (
-                    <Loader2 className="animate-spin" size={16} />
-                  ) : enough ? (
-                    <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
-                      {t("pay.payNow", { total: formatMoney(total, oc, locale) })}
-                    </span>
+          {formatMoney(balance, wc, locale)}
+        </div>
+        {crossCurrency && (
+          <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
+            {t("wallet.debitHint", {
+              defaultValue: "Débit : {{amount}}",
+              amount: formatMoney(debit, wc, locale),
+            })}
+          </div>
+        )}
+      </div>
+      {busy ? (
+        <Loader2 className="animate-spin" size={16} />
+      ) : enough ? (
+        <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
+          {t("pay.payNow", { total: formatMoney(total, oc, locale) })}
+        </span>
       ) : (
         <span className="flex flex-col items-end gap-0.5">
           <span className="text-[10px] font-bold text-destructive">
@@ -595,11 +715,15 @@ function StripeCardForm({
   stripePromise,
   totalLabel,
   onSuccess,
+  beforeConfirm,
+  disabled = false,
 }: {
   clientSecret: string;
   stripePromise: Promise<StripeJs | null>;
   totalLabel: string;
   onSuccess: (paymentIntentId: string) => void;
+  beforeConfirm?: () => Promise<boolean>;
+  disabled?: boolean;
 }) {
   const options = useMemo(
     () => ({
@@ -620,7 +744,12 @@ function StripeCardForm({
   );
   return (
     <Elements stripe={stripePromise} options={options}>
-      <StripePayForm totalLabel={totalLabel} onSuccess={onSuccess} />
+      <StripePayForm
+        totalLabel={totalLabel}
+        onSuccess={onSuccess}
+        beforeConfirm={beforeConfirm}
+        disabled={disabled}
+      />
     </Elements>
   );
 }
@@ -628,9 +757,13 @@ function StripeCardForm({
 function StripePayForm({
   totalLabel,
   onSuccess,
+  beforeConfirm,
+  disabled = false,
 }: {
   totalLabel: string;
   onSuccess: (paymentIntentId: string) => void;
+  beforeConfirm?: () => Promise<boolean>;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const stripe = useStripe();
@@ -642,7 +775,11 @@ function StripePayForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || busy || !ready || !complete) return;
+    if (!stripe || !elements || busy || !ready || !complete || disabled) return;
+    if (beforeConfirm) {
+      const ok = await beforeConfirm();
+      if (!ok) return;
+    }
     setBusy(true);
     setError(null);
     haptic.medium();
@@ -696,7 +833,7 @@ function StripePayForm({
       )}
       <Press
         type="submit"
-        disabled={!stripe || busy || !ready || !complete}
+        disabled={!stripe || busy || !ready || !complete || disabled}
         className="mt-1 w-full rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground disabled:opacity-60"
       >
         {busy ? <Loader2 className="mx-auto animate-spin" size={18} /> : t("pay.payNow", { total: totalLabel })}

@@ -49,11 +49,10 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      // Safety net: auto-hide after 3s so the app can NEVER get stuck on
-      // the native splash if the JS-side hide call is missed. The React
-      // <SplashScreen> also calls hideNativeSplash() as soon as the intro
-      // video paints its first frame — that's the seamless path.
-      launchShowDuration: 3000,
+      // Keep the native navy splash until React calls hideNativeSplash()
+      // when the intro video's first frame paints. Auto-hide is a long
+      // safety net only (never leave the user stuck forever).
+      launchShowDuration: 12_000,
       launchAutoHide: true,
       launchFadeOutDuration: 250,
       backgroundColor: "#10162B", // KiDi+ deep navy

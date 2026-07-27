@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check, Sparkles } from "lucide-react";
+import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -27,6 +27,7 @@ import {
   updateScheduledLiveInDb,
   uploadLiveImage,
 } from "@/lib/lives-db";
+import { createLiveIngress } from "@/lib/livekit-ingress";
 import { formatMoney } from "@/lib/money";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
@@ -34,6 +35,13 @@ import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { CoverCropperSheet } from "./cover-cropper-sheet";
+import { YoutubeConnectCard } from "./youtube-connect-card";
+import { FacebookConnectCard } from "./facebook-connect-card";
+import { TiktokConnectCard } from "./tiktok-connect-card";
+import { DeliverySetupPromptDialog } from "./delivery-setup-prompt-dialog";
+import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
+import { fetchDeliverySettings } from "@/lib/delivery-db";
+import { isSellerDeliveryConfigured } from "@/lib/delivery";
 
 const MIN_TITLE_LENGTH = 3;
 const MAX_TITLE_LENGTH = 80;
@@ -52,7 +60,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const { activeLens } = useFilter();
+  const [deliveryPromptOpen, setDeliveryPromptOpen] = useState(false);
+  const [deliverySettingsOpen, setDeliverySettingsOpen] = useState(false);
+  /** Host chose "continue without configuring" for this setup session. */
+  const deliverySkippedRef = useRef(false);
+  const { activeLens, loadLenses } = useFilter();
+  // Prefetch Snap Camera Kit + lenses while the host prepares the live.
+  useEffect(() => {
+    loadLenses();
+  }, [loadLenses]);
   const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup
@@ -141,7 +157,12 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
   const titleLen = b.title.trim().length;
   const titleTooShort = titleLen > 0 && titleLen < MIN_TITLE_LENGTH;
-  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0;
+  // Profile photo auto-fills the live thumbnail. Without one, a cover photo is required.
+  const hasProfileAvatar = !!profile?.avatar_url?.trim();
+  const hasCover = !!(b.coverFile || (b.cover && String(b.cover).trim()));
+  const coverRequired = !hasProfileAvatar;
+  const coverOk = !coverRequired || hasCover;
+  const canLaunch = titleLen >= MIN_TITLE_LENGTH && b.products.length > 0 && coverOk;
   const [launching, setLaunching] = useState(false);
 
 
@@ -157,6 +178,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         } else {
           imagePath = p.image || null;
         }
+        const { uploadExtraLiveProductImages } = await import("@/lib/lives-db");
+        const extraImages = await uploadExtraLiveProductImages({
+          userId: b.hostIdentity!,
+          productName: p.name,
+          extraImages: p.extraImages,
+          extraImageFiles: p.extraImageFiles,
+        });
         return {
           name: p.name,
           imagePath,
@@ -167,6 +195,13 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           timerSeconds: p.timerSec,
           position: index,
           shopProductId: p.shopProductId ?? null,
+          description: p.description ?? null,
+          brand: p.brand ?? null,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages,
+          bidIncrement: p.bidIncrement ?? null,
         };
       }),
     );
@@ -207,10 +242,36 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       );
       return;
     }
+    if (!coverOk) {
+      haptic.warning();
+      toast.error(
+        t(
+          "broadcast.setup.errors.coverRequired",
+          "Ajoute une photo de couverture (tu n'as pas de photo de profil)",
+        ),
+      );
+      pickCover();
+      return;
+    }
     if (!b.hostIdentity) {
       toast.error(t("auth.errors.notSignedIn", "Sign in to go live"));
       return;
     }
+
+    // Soft gate: warn once if delivery was never configured.
+    if (!deliverySkippedRef.current) {
+      const settings = await fetchDeliverySettings(b.hostIdentity);
+      if (!isSellerDeliveryConfigured(settings)) {
+        setDeliveryPromptOpen(true);
+        return;
+      }
+    }
+
+    await runLaunch();
+  };
+
+  const runLaunch = async () => {
+    if (launching || !b.hostIdentity) return;
     haptic.medium();
     setLaunching(true);
     try {
@@ -227,6 +288,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           coverPath,
           roomName: room,
           currency: b.currency,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           products: productsForDb,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
         });
@@ -241,6 +303,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           category: b.category,
           coverPath,
           scheduledAt: new Date(b.scheduledAt!).toISOString(),
+          allowGifts: b.allowGifts,
+          broadcastMode: b.streamSource === "rtmp" ? "rtmp" : "camera",
           products: productsForDb,
         });
         toast.success(t("schedule.updatedToast", "Live modifié"));
@@ -251,6 +315,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
       // mode === "now"
       const seed = b.hostIdentity.slice(0, 8) || "seller";
       const room = makeRoomName(seed);
+      const useRtmp = b.streamSource === "rtmp";
       const { liveId, productIds } = await createLiveInDb({
         sellerId: b.hostIdentity,
         title: b.title.trim(),
@@ -258,12 +323,32 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         coverPath,
         roomName: room,
         currency: b.currency,
+        broadcastMode: useRtmp ? "rtmp" : "camera",
         products: productsForDb,
       });
 
       b.setRoomName(room);
       b.setLiveId(liveId);
       b.setProductDbIds(productIds);
+
+      if (useRtmp) {
+        try {
+          const creds = await createLiveIngress(liveId);
+          b.setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          setLaunching(false);
+          return;
+        }
+      } else {
+        b.setRtmpCreds(null);
+      }
+
       b.goLive();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -281,6 +366,10 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
     return <ScheduleLiveSetup onExit={onExit} />;
   }
 
+  // Try-on mode: hide the product/form sheet so the host sees the filter on
+  // their face full-screen before launching the live.
+  const filterTryOn = filtersOpen && b.streamSource !== "rtmp";
+
   return (
     <motion.div
       key="setup"
@@ -294,33 +383,60 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           "radial-gradient(120% 80% at 50% 0%, oklch(0.19 0.05 260) 0%, oklch(0.11 0.03 260) 55%, #05060a 100%)",
       }}
     >
-      {/* Camera preview area (top half) */}
-      <div className="absolute inset-x-0 top-0 h-[52%] overflow-hidden">
-        <BroadcastVideo
-          key={previewRetryKey}
-          facing={facing}
-          enabled={true}
-          fallbackImage={b.cover}
-          onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
-        />
-        {/* Filters button — bottom-right of the preview */}
-        <Press
-          onClick={() => { haptic.selection(); setFiltersOpen((o) => !o); }}
-          aria-label="Filtres"
-          className="!min-h-11 !min-w-11 absolute right-3 z-30 h-11 w-11 rounded-full grid place-items-center"
-          style={{
-            bottom: 12,
-            backgroundColor: "rgba(10,12,20,0.55)",
-            border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
-            color: activeLens.lensId !== "none" ? GOLD : "white",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-        >
-          <Sparkles size={18} />
-        </Press>
-        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      {/* Camera preview — expands to full screen while trying filters */}
+      <div
+        className={
+          filterTryOn
+            ? "absolute inset-0 overflow-hidden"
+            : "absolute inset-x-0 top-0 h-[52%] overflow-hidden"
+        }
+      >
+        {b.streamSource === "rtmp" ? (
+          <div className="absolute inset-0 grid place-items-center bg-neutral-950 px-6 text-center">
+            {b.cover && (
+              <img
+                src={b.cover}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-40"
+                style={{ filter: "blur(8px)" }}
+                onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+              />
+            )}
+            <div className="relative z-10 max-w-sm">
+              <p className="text-[17px] font-bold text-white">
+                {t("broadcast.rtmp.previewTitle", "Mode Restream / OBS")}
+              </p>
+              <p className="mt-2 text-[13px] leading-snug text-white/75">
+                {t(
+                  "broadcast.rtmp.previewBody",
+                  "Après le lancement, tu recevras une URL RTMP et une clé à coller dans Restream. La vidéo viendra de Restream, pas de la caméra du téléphone.",
+                )}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <BroadcastVideo
+            key={previewRetryKey}
+            facing={facing}
+            enabled={true}
+            fallbackImage={b.cover}
+            onRequestRetry={() => setPreviewRetryKey((k) => k + 1)}
+          />
+        )}
       </div>
+
+      {/* Full-screen filter try-on strip (above the form, camera visible). */}
+      {b.streamSource !== "rtmp" && (
+        <FiltersCarousel
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          doneLabel={t("broadcast.setup.filtersDone", "C'est bon")}
+          hint={t(
+            "broadcast.setup.filtersHint",
+            "Regarde ton visage — choisis le filtre, puis continue",
+          )}
+        />
+      )}
 
       {/* Top bar — X · KIDI+ · Refresh */}
       <div
@@ -328,8 +444,15 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
       >
         <Press
-          onClick={onExit}
-          aria-label={t("common.close")}
+          onClick={() => {
+            if (filterTryOn) {
+              haptic.selection();
+              setFiltersOpen(false);
+              return;
+            }
+            onExit();
+          }}
+          aria-label={filterTryOn ? t("common.close") : t("common.close")}
           className="!min-h-11 !min-w-11 h-11 w-11 rounded-full p-0 text-white"
           style={{
             backgroundColor: "rgba(10,12,20,0.55)",
@@ -368,7 +491,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         </Press>
       </div>
 
-      {/* Bottom sheet */}
+      {/* Bottom sheet — hidden while trying filters so the face stays visible */}
+      {!filterTryOn && (
       <div
         className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 px-4 pt-3"
         style={{
@@ -393,7 +517,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                 className="!min-h-16 relative h-16 w-16 overflow-hidden rounded-2xl p-0"
                 style={{
                   backgroundColor: "oklch(0.16 0.04 260 / 0.9)",
-                  border: `1.5px solid ${GOLD}`,
+                  border: `1.5px solid ${coverRequired && !hasCover ? "oklch(0.68 0.19 25)" : GOLD}`,
                   boxShadow: `0 0 16px ${GOLD_SOFT}`,
                 }}
                 aria-label={t("broadcast.setup.addCover", "Ajouter une photo")}
@@ -407,6 +531,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2, ease: EASE_IOS }}
                     className="h-full w-full object-cover"
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center" style={{ color: GOLD }}>
@@ -414,22 +539,50 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   </div>
                 )}
               </Press>
-              <Press
-                onClick={() => {
-                  haptic.selection();
-                  coverInputRef.current?.click();
-                }}
-                className="!min-h-7 h-7 gap-1 rounded-full px-2.5 text-[11px] font-semibold"
-                style={{
-                  color: "#0a0a12",
-                  background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
-                  boxShadow: `0 4px 12px ${GOLD_SOFT}`,
-                }}
-                aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
-              >
-                <Camera size={11} strokeWidth={2.4} />
-                <span>{t("common.edit", "Modifier")}</span>
-              </Press>
+              <div className="flex max-w-[5.5rem] flex-col items-stretch gap-1">
+                <Press
+                  onClick={() => {
+                    haptic.selection();
+                    coverInputRef.current?.click();
+                  }}
+                  className="!min-h-7 h-7 gap-1 rounded-full px-2 text-[11px] font-semibold"
+                  style={{
+                    color: "#0a0a12",
+                    background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
+                    boxShadow: `0 4px 12px ${GOLD_SOFT}`,
+                  }}
+                  aria-label={t("broadcast.setup.changeCover", "Changer la photo")}
+                >
+                  <Camera size={11} strokeWidth={2.4} />
+                  <span>
+                    {coverRequired && !hasCover
+                      ? t("broadcast.setup.addCoverShort", "Photo *")
+                      : t("common.edit", "modifier")}
+                  </span>
+                </Press>
+                {b.streamSource !== "rtmp" && (
+                  <Press
+                    onClick={() => {
+                      haptic.selection();
+                      setFiltersOpen(true);
+                    }}
+                    className="!min-h-7 h-7 rounded-full px-2 text-[11px] font-semibold"
+                    style={{
+                      color: activeLens.lensId !== "none" ? "#0a0a12" : "white",
+                      background:
+                        activeLens.lensId !== "none"
+                          ? `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`
+                          : "oklch(0.16 0.04 260 / 0.85)",
+                      border: `1px solid ${activeLens.lensId !== "none" ? GOLD : GOLD_SOFT}`,
+                      boxShadow:
+                        activeLens.lensId !== "none" ? `0 4px 12px ${GOLD_SOFT}` : "none",
+                    }}
+                    aria-label={t("broadcast.setup.tryFilters", "Essayer les filtres")}
+                  >
+                    {t("broadcast.setup.filterBtn", "Filtre")}
+                  </Press>
+                )}
+              </div>
             </div>
             <input
               value={b.title}
@@ -456,6 +609,14 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
               {t(
                 "broadcast.setup.errors.titleTooShort",
                 `Le titre doit contenir au moins ${MIN_TITLE_LENGTH} caractères`,
+              )}
+            </span>
+          )}
+          {coverRequired && !hasCover && (
+            <span className="px-1 text-[11px] font-medium" style={{ color: "oklch(0.78 0.18 25)" }}>
+              {t(
+                "broadcast.setup.errors.coverRequiredHint",
+                "Photo de couverture obligatoire (pas de photo de profil)",
               )}
             </span>
           )}
@@ -564,6 +725,54 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         </div>
 
 
+        {/* YouTube / Facebook OAuth + TikTok how-to (KiDi+ camera → social) */}
+        {b.streamSource !== "rtmp" && (
+          <div className="space-y-2">
+            <YoutubeConnectCard />
+            <FacebookConnectCard />
+            <TiktokConnectCard />
+          </div>
+        )}
+
+        {/* Multi-platform (Restream / OBS) */}
+        <Press
+          onClick={() => {
+            haptic.selection();
+            b.setStreamSource(b.streamSource === "rtmp" ? "camera" : "rtmp");
+          }}
+          className="!min-h-12 flex w-full items-center justify-between rounded-2xl px-4 text-left"
+          style={{
+            border: `1px solid ${b.streamSource === "rtmp" ? GOLD : GOLD_SOFT}`,
+            background:
+              b.streamSource === "rtmp"
+                ? "oklch(0.82 0.14 85 / 0.12)"
+                : "oklch(0.13 0.03 260 / 0.7)",
+          }}
+        >
+          <div className="min-w-0 pr-3">
+            <p className="text-[14px] font-bold text-white">
+              {t("broadcast.rtmp.toggleTitle", "Multi-plateformes (Restream / OBS)")}
+            </p>
+            <p className="text-[11px] text-white/65">
+              {t(
+                "broadcast.rtmp.toggleHint",
+                "Diffuse aussi sur TikTok, Facebook, YouTube via Restream",
+              )}
+            </p>
+          </div>
+          <span
+            className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
+            style={{
+              background: b.streamSource === "rtmp" ? GOLD : "rgba(255,255,255,0.12)",
+              color: b.streamSource === "rtmp" ? "#0a0a12" : "white",
+            }}
+          >
+            {b.streamSource === "rtmp"
+              ? t("broadcast.rtmp.on", "ON")
+              : t("broadcast.rtmp.off", "OFF")}
+          </span>
+        </Press>
+
         {/* Products */}
         <div>
           <div className="mb-2">
@@ -587,7 +796,16 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   className="relative h-20 w-20 overflow-hidden rounded-2xl"
                   style={{ border: `1px solid ${GOLD_SOFT}` }}
                 >
-                  <img src={p.image} alt="" className="h-full w-full object-cover" />
+                  <img
+                    key={p.image || p.id}
+                    src={p.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    ref={(el) => {
+                      if (el?.complete) el.setAttribute("data-loaded", "true");
+                    }}
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  />
                   <Press
                     onClick={() => b.removeProduct(p.id)}
                     aria-label={t("common.remove")}
@@ -651,6 +869,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           {launching ? t("common.loading") : t("broadcast.setup.start", "Lancer le live")}
         </Press>
       </div>
+      )}
 
       <AddProductSheet
         open={showAdd}
@@ -669,6 +888,27 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
         imageSrc={rawCoverSrc}
         onClose={() => setCropperOpen(false)}
         onConfirm={onCropConfirm}
+      />
+      <DeliverySetupPromptDialog
+        open={deliveryPromptOpen}
+        onCancel={() => setDeliveryPromptOpen(false)}
+        onConfigure={() => {
+          setDeliveryPromptOpen(false);
+          setDeliverySettingsOpen(true);
+        }}
+        onContinue={() => {
+          deliverySkippedRef.current = true;
+          setDeliveryPromptOpen(false);
+          void runLaunch();
+        }}
+      />
+      <SellerDeliverySettingsScreen
+        open={deliverySettingsOpen}
+        onClose={() => {
+          setDeliverySettingsOpen(false);
+          // After configuring, host taps "Lancer le live" again — prompt
+          // will skip if settings are now saved.
+        }}
       />
     </motion.div>
   );

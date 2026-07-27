@@ -16,6 +16,7 @@ import {
   fetchScheduledLiveWithProducts,
   cancelScheduledLiveInDb,
   startScheduledLiveInDb,
+  scheduledStartWindow,
   resolveLiveImage,
   type ScheduledLiveRow,
 } from "@/lib/lives-db";
@@ -77,7 +78,7 @@ export function GoLiveEntryScreen({
     const entries = await Promise.all(
       rows
         .filter((r) => r.cover_url)
-        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url)) ?? ""] as const),
+        .map(async (r) => [r.id, (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? ""] as const),
     );
     setCovers(Object.fromEntries(entries));
   }, [user]);
@@ -103,6 +104,8 @@ export function GoLiveEntryScreen({
       b.setCategory(full.category ?? "Fashion");
       b.setScheduledAt(full.scheduled_at);
       b.setAllowGifts(full.allow_gifts !== false);
+      b.setStreamSource(full.broadcast_mode === "rtmp" ? "rtmp" : "camera");
+      b.setRtmpCreds(null);
       b.setCoverFile(null);
 
       const resolvedCover = full.cover_url
@@ -114,6 +117,11 @@ export function GoLiveEntryScreen({
         const img = p.image_url
           ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
           : "";
+        const extras = await Promise.all(
+          (p.extra_images ?? []).map(async (path) =>
+            (await resolveLiveImage("live-products", path)) ?? path,
+          ),
+        );
         b.addProduct({
           name: p.name,
           image: img,
@@ -122,6 +130,13 @@ export function GoLiveEntryScreen({
           price: Number(p.price),
           stock: Number(p.stock),
           timerSec: Number(p.timer_seconds),
+          description: p.description ?? undefined,
+          brand: p.brand ?? undefined,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages: extras.length ? extras : undefined,
+          bidIncrement: p.bid_increment ?? null,
         });
       }
       onEdit(row);
@@ -148,6 +163,11 @@ export function GoLiveEntryScreen({
         const img = p.image_url
           ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
           : "";
+        const extras = await Promise.all(
+          (p.extra_images ?? []).map(async (path) =>
+            (await resolveLiveImage("live-products", path)) ?? path,
+          ),
+        );
         b.addProduct({
           name: p.name,
           image: img,
@@ -156,18 +176,53 @@ export function GoLiveEntryScreen({
           price: Number(p.price),
           stock: Number(p.stock),
           timerSec: Number(p.timer_seconds),
+          description: p.description ?? undefined,
+          brand: p.brand ?? undefined,
+          condition: p.condition ?? null,
+          colors: p.colors ?? [],
+          sizes: p.sizes ?? [],
+          extraImages: extras.length ? extras : undefined,
+          bidIncrement: p.bid_increment ?? null,
         });
       }
       b.setProductDbIds(res.productIds ?? []);
       b.setRoomName(res.roomName ?? null);
       b.setLiveId(row.id);
-      // Fire-and-forget reminder notifications
-      void notifyLiveReminders(row.id);
+      b.setAllowGifts(full.allow_gifts !== false);
+      const useRtmp = full.broadcast_mode === "rtmp";
+      b.setStreamSource(useRtmp ? "rtmp" : "camera");
+      if (useRtmp) {
+        const { createLiveIngress } = await import("@/lib/livekit-ingress");
+        try {
+          const creds = await createLiveIngress(row.id);
+          b.setRtmpCreds(creds);
+        } catch (ingressErr) {
+          const msg =
+            ingressErr instanceof Error ? ingressErr.message : String(ingressErr);
+          toast.error(
+            t("broadcast.rtmp.createFailed", "Impossible de créer le lien RTMP") +
+              ` — ${msg}`,
+          );
+          return;
+        }
+      } else {
+        b.setRtmpCreds(null);
+      }
+      // Fire-and-forget reminder notifications — unless the seller opted out.
+      if (full.notify_followers !== false) void notifyLiveReminders(row.id);
       haptic.success();
       onStartScheduled();
     } catch (e) {
       haptic.error();
-      toast.error(String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("expired")) {
+        toast.error(t("golive.entry.expiredToast", "Ce live programmé a expiré"));
+        void reload();
+      } else if (msg.includes("too_early")) {
+        toast.error(t("golive.entry.tooEarlyToast", "Tu pourras démarrer 15 min avant l'heure"));
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusyId(null);
     }
@@ -334,8 +389,10 @@ export function GoLiveEntryScreen({
 
         <motion.ul variants={listContainer} initial="hidden" animate="show" className="mt-3 flex flex-col gap-2">
           {scheduled.map((row) => {
-            // The seller can start their live from 15 minutes before the scheduled time.
-            const isTime = row.scheduled_at && new Date(row.scheduled_at).getTime() <= Date.now() + 15 * 60_000;
+            // ready = from 15 min before until 60 min after; expired after that.
+            const window = scheduledStartWindow(row.scheduled_at);
+            const isTime = window === "ready";
+            const isExpired = window === "expired";
             return (
               <motion.li
                 key={row.id}
@@ -343,7 +400,8 @@ export function GoLiveEntryScreen({
                 className="flex items-center gap-3 rounded-2xl p-2.5"
                 style={{
                   backgroundColor: "rgba(255,255,255,0.06)",
-                  border: `1px solid ${isTime ? GOLD_DIM : "rgba(255,255,255,0.08)"}`,
+                  border: `1px solid ${isTime ? GOLD_DIM : isExpired ? "rgba(220,60,70,0.35)" : "rgba(255,255,255,0.08)"}`,
+                  opacity: isExpired ? 0.75 : 1,
                 }}
               >
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white/10">
@@ -359,7 +417,11 @@ export function GoLiveEntryScreen({
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-semibold text-white">{row.title}</div>
                   <div className="mt-0.5 truncate text-[11px] text-white/60">
-                    {row.scheduled_at ? formatDateChip(row.scheduled_at, i18n.language) : ""}
+                    {isExpired
+                      ? t("golive.entry.expired", "Expiré")
+                      : row.scheduled_at
+                        ? formatDateChip(row.scheduled_at, i18n.language)
+                        : ""}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -380,15 +442,17 @@ export function GoLiveEntryScreen({
                     </Press>
                   ) : (
                     <>
-                      <Press
-                        onClick={() => loadIntoForm(row)}
-                        disabled={busyId === row.id}
-                        aria-label={t("common.edit")}
-                        className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-white"
-                        style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
-                      >
-                        <Pencil size={14} />
-                      </Press>
+                      {!isExpired && (
+                        <Press
+                          onClick={() => loadIntoForm(row)}
+                          disabled={busyId === row.id}
+                          aria-label={t("common.edit")}
+                          className="!min-h-9 !min-w-9 h-9 w-9 rounded-full text-white"
+                          style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
+                        >
+                          <Pencil size={14} />
+                        </Press>
+                      )}
                       <Press
                         onClick={() => setConfirmCancel(row)}
                         disabled={busyId === row.id}

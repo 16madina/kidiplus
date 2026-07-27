@@ -192,6 +192,93 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          last_sender_id: string | null
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender_id?: string | null
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          last_sender_id?: string | null
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_threads_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_threads_user_b_fkey"
+            columns: ["user_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -551,7 +638,13 @@ export type Database = {
         Row: {
           auction_deadline_at: string | null
           auction_round: number
+          bid_increment: number | null
+          brand: string | null
+          colors: Json
+          condition: string | null
           created_at: string
+          description: string | null
+          extra_images: Json
           final_price: number | null
           id: string
           image_url: string | null
@@ -561,6 +654,7 @@ export type Database = {
           position: number
           price: number
           shop_product_id: string | null
+          sizes: Json
           sold_to_identity: string | null
           start_price: number
           status: string
@@ -571,7 +665,13 @@ export type Database = {
         Insert: {
           auction_deadline_at?: string | null
           auction_round?: number
+          bid_increment?: number | null
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
+          description?: string | null
+          extra_images?: Json
           final_price?: number | null
           id?: string
           image_url?: string | null
@@ -581,6 +681,7 @@ export type Database = {
           position?: number
           price?: number
           shop_product_id?: string | null
+          sizes?: Json
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -591,7 +692,13 @@ export type Database = {
         Update: {
           auction_deadline_at?: string | null
           auction_round?: number
+          bid_increment?: number | null
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
+          description?: string | null
+          extra_images?: Json
           final_price?: number | null
           id?: string
           image_url?: string | null
@@ -601,6 +708,7 @@ export type Database = {
           position?: number
           price?: number
           shop_product_id?: string | null
+          sizes?: Json
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -654,13 +762,24 @@ export type Database = {
       lives: {
         Row: {
           abandon_push_sent_at: string | null
+          allow_bids: boolean
+          allow_buy_now: boolean
           allow_gifts: boolean
+          broadcast_mode: string
           category: string | null
           cover_url: string | null
           currency: string
+          description: string | null
+          egress_id: string | null
           ended_at: string | null
+          estimated_duration_min: number | null
+          facebook_egress_id: string | null
+          facebook_live_video_id: string | null
+          facebook_watch_url: string | null
           host_last_seen_at: string | null
           id: string
+          ingress_id: string | null
+          notify_followers: boolean
           reminder_buyer_15m_sent: boolean
           reminder_buyer_1h_sent: boolean
           reminder_buyer_24h_sent: boolean
@@ -671,18 +790,33 @@ export type Database = {
           seller_id: string
           started_at: string | null
           status: string
+          tiktok_egress_id: string | null
           title: string
           viewer_count: number
+          youtube_broadcast_id: string | null
+          youtube_stream_id: string | null
+          youtube_watch_url: string | null
         }
         Insert: {
           abandon_push_sent_at?: string | null
+          allow_bids?: boolean
+          allow_buy_now?: boolean
           allow_gifts?: boolean
+          broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
+          description?: string | null
+          egress_id?: string | null
           ended_at?: string | null
+          estimated_duration_min?: number | null
+          facebook_egress_id?: string | null
+          facebook_live_video_id?: string | null
+          facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
+          ingress_id?: string | null
+          notify_followers?: boolean
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
@@ -693,18 +827,33 @@ export type Database = {
           seller_id: string
           started_at?: string | null
           status?: string
+          tiktok_egress_id?: string | null
           title: string
           viewer_count?: number
+          youtube_broadcast_id?: string | null
+          youtube_stream_id?: string | null
+          youtube_watch_url?: string | null
         }
         Update: {
           abandon_push_sent_at?: string | null
+          allow_bids?: boolean
+          allow_buy_now?: boolean
           allow_gifts?: boolean
+          broadcast_mode?: string
           category?: string | null
           cover_url?: string | null
           currency?: string
+          description?: string | null
+          egress_id?: string | null
           ended_at?: string | null
+          estimated_duration_min?: number | null
+          facebook_egress_id?: string | null
+          facebook_live_video_id?: string | null
+          facebook_watch_url?: string | null
           host_last_seen_at?: string | null
           id?: string
+          ingress_id?: string | null
+          notify_followers?: boolean
           reminder_buyer_15m_sent?: boolean
           reminder_buyer_1h_sent?: boolean
           reminder_buyer_24h_sent?: boolean
@@ -715,8 +864,12 @@ export type Database = {
           seller_id?: string
           started_at?: string | null
           status?: string
+          tiktok_egress_id?: string | null
           title?: string
           viewer_count?: number
+          youtube_broadcast_id?: string | null
+          youtube_stream_id?: string | null
+          youtube_watch_url?: string | null
         }
         Relationships: [
           {
@@ -968,6 +1121,11 @@ export type Database = {
           id: string
           method: string
           note: string | null
+          paypal_amount: number | null
+          paypal_batch_id: string | null
+          paypal_currency: string | null
+          paypal_error: string | null
+          paypal_fx_rate: number | null
           processed_at: string | null
           processed_by: string | null
           proof_url: string | null
@@ -984,6 +1142,11 @@ export type Database = {
           id?: string
           method: string
           note?: string | null
+          paypal_amount?: number | null
+          paypal_batch_id?: string | null
+          paypal_currency?: string | null
+          paypal_error?: string | null
+          paypal_fx_rate?: number | null
           processed_at?: string | null
           processed_by?: string | null
           proof_url?: string | null
@@ -1000,6 +1163,11 @@ export type Database = {
           id?: string
           method?: string
           note?: string | null
+          paypal_amount?: number | null
+          paypal_batch_id?: string | null
+          paypal_currency?: string | null
+          paypal_error?: string | null
+          paypal_fx_rate?: number | null
           processed_at?: string | null
           processed_by?: string | null
           proof_url?: string | null
@@ -1031,16 +1199,22 @@ export type Database = {
           email: string
           followers_count: number
           following_count: number
+          frozen_at: string | null
+          frozen_by: string | null
+          frozen_reason: string | null
           handle: string
           id: string
           is_admin: boolean
+          is_frozen: boolean
           is_referred: boolean
           is_seller: boolean
           is_verified: boolean
+          kyc_verified: boolean
           language: string
           moderation_status: string
           rating_avg: number
           rating_count: number
+          risk_restricted: boolean
           terms_accepted_at: string | null
           terms_version: string | null
           welcome_email_sent: boolean
@@ -1057,16 +1231,22 @@ export type Database = {
           email: string
           followers_count?: number
           following_count?: number
+          frozen_at?: string | null
+          frozen_by?: string | null
+          frozen_reason?: string | null
           handle: string
           id: string
           is_admin?: boolean
+          is_frozen?: boolean
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
+          kyc_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
           rating_count?: number
+          risk_restricted?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1083,16 +1263,22 @@ export type Database = {
           email?: string
           followers_count?: number
           following_count?: number
+          frozen_at?: string | null
+          frozen_by?: string | null
+          frozen_reason?: string | null
           handle?: string
           id?: string
           is_admin?: boolean
+          is_frozen?: boolean
           is_referred?: boolean
           is_seller?: boolean
           is_verified?: boolean
+          kyc_verified?: boolean
           language?: string
           moderation_status?: string
           rating_avg?: number
           rating_count?: number
+          risk_restricted?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1433,6 +1619,86 @@ export type Database = {
           },
         ]
       }
+      risk_alerts: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          kind: string
+          resolved_at: string | null
+          resolved_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_alerts_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risk_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_daily_usage: {
+        Row: {
+          currency: string
+          day: string
+          gift_received: number
+          spend: number
+          topup: number
+          user_id: string
+        }
+        Insert: {
+          currency: string
+          day: string
+          gift_received?: number
+          spend?: number
+          topup?: number
+          user_id: string
+        }
+        Update: {
+          currency?: string
+          day?: string
+          gift_received?: number
+          spend?: number
+          topup?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_daily_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_balances: {
         Row: {
           available: number
@@ -1558,6 +1824,39 @@ export type Database = {
           },
         ]
       }
+      seller_facebook_connections: {
+        Row: {
+          connected_at: string
+          page_access_token: string | null
+          page_id: string | null
+          page_name: string | null
+          updated_at: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at: string | null
+        }
+        Insert: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token: string
+          user_id: string
+          user_token_expires_at?: string | null
+        }
+        Update: {
+          connected_at?: string
+          page_access_token?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          updated_at?: string
+          user_access_token?: string
+          user_id?: string
+          user_token_expires_at?: string | null
+        }
+        Relationships: []
+      }
       seller_reviews: {
         Row: {
           comment: string | null
@@ -1610,9 +1909,45 @@ export type Database = {
           },
         ]
       }
+      seller_youtube_connections: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          channel_id: string | null
+          channel_title: string | null
+          connected_at: string
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          channel_id?: string | null
+          channel_title?: string | null
+          connected_at?: string
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          channel_id?: string | null
+          channel_title?: string | null
+          connected_at?: string
+          refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       shop_products: {
         Row: {
           active: boolean
+          brand: string | null
+          colors: Json
+          condition: string | null
           created_at: string
           currency: string
           description: string | null
@@ -1622,11 +1957,15 @@ export type Database = {
           name: string
           price: number
           seller_id: string
+          sizes: Json
           stock: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
           currency: string
           description?: string | null
@@ -1636,11 +1975,15 @@ export type Database = {
           name: string
           price: number
           seller_id: string
+          sizes?: Json
           stock?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          brand?: string | null
+          colors?: Json
+          condition?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -1650,6 +1993,7 @@ export type Database = {
           name?: string
           price?: number
           seller_id?: string
+          sizes?: Json
           stock?: number
           updated_at?: string
         }
@@ -1864,6 +2208,10 @@ export type Database = {
     }
     Functions: {
       _assert_admin: { Args: never; Returns: undefined }
+      _assert_not_blocked: {
+        Args: { _me: string; _other: string }
+        Returns: undefined
+      }
       _claim_and_backfill: {
         Args: { _owner: string; _promo_id: string }
         Returns: Json
@@ -1928,17 +2276,26 @@ export type Database = {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
       }
+      _settle_expired_auction_row: {
+        Args: { _live_id: string; _product_id: string }
+        Returns: undefined
+      }
       account_deletion_check: { Args: never; Returns: Json }
       admin_assign_promo_code: {
         Args: { _id: string; _owner_id: string }
         Returns: Json
       }
+      admin_compute_payout_risk: { Args: { _payout_id: string }; Returns: Json }
       admin_create_promo_code: {
         Args: { _code: string; _owner_id?: string; _reward_quota?: number }
         Returns: Json
       }
       admin_delete_promo_code: { Args: { _id: string }; Returns: Json }
       admin_end_live: { Args: { _live_id: string }; Returns: Json }
+      admin_freeze_user: {
+        Args: { _reason: string; _user_id: string }
+        Returns: Json
+      }
       admin_issue_sanction: {
         Args: {
           _expires_at?: string
@@ -1968,6 +2325,10 @@ export type Database = {
       admin_list_promo_codes: { Args: never; Returns: Json }
       admin_list_reports: {
         Args: { _limit?: number; _status?: string }
+        Returns: Json
+      }
+      admin_list_risk_alerts: {
+        Args: { _limit?: number; _offset?: number; _status?: string }
         Returns: Json
       }
       admin_list_sanctions: { Args: { _user_id: string }; Returns: Json }
@@ -2007,6 +2368,7 @@ export type Database = {
         Args: { _note?: string; _report_id: string; _status: string }
         Returns: Json
       }
+      admin_resolve_risk_alert: { Args: { _alert_id: string }; Returns: Json }
       admin_review_promo_code_request: {
         Args: {
           _action: string
@@ -2026,18 +2388,31 @@ export type Database = {
         Args: { _limit?: number; _q: string }
         Returns: Json
       }
+      admin_seller_recent_orders: {
+        Args: { _limit?: number; _user_id: string }
+        Returns: Json
+      }
       admin_send_message: {
         Args: { _body: string; _title: string; _user_id: string }
+        Returns: Json
+      }
+      admin_set_kyc_verified: {
+        Args: { _user_id: string; _verified: boolean }
         Returns: Json
       }
       admin_set_promo_code_active: {
         Args: { _active: boolean; _id: string }
         Returns: Json
       }
+      admin_set_risk_restricted: {
+        Args: { _restricted: boolean; _user_id: string }
+        Returns: Json
+      }
       admin_set_verified: {
         Args: { _user: string; _verified: boolean }
         Returns: Json
       }
+      admin_unfreeze_user: { Args: { _user_id: string }; Returns: Json }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       anonymize_my_account: { Args: never; Returns: Json }
       apply_promo_code: { Args: { _code: string }; Returns: Json }
@@ -2048,6 +2423,16 @@ export type Database = {
       convert_money: {
         Args: { _amount: number; _from: string; _to: string }
         Returns: number
+      }
+      convert_my_wallet_currency: { Args: never; Returns: Json }
+      create_live_order: {
+        Args: {
+          _color?: string
+          _kind: string
+          _product_id: string
+          _size?: string
+        }
+        Returns: Json
       }
       credit_referral_for_order: { Args: { _order_id: string }; Returns: Json }
       credit_seller_earning: { Args: { _order_id: string }; Returns: Json }
@@ -2084,6 +2469,7 @@ export type Database = {
         }
         Returns: Json
       }
+      find_dm_thread: { Args: { _other: string }; Returns: string }
       fx_rate: { Args: { _from: string; _to: string }; Returns: number }
       get_my_email: { Args: never; Returns: string }
       get_seller_delivery_settings: {
@@ -2107,15 +2493,22 @@ export type Database = {
         Args: { _live_id: string; _user_id: string }
         Returns: boolean
       }
+      is_user_frozen: { Args: { _user_id: string }; Returns: boolean }
       leave_review: {
         Args: { _comment?: string; _order_id: string; _rating: number }
         Returns: Json
       }
+      list_dm_messages: {
+        Args: { _before?: string; _limit?: number; _thread: string }
+        Returns: Json
+      }
       list_my_admin_messages: { Args: { _limit?: number }; Returns: Json }
       list_my_blocks: { Args: never; Returns: Json }
+      list_my_dm_threads: { Args: { _limit?: number }; Returns: Json }
       list_my_notifications: { Args: { _limit?: number }; Returns: Json }
       mark_admin_message_read: { Args: { _id: string }; Returns: Json }
       mark_all_notifications_read: { Args: never; Returns: Json }
+      mark_dm_thread_read: { Args: { _thread: string }; Returns: undefined }
       mark_notification_read: { Args: { _id: string }; Returns: Json }
       mark_order_shipped: { Args: { _order_id: string }; Returns: Json }
       move_to_dlq: {
@@ -2147,33 +2540,8 @@ export type Database = {
         Returns: Json
       }
       purchase_fixed_price: {
-        Args: { _buyer_identity: string; _product_id: string }
-        Returns: {
-          auction_deadline_at: string | null
-          auction_round: number
-          created_at: string
-          final_price: number | null
-          id: string
-          image_url: string | null
-          live_id: string
-          mode: string
-          name: string
-          position: number
-          price: number
-          shop_product_id: string | null
-          sold_to_identity: string | null
-          start_price: number
-          status: string
-          stock: number
-          timer_seconds: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "live_products"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Args: { _buyer_identity?: string; _product_id: string }
+        Returns: Json
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -2196,12 +2564,69 @@ export type Database = {
       }
       request_promo_code: { Args: { _message?: string }; Returns: Json }
       request_verification: { Args: { _message?: string }; Returns: Json }
+      resolve_buyer_delivery: {
+        Args: { _buyer_id: string; _seller_id: string }
+        Returns: Json
+      }
       reverse_referral_for_order: { Args: { _order_id: string }; Returns: Json }
+      risk_account_age_hours: { Args: { _user_id: string }; Returns: number }
+      risk_assert_can_topup: {
+        Args: { _amount: number; _currency: string; _user_id: string }
+        Returns: Json
+      }
+      risk_check_and_consume: {
+        Args: {
+          _amount: number
+          _consume?: boolean
+          _currency: string
+          _kind: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      risk_check_and_consume_self: {
+        Args: {
+          _amount: number
+          _consume?: boolean
+          _currency: string
+          _kind: string
+        }
+        Returns: Json
+      }
+      risk_daily_cap: {
+        Args: {
+          _account_age_hours?: number
+          _currency: string
+          _kind: string
+          _tier: string
+        }
+        Returns: number
+      }
+      risk_payout_caps: {
+        Args: { _currency: string; _tier: string }
+        Returns: Json
+      }
+      risk_payout_usage: {
+        Args: { _currency: string; _since: string; _user_id: string }
+        Returns: number
+      }
+      risk_raise_alert: {
+        Args: { _detail?: Json; _kind: string; _user_id: string }
+        Returns: string
+      }
+      risk_user_tier: { Args: { _user_id: string }; Returns: string }
+      risk_utc_day: { Args: never; Returns: string }
+      send_dm: { Args: { _body: string; _to: string }; Returns: Json }
       send_due_live_reminders: { Args: never; Returns: number }
       send_gift: {
         Args: { _gift_key: string; _live_id: string }
         Returns: Json
       }
+      set_order_product_options: {
+        Args: { _color?: string; _order_id: string; _size?: string }
+        Returns: Json
+      }
+      settle_expired_auctions: { Args: { _live_id?: string }; Returns: Json }
       start_auction: { Args: { _product_id: string }; Returns: Json }
       submit_report: {
         Args: {

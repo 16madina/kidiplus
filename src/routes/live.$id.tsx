@@ -5,13 +5,26 @@ import { isNative } from "@/lib/native";
 import { EMAIL_CONFIG } from "@/lib/email/config";
 import { liveShareUrl } from "@/lib/deep-links";
 
+/**
+ * Shared live link: https://kidiplus.com/live/:id
+ *
+ * - App installed (Universal Link) → open this live in KiDi+.
+ * - No app → /download (App Store / Play Store / continue on web).
+ * - ?web=1 → stay on the web live viewer (chosen from the download page).
+ */
 export const Route = createFileRoute("/live/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    web: search.web === true || search.web === "1" || search.web === 1,
+  }),
   head: ({ params }) => ({
     meta: [
       { title: `Live · Kidi+` },
       { name: "description", content: "Rejoins ce live shopping sur Kidi+." },
       { property: "og:title", content: "Live shopping · Kidi+" },
-      { property: "og:description", content: "Rejoins ce live shopping en direct sur Kidi+." },
+      {
+        property: "og:description",
+        content: "Rejoins ce live shopping en direct sur Kidi+.",
+      },
       { property: "og:type", content: "video.other" },
       { name: "robots", content: "index,follow" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -24,75 +37,97 @@ export const Route = createFileRoute("/live/$id")({
 
 function LiveDeepLink() {
   const { id } = useParams({ from: "/live/$id" });
-  useEffect(() => {
-    // Fire once mounted; AppShell's existing kidi:open-push listener resolves
-    // the live via fetchLiveById and calls openLive().
-    window.dispatchEvent(
-      new CustomEvent("kidi:push-open", { detail: { kind: "live", live_id: id } }),
-    );
-  }, [id]);
-  return (
-    <>
-      <OpenInAppBanner liveId={id} />
-      <AppShell />
-    </>
+  const { web } = Route.useSearch();
+  const [mode, setMode] = useState<"app" | "web" | "bridge" | "loading">(
+    "loading",
   );
+
+  useEffect(() => {
+    if (isNative()) {
+      setMode("app");
+      window.dispatchEvent(
+        new CustomEvent("kidi:push-open", {
+          detail: { kind: "live", live_id: id },
+        }),
+      );
+      return;
+    }
+    if (web) {
+      setMode("web");
+      return;
+    }
+    setMode("bridge");
+  }, [id, web]);
+
+  if (mode === "loading" || mode === "bridge") {
+    return (
+      <>
+        {mode === "bridge" ? <LiveDownloadBridge liveId={id} /> : null}
+        <BridgeShell message="KiDi+…" />
+      </>
+    );
+  }
+
+  // Native app shell, or explicit “continue on web”.
+  return <AppShell />;
 }
 
-/** Shown only in mobile Safari/Chrome when the native app did not catch the Universal Link. */
-function OpenInAppBanner({ liveId }: { liveId: string }) {
-  const [show, setShow] = useState(false);
-
+/** Try native app briefly, then land on the download chooser page. */
+function LiveDownloadBridge({ liveId }: { liveId: string }) {
   useEffect(() => {
-    if (isNative()) return;
+    const path = `/live/${liveId}`;
+    const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL.replace(/\/$/, "")}?next=${encodeURIComponent(path)}`;
+    const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://live/${encodeURIComponent(liveId)}`;
+
+    try {
+      window.localStorage.setItem("kidi.pending_path", path);
+    } catch {
+      /* ignore */
+    }
+
     const ua = navigator.userAgent || "";
-    if (!/Android|iPhone|iPad|iPod/i.test(ua)) return;
-    setShow(true);
-  }, []);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
 
-  if (!show) return null;
+    if (!isMobile) {
+      window.location.replace(downloadUrl);
+      return;
+    }
 
-  const appUrl = `${EMAIL_CONFIG.APP_SCHEME}://live/${encodeURIComponent(liveId)}`;
-  const downloadUrl = `${EMAIL_CONFIG.FALLBACK_URL}?next=${encodeURIComponent(`/live/${liveId}`)}`;
+    const start = Date.now();
+    const timer = window.setTimeout(() => {
+      if (Date.now() - start < 2800 && !document.hidden) {
+        window.location.replace(downloadUrl);
+      }
+    }, 1400);
 
+    window.location.href = appUrl;
+    return () => window.clearTimeout(timer);
+  }, [liveId]);
+
+  return null;
+}
+
+function BridgeShell({ message }: { message: string }) {
   return (
-    <div
-      className="fixed inset-x-0 top-0 z-[100] flex items-center gap-2 px-3 py-2 text-white"
+    <main
       style={{
-        paddingTop: "max(8px, env(safe-area-inset-top))",
-        background: "rgba(16,22,43,0.96)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        minHeight: "100dvh",
+        display: "grid",
+        placeItems: "center",
+        padding: 28,
+        background: "#10162B",
+        color: "#fff",
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        textAlign: "center",
       }}
     >
-      <div className="min-w-0 flex-1 text-[12px] font-semibold leading-tight">
-        Ouvre ce live dans l’app KIDI+
+      <div>
+        <p style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>KiDi+</p>
+        <p style={{ margin: "10px 0 0", fontSize: 14, opacity: 0.85 }}>
+          {message}
+        </p>
       </div>
-      <a
-        href={appUrl}
-        className="shrink-0 rounded-full bg-rose-600 px-3 py-1.5 text-[12px] font-bold text-white no-underline"
-        onClick={() => {
-          // If the custom scheme fails (app missing), send to download shortly after.
-          window.setTimeout(() => {
-            if (!document.hidden) window.location.href = downloadUrl;
-          }, 1200);
-        }}
-      >
-        Ouvrir
-      </a>
-      <a
-        href={downloadUrl}
-        className="shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-white/80 no-underline"
-      >
-        Télécharger
-      </a>
-      <button
-        type="button"
-        aria-label="Fermer"
-        className="shrink-0 px-1 text-[16px] leading-none text-white/60"
-        onClick={() => setShow(false)}
-      >
-        ×
-      </button>
-    </div>
+    </main>
   );
 }

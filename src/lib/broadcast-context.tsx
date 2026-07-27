@@ -6,11 +6,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { ProductCondition } from "@/lib/live-product-options";
 
 export type BroadcastStage = "entry" | "setup" | "live" | "summary";
 export type BroadcastMode = "now" | "schedule" | "edit";
+/** How the host video is produced: phone camera vs Restream/OBS RTMP. */
+export type StreamSource = "camera" | "rtmp";
 
 export type SellMode = "auction" | "fixed";
+
+export type RtmpCreds = {
+  url: string;
+  streamKey: string;
+  ingressId: string;
+  participantIdentity: string;
+};
+
+export type { ProductCondition };
 
 export type BProduct = {
   id: string;
@@ -29,6 +41,18 @@ export type BProduct = {
   dbId?: string;
   /** Optional link back to the seller's shop_products row (traceability + stock sync). */
   shopProductId?: string;
+  /** Optional short description (shown to viewers). */
+  description?: string;
+  /** Optional auction bid step override. */
+  bidIncrement?: number | null;
+  brand?: string;
+  condition?: ProductCondition | null;
+  colors?: string[];
+  sizes?: string[];
+  /** Extra image preview URLs (slots 1–2). Cover is `image`. */
+  extraImages?: string[];
+  /** Local files for extra slots (aligned with `extraImages`; null = URL-only). */
+  extraImageFiles?: (File | null)[];
 };
 
 
@@ -94,8 +118,8 @@ type Ctx = {
   setHost: (identity: string, name: string) => void;
 
   /** Seller's currency (mirrors profile.currency). One live = one currency. */
-  currency: "XOF" | "EUR" | "CAD";
-  setCurrency: (c: "XOF" | "EUR" | "CAD") => void;
+  currency: "XOF" | "EUR" | "CAD" | "USD" | "GBP";
+  setCurrency: (c: "XOF" | "EUR" | "CAD" | "USD" | "GBP") => void;
 
   /** Host camera facing — shared from setup → live so flip choice persists. */
   cameraFacing: "user" | "environment";
@@ -104,6 +128,12 @@ type Ctx = {
   /** Allow viewers to send virtual gifts during the live. */
   allowGifts: boolean;
   setAllowGifts: (v: boolean) => void;
+
+  /** camera (default) or rtmp multi-platform via Restream/OBS. */
+  streamSource: StreamSource;
+  setStreamSource: (s: StreamSource) => void;
+  rtmpCreds: RtmpCreds | null;
+  setRtmpCreds: (c: RtmpCreds | null) => void;
 
   reset: () => void;
 };
@@ -138,9 +168,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [hostIdentity, setHostIdentity] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string>("Host");
-  const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD">("EUR");
+  const [currency, setCurrency] = useState<"XOF" | "EUR" | "CAD" | "USD" | "GBP">("EUR");
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [allowGifts, setAllowGifts] = useState<boolean>(true);
+  const [streamSource, setStreamSource] = useState<StreamSource>("camera");
+  const [rtmpCreds, setRtmpCreds] = useState<RtmpCreds | null>(null);
 
 
   const addProduct = useCallback((p: Omit<BProduct, "id">) => {
@@ -179,6 +211,8 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
     setLiveId(null);
     setCameraFacing("user");
     setAllowGifts(true);
+    setStreamSource("camera");
+    setRtmpCreds(null);
   }, []);
 
 
@@ -204,9 +238,11 @@ export function BroadcastProvider({ children }: { children: ReactNode }) {
       currency, setCurrency,
       cameraFacing, setCameraFacing,
       allowGifts, setAllowGifts,
+      streamSource, setStreamSource,
+      rtmpCreds, setRtmpCreds,
       reset,
     }),
-    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
+    [stage, mode, scheduledAt, editingLiveId, title, category, cover, coverFile, products, session, roomName, liveId, hostIdentity, hostName, setHost, currency, cameraFacing, allowGifts, streamSource, rtmpCreds, addProduct, removeProduct, clearProducts, setProductDbIds, reset],
 
   );
 

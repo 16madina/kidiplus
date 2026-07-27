@@ -9,12 +9,17 @@ import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { formatMoney, normalizeCurrency } from "@/lib/money";
+import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
+import { useAuth } from "@/lib/auth-context";
+import {
+  payoutDailyCap,
+  payoutWeeklyCap,
+  riskTierFromProfile,
+} from "@/lib/risk-limits";
+import { BrandBadge } from "@/components/brand/brand-badge";
 
-const WAVE = "#1DC8FE";
-const ORANGE = "#FF6600";
 const PAYPAL_BLUE = "#003087";
 const PAYPAL_BLUE_LIGHT = "#0070BA";
 
@@ -65,6 +70,10 @@ export function WithdrawSheet({
   source?: PayoutSource;
 }) {
   const { t, i18n } = useTranslation();
+  const { profile } = useAuth();
+  const riskTier = riskTierFromProfile(profile);
+  const dayCap = payoutDailyCap(riskTier, currency);
+  const weekCap = payoutWeeklyCap(riskTier, currency);
   const min = payoutMinimumFor(currency);
   const availableMethods = useMemo(() => methodsForCurrency(currency), [currency]);
   const defaultMethod: PayoutMethod = availableMethods[0] ?? "paypal";
@@ -142,7 +151,26 @@ export function WithdrawSheet({
           ? t("payout.errors.insufficient")
           : r.error === "below_minimum"
             ? t("payout.errors.belowMin", { min: formatMoney(r.min ?? min, currency, i18n.language) })
-            : t("payout.errors.generic"),
+          : r.error === "payout_daily_limit"
+              ? t("risk.errors.payoutDailyLimit", {
+                  used: formatMoney(r.used ?? 0, r.currency ?? currency, i18n.language),
+                  cap: formatMoney(r.cap ?? dayCap, r.currency ?? currency, i18n.language),
+                  defaultValue:
+                    "Limite journalière atteinte : {{used}} déjà retiré aujourd'hui sur {{cap}} autorisés.",
+                })
+              : r.error === "payout_weekly_limit"
+                ? t("risk.errors.payoutWeeklyLimit", {
+                    used: formatMoney(r.used ?? 0, r.currency ?? currency, i18n.language),
+                    cap: formatMoney(r.cap ?? weekCap, r.currency ?? currency, i18n.language),
+                    defaultValue:
+                      "Limite hebdomadaire atteinte : {{used}} déjà retiré ces 7 derniers jours sur {{cap}} autorisés.",
+                  })
+                : r.error === "risk_restricted"
+                  ? t(
+                      "risk.errors.restricted",
+                      "Paiements temporairement bloqués. Contacte le support.",
+                    )
+                  : t("payout.errors.generic"),
       );
     }
   };
@@ -184,7 +212,15 @@ export function WithdrawSheet({
                     <Row label={t("payout.holder")} value={holder} />
                   </>
                 ) : method === "paypal" ? (
-                  <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                  <>
+                    <Row label={t("payout.paypalEmail")} value={paypalEmail} />
+                    {normalizeCurrency(currency) === "XOF" && (
+                      <Row
+                        label={t("payout.paypalReceived", { defaultValue: "Reçu sur PayPal" })}
+                        value={`≈ ${formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language)}`}
+                      />
+                    )}
+                  </>
                 ) : (
                   <Row label={t("payout.phone")} value={phone} />
                 )}
@@ -208,6 +244,22 @@ export function WithdrawSheet({
               <p className="mt-1 text-[12px] text-muted-foreground">
                 {t("payout.available")}: <span className="font-semibold text-foreground">{formatMoney(available, currency, i18n.language)}</span>
               </p>
+
+              <div
+                className="mt-3 rounded-2xl px-3 py-2.5 text-[12px] leading-snug"
+                style={{
+                  background: "oklch(0.95 0.04 85)",
+                  color: "oklch(0.35 0.06 70)",
+                  border: "1px solid oklch(0.85 0.1 85)",
+                }}
+              >
+                {t("risk.payoutLimitsHint", {
+                  day: formatMoney(dayCap, currency, i18n.language),
+                  week: formatMoney(weekCap, currency, i18n.language),
+                  defaultValue:
+                    "Plafonds retrait : {{day}} / jour · {{week}} / 7 jours. Certifie ton compte (badge) ou complète le KYC pour augmenter ces limites.",
+                })}
+              </div>
 
               <label className="mt-4 block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("payout.amount")}
@@ -243,11 +295,13 @@ export function WithdrawSheet({
                 {availableMethods.map((m) => {
                   if (m === "wave") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
-                      color={WAVE} label="Wave" />
+                      color="transparent" label="Wave"
+                      icon={<BrandBadge brand="wave" size={36} />} />
                   );
                   if (m === "orange_money") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
-                      color={ORANGE} label="Orange Money" />
+                      color="transparent" label="Orange Money"
+                      icon={<BrandBadge brand="orange" size={36} />} />
                   );
                   if (m === "paypal") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
@@ -292,6 +346,15 @@ export function WithdrawSheet({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {t("payout.paypalHint")}
                   </p>
+                  {normalizeCurrency(currency) === "XOF" && amount > 0 && (
+                    <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                      {t("payout.paypalXofHint", {
+                        defaultValue:
+                          "Tu recevras ≈ {{eur}} sur ton PayPal (taux fixe officiel, sans marge).",
+                        eur: formatMoney(convertMoney(amount, "XOF", "EUR"), "EUR", i18n.language),
+                      })}
+                    </p>
+                  )}
                 </>
               ) : (
                 <input
@@ -354,8 +417,8 @@ function MethodPick({
       }`}
     >
       <div
-        className="grid h-9 w-9 place-items-center rounded-xl text-white text-[13px] font-bold"
-        style={{ backgroundColor: color }}
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl text-white text-[13px] font-bold"
+        style={{ backgroundColor: color === "transparent" ? "transparent" : color }}
       >
         {icon ?? label[0]}
       </div>

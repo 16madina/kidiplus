@@ -65,8 +65,10 @@ export async function bootstrapNative(): Promise<void> {
   if (splashAlreadyShown) {
     void hideNativeSplash();
   } else {
-    // Watchdog: hide after 2.5s even if the video never fires 'playing'.
-    window.setTimeout(() => { void hideNativeSplash(); }, 2500);
+    // Keep native splash until the React intro paints (or this ceiling).
+    // Was 2.5s — too short on App Store cold start / cellular, so the
+    // navy shell vanished before the video could show.
+    window.setTimeout(() => { void hideNativeSplash(); }, 10_000);
   }
 
 
@@ -102,8 +104,92 @@ export async function bootstrapNative(): Promise<void> {
     const openDeepLink = (rawUrl: string) => {
       const path = pathFromDeepLinkUrl(rawUrl);
       if (!path) return false;
-      // Close SFSafariViewController / Chrome Custom Tab if OAuth left it open.
-      void import("@capacitor/browser").then(({ Browser }) => Browser.close().catch(() => {}));
+      // Close SFSafariViewController / Chrome Custom Tab if OAuth / PayPal left it open.
+      void import("@capacitor/browser").then(({ Browser }) => {
+        void Browser.close().catch(() => {});
+        setTimeout(() => {
+          void Browser.close().catch(() => {});
+        }, 350);
+      });
+
+      // YouTube OAuth return — stay on current page, refresh connect UI.
+      if (path.startsWith("/youtube-connected")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const channel = u.searchParams.get("channel");
+          window.dispatchEvent(
+            new CustomEvent("kidi:youtube-connected", {
+              detail: {
+                ok: status === "ok",
+                status,
+                channel: channel ?? undefined,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
+      // Facebook OAuth return — stay on current page, refresh connect UI.
+      if (path.startsWith("/facebook-connected")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const page = u.searchParams.get("page");
+          window.dispatchEvent(
+            new CustomEvent("kidi:facebook-connected", {
+              detail: {
+                ok: status === "ok" || status === "select_page",
+                status,
+                page: page ?? undefined,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
+      // PayPal server return — stay on the current WebView page (no reload).
+      if (path.startsWith("/paypal-done")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const amount = u.searchParams.get("amount");
+          const currency = u.searchParams.get("currency");
+          const duplicate = u.searchParams.get("duplicate") === "1";
+          sessionStorage.setItem(
+            "kidi:paypal_done",
+            JSON.stringify({ status, amount, currency, duplicate }),
+          );
+          void import("@/lib/paypal-topup-client").then(({ clearPendingPaypalOrder }) => {
+            clearPendingPaypalOrder();
+          });
+          void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
+            stashSoftSection("wallet");
+            dispatchOpenSection("wallet");
+          });
+          window.dispatchEvent(
+            new CustomEvent("kidi:paypal-topup-done", {
+              detail: {
+                ok: status === "ok",
+                status,
+                amount: amount != null ? Number(amount) : undefined,
+                currency: currency ?? undefined,
+                duplicate,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
       navigateInApp(path);
       return true;
     };

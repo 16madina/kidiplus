@@ -1,10 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
 import {
-  Eye, Package, AlertTriangle, X, Shield, Trash2,
+  Eye, Package, AlertTriangle, X, Shield, Trash2, Send, Radio,
 } from "lucide-react";
 import { HostToolRail } from "./host-tool-rail";
 import { FiltersCarousel } from "./filters-carousel";
+import { RtmpCredentialsSheet } from "./rtmp-credentials-sheet";
+import { TiktokRtmpSheet } from "./tiktok-rtmp-sheet";
+import {
+  fetchYoutubeStatus,
+  startYoutubeRestream,
+  stopYoutubeRestream,
+  ensureYoutubeBroadcastLive,
+} from "@/lib/youtube-restream";
+import {
+  fetchFacebookStatus,
+  startFacebookRestream,
+  stopFacebookRestream,
+} from "@/lib/facebook-restream";
+import {
+  startTiktokRestream,
+  stopTiktokRestream,
+} from "@/lib/tiktok-restream";
 import { useFilter } from "@/lib/filters/filter-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
@@ -28,6 +45,7 @@ import { FloatingHearts } from "@/components/live-viewer/floating-hearts";
 import { Confetti } from "@/components/live-viewer/confetti";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
+import { GiftComboFeed } from "@/components/live-viewer/gift-combo-feed";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast, type BProduct } from "@/lib/broadcast-context";
 import { fmtDuration } from "@/lib/broadcast-mock";
@@ -39,6 +57,7 @@ import { pushStatusBarLight } from "@/lib/native";
 import { useLiveRoom } from "@/lib/live-room";
 import { useImmersiveScope } from "@/lib/immersive-context";
 import { isBlobUrl } from "@/lib/object-url";
+import { fetchOrdersForLive, subscribeOrders } from "@/lib/orders-db";
 import {
   startAuctionInDb, finalizeAuctionInDb, activateFixedInDb, stopFixedInDb,
   createLiveProductInDb, relaunchUnsoldProductInDb, markLiveActiveInDb, touchLiveHostInDb,
@@ -49,7 +68,12 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { AUCTION_EXTENSION_WINDOW_SECONDS, AUCTION_EXTENSION_RESET_SECONDS } from "@/lib/fees";
 import { WinnerReveal } from "@/components/live-viewer/winner-reveal";
 import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
+import { AuctionFinalCountdown } from "@/components/live-viewer/auction-final-countdown";
 import type { ChatMsg } from "@/lib/live-viewer-mock";
+import {
+  replyOnSocialPlatforms,
+  useSocialChatBridge,
+} from "@/lib/social-chat-bridge";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const { t, i18n } = useTranslation();
@@ -60,12 +84,29 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
+  const isRtmp = b.streamSource === "rtmp";
   const [cameraOn, setCameraOn] = useState(true);
-  const [micOn, setMicOn] = useState(true);
+  const [micOn, setMicOn] = useState(!isRtmp);
+  const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytRestreaming, setYtRestreaming] = useState(false);
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytWatchUrl, setYtWatchUrl] = useState<string | null>(null);
+  const ytPromoteAbortRef = useRef<AbortController | null>(null);
+  const [fbReady, setFbReady] = useState(false);
+  const [fbRestreaming, setFbRestreaming] = useState(false);
+  const [fbBusy, setFbBusy] = useState(false);
+  const [fbWatchUrl, setFbWatchUrl] = useState<string | null>(null);
+  const [ttRestreaming, setTtRestreaming] = useState(false);
+  const [ttBusy, setTtBusy] = useState(false);
+  const [ttSheetOpen, setTtSheetOpen] = useState(false);
   const [duration, setDuration] = useState(0);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [featuredId, setFeaturedId] = useState<string>("");
+  /** Products whose auction already ended this session — star card must never
+   *  stick on them even if a stale realtime frame revives status=active. */
+  const [retiredFeaturedIds, setRetiredFeaturedIds] = useState<string[]>([]);
   const [lastSaleFlash, setLastSaleFlash] = useState<string | null>(null);
   const [lastBidFlash, setLastBidFlash] = useState<string | null>(null);
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
@@ -88,6 +129,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
+
+  // YouTube / Facebook connect status (camera live only).
+  useEffect(() => {
+    if (isRtmp) return;
+    let cancelled = false;
+    void fetchYoutubeStatus()
+      .then((s) => {
+        if (!cancelled) setYtConnected(!!s.connected);
+      })
+      .catch(() => {
+        if (!cancelled) setYtConnected(false);
+      });
+    void fetchFacebookStatus()
+      .then((s) => {
+        if (!cancelled) {
+          setFbReady(!!s.connected && !s.needsPageSelection && !!s.pageId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFbReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRtmp]);
 
   // Local image fallback: if signing the storage path fails on the host, we
   // still have the original File (or absolute URL) in the broadcast context.
@@ -135,13 +201,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     return () => clearInterval(t);
   }, [appActive]);
 
-  // Seed a welcome system message once the room is ready.
-  const welcomedRef = useRef(false);
-  useEffect(() => {
-    if (!room.ready || welcomedRef.current) return;
-    welcomedRef.current = true;
-    room.systemMessage(t("live.chatIntro", "Sois respectueux dans le chat 💛"));
-  }, [room, t]);
+  // Chat etiquette tip is shown locally per viewer (and fades) — do not
+  // broadcast a permanent "Sois respectueux…" line into every client's chat.
 
   // Track a running peak viewer count.
   const [peak, setPeak] = useState(1);
@@ -149,40 +210,57 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setPeak((p) => Math.max(p, room.viewerCount));
   }, [room.viewerCount]);
 
-  // Featured auto-advances FORWARD only. When the current featured is
-  // finished (sold / unsold / out) or removed, we pick the next product by
-  // ascending position whose status is 'upcoming' — never loop back to an
-  // earlier item. When none remain, `featuredId` is cleared and the "all
-  // done" state renders.
+  // Featured auto-advances FORWARD only when a next article exists.
+  // If the current one finishes and there is no next, keep it on the star
+  // card so the host can relaunch without re-adding from the shop.
+  const isFeaturedDone = (p: { id: string; status: string }) =>
+    retiredFeaturedIds.includes(p.id) ||
+    p.status === "sold" ||
+    p.status === "out" ||
+    p.status === "unsold";
+
   useEffect(() => {
     if (room.products.length === 0) {
       if (featuredId) setFeaturedId("");
       return;
     }
     const cur = room.products.find((p) => p.id === featuredId);
-    const done = cur && (cur.status === "sold" || cur.status === "out" || cur.status === "unsold");
-    if (!cur || done) {
-      const curPos = cur?.position ?? -1;
-      const sorted = [...room.products].sort((a, b) => a.position - b.position);
-      const next = sorted.find(
-        (p) => p.position > curPos && p.status === "upcoming",
-      );
-      setFeaturedId(next?.id ?? "");
+    const done = !cur || isFeaturedDone(cur);
+    if (!done) return;
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    const curIdx = cur ? sorted.findIndex((p) => p.id === cur.id) : -1;
+    const next = sorted.slice(Math.max(curIdx, -1) + 1).find((p) => !isFeaturedDone(p));
+    const fallback = sorted.find((p) => !isFeaturedDone(p));
+    if (next || fallback) {
+      setFeaturedId(next?.id ?? fallback!.id);
+      return;
     }
-  }, [room.products, featuredId]);
+    // No next article — keep the finished one featured for relaunch.
+    if (cur) return;
+    setFeaturedId(sorted[sorted.length - 1]?.id ?? "");
+  }, [room.products, featuredId, retiredFeaturedIds]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
-  const [now, setNow] = useState(() => Date.now());
+  // Poll often for accuracy, re-render only when the second flips.
+  const [timeLeft, setTimeLeft] = useState(0);
   useEffect(() => {
-    if (!appActive || !room.auctionStart) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
+    if (!appActive || !room.auctionStart) {
+      setTimeLeft(0);
+      return;
+    }
+    const deadlineMs = room.auctionStart.deadlineMs;
+    let last = -1;
+    const tick = () => {
+      const s = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      if (s !== last) {
+        last = s;
+        setTimeLeft(s);
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
     return () => clearInterval(t);
   }, [appActive, room.auctionStart]);
-
-  const timeLeft = useMemo(() => {
-    if (!room.auctionStart) return 0;
-    return Math.max(0, Math.ceil((room.auctionStart.deadlineMs - now) / 1000));
-  }, [room.auctionStart, now]);
 
   const activeAuction = room.auctionStart;
   const activeProduct = activeAuction
@@ -216,44 +294,112 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, []);
 
   // Auto-end when time hits zero (host is authoritative).
+  // Guard against instant finalize on start (race / clock skew), but still
+  // end reliably once the auction has actually been running.
   const endingRef = useRef<string | null>(null);
+  const sawCountdownRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeAuction || !activeProduct) return;
+    if (!activeAuction) {
+      sawCountdownRef.current = null;
+      return;
+    }
+    const armKey = `${activeAuction.productId}:${activeAuction.deadlineMs}`;
+    if (timeLeft > 0) {
+      sawCountdownRef.current = armKey;
+      return;
+    }
+    // Fallback arm: if the auction started >2s ago (from timerSec), treat as
+    // real even if we somehow missed a positive timeLeft frame.
+    const timerSec = Math.max(1, activeAuction.timerSec ?? 30);
+    const startedAt = activeAuction.deadlineMs - timerSec * 1000;
+    if (Date.now() - startedAt >= 2000) sawCountdownRef.current = armKey;
+  }, [activeAuction, timeLeft]);
+
+  useEffect(() => {
+    if (!activeAuction) return;
     if (timeLeft > 0) return;
-    const round = activeProduct.auction_round ?? 1;
-    const endKey = `${activeAuction.productId}:${round}`;
+    // Prefer row from products list; fall back to auction productId alone so a
+    // missing/desynced product row cannot freeze the host at 00s forever.
+    const productId = activeAuction.productId;
+    const product =
+      activeProduct ??
+      room.products.find((p) => p.id === productId) ??
+      null;
+    const armKey = `${productId}:${activeAuction.deadlineMs}`;
+    if (sawCountdownRef.current !== armKey) return;
+    const round = product?.auction_round ?? 1;
+    const endKey = `${productId}:${round}:${activeAuction.deadlineMs}`;
     if (endingRef.current === endKey) return;
     endingRef.current = endKey;
     const lastBidMatches =
       !!room.lastBid &&
-      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
-    const finalPrice = activeProduct.price;
-    const productId = activeAuction.productId;
+    const finalPrice = product?.price ?? 0;
+    // Stable endId across optimistic UI end + post-finalize settlement frame.
+    const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
+    // End UI immediately at 00s — never wait on RPC/avatar (that was the
+    // multi-second "stuck at zero" gap before the winner popup).
+    room.broadcastAuctionEnd({
+      productId,
+      winnerId,
+      winnerName,
+      winnerAvatarUrl: null,
+      finalPrice: Number(finalPrice ?? 0),
+      orderId: null,
+      autoPaid: false,
+      auctionRound: round,
+      endId,
+      ts: Date.now(),
+    });
     void (async () => {
-      const res = await finalizeAuctionInDb({
-        liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-      });
-      const resolvedWinnerId = res.winnerId ?? winnerId;
-      const resolvedWinnerName = res.winnerName ?? winnerName;
-      const resolvedPrice = res.finalPrice ?? finalPrice;
-      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
-      room.broadcastAuctionEnd({
-        productId,
-        winnerId: resolvedWinnerId,
-        winnerName: resolvedWinnerName,
-        winnerAvatarUrl,
-        finalPrice: Number(resolvedPrice ?? 0),
-        orderId: res.orderId ?? null,
-        autoPaid: !!res.autoPaid,
-        auctionRound: round,
-        ts: Date.now(),
-      });
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const res = await finalizeAuctionInDb({
+            liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+          });
+          if (res.ok) {
+            const resolvedWinnerId = res.winnerId ?? winnerId;
+            const resolvedWinnerName = res.winnerName ?? winnerName;
+            const resolvedPrice = res.finalPrice ?? finalPrice;
+            const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+            // Same endId → viewers skip a second confetti, but apply wallet/order.
+            room.broadcastAuctionEnd({
+              productId,
+              winnerId: resolvedWinnerId,
+              winnerName: resolvedWinnerName,
+              winnerAvatarUrl,
+              finalPrice: Number(resolvedPrice ?? 0),
+              orderId: res.orderId ?? null,
+              autoPaid: !!res.autoPaid,
+              auctionRound: round,
+              endId,
+              ts: Date.now(),
+            });
+            return;
+          }
+          console.warn("[auction] finalize failed", res.error, `attempt=${attempt}`);
+        } catch (e) {
+          console.warn("[auction] finalize threw", e, `attempt=${attempt}`);
+        }
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1200));
+      }
+      toast.error(
+        t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
+      );
+      // Force server settle + keep local end (do NOT clear endingRef in a way
+      // that revives the 00:01 zombie — product must leave `active`).
+      try {
+        await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+          .rpc("settle_expired_auctions", { _live_id: b.liveId });
+      } catch { /* ignore */ }
+      // Re-fetch product; if still active, optimistic local close already ran
+      // via broadcastAuctionEnd — leave auctionStart cleared.
+      endingRef.current = endKey;
     })();
-  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar]);
-
+  }, [timeLeft, activeAuction, activeProduct, room, b.liveId, resolveWinnerAvatar, t]);
   // ---- Sudden-death / anti-snipe extension ----
   // Whenever a new realtime bid lands on the active auction with less than
   // AUCTION_EXTENSION_WINDOW seconds remaining, extend the deadline to
@@ -275,6 +421,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Only extend if the new deadline is actually later.
     if (newDeadline <= activeAuction.deadlineMs) return;
     room.broadcastAuctionExtend({ productId: activeAuction.productId, deadlineMs: newDeadline });
+    // Persist the extended deadline — the 1.5s rescue poll and late joiners
+    // read auction_deadline_at from the DB, and without this write they kept
+    // reverting to the pre-extension deadline (viewers saw the countdown end
+    // while others were still bidding).
+    void supabase
+      .from("live_products")
+      .update({ auction_deadline_at: new Date(newDeadline).toISOString() })
+      .eq("id", activeAuction.productId)
+      .then(({ error }) => {
+        if (error) console.warn("[auction] persist extension failed", error.message);
+      });
   }, [room.lastBid, activeAuction, activeProduct, room]);
 
   // Sudden-death flash for everyone (host sees it too).
@@ -298,6 +455,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     productName: string | null;
   } | null>(null);
   const seenEndIdsRef = useRef<Set<string>>(new Set());
+  const joinedAtRef = useRef(Date.now());
+  const productsRef = useRef(room.products);
+  productsRef.current = room.products;
+
+  useEffect(() => {
+    joinedAtRef.current = Date.now();
+    seenEndIdsRef.current = new Set();
+    setWinnerReveal(null);
+    setRetiredFeaturedIds([]);
+  }, [b.liveId]);
+
   useEffect(() => {
     const evt = room.lastAuctionEnd;
     if (!evt) return;
@@ -305,13 +473,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Same buyer can win the same item N times in one live.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
     if (seenEndIdsRef.current.has(endId)) return;
+    const ts = evt.ts ?? 0;
+    if (ts > 0 && ts < joinedAtRef.current - 2500) return;
     seenEndIdsRef.current.add(endId);
     // Bound memory across a long live.
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
       if (first) seenEndIdsRef.current.delete(first);
     }
-    const prod = room.products.find((p) => p.id === evt.productId);
+    const prod = productsRef.current.find((p) => p.id === evt.productId);
+    // If a next article exists, retire this one and advance. Otherwise keep
+    // it on the star card so the host can relaunch immediately.
+    {
+      const sorted = [...productsRef.current].sort((a, b) => a.position - b.position);
+      const idx = sorted.findIndex((p) => p.id === evt.productId);
+      const retired = new Set(retiredFeaturedIds);
+      retired.add(evt.productId);
+      const isPlayable = (p: (typeof sorted)[number]) =>
+        !retired.has(p.id) &&
+        p.status !== "sold" &&
+        p.status !== "out" &&
+        p.status !== "unsold";
+      const next = sorted.slice(idx + 1).find(isPlayable);
+      const fallback = sorted.find(isPlayable);
+      if (next || fallback) {
+        setRetiredFeaturedIds((prev) =>
+          prev.includes(evt.productId) ? prev : [...prev, evt.productId],
+        );
+        setFeaturedId(next?.id ?? fallback!.id);
+      } else {
+        setFeaturedId(evt.productId);
+      }
+    }
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
@@ -348,7 +541,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, room.products, t, room, fmt, resolveWinnerAvatar]);
+  }, [room.lastAuctionEnd, t, room, fmt, resolveWinnerAvatar]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
@@ -398,21 +591,38 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
   };
 
-  // Totals from finalized sales.
-  const totalRevenue = useMemo(
-    () => room.products.reduce((sum, p) => {
-      if (p.mode === "auction" && p.status === "sold") return sum + Number(p.final_price ?? 0);
-      if (p.mode === "fixed") return sum + Number(p.price) * (1 - Math.max(0, p.stock)) * 0 + 0;
-      return sum;
-    }, 0) + room.products.reduce((s, p) => {
-      // fixed sales: (initial stock - current stock) × price. We don't have initial stock;
-      // approximate via sold_to_identity + price when status='out'. Best-effort UI number.
-      return s;
-    }, 0),
-    [room.products],
-  );
+  // Live sales counter — paid orders for this live (realtime). The previous
+  // product-stock approximation always returned 0 for fixed-price sales
+  // (`* 0 + 0`), so the "Ventes" pill never moved while viewers kept buying.
+  const [liveSales, setLiveSales] = useState<{ revenue: number; count: number }>({
+    revenue: 0,
+    count: 0,
+  });
+  useEffect(() => {
+    if (!b.liveId || !user?.id) {
+      setLiveSales({ revenue: 0, count: 0 });
+      return;
+    }
+    let alive = true;
+    const load = async () => {
+      const rows = await fetchOrdersForLive(b.liveId!);
+      if (!alive) return;
+      const paid = rows.filter((r) => r.status === "paid");
+      setLiveSales({
+        revenue: paid.reduce((s, o) => s + Number(o.amount), 0),
+        count: paid.length,
+      });
+    };
+    void load();
+    const unsub = subscribeOrders({ sellerId: user.id }, () => void load());
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [b.liveId, user?.id]);
 
-  const soldCount = room.products.filter((p) => p.status === "sold" || p.status === "out").length;
+  const totalRevenue = liveSales.revenue;
+  const soldCount = liveSales.count;
 
   // Aggregate gifts received in-session (from realtime broadcast frames).
   const [giftStats, setGiftStats] = useState<{ count: number; sellerNet: number }>({ count: 0, sellerNet: 0 });
@@ -422,71 +632,142 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (!g) return;
     if (seenGiftIdsRef.current.has(g.id)) return;
     seenGiftIdsRef.current.add(g.id);
-    // Resolve price from the local catalog (same as server) to derive seller_net.
+    // Chat line is added by useLiveRoom for everyone; here we only update host stats.
     void import("@/lib/gifts").then(({ giftByKey }) => {
       const def = giftByKey(g.giftKey);
       const price = def?.prices[cur] ?? 0;
       const net = price * 0.7;
       setGiftStats((s) => ({ count: s.count + 1, sellerNet: s.sellerNet + net }));
-      const emoji = def?.emoji ?? "🎁";
-      const name = def ? t(def.nameKey) : t("gifts.name.rose");
-      room.systemMessage(`${emoji} ${t("gifts.chatLine", { defaultValue: "{{user}} a envoyé un(e) {{gift}}", user: g.senderName, gift: name })}`);
     });
-  }, [room.lastGift, room, t, cur]);
+  }, [room.lastGift, cur]);
 
-  const featured = room.products.find((p) => p.id === featuredId) ?? room.products[0];
+  const featured = useMemo(() => {
+    const playable = (p: LiveProductRow) =>
+      !retiredFeaturedIds.includes(p.id) &&
+      p.status !== "sold" &&
+      p.status !== "out" &&
+      p.status !== "unsold";
+    const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    const byId = featuredId
+      ? room.products.find((p) => p.id === featuredId)
+      : undefined;
+    if (byId && playable(byId)) return byId;
+    const nextPlayable = sorted.find(playable) ?? null;
+    if (nextPlayable) return nextPlayable;
+    // No upcoming article left — keep the finished featured item for relaunch.
+    if (byId) return byId;
+    return sorted[sorted.length - 1] ?? null;
+  }, [room.products, featuredId, retiredFeaturedIds]);
 
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
+    if (activeAuction && activeAuction.productId !== p.id) {
+      toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
+      return;
+    }
     haptic.medium();
     setFeaturedId(p.id);
+    // Relaunch / rejouer — allow this product back onto the star card.
+    setRetiredFeaturedIds((prev) => prev.filter((id) => id !== p.id));
     endingRef.current = null;
     // Ask the server to flip the row to active AND persist the deadline. We
     // then broadcast the SAME absolute epoch ms to every viewer, and the
     // host's own countdown reads from broadcastAuctionStart(...) — a single
     // deadline source keeps host, viewers, and late joiners in sync (±1s
-    // clock drift). Fall back to a local computation if the RPC fails so
-    // the auction still runs.
-    const res = await startAuctionInDb(p.id);
-    const deadlineMs = res.ok && res.deadlineMs ? res.deadlineMs : Date.now() + p.timer_seconds * 1000;
+    // clock drift). NEVER run a broadcast-only auction the DB doesn't know
+    // about: the row would stay "upcoming", so late joiners, the rescue poll
+    // and postgres_changes could not recover anyone who missed the single
+    // broadcast frame — exactly the "some viewers see the auction, others
+    // stay on waiting-for-seller" desync. Retry once, then surface the error.
+    let res = await startAuctionInDb(p.id);
+    if (!res.ok || !res.deadlineMs) res = await startAuctionInDb(p.id);
+    if (!res.ok || !res.deadlineMs) {
+      const err = res.error ?? "";
+      toast.error(
+        err === "auction_already_running"
+          ? t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord.")
+          : (res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère")),
+      );
+      return;
+    }
     room.broadcastAuctionStart({
       productId: p.id,
-      deadlineMs,
-      timerSec: p.timer_seconds,
+      deadlineMs: res.deadlineMs,
+      timerSec: res.timerSec ?? p.timer_seconds,
+      ...(res.auctionRound != null ? { auctionRound: res.auctionRound } : {}),
     });
     room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${fmt(p.start_price)}`);
   };
 
 
   const endAuctionNow = async () => {
-    if (!activeAuction || !activeProduct) return;
-    const round = activeProduct.auction_round ?? 1;
+    if (!activeAuction) return;
+    const productId = activeAuction.productId;
+    const product =
+      activeProduct ??
+      room.products.find((p) => p.id === productId) ??
+      null;
+    const round = product?.auction_round ?? 1;
     const lastBidMatches =
       !!room.lastBid &&
-      room.lastBid.productId === activeAuction.productId &&
+      room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
     const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
     const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
-    const finalPrice = activeProduct.price;
-    const productId = activeAuction.productId;
-    const res = await finalizeAuctionInDb({
-      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
-    });
-    const resolvedWinnerId = res.winnerId ?? winnerId;
-    const resolvedWinnerName = res.winnerName ?? winnerName;
-    const resolvedPrice = res.finalPrice ?? finalPrice;
-    const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+    const finalPrice = product?.price ?? 0;
+    endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
+    const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
+    // Clear countdown / show reveal immediately; persist in the background.
     room.broadcastAuctionEnd({
       productId,
-      winnerId: resolvedWinnerId,
-      winnerName: resolvedWinnerName,
-      winnerAvatarUrl,
-      finalPrice: Number(resolvedPrice ?? 0),
-      orderId: res.orderId ?? null,
-      autoPaid: !!res.autoPaid,
+      winnerId,
+      winnerName,
+      winnerAvatarUrl: null,
+      finalPrice: Number(finalPrice ?? 0),
+      orderId: null,
+      autoPaid: false,
       auctionRound: round,
+      endId,
       ts: Date.now(),
     });
+    let res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    if (!res.ok) res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    if (!res.ok) res = await finalizeAuctionInDb({
+      liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
+    });
+    if (res.ok) {
+      const resolvedWinnerId = res.winnerId ?? winnerId;
+      const resolvedWinnerName = res.winnerName ?? winnerName;
+      const resolvedPrice = res.finalPrice ?? finalPrice;
+      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+      room.broadcastAuctionEnd({
+        productId,
+        winnerId: resolvedWinnerId,
+        winnerName: resolvedWinnerName,
+        winnerAvatarUrl,
+        finalPrice: Number(resolvedPrice ?? 0),
+        orderId: res.orderId ?? null,
+        autoPaid: !!res.autoPaid,
+        auctionRound: round,
+        endId,
+        ts: Date.now(),
+      });
+    } else {
+      toast.error(
+        res.error ??
+          t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
+      );
+      try {
+        await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+          .rpc("settle_expired_auctions", { _live_id: b.liveId });
+      } catch { /* ignore */ }
+      endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
+      void resolveWinnerAvatar(winnerId);
+    }
   };
 
   const toggleFixedSale = async (p: LiveProductRow) => {
@@ -494,16 +775,160 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.medium();
     setFeaturedId(p.id);
     if (p.status === "active") {
-      await stopFixedInDb(p.id);
+      const res = await stopFixedInDb(p.id);
+      if (!res.ok) {
+        toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+        return;
+      }
       room.systemMessage(`Vente arrêtée — ${p.name}`);
     } else {
-      await activateFixedInDb(p.id);
+      const res = await activateFixedInDb(p.id);
+      if (!res.ok) {
+        toast.error(res.error ?? t("common.error", "Une erreur est survenue"));
+        return;
+      }
       room.systemMessage(`${t("live.listForSale")} — ${p.name} · ${fmt(p.price)}`);
     }
   };
 
+  const toggleYoutubeRestream = async () => {
+    if (!b.liveId || isRtmp || ytBusy) return;
+    if (!ytConnected) {
+      toast.error(
+        t(
+          "broadcast.youtube.needConnect",
+          "Connecte YouTube dans le setup avant de diffuser",
+        ),
+      );
+      return;
+    }
+    setYtBusy(true);
+    haptic.selection();
+    try {
+      if (ytRestreaming) {
+        ytPromoteAbortRef.current?.abort();
+        ytPromoteAbortRef.current = null;
+        await stopYoutubeRestream(b.liveId);
+        setYtRestreaming(false);
+        setYtWatchUrl(null);
+        toast.success(
+          t("broadcast.youtube.stopped", "Diffusion YouTube arrêtée"),
+        );
+      } else {
+        const started = await startYoutubeRestream(b.liveId);
+        setYtRestreaming(true);
+        setYtWatchUrl(started.watchUrl);
+        // Promote "À venir" → live quietly (no toast — keeps the host UI clean).
+        ytPromoteAbortRef.current?.abort();
+        const ac = new AbortController();
+        ytPromoteAbortRef.current = ac;
+        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal });
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.youtube.startFailed", "Impossible de diffuser sur YouTube"),
+      );
+    } finally {
+      setYtBusy(false);
+    }
+  };
+
+  const toggleFacebookRestream = async () => {
+    if (!b.liveId || isRtmp || fbBusy) return;
+    if (!fbReady) {
+      toast.error(
+        t(
+          "broadcast.facebook.needConnect",
+          "Connecte une Page Facebook dans le setup avant de diffuser",
+        ),
+      );
+      return;
+    }
+    setFbBusy(true);
+    haptic.selection();
+    try {
+      if (fbRestreaming) {
+        await stopFacebookRestream(b.liveId);
+        setFbRestreaming(false);
+        setFbWatchUrl(null);
+        toast.success(
+          t("broadcast.facebook.stopped", "Diffusion Facebook arrêtée"),
+        );
+      } else {
+        const started = await startFacebookRestream(b.liveId);
+        setFbRestreaming(true);
+        setFbWatchUrl(started.watchUrl);
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.facebook.startFailed", "Impossible de diffuser sur Facebook"),
+      );
+    } finally {
+      setFbBusy(false);
+    }
+  };
+
+  const toggleTiktokRestream = async () => {
+    if (!b.liveId || isRtmp || ttBusy) return;
+    haptic.selection();
+    if (ttRestreaming) {
+      setTtBusy(true);
+      try {
+        await stopTiktokRestream(b.liveId);
+        setTtRestreaming(false);
+        toast.success(
+          t("broadcast.tiktok.stopped", "Diffusion TikTok arrêtée"),
+        );
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : t("broadcast.tiktok.stopFailed", "Impossible d’arrêter TikTok"),
+        );
+      } finally {
+        setTtBusy(false);
+      }
+      return;
+    }
+    setTtSheetOpen(true);
+  };
+
+  const startTiktokFromSheet = async (creds: {
+    serverUrl: string;
+    streamKey: string;
+  }) => {
+    if (!b.liveId || ttBusy) return;
+    setTtBusy(true);
+    try {
+      await startTiktokRestream({
+        liveId: b.liveId,
+        serverUrl: creds.serverUrl,
+        streamKey: creds.streamKey,
+      });
+      setTtRestreaming(true);
+      setTtSheetOpen(false);
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("broadcast.tiktok.startFailed", "Impossible de diffuser sur TikTok"),
+      );
+    } finally {
+      setTtBusy(false);
+    }
+  };
+
   const endLive = async () => {
-    haptic.success();
+    if (!b.liveId) {
+      haptic.success();
+      onEnd();
+      return;
+    }
+    haptic.medium();
     b.setSession({
       title: b.title,
       category: b.category,
@@ -520,10 +945,28 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           price: Number(p.final_price ?? p.price),
         })),
     });
-    if (b.liveId) {
-      const { endLiveInDb } = await import("@/lib/lives-db");
-      await endLiveInDb(b.liveId).catch(() => {});
+    if (ytRestreaming || ytWatchUrl) {
+      await stopYoutubeRestream(b.liveId).catch(() => {});
     }
+    if (fbRestreaming || fbWatchUrl) {
+      await stopFacebookRestream(b.liveId).catch(() => {});
+    }
+    if (ttRestreaming) {
+      await stopTiktokRestream(b.liveId).catch(() => {});
+    }
+    if (isRtmp || b.rtmpCreds) {
+      const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
+      await deleteLiveIngress(b.liveId).catch(() => {});
+    }
+    const { endLiveInDb } = await import("@/lib/lives-db");
+    const ended = await endLiveInDb(b.liveId);
+    // not_updated = already ended (expiry / other device) — still leave to summary.
+    if (!ended.ok && ended.error !== "not_updated") {
+      haptic.error();
+      toast.error(t("live.endFailed", "Impossible de terminer le live — réessaie"));
+      return;
+    }
+    haptic.success();
     onEnd();
   };
 
@@ -542,6 +985,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       stock: p.stock,
       timerSeconds: p.timerSec,
       shopProductId: p.shopProductId ?? null,
+      description: p.description ?? null,
+      brand: p.brand ?? null,
+      condition: p.condition ?? null,
+      colors: p.colors ?? [],
+      sizes: p.sizes ?? [],
+      extraImages: p.extraImages,
+      extraImageFiles: p.extraImageFiles,
+      bidIncrement: p.bidIncrement ?? null,
     });
     setAddingProduct(false);
     if (!res.ok) {
@@ -553,6 +1004,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.success();
     toast.success(t("live.productAdded", "Produit ajouté"));
   };
+  useSocialChatBridge({
+    liveId: b.liveId,
+    enabledYoutube: ytRestreaming,
+    enabledFacebook: fbRestreaming,
+    room,
+    auctionActive: !!activeAuction,
+    productName: activeProduct?.name ?? null,
+  });
+
   const chatMessages: ChatMsg[] = room.chat
     .filter((c) => !c.userId || !chatMutes.has(c.userId))
     .map((c) => ({
@@ -561,12 +1021,53 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       color: c.color,
       text: c.text,
       system: c.system,
+      systemKind: c.systemKind,
       userId: c.userId,
+      replyTo: c.replyTo,
+      source: c.source,
+      externalId: c.externalId,
       isModerator:
         !!c.isModerator ||
         (!!c.userId && moderators.some((m) => m.userId === c.userId)),
       isHost: !!c.isHost || (!!c.userId && c.userId === user?.id),
     }));
+
+  const [hostDraft, setHostDraft] = useState("");
+  const [hostReplyTo, setHostReplyTo] = useState<ChatMsg | null>(null);
+  const sendHostChat = () => {
+    const txt = hostDraft.trim();
+    if (!txt) return;
+    const replyTarget = hostReplyTo;
+    room.sendChat(
+      txt,
+      replyTarget
+        ? {
+            user: replyTarget.user,
+            text: replyTarget.text,
+            ...(replyTarget.userId ? { userId: replyTarget.userId } : {}),
+          }
+        : undefined,
+    );
+    // Mirror host replies onto active social restreams so YT/FB viewers see them.
+    if (b.liveId && (ytRestreaming || fbRestreaming)) {
+      const src = replyTarget?.source;
+      void replyOnSocialPlatforms({
+        liveId: b.liveId,
+        text: txt,
+        source:
+          src === "youtube" || src === "facebook"
+            ? src
+            : "all",
+        parentExternalId:
+          src === "facebook" ? replyTarget?.externalId : undefined,
+      }).catch((e) => {
+        console.warn("[social-chat] mirror reply failed", e);
+      });
+    }
+    setHostDraft("");
+    setHostReplyTo(null);
+    haptic.light();
+  };
 
   return (
     <motion.div
@@ -580,8 +1081,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <BroadcastVideo
         ref={videoHandleRef}
         facing={facing}
-        enabled={cameraOn}
-        micEnabled={micOn}
+        enabled={isRtmp ? true : cameraOn}
+        micEnabled={isRtmp ? false : micOn}
+        videoSource={isRtmp ? "rtmp" : "camera"}
+        ingressIdentity={b.rtmpCreds?.participantIdentity}
         fallbackImage={b.cover}
         retryKey={retryKey}
         onStatus={setVideoStatus}
@@ -589,6 +1092,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onFlipBusyChange={setFlipBusy}
         onFacingApplied={(applied) => setFacing(applied)}
         onFlipRevert={(prev) => setFacing(prev)}
+        onMicSync={(enabled) => setMicOn(enabled)}
         livekit={
           b.roomName && b.hostIdentity
             ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
@@ -596,79 +1100,81 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }
       />
 
-      {/* Compact top bar — fits at 320pt width. Grid layout: leading pills |
-          spacer | trailing controls. Every pill has min-w-0 so text can
-          truncate without pushing the end button off-screen. */}
+      {/* Compact top bar — LIVE + viewers left, products + Terminer pinned right. */}
       <div
-        className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-1.5 px-2"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" }}
+        className="absolute inset-x-0 top-0 z-30 kp-live-safe-x"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
       >
-        {/* Live pill: pulsing red dot + timer merged (no "EN DIRECT" text). */}
-        <div
-          className="flex items-center gap-1.5 rounded-full px-2 py-1 text-white"
-          style={{
-            backgroundColor: "rgba(220, 30, 40, 0.95)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-        >
-          <motion.span
-            animate={{ opacity: [1, 0.35, 1] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-            className="h-1.5 w-1.5 rounded-full bg-white"
-          />
-          <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
+        <div className="relative flex items-center gap-1.5 px-2 pr-[6.75rem]">
+          {/* Live pill: pulsing red dot + timer */}
+          <div
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-white"
+            style={{
+              backgroundColor: "rgba(220, 30, 40, 0.95)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <motion.span
+              animate={{ opacity: [1, 0.35, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              className="h-1.5 w-1.5 rounded-full bg-white"
+            />
+            <span className="text-[11px] font-bold tabular-nums">{fmtDuration(duration)}</span>
+          </div>
+          {/* Viewer count */}
+          <Press
+            onClick={() => {
+              haptic.selection();
+              setViewersSheetOpen(true);
+            }}
+            aria-label={t("live.viewersSheetTitle", "Spectateurs")}
+            className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <Eye size={12} />
+            {room.viewerCount}
+          </Press>
         </div>
-        {/* Viewer count — tap to see who's watching */}
-        <Press
-          onClick={() => {
-            haptic.selection();
-            setViewersSheetOpen(true);
-          }}
-          aria-label={t("live.viewersSheetTitle", "Spectateurs")}
-          className="!min-h-0 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white tabular-nums"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
+        {/* Always-visible trailing controls */}
+        <div
+          className="absolute top-[calc(env(safe-area-inset-top,0px)+8px)] flex items-center gap-1"
+          style={{ right: "max(0.5rem, env(safe-area-inset-right, 0px))" }}
         >
-          <Eye size={12} />
-          {room.viewerCount}
-        </Press>
-        {/* Spacer */}
-        <div className="min-w-0" />
-        {/* Products icon-only pill with count badge */}
-        <Press
-          onClick={() => { haptic.selection(); setProductsOpen(true); }}
-          aria-label={t("live.openProducts")}
-          className="!min-h-9 !min-w-9 relative h-9 w-9 rounded-full text-white"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-          }}
-        >
-          <Package size={16} />
-          {room.products.length > 0 && (
-            <span
-              className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold text-[#10162B]"
-              style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
-            >
-              {room.products.length}
-            </span>
-          )}
-        </Press>
-        {/* End-live pill: compact icon+word, red. */}
-        <Press
-          onClick={() => setConfirmEnd(true)}
-          aria-label={t("live.endLive")}
-          className="!min-h-9 h-9 min-w-0 shrink-0 rounded-full pl-2 pr-3 text-[12px] font-bold text-white inline-flex items-center gap-1"
-          style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
-        >
-          <X size={14} />
-          <span className="truncate">{t("live.endLive")}</span>
-        </Press>
+          <Press
+            onClick={() => { haptic.selection(); setProductsOpen(true); }}
+            aria-label={t("live.openProducts")}
+            className="!min-h-9 !min-w-9 relative h-9 w-9 shrink-0 rounded-full text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <Package size={16} />
+            {room.products.length > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold text-[#10162B]"
+                style={{ backgroundColor: "oklch(0.85 0.18 90)" }}
+              >
+                {room.products.length}
+              </span>
+            )}
+          </Press>
+          <Press
+            onClick={() => setConfirmEnd(true)}
+            aria-label={t("live.endLive")}
+            className="!min-h-9 h-9 shrink-0 rounded-full pl-2 pr-2.5 text-[12px] font-bold text-white inline-flex items-center gap-1"
+            style={{ backgroundColor: "rgba(220, 30, 40, 0.95)" }}
+          >
+            <X size={14} />
+            <span>{t("live.endLiveShort", "Terminer")}</span>
+          </Press>
+        </div>
       </div>
 
       {/* Video connection error overlay with retry */}
@@ -715,10 +1221,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </div>
       )}
 
-      {/* Session stat strip */}
+      {/* Session stats strip (metrics only). Keep clear of the featured card. */}
       <div
         className="absolute z-30"
-        style={{ top: "calc(env(safe-area-inset-top) + 60px)", left: 12 }}
+        style={{
+          top: "calc(env(safe-area-inset-top) + 52px)",
+          left: "max(12px, env(safe-area-inset-left, 0px))",
+          // Featured card is w-28 (~7rem) + right inset — never let stats/social
+          // run under it (iPhone 15 was overlapping Cadeaux / FB / TT).
+          right: "calc(7.75rem + max(0.5rem, env(safe-area-inset-right, 0px)))",
+          maxWidth: "none",
+        }}
       >
         <div
           className="flex items-center gap-3 rounded-2xl px-3 py-1.5 text-white"
@@ -750,10 +1263,65 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             </span>
           </div>
         </div>
+
+        {/* Social restream — separate row BELOW the stats strip (not inside). */}
+        {!isRtmp && (
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Press
+              disabled={ytBusy}
+              onClick={() => void toggleYoutubeRestream()}
+              aria-label={t("broadcast.youtube.goLive", "Diffuser sur YouTube")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ytRestreaming
+                  ? "linear-gradient(135deg, #ff0033, #cc0000)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ytRestreaming ? "#fff" : "#0a0a12",
+                opacity: ytBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ytBusy ? "…" : ytRestreaming ? "YT ON" : "YT"}
+            </Press>
+            <Press
+              disabled={fbBusy}
+              onClick={() => void toggleFacebookRestream()}
+              aria-label={t("broadcast.facebook.goLive", "Diffuser sur Facebook")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: fbRestreaming
+                  ? "linear-gradient(135deg, #1877f2, #0d5bbd)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: fbRestreaming ? "#fff" : "#0a0a12",
+                opacity: fbBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {fbBusy ? "…" : fbRestreaming ? "FB ON" : "FB"}
+            </Press>
+            <Press
+              disabled={ttBusy}
+              onClick={() => void toggleTiktokRestream()}
+              aria-label={t("broadcast.tiktok.goLive", "Diffuser sur TikTok")}
+              className="!min-h-0 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wide"
+              style={{
+                background: ttRestreaming
+                  ? "linear-gradient(135deg, #FE2C55, #c41e3a)"
+                  : "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+                color: ttRestreaming ? "#fff" : "#0a0a12",
+                opacity: ttBusy ? 0.7 : 1,
+              }}
+            >
+              <Radio size={11} />
+              {ttBusy ? "…" : ttRestreaming ? "TT ON" : "TT"}
+            </Press>
+          </div>
+        )}
       </div>
 
-      <FloatingHearts trigger={room.heartTick} />
+      <FloatingHearts useBus />
       <Confetti trigger={confettiTrigger} />
+      <GiftComboFeed trigger={room.lastGift} />
       <GiftAnimationsLayer trigger={room.lastGift} />
       <WinnerReveal
         key={winnerReveal?.key ?? "wr"}
@@ -768,13 +1336,25 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onDone={() => setWinnerReveal(null)}
       />
       <SuddenDeathFlash tick={suddenDeathTick} />
+      <AuctionFinalCountdown
+        secondsLeft={timeLeft}
+        active={!!activeAuction}
+        density="app"
+      />
       <LiveChat
         messages={chatMessages}
+        bottomOffset="calc(env(safe-area-inset-bottom) + 64px)"
+        height="34dvh"
         moderation={{
           canModerate: true,
+          canReport: true,
           selfUserId: user?.id ?? null,
           hostUserId: user?.id ?? null,
           mutedIds: chatMutes,
+          onReply: (msg) => {
+            haptic.light();
+            setHostReplyTo(msg);
+          },
           onMuteUser: async (userId, displayName) => {
             if (!b.liveId || !user) return;
             const res = await muteLiveChatUser(b.liveId, userId, user.id);
@@ -864,11 +1444,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="absolute right-3 z-30 text-left"
-            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
+            className="absolute z-30 text-left"
+            style={{
+              // Under Terminer, but BELOW the stats row so it never covers
+              // Ventes / Articles / Cadeaux on narrow phones (iPhone 15).
+              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
+              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
+            }}
           >
             <div
-              className="w-28 rounded-2xl p-1.5 text-white"
+              className="w-[6.75rem] rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
@@ -899,7 +1484,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       initial={{ scale: 1.15 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2, ease: EASE_IOS }}
-                      className="text-[13px] font-bold tabular-nums"
+                      className="text-[12px] font-bold tabular-nums"
                     >
                       {fmt(featured.price)}
                     </motion.span>
@@ -925,77 +1510,159 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       else void toggleFixedSale(featured);
                     }}
                     hapticOnTap={false}
-                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
+                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10px] font-bold text-[#10162B]"
                   >
                     {featured.mode === "auction"
-                      ? `${t("live.startAuction")} ▸`
+                      ? (featured.status === "sold" || featured.status === "unsold"
+                          ? `${t("live.startAuctionAgain", "Rejouer")} ▸`
+                          : `${t("live.startAuction")} ▸`)
                       : t("live.listForSale")}
                   </Press>
                 </>
               )}
             </div>
           </motion.button>
-        ) : room.products.length > 0 ? (
-          <motion.div
-            key="all-done"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="absolute right-3 z-30"
-            style={{ top: "calc(env(safe-area-inset-top) + 110px)" }}
-          >
-            <div
-              className="w-28 rounded-2xl p-2 text-center text-white"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.55)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div className="text-[11px] font-semibold leading-snug">
-                {t("live.allDone", "Tous les articles sont passés")}
-              </div>
-              <Press
-                onClick={() => { haptic.selection(); setAddOpen(true); }}
-                className="!min-h-7 mt-1.5 h-7 w-full rounded-full bg-white px-2 text-[10.5px] font-bold text-[#10162B]"
-              >
-                {t("live.addProduct", "Ajouter")}
-              </Press>
-            </div>
-          </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {/* Host chat composer — same comments as viewers (reply supported). */}
+      <div
+        className="absolute inset-x-0 z-30 flex flex-col gap-1.5 kp-live-safe-x"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom) + 10px)",
+          paddingRight: "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
+          maxWidth: "min(100%, 42rem)",
+        }}
+      >
+        {hostReplyTo && (
+          <div
+            className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-semibold">
+                {t("live.replyingTo", { name: hostReplyTo.user, defaultValue: "Réponse à {{name}}" })}
+              </span>
+              <span className="text-white/65"> · {hostReplyTo.text}</span>
+            </div>
+            <Press
+              onClick={() => setHostReplyTo(null)}
+              aria-label={t("common.cancel", "Annuler")}
+              className="!min-h-7 h-7 w-7 shrink-0 rounded-full text-white/80"
+            >
+              <X size={14} />
+            </Press>
+          </div>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendHostChat();
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            value={hostDraft}
+            onChange={(e) => setHostDraft(e.target.value)}
+            placeholder={
+              hostReplyTo
+                ? t("live.replyPlaceholder", {
+                    name: hostReplyTo.user,
+                    defaultValue: "Répondre à {{name}}…",
+                  })
+                : t("live.chatPlaceholder", "Écris un message…")
+            }
+            className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-white/60"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          />
+          <Press
+            onClick={sendHostChat}
+            aria-label={t("live.sendMessage", "Envoyer")}
+            className="h-11 w-11 shrink-0 rounded-full text-white"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            <Send size={17} />
+          </Press>
+        </form>
+      </div>
 
       {/* Bottom area is chat + featured card only. Mic / cam / flip /
           moderators / add live on the right tool rail. Filters removed. */}
       <HostToolRail
+        hideAV={isRtmp}
         micOn={micOn}
         camOn={cameraOn}
-        canFlip={canFlip && cameraOn}
+        canFlip={!isRtmp && canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
-        filtersActive={activeLens.lensId !== "none"}
-        onOpenFilters={() => setFiltersOpen((o) => !o)}
-        onToggleMic={() => setMicOn((m) => !m)}
-        onToggleCam={() => setCameraOn((c) => !c)}
-        onFlip={() => {
-          if (flipBusy || !cameraOn) return;
-          // Flip opposite of the *actual* camera — don't trust React facing
-          // state after leave/return (it can say "back" while hardware is front).
-          void videoHandleRef.current
-            ?.switchCamera()
-            .then((applied) => setFacing(applied))
-            .catch(() => {
-              /* toast + revert handled inside BroadcastVideo */
-            });
-        }}
+        filtersActive={!isRtmp && activeLens.lensId !== "none"}
+        onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+        onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
+        onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
+        onFlip={
+          isRtmp
+            ? undefined
+            : () => {
+                if (flipBusy || !cameraOn) return;
+                void videoHandleRef.current
+                  ?.switchCamera()
+                  .then((applied) => setFacing(applied))
+                  .catch(() => {
+                    /* toast + revert handled inside BroadcastVideo */
+                  });
+              }
+        }
         onOpenModerators={() => setModeratorsSheetOpen(true)}
         onAddProduct={() => setAddOpen(true)}
       />
 
-      <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      {!isRtmp && (
+        <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+      )}
 
+      {isRtmp && b.rtmpCreds && (
+        <>
+          <Press
+            onClick={() => setRtmpSheetOpen(true)}
+            className="!min-h-9 absolute left-3 z-30 inline-flex items-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-black"
+            style={{
+              top: "calc(env(safe-area-inset-top) + 52px)",
+              background:
+                "linear-gradient(135deg, oklch(0.82 0.14 85), oklch(0.72 0.16 70))",
+            }}
+          >
+            <Radio size={14} />
+            {t("broadcast.rtmp.openCreds", "Clés RTMP")}
+          </Press>
+          <RtmpCredentialsSheet
+            open={rtmpSheetOpen}
+            onClose={() => setRtmpSheetOpen(false)}
+            creds={b.rtmpCreds}
+          />
+        </>
+      )}
+
+      <TiktokRtmpSheet
+        open={ttSheetOpen}
+        onClose={() => !ttBusy && setTtSheetOpen(false)}
+        busy={ttBusy}
+        onStart={startTiktokFromSheet}
+      />
 
       <LiveViewersSheet
         open={viewersSheetOpen}
@@ -1170,6 +1837,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                         >
                           {t("live.endAuction")}
                         </Press>
+                      ) : activeAuction ? (
+                        <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground">
+                          {t("live.waitOtherAuction", "Enchère en cours")}
+                        </span>
                       ) : (
                         <Press
                           onClick={() => { void startAuction(p); setProductsOpen(false); }}

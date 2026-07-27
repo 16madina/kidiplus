@@ -20,6 +20,9 @@ import {
   Check,
   ShoppingBag,
   Store,
+  MapPin,
+  Truck,
+  ReceiptText,
 } from "lucide-react";
 import { Press } from "@/components/press";
 import { PushScreen } from "@/components/push-screen";
@@ -47,9 +50,13 @@ import {
 import { expireOverdueOrders } from "@/lib/lives-db";
 import { PaymentSheet } from "@/components/payments/payment-sheet";
 import { OrderTimeline } from "@/components/orders/order-timeline";
+import { OrderItemImage } from "@/components/orders/order-item-image";
 import { LeaveReviewSheet } from "@/components/orders/leave-review-sheet";
 import { fetchMyReviewedOrderIds } from "@/lib/reviews-db";
 import { SellerOrderDetailSheet } from "@/components/seller/order-detail-sheet";
+import { OrderInvoiceSheet } from "@/components/orders/order-invoice-sheet";
+import { CountryFlag } from "@/components/country-flag";
+import { countryName } from "@/lib/delivery-zones-data";
 
 type ProfileMap = Record<string, { display_name: string; handle: string }>;
 
@@ -387,15 +394,17 @@ function SalesList({
       {paid.map((o) => {
         const buyer = buyers[o.buyer_id];
         const fm = FULFILL_META[o.fulfillment_status];
+        const snap = asSnapshot(o.address_snapshot);
+        const destination = snap
+          ? [snap.city, snap.country ? countryName(snap.country, i18n.language) : null]
+              .filter(Boolean)
+              .join(" · ")
+          : null;
         return (
           <li key={o.id} className="overflow-hidden rounded-2xl border border-border bg-card">
             <Press onClick={() => onOpen(o)} className="!block w-full p-0 text-left">
               <div className="flex items-center gap-3 p-3">
-                {o.item_image ? (
-                  <img src={o.item_image} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <div className="h-14 w-14 shrink-0 rounded-xl bg-muted" />
-                )}
+                <OrderItemImage src={o.item_image} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate text-[14px] font-semibold">{o.item_name}</p>
@@ -409,6 +418,11 @@ function SalesList({
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
                     {buyer ? `@${buyer.handle}` : t("sales.buyer")} · {orderDateShort(new Date(o.created_at))}
                   </p>
+                  {destination && (
+                    <p className="mt-0.5 flex items-center gap-1 text-[12px] text-muted-foreground">
+                      <MapPin size={11} className="shrink-0" /> {destination}
+                    </p>
+                  )}
                   <p className="mt-0.5 text-[13px] font-bold tabular-nums">
                     {formatMoney(Number(o.amount), o.currency, i18n.language)}
                   </p>
@@ -459,11 +473,7 @@ function PurchaseCard({
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <Press onClick={onOpen} className="!block w-full p-0 text-left">
           <div className="flex items-center gap-3 p-3">
-            {order.item_image ? (
-              <img src={order.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" draggable={false} />
-            ) : (
-              <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-            )}
+            <OrderItemImage src={order.item_image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <p className="min-w-0 truncate text-[14px] font-semibold">{order.item_name}</p>
@@ -564,20 +574,67 @@ function PurchaseCard({
 
 function BuyerOrderDetailScreen({ order, onClose }: { order: OrderRow | null; onClose: () => void }) {
   const { t } = useTranslation();
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+
+  // Reset invoice when leaving / switching order so back stack stays clean.
+  useEffect(() => {
+    if (!order) setInvoiceOpen(false);
+  }, [order]);
+
   return (
     <PushScreen
       open={!!order}
       onClose={onClose}
       title={order ? order.item_name : ""}
       zIndex={70}
+      swipeBackEnabled={!invoiceOpen}
     >
-      {order && <BuyerOrderDetailBody order={order} />}
+      {order && (
+        <BuyerOrderDetailBody
+          order={order}
+          invoiceOpen={invoiceOpen}
+          onInvoiceOpenChange={setInvoiceOpen}
+        />
+      )}
       {!order && <div className="p-4 text-sm text-muted-foreground">{t("orders.empty")}</div>}
     </PushScreen>
   );
 }
 
-function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
+type AddressSnap = {
+  full_name?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  city?: string | null;
+  zone_or_commune?: string | null;
+  street_address?: string | null;
+  postal_code?: string | null;
+  region?: string | null;
+  details?: string | null;
+  line?: string | null;
+};
+
+function asSnapshot(v: unknown): AddressSnap | null {
+  if (!v || typeof v !== "object") return null;
+  return v as AddressSnap;
+}
+
+function fullDate(iso: string | null, lang: string): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString(lang, {
+    day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function BuyerOrderDetailBody({
+  order,
+  invoiceOpen,
+  onInvoiceOpenChange,
+}: {
+  order: OrderRow;
+  invoiceOpen: boolean;
+  onInvoiceOpenChange: (open: boolean) => void;
+}) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const meta = statusMeta(order.status);
@@ -585,15 +642,22 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
   const isBuyer = !!user && user.id === order.buyer_id;
   const canReview = isBuyer && order.fulfillment_status === "delivered";
   const fm = FULFILL_META[order.fulfillment_status];
+  const snap = asSnapshot(order.address_snapshot);
+  const addressParts = snap
+    ? [
+        snap.street_address,
+        snap.zone_or_commune,
+        [snap.postal_code, snap.city].filter(Boolean).join(" "),
+        snap.region,
+      ].filter((p): p is string => !!p && String(p).trim().length > 0)
+    : [];
+  const shippedDate = fullDate(order.shipped_at, i18n.language);
+  const deliveredDate = fullDate(order.delivered_confirmed_at, i18n.language);
 
   return (
     <div className="space-y-4 px-4 py-4">
       <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
-        {order.item_image ? (
-          <img src={order.item_image} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" draggable={false} />
-        ) : (
-          <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
-        )}
+        <OrderItemImage src={order.item_image} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-semibold">{order.item_name}</p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -621,13 +685,72 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
         </div>
       </div>
 
+      {/* Buyer invoice: item + delivery = total. Platform/processing fees are
+          charged to the seller, never added on top of the buyer's total. */}
       <div className="rounded-2xl border border-border p-4">
         <Row label={t("pay.item")} value={formatMoney(Number(order.amount), order.currency, i18n.language)} />
-        <Row label={t("pay.platformFee")} value={formatMoney(Number(order.platform_fee), order.currency, i18n.language)} />
-        <Row label={t("pay.processingFee")} value={formatMoney(Number(order.processing_fee), order.currency, i18n.language)} />
+        {order.delivery_mode === "courier" ? (
+          <Row label={t("delivery.fee", { defaultValue: "Livraison" })} value={t("delivery.courierShort", { defaultValue: "au livreur" })} />
+        ) : Number(order.delivery_fee) > 0 ? (
+          <Row
+            label={
+              t("delivery.fee", { defaultValue: "Livraison" }) +
+              (order.delivery_zone ? ` · ${order.delivery_zone}` : "")
+            }
+            value={formatMoney(Number(order.delivery_fee), order.currency, i18n.language)}
+          />
+        ) : null}
         <div className="my-2 h-px bg-border" />
         <Row label={t("pay.total")} value={formatMoney(Number(order.total), order.currency, i18n.language)} bold />
+        <Press
+          onClick={() => { haptic.selection(); onInvoiceOpenChange(true); }}
+          className="!min-h-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-[13px] font-semibold"
+        >
+          <ReceiptText size={14} /> {t("invoice.viewCta", { defaultValue: "Voir la facture" })}
+        </Press>
       </div>
+
+      {/* Delivery address (buyer view) */}
+      {snap && (
+        <section className="rounded-2xl border border-border p-4">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            <MapPin size={12} />
+            {t("orderDetail.deliveryAddress", { defaultValue: "Adresse de livraison" })}
+          </div>
+          {snap.full_name && <p className="text-[14px] font-semibold">{snap.full_name}</p>}
+          {snap.phone && <p className="mt-0.5 text-[13px] text-muted-foreground">{snap.phone}</p>}
+          <div className="mt-1 space-y-0.5 text-[13px] leading-snug">
+            {addressParts.map((p, i) => <p key={i}>{p}</p>)}
+            {snap.details && <p className="text-muted-foreground">↳ {snap.details}</p>}
+          </div>
+          {snap.country && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <CountryFlag code={snap.country} className="h-3 w-4 rounded-sm" />
+              {countryName(snap.country, i18n.language)}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* Shipping progress (dates) */}
+      {order.status === "paid" && (
+        <section className="rounded-2xl border border-border p-4">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            <Truck size={12} />
+            {t("orderDetail.shippingTitle", { defaultValue: "Livraison" })}
+          </div>
+          <div className="space-y-1.5 text-[13px]">
+            <p>
+              <span className="font-semibold">{t("orderDetail.shippedOn", { defaultValue: "Expédié le" })}:</span>{" "}
+              {shippedDate ?? t("orderDetail.notYetShipped", { defaultValue: "pas encore expédié" })}
+            </p>
+            <p>
+              <span className="font-semibold">{t("orderDetail.deliveredOn", { defaultValue: "Reçu le" })}:</span>{" "}
+              {deliveredDate ?? t("orderDetail.notYetDelivered", { defaultValue: "pas encore reçu" })}
+            </p>
+          </div>
+        </section>
+      )}
 
       {canReview && (
         <Press
@@ -648,6 +771,11 @@ function BuyerOrderDetailBody({ order }: { order: OrderRow }) {
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
         orderId={order.id}
+      />
+      <OrderInvoiceSheet
+        order={order}
+        open={invoiceOpen}
+        onClose={() => onInvoiceOpenChange(false)}
       />
     </div>
   );
