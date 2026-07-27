@@ -47,11 +47,15 @@ export function HostToolRail({
   onAddProduct,
   hideAV = false,
 }: HostToolRailProps) {
+  // Web preview: the featured-auction card lives at the vertical middle on the
+  // right edge and collides with this rail. On iOS/Android the rail sits higher
+  // on the screen so it stays clear — only shift down for web.
+  const webOffset = !isNative();
   return (
     <div
       className="pointer-events-none absolute z-30 flex flex-col items-center gap-2"
       style={{
-        top: "50%",
+        top: webOffset ? "68%" : "50%",
         right: "max(0.75rem, env(safe-area-inset-right, 0px))",
         transform: "translateY(-50%)",
       }}
