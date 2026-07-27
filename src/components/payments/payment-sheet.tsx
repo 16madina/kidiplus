@@ -1,17 +1,16 @@
-// PaymentSheet — Stripe card checkout inside a native-feel bottom sheet.
+// PaymentSheet — wallet-first checkout with lazy Stripe card form.
 //
 // Flow:
-// 1. `order` prop = a freshly-created pending order row (see createPendingOrder).
-// 2. Call POST /api/checkout with the buyer's Supabase bearer token to get
-//    a Stripe clientSecret + publishableKey.
-// 3. Render <Elements> + <PaymentElement>; confirm the payment client-side.
-// 4. Webhook flips the order to `paid` (async). We show a success animation
-//    on Stripe's `succeeded` return value; the real DB update lands via
-//    the realtime subscription in the Commandes tab.
+// 1. `order` prop = a pending order (auction finalize or createPendingOrder).
+// 2. If the wallet covers the total (incl. FX), auto-debit immediately.
+// 3. Otherwise show methods. Stripe PaymentIntent is created ONLY when the
+//    user chooses card — avoids orphaned PIs marking the order "failed"
+//    after a successful wallet pay.
+// 4. Card path: POST /api/checkout → Elements → confirm → webhook/confirm.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, CreditCard, ShieldCheck, AlertCircle, Loader2, Wallet } from "lucide-react";
+import { Check, ShieldCheck, AlertCircle, Loader2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
@@ -53,6 +52,15 @@ type CheckoutResp = {
   error?: string;
 };
 
+type SheetState =
+  | { kind: "idle" }
+  | { kind: "card_loading" }
+  | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null> }
+  | { kind: "verifying" }
+  | { kind: "not_configured" }
+  | { kind: "error"; message: string }
+  | { kind: "done" };
+
 export function PaymentSheet({
   order,
   onClose,
@@ -70,11 +78,15 @@ export function PaymentSheet({
   onOrderPatched?: (order: OrderRow) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { balance, currency: walletCurrency } = useWallet();
+  const { balance, currency: walletCurrencyRaw } = useWallet();
+  const walletCurrency = normalizeCurrency(walletCurrencyRaw);
   const orderCurrency = normalizeCurrency(order?.currency ?? "EUR");
   const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
+  const [cardSelected, setCardSelected] = useState(false);
+  const [state, setState] = useState<SheetState>({ kind: "idle" });
+  const autoTriedRef = useRef<string | null>(null);
   const variantState = variantSelectionState(productColors, productSizes);
   const existingOpts = (order?.address_snapshot?.product_options ?? null) as
     | { color?: string | null; size?: string | null }
@@ -130,83 +142,144 @@ export function PaymentSheet({
     }
     return true;
   };
-  const [state, setState] = useState<
-    | { kind: "loading" }
-    | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null> }
-    | { kind: "verifying" }
-    | { kind: "not_configured" }
-    | { kind: "error"; message: string }
-    | { kind: "done" }
-  >({ kind: "loading" });
 
+  const walletDebit = useMemo(() => {
+    const total = Number(order?.total ?? 0);
+    if (walletCurrency === orderCurrency) return total;
+    return convertMoney(total, orderCurrency, walletCurrency);
+  }, [order?.total, walletCurrency, orderCurrency]);
 
-  // Reset on order change
+  const walletEnough = balance >= walletDebit && walletDebit > 0;
+
+  const finishWalletPaid = useCallback(
+    (ord: OrderRow, debitAmount?: number, debitCurrency?: string) => {
+      haptic.success();
+      setState({ kind: "done" });
+      void cancelOrderPaymentIntent(ord.id);
+      const debitLabel =
+        debitAmount !== undefined && debitCurrency
+          ? formatMoney(debitAmount, debitCurrency, i18n.language)
+          : null;
+      toast.success(
+        debitLabel
+          ? t("wallet.paidWithWalletAmt", {
+              defaultValue: "Payé : {{amount}}",
+              amount: debitLabel,
+            })
+          : t("wallet.paidWithWallet"),
+      );
+      onPaid?.(ord);
+      setTimeout(onClose, 1400);
+    },
+    [i18n.language, onClose, onPaid, t],
+  );
+
+  const tryWalletPay = useCallback(
+    async (ord: OrderRow, { silent }: { silent?: boolean } = {}) => {
+      setWalletBusy(true);
+      if (!silent) haptic.medium();
+      const r = await payOrderWithWallet(ord.id);
+      setWalletBusy(false);
+      if (r.ok) {
+        finishWalletPaid(ord, r.debitAmount, r.debitCurrency);
+        return true;
+      }
+      if (!silent) {
+        haptic.warning();
+        toast.error(mapPayErrorToI18n(t, r.error));
+      }
+      return false;
+    },
+    [finishWalletPaid, t],
+  );
+
+  // Reset + wallet auto-pay when a new order opens. Do NOT create a Stripe PI yet.
   useEffect(() => {
     if (!order) {
-      setState({ kind: "loading" });
+      setState({ kind: "idle" });
+      setCardSelected(false);
+      autoTriedRef.current = null;
       return;
     }
-    // Recovery: if a previous attempt left a pending PI for this order,
-    // try to confirm it once (idempotent).
+    setState({ kind: "idle" });
+    setCardSelected(false);
+
     const pending = readPendingOrder(order.id);
     if (pending) {
       void confirmOrderPayment(pending).then((r) => {
-        if (r.ok) clearPendingOrder(order.id);
+        if (r.ok) {
+          clearPendingOrder(order.id);
+          setState({ kind: "done" });
+          onPaid?.(order);
+          setTimeout(onClose, 800);
+        }
       });
     }
+
+    // Auto-debit once per order when wallet covers total and no variant pick needed.
+    if (autoTriedRef.current === order.id) return;
+    autoTriedRef.current = order.id;
+    if (!walletEnough || needsVariant) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        const token = sess.session?.access_token;
-        if (!token) {
-          setState({ kind: "error", message: t("pay.errors.notSignedIn") });
-          return;
-        }
-        const res = await fetch("/api/checkout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            ...paymentsEnvHeaders(),
-          },
-          body: JSON.stringify({ orderId: order.id }),
-        });
-
-        const body = (await res.json().catch(() => ({}))) as CheckoutResp;
-        if (cancelled) return;
-        if (res.status === 503 || body.error === "stripe_not_configured") {
-          setState({ kind: "not_configured" });
-          return;
-        }
-        const pubKey = resolvePublishableKey(body.publishableKey);
-        if (!res.ok || !body.clientSecret || !pubKey) {
-          setState({
-            kind: "error",
-            message: !pubKey
-              ? t("pay.errors.notConfigured")
-              : mapPayErrorToI18n(t, body.error),
-          });
-          return;
-        }
-        // Store PI id BEFORE the client confirms it, so a reload between
-        // Stripe success and our confirm call can still recover.
-        const pi = paymentIntentIdFromClientSecret(body.clientSecret);
-        if (pi && order) markPendingOrder(order.id, pi);
-        setState({
-          kind: "ready",
-          clientSecret: body.clientSecret,
-          stripePromise: loadStripe(pubKey),
-        });
-
-      } catch {
-        if (!cancelled) setState({ kind: "error", message: t("pay.errors.network") });
-      }
+    void (async () => {
+      const ok = await tryWalletPay(order, { silent: true });
+      if (cancelled || ok) return;
     })();
     return () => {
       cancelled = true;
     };
-  }, [order, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
+  const startCardCheckout = useCallback(async () => {
+    if (!order || state.kind === "card_loading" || state.kind === "ready") return;
+    const okVariant = await ensureVariantOnOrder();
+    if (!okVariant) return;
+    setCardSelected(true);
+    setState({ kind: "card_loading" });
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        setState({ kind: "error", message: t("pay.errors.notSignedIn") });
+        return;
+      }
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...paymentsEnvHeaders(),
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+
+      const body = (await res.json().catch(() => ({}))) as CheckoutResp;
+      if (res.status === 503 || body.error === "stripe_not_configured") {
+        setState({ kind: "not_configured" });
+        return;
+      }
+      const pubKey = resolvePublishableKey(body.publishableKey);
+      if (!res.ok || !body.clientSecret || !pubKey) {
+        setState({
+          kind: "error",
+          message: !pubKey
+            ? t("pay.errors.notConfigured")
+            : mapPayErrorToI18n(t, body.error),
+        });
+        return;
+      }
+      const pi = paymentIntentIdFromClientSecret(body.clientSecret);
+      if (pi) markPendingOrder(order.id, pi);
+      setState({
+        kind: "ready",
+        clientSecret: body.clientSecret,
+        stripePromise: loadStripe(pubKey),
+      });
+    } catch {
+      setState({ kind: "error", message: t("pay.errors.network") });
+    }
+  }, [order, state.kind, t]); // ensureVariantOnOrder reads latest picks via closure
 
   const handleSuccess = async (paymentIntentId: string) => {
     if (!order) return;
@@ -221,9 +294,6 @@ export function PaymentSheet({
       onPaid?.(order);
       setTimeout(onClose, 1400);
     } else {
-      // Card succeeded on Stripe but our server couldn't confirm yet — the
-      // pending PI stays in localStorage; the webhook (or the next open of
-      // this sheet) will still credit the order. Show a reassuring message.
       haptic.warning();
       setState({
         kind: "error",
@@ -374,83 +444,49 @@ export function PaymentSheet({
                       locale={i18n.language}
                       busy={walletBusy}
                       onPay={async () => {
-                        if (walletBusy) return;
+                        if (!order || walletBusy) return;
                         const okVariant = await ensureVariantOnOrder();
                         if (!okVariant) return;
-                        setWalletBusy(true);
-                        haptic.medium();
-                        const r = await payOrderWithWallet(order.id);
-                        setWalletBusy(false);
-                        if (r.ok) {
-                          haptic.success();
-                          setState({ kind: "done" });
-                          // Cancel any Stripe PI created when the sheet opened
-                          // so a card confirm cannot double-charge.
-                          void cancelOrderPaymentIntent(order.id);
-                          const debitLabel =
-                            r.debitAmount !== undefined && r.debitCurrency
-                              ? formatMoney(r.debitAmount, r.debitCurrency, i18n.language)
-                              : null;
-                          toast.success(
-                            debitLabel
-                              ? t("wallet.paidWithWalletAmt", {
-                                  defaultValue: "Payé : {{amount}}",
-                                  amount: debitLabel,
-                                })
-                              : t("wallet.paidWithWallet"),
-                          );
-                          onPaid?.(order);
-                          setTimeout(onClose, 1400);
-                        } else {
-                          haptic.warning();
-                          toast.error(
-                            r.error === "insufficient_funds"
-                              ? t("wallet.insufficient")
-                              : r.error === "daily_limit"
-                                ? t(
-                                    "risk.errors.dailyLimit",
-                                    "Limite journalière atteinte. Réessaie demain.",
-                                  )
-                                : r.error === "risk_restricted" ||
-                                    r.error === "account_banned" ||
-                                    r.error === "account_suspended"
-                                  ? mapPayErrorToI18n(t, r.error)
-                                  : t("pay.errors.generic"),
-                          );
-                        }
+                        await tryWalletPay(order);
                       }}
                       onTopUp={() => setTopupOpen(true)}
                     />
-                    <MethodRow
-                      active
-                      brand="card"
-                      label={t("pay.method.card")}
-                      subtitle={t("pay.method.cardSub")}
-                      right={
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
-                          <span>VISA</span>
-                          <span>·</span>
-                          <span>MC</span>
-                        </div>
-                      }
-                    />
+                    <button
+                      type="button"
+                      onClick={() => { void startCardCheckout(); }}
+                      className="w-full text-left"
+                    >
+                      <MethodRow
+                        active={cardSelected}
+                        brand="card"
+                        label={t("pay.method.card")}
+                        subtitle={t("pay.method.cardSub")}
+                        right={
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
+                            <span>VISA</span>
+                            <span>·</span>
+                            <span>MC</span>
+                          </div>
+                        }
+                      />
+                    </button>
 
                     {orderCurrency === "XOF" && (
                       <>
                         <MethodRow
-                          active
+                          active={false}
                           brand="wave"
                           label={t("pay.method.waveVisa")}
                           subtitle={t("pay.method.waveVisaSub")}
                         />
                         <MethodRow
-                          active
+                          active={false}
                           brand="orange"
                           label={t("pay.method.orangeVisa")}
                           subtitle={t("pay.method.orangeVisaSub")}
                         />
                         <MethodRow
-                          active
+                          active={false}
                           brand="djamo"
                           label={t("pay.method.djamo")}
                           subtitle={t("pay.method.djamoSub")}
@@ -461,9 +497,16 @@ export function PaymentSheet({
                   </div>
                 </div>
 
-                {/* Stripe Elements or fallback state */}
+                {/* Stripe Elements — only after user picks card */}
                 <div className="mt-5 flex-1">
-                  {state.kind === "loading" && (
+                  {state.kind === "idle" && !walletEnough && (
+                    <p className="text-center text-[12px] text-muted-foreground">
+                      {t("pay.chooseMethod", {
+                        defaultValue: "Choisis une méthode de paiement ci-dessus.",
+                      })}
+                    </p>
+                  )}
+                  {state.kind === "card_loading" && (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="animate-spin text-muted-foreground" size={22} />
                     </div>
@@ -533,8 +576,10 @@ function WalletMethodRow({
   onTopUp: () => void;
 }) {
   const { t } = useTranslation();
-  const crossCurrency = walletCurrency !== orderCurrency;
-  const debit = crossCurrency ? convertMoney(total, orderCurrency, walletCurrency) : total;
+  const wc = normalizeCurrency(walletCurrency);
+  const oc = normalizeCurrency(orderCurrency);
+  const crossCurrency = wc !== oc;
+  const debit = crossCurrency ? convertMoney(total, oc, wc) : total;
   const enough = balance >= debit;
   return (
     <button
@@ -554,13 +599,13 @@ function WalletMethodRow({
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
         <div className="text-[11px] text-muted-foreground tabular-nums">
-          {formatMoney(balance, walletCurrency, locale)}
+          {formatMoney(balance, wc, locale)}
         </div>
         {crossCurrency && (
           <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
             {t("wallet.debitHint", {
               defaultValue: "Débit : {{amount}}",
-              amount: formatMoney(debit, walletCurrency, locale),
+              amount: formatMoney(debit, wc, locale),
             })}
           </div>
         )}
@@ -569,7 +614,7 @@ function WalletMethodRow({
         <Loader2 className="animate-spin" size={16} />
       ) : enough ? (
         <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
-          {t("pay.payNow", { total: formatMoney(total, orderCurrency, locale) })}
+          {t("pay.payNow", { total: formatMoney(total, oc, locale) })}
         </span>
       ) : (
         <span className="flex flex-col items-end gap-0.5">

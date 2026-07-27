@@ -25,6 +25,7 @@ import { canDeliver } from "@/lib/delivery-eligibility";
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
+import { payOrderWithWallet } from "@/lib/wallet-db";
 import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/lib/money";
 import {
   conditionLabel,
@@ -536,6 +537,13 @@ export function RealLiveViewerScreen() {
         return;
       }
       void (async () => {
+        // Fallback auto-pay if finalize skipped (e.g. older server / FX).
+        const paid = await payOrderWithWallet(evt.orderId!);
+        if (paid.ok) {
+          toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+          void refreshWallet();
+          return;
+        }
         const order = await fetchOrderById(evt.orderId!);
         if (order) setPendingOrder(order);
         void refreshWallet();

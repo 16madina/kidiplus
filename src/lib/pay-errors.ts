@@ -31,6 +31,24 @@ export function mapPayErrorToI18n(t: TFunction, code: string | undefined): strin
       return t("pay.errors.notSignedIn");
     case "unauthorized":
       return t("pay.errors.notSignedIn");
+    case "insufficient_funds":
+      return t("wallet.insufficient");
+    case "conversion_unavailable":
+      return t("pay.errors.conversionUnavailable", {
+        defaultValue: "Conversion de devise indisponible. Réessaie ou paie par carte.",
+      });
+    case "order_not_pending":
+      return t("pay.errors.orderNotPending", {
+        defaultValue: "Cette commande n'est plus en attente de paiement.",
+      });
+    case "order_not_found":
+      return t("pay.errors.orderNotFound", {
+        defaultValue: "Commande introuvable.",
+      });
+    case "forbidden":
+      return t("pay.errors.forbidden", {
+        defaultValue: "Tu ne peux pas payer cette commande.",
+      });
     case "daily_limit":
       return t("risk.errors.dailyLimit", "Limite journalière atteinte. Réessaie demain.");
     case "risk_restricted":
