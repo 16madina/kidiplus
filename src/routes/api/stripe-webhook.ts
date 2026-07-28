@@ -105,6 +105,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 const alreadyPaidElsewhere =
                   existing?.status === "paid" &&
                   (existing.payment_method === "wallet" ||
+                    existing.payment_method === "paypal" ||
                     (existing.stripe_payment_intent_id != null &&
                       existing.stripe_payment_intent_id !== intent.id));
                 if (alreadyPaidElsewhere) {

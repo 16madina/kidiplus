@@ -110,7 +110,9 @@ export function OrderInvoiceSheet({
   const payMethodLabel =
     order.payment_method === "wallet"
       ? t("invoice.payWallet", { defaultValue: "Wallet KiDi+" })
-      : t("invoice.payCard", { defaultValue: "Carte bancaire" });
+      : order.payment_method === "paypal"
+        ? t("invoice.payPaypal", { defaultValue: "PayPal" })
+        : t("invoice.payCard", { defaultValue: "Carte bancaire" });
 
   const shareText = [
     `KiDi+ — ${t("invoice.title", { defaultValue: "Facture" })} ${number}`,

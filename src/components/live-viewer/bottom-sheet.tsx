@@ -1,9 +1,12 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { guardBack, registerOverlay } from "@/components/push-screen";
 
 // Reusable bottom sheet with drag-to-dismiss (handle only) and dimmed backdrop.
+// Portaled to document.body so it is not trapped by PushScreen transform /
+// overflow-hidden (e.g. Pay Now from Mes achats never sliding up).
 // Registered on the global overlay stack so hardware/system back closes the
 // sheet first, and backdrop dismiss arms guardBack to block click-through onto
 // PushScreen chevrons underneath (classic "sheet → skipped to profile").
@@ -35,7 +38,7 @@ export function BottomSheet({
     onClose();
   };
 
-  return (
+  const node = (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0" style={{ zIndex }}>
@@ -88,4 +91,7 @@ export function BottomSheet({
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(node, document.body);
 }

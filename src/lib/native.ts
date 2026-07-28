@@ -162,28 +162,50 @@ export async function bootstrapNative(): Promise<void> {
           const amount = u.searchParams.get("amount");
           const currency = u.searchParams.get("currency");
           const duplicate = u.searchParams.get("duplicate") === "1";
-          sessionStorage.setItem(
-            "kidi:paypal_done",
-            JSON.stringify({ status, amount, currency, duplicate }),
-          );
-          void import("@/lib/paypal-topup-client").then(({ clearPendingPaypalOrder }) => {
-            clearPendingPaypalOrder();
-          });
-          void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
-            stashSoftSection("wallet");
-            dispatchOpenSection("wallet");
-          });
-          window.dispatchEvent(
-            new CustomEvent("kidi:paypal-topup-done", {
-              detail: {
-                ok: status === "ok",
-                status,
-                amount: amount != null ? Number(amount) : undefined,
-                currency: currency ?? undefined,
-                duplicate,
-              },
-            }),
-          );
+          const kind = u.searchParams.get("kind") ?? "topup";
+          const orderId = u.searchParams.get("orderId");
+          if (kind === "order") {
+            sessionStorage.setItem(
+              "kidi:paypal_order_done",
+              JSON.stringify({ status, orderId, duplicate }),
+            );
+            void import("@/lib/paypal-checkout-client").then(({ clearPendingPaypalCheckout }) => {
+              clearPendingPaypalCheckout();
+            });
+            window.dispatchEvent(
+              new CustomEvent("kidi:paypal-order-done", {
+                detail: {
+                  ok: status === "ok",
+                  status,
+                  orderId: orderId ?? undefined,
+                  duplicate,
+                },
+              }),
+            );
+          } else {
+            sessionStorage.setItem(
+              "kidi:paypal_done",
+              JSON.stringify({ status, amount, currency, duplicate }),
+            );
+            void import("@/lib/paypal-topup-client").then(({ clearPendingPaypalOrder }) => {
+              clearPendingPaypalOrder();
+            });
+            void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
+              stashSoftSection("wallet");
+              dispatchOpenSection("wallet");
+            });
+            window.dispatchEvent(
+              new CustomEvent("kidi:paypal-topup-done", {
+                detail: {
+                  ok: status === "ok",
+                  status,
+                  amount: amount != null ? Number(amount) : undefined,
+                  currency: currency ?? undefined,
+                  duplicate,
+                },
+              }),
+            );
+          }
         } catch {
           /* ignore */
         }

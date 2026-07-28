@@ -491,11 +491,17 @@ function PurchaseCard({
   const meta = statusMeta(order.status);
   const deadlineOk =
     !order.payment_deadline || hoursLeft(order.payment_deadline) > 0;
+  const deadlineExpired =
+    !!order.payment_deadline && hoursLeft(order.payment_deadline) <= 0;
   // Any unpaid order the buyer can still settle (pending, or failed after a card attempt).
   const canPayNow =
     (order.status === "pending" || order.status === "failed") && deadlineOk;
   const isTimeoutCancel =
     order.status === "cancelled" && order.cancelled_reason === "payment_timeout";
+  const showAsExpired =
+    isTimeoutCancel ||
+    (deadlineExpired &&
+      (order.status === "pending" || order.status === "failed" || order.status === "cancelled"));
   const hrs = order.payment_deadline ? hoursLeft(order.payment_deadline) : null;
   const urgent = hrs !== null && hrs > 0 && hrs < 6;
   const isPaid = order.status === "paid";
@@ -519,7 +525,7 @@ function PurchaseCard({
                   className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                   style={{ backgroundColor: meta.bg, color: meta.color }}
                 >
-                  {isTimeoutCancel ? t("orders.status.paymentTimeout") : t(meta.labelKey)}
+                  {showAsExpired ? t("orders.status.paymentTimeout") : t(meta.labelKey)}
                 </span>
               </div>
               <p className="mt-0.5 text-[12px] text-muted-foreground">
