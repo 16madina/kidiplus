@@ -176,7 +176,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           const file = await blobUrlToFile(p.image, `${p.name || "product"}.jpg`);
           imagePath = await uploadLiveImage("live-products", file, b.hostIdentity!);
         } else {
-          imagePath = p.image || null;
+          const { durableStorageRef } = await import("@/lib/storage-path");
+          imagePath = durableStorageRef(p.image);
         }
         const { uploadExtraLiveProductImages } = await import("@/lib/lives-db");
         const extraImages = await uploadExtraLiveProductImages({

@@ -1,19 +1,27 @@
 // OrderItemImage — displays an order's product photo.
 //
-// orders.item_image stores either a direct URL (http/data/blob) or a storage
-// object path inside a private bucket ("<uid>/<uuid>.jpg"). Paths must be
-// exchanged for a signed URL before the browser can load them. We try the
-// live-products bucket first (orders come from lives), then shop-products.
+// orders.item_image may be:
+//   • a durable storage path ("uid/uuid.jpg")
+//   • a (possibly expired) Supabase signed URL — re-sign via path extract
+//   • an external http(s) URL
+// Always resolve through live-products then shop-products helpers.
 
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
 import { resolveLiveImage } from "@/lib/lives-db";
 import { resolveShopImage } from "@/lib/shop-db";
+import { parseSupabaseStorageUrl } from "@/lib/storage-path";
 import { cn } from "@/lib/utils";
 
-const DIRECT_IMAGE_RE = /^(https?:|blob:|data:)/i;
-
 async function resolveOrderImage(src: string): Promise<string | null> {
+  const parsed = parseSupabaseStorageUrl(src);
+  if (parsed?.bucket === "shop-products") {
+    return resolveShopImage(src, "thumb").catch(() => null);
+  }
+  if (parsed?.bucket === "live-products" || parsed?.bucket === "live-covers") {
+    return resolveLiveImage(parsed.bucket, src, "thumb").catch(() => null);
+  }
+  // Path or unknown: try live first (auction orders), then shop.
   const fromLive = await resolveLiveImage("live-products", src, "thumb").catch(() => null);
   if (fromLive) return fromLive;
   return resolveShopImage(src, "thumb").catch(() => null);
@@ -40,16 +48,12 @@ export function OrderItemImage({
 
     if (!src) {
       setFailed(true);
-      return () => { alive = false; };
-    }
-    if (DIRECT_IMAGE_RE.test(src)) {
-      setDisplaySrc(src);
-      return () => { alive = false; };
+      return () => {
+        alive = false;
+      };
     }
 
     void (async () => {
-      // Retry a few times: the signed-URL endpoint can transiently fail
-      // right after app resume / network changes.
       const delays = [0, 600, 1500, 3000];
       for (const delay of delays) {
         if (delay) await new Promise((r) => setTimeout(r, delay));
@@ -63,7 +67,9 @@ export function OrderItemImage({
       if (alive) setFailed(true);
     })();
 
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [src]);
 
   if (!displaySrc || failed) {

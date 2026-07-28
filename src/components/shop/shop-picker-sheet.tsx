@@ -11,7 +11,6 @@ import {
   listMyShopProducts,
   listSellerActiveShopProducts,
   resolveShopImage,
-  resolveShopImages,
   type ShopProduct,
 } from "@/lib/shop-db";
 import { formatMoney, normalizeCurrency, currencySymbol } from "@/lib/money";
@@ -164,11 +163,11 @@ export function ShopPickerSheet({
           const timerSec = Math.max(10, Number(c.timerSec) || 10);
           const maxStock = Math.max(1, Number(p.stock) || 1);
           const stock = Math.min(maxStock, Math.max(1, Number(c.stock) || 1));
+          // Persist durable storage PATHS only — never signed URLs (they expire).
           const paths =
             p.images.length > 0 ? p.images : p.image_url ? [p.image_url] : [];
-          const resolved = await resolveShopImages(paths);
-          const cover = resolved[0] ?? imgs[p.id] ?? "";
-          const extraImages = resolved.slice(1);
+          const cover = paths[0] ?? "";
+          const extraImages = paths.slice(1);
           picked.push({
             name: p.name,
             image: cover,

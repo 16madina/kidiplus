@@ -13,6 +13,11 @@ import {
   parseStringArray,
   type ProductCondition,
 } from "@/lib/live-product-options";
+import {
+  durableStorageRef,
+  parseSupabaseStorageUrl,
+  stripBucketPrefix,
+} from "@/lib/storage-path";
 
 // -------------------------------------------------------------------------
 // Storage
@@ -49,17 +54,32 @@ export async function resolveLiveImage(
   size: LiveImageSize = "card",
 ): Promise<string | null> {
   if (!value) return null;
-  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  if (/^(blob:|data:)/i.test(value)) return value;
 
-  const key = `${bucket}::${size}::${value}`;
+  // Durably stored paths OR expired Supabase signed URLs → re-sign.
+  // External http(s) (Unsplash, etc.) stay as-is.
+  let objectPath = value;
+  let objectBucket: "live-covers" | "live-products" = bucket;
+  if (/^https?:\/\//i.test(value)) {
+    const parsed = parseSupabaseStorageUrl(value);
+    if (!parsed) return value;
+    if (parsed.bucket !== "live-covers" && parsed.bucket !== "live-products") {
+      return null;
+    }
+    objectBucket = parsed.bucket;
+    objectPath = parsed.path;
+  }
+  objectPath = stripBucketPrefix(objectPath, objectBucket);
+
+  const key = `${objectBucket}::${size}::${objectPath}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
 
   const transform = IMAGE_TRANSFORMS[size];
   if (transform) {
     const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(value, SIGN_TTL_SEC, { transform });
+      .from(objectBucket)
+      .createSignedUrl(objectPath, SIGN_TTL_SEC, { transform });
     if (!error && data?.signedUrl) {
       signedCache.set(key, {
         url: data.signedUrl,
@@ -70,10 +90,10 @@ export async function resolveLiveImage(
   }
 
   const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(value, SIGN_TTL_SEC);
+    .from(objectBucket)
+    .createSignedUrl(objectPath, SIGN_TTL_SEC);
   if (error || !data) {
-    console.warn("[live-image] signed URL failed", bucket, value, error?.message);
+    console.warn("[live-image] signed URL failed", objectBucket, objectPath, error?.message);
     return null;
   }
   signedCache.set(key, {
@@ -207,7 +227,7 @@ export async function uploadExtraLiveProductImages(args: {
       const f = await blobUrlToFile(url, `${args.productName || "product"}-extra-${i}.jpg`);
       out.push(await uploadLiveImage("live-products", f, args.userId));
     } else if (url) {
-      out.push(url);
+      out.push(durableStorageRef(url) ?? url);
     }
   }
   return out;
@@ -668,7 +688,7 @@ export async function createLiveProductInDb(args: {
       const file = await blobUrlToFile(args.imageUrl, `${args.name || "product"}.jpg`);
       imagePath = await uploadLiveImage("live-products", file, args.userId);
     } else {
-      imagePath = args.imageUrl || null;
+      imagePath = durableStorageRef(args.imageUrl);
     }
     extraImages = await uploadExtraLiveProductImages({
       userId: args.userId,

@@ -54,7 +54,7 @@ import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { blockUserAndNotify, useBlockedIds } from "@/lib/moderation-db";
-import { resolveAvatarUrl } from "@/lib/avatar-url";
+import { invalidateAvatar, resolveAvatarUrl } from "@/lib/avatar-url";
 import { supabase } from "@/integrations/supabase/client";
 import {
   muteLiveChatUser,
@@ -75,7 +75,17 @@ import { logLiveInteraction } from "@/lib/interactions-db";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
 
-function SellerAvatar({ src, name, size }: { src: string; name: string; size: "sm" | "md" | "lg" }) {
+function SellerAvatar({
+  src,
+  name,
+  size,
+  onImageError,
+}: {
+  src: string;
+  name: string;
+  size: "sm" | "md" | "lg";
+  onImageError?: () => void;
+}) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const initials =
@@ -88,6 +98,10 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "s
       : size === "sm"
         ? "h-9 w-9 text-[12px]"
         : "h-10 w-10 text-[16px]";
+  // Reset failure when parent hands a fresh signed URL.
+  useEffect(() => {
+    setFailedSrc(null);
+  }, [src]);
   const showImg = !!src.trim() && failedSrc !== src;
   // Initials circle is ALWAYS painted; the photo overlays it once it actually
   // loads. Rendering a bare <img> meant a slow / expired / blocked avatar URL
@@ -102,7 +116,10 @@ function SellerAvatar({ src, name, size }: { src: string; name: string; size: "s
         <img
           src={src}
           alt=""
-          onError={() => setFailedSrc(src)}
+          onError={() => {
+            setFailedSrc(src);
+            onImageError?.();
+          }}
           className="absolute inset-0 h-full w-full object-cover"
           draggable={false}
         />
@@ -233,6 +250,22 @@ export function RealLiveViewerScreen() {
     const addr = await fetchDefaultAddress(user.id);
     setBuyerCountry(addr?.country ?? null);
   }, [user?.id]);
+  const reloadSellerAvatar = useCallback(async () => {
+    if (!active?.sellerId) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", active.sellerId)
+      .maybeSingle();
+    const raw = (data as { avatar_url?: string | null } | null)?.avatar_url;
+    if (raw) invalidateAvatar(raw);
+    if (active.avatar) invalidateAvatar(active.avatar);
+    const fromProfile = raw ? await resolveAvatarUrl(raw) : null;
+    // Re-resolve feed avatar too (may be an expired signed URL).
+    const fromFeed = active.avatar ? await resolveAvatarUrl(active.avatar) : null;
+    setSellerAvatarUrl(fromProfile || fromFeed || null);
+  }, [active?.sellerId, active?.avatar]);
+
   useEffect(() => {
     if (!active?.sellerId) return;
     let cancelled = false;
@@ -254,8 +287,11 @@ export function RealLiveViewerScreen() {
       } | null;
       setSellerCountry(p?.country ?? null);
       setSellerVerified(!!p?.is_verified);
-      const resolved = p?.avatar_url ? await resolveAvatarUrl(p.avatar_url) : null;
-      if (!cancelled) setSellerAvatarUrl(resolved || active.avatar || null);
+      const raw = p?.avatar_url ?? null;
+      if (raw) invalidateAvatar(raw);
+      const resolved = raw ? await resolveAvatarUrl(raw) : null;
+      const fromFeed = active.avatar ? await resolveAvatarUrl(active.avatar) : null;
+      if (!cancelled) setSellerAvatarUrl(resolved || fromFeed || null);
     })();
     return () => { cancelled = true; };
   }, [active?.sellerId, active?.avatar]);
@@ -1035,9 +1071,10 @@ export function RealLiveViewerScreen() {
               >
                 <span className="relative">
                   <SellerAvatar
-                    src={sellerAvatarUrl || active.avatar || ""}
+                    src={sellerAvatarUrl || ""}
                     name={active.seller || "?"}
                     size="sm"
+                    onImageError={() => { void reloadSellerAvatar(); }}
                   />
                   <VerifiedBadge
                     verified={sellerVerified}
@@ -1499,7 +1536,12 @@ export function RealLiveViewerScreen() {
             className="absolute inset-0 z-[80] grid place-items-center bg-black/85 px-6 text-center text-white"
           >
             <div className="flex max-w-xs flex-col items-center">
-              <SellerAvatar src={sellerAvatarUrl || active.avatar || ""} name={active.seller} size="lg" />
+              <SellerAvatar
+                src={sellerAvatarUrl || ""}
+                name={active.seller}
+                size="lg"
+                onImageError={() => { void reloadSellerAvatar(); }}
+              />
               <h2 className="mt-4 text-[24px] font-black leading-tight">{t("live.endedTitle")}</h2>
               <p className="mt-2 text-[14px] text-white/75">{active.seller}</p>
               <Press
