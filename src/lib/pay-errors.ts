@@ -38,8 +38,13 @@ export function mapPayErrorToI18n(t: TFunction, code: string | undefined): strin
         defaultValue: "Conversion de devise indisponible. Réessaie ou paie par carte.",
       });
     case "order_not_pending":
+    case "order_not_payable":
       return t("pay.errors.orderNotPending", {
         defaultValue: "Cette commande n'est plus en attente de paiement.",
+      });
+    case "order_already_paid":
+      return t("pay.errors.orderAlreadyPaid", {
+        defaultValue: "Cette commande est déjà payée.",
       });
     case "order_expired":
       return t("pay.errors.orderExpired", {

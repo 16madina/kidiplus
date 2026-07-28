@@ -75,6 +75,8 @@ export function PaymentSheet({
   productColors = [],
   productSizes = [],
   onOrderPatched,
+  /** Open directly on the green success screen (e.g. after PayPal return). */
+  successOnly = false,
 }: {
   order: OrderRow | null;
   onClose: () => void;
@@ -83,15 +85,17 @@ export function PaymentSheet({
   productColors?: string[];
   productSizes?: string[];
   onOrderPatched?: (order: OrderRow) => void;
+  successOnly?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const { balance, currency: walletCurrencyRaw } = useWallet();
+  const { balance, currency: walletCurrencyRaw, refresh: refreshWallet } = useWallet();
   const walletCurrency = normalizeCurrency(walletCurrencyRaw);
   const orderCurrency = normalizeCurrency(order?.currency ?? "EUR");
   const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [paypalBusy, setPaypalBusy] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [cardSelected, setCardSelected] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
   const autoTriedRef = useRef<string | null>(null);
@@ -169,8 +173,10 @@ export function PaymentSheet({
   const finishWalletPaid = useCallback(
     (ord: OrderRow, debitAmount?: number, debitCurrency?: string) => {
       haptic.success();
+      setWalletError(null);
       setState({ kind: "done" });
       void cancelOrderPaymentIntent(ord.id);
+      void refreshWallet();
       const debitLabel =
         debitAmount !== undefined && debitCurrency
           ? formatMoney(debitAmount, debitCurrency, i18n.language)
@@ -181,12 +187,12 @@ export function PaymentSheet({
               defaultValue: "Payé : {{amount}}",
               amount: debitLabel,
             })
-          : t("wallet.paidWithWallet"),
+          : t("wallet.paidWithWallet", { defaultValue: "Payé avec Solde KiDi+" }),
       );
       onPaid?.(ord);
-      setTimeout(onClose, 1400);
+      setTimeout(onClose, 1800);
     },
-    [i18n.language, onClose, onPaid, t],
+    [i18n.language, onClose, onPaid, refreshWallet, t],
   );
 
   const finishPaypalPaid = useCallback(
@@ -201,7 +207,7 @@ export function PaymentSheet({
         t("pay.method.paypalPaid", { defaultValue: "Payé avec PayPal" }),
       );
       onPaid?.(ord);
-      setTimeout(onClose, 1400);
+      setTimeout(onClose, 1800);
     },
     [onClose, onPaid, t],
   );
@@ -352,6 +358,7 @@ export function PaymentSheet({
   const tryWalletPay = useCallback(
     async (ord: OrderRow, { silent }: { silent?: boolean } = {}) => {
       setWalletBusy(true);
+      setWalletError(null);
       if (!silent) haptic.medium();
       const r = await payOrderWithWallet(ord.id);
       setWalletBusy(false);
@@ -359,9 +366,16 @@ export function PaymentSheet({
         finishWalletPaid(ord, r.debitAmount, r.debitCurrency);
         return true;
       }
+      // Race: already paid (PayPal/card) while this sheet was open → treat as success.
+      if (r.error === "order_already_paid") {
+        finishWalletPaid(ord);
+        return true;
+      }
+      const msg = mapPayErrorToI18n(t, r.error);
+      setWalletError(msg);
       if (!silent) {
         haptic.warning();
-        toast.error(mapPayErrorToI18n(t, r.error));
+        toast.error(msg);
       }
       return false;
     },
@@ -373,11 +387,22 @@ export function PaymentSheet({
     if (!order) {
       setState({ kind: "idle" });
       setCardSelected(false);
+      setWalletError(null);
       autoTriedRef.current = null;
       return;
     }
+
+    if (successOnly || order.status === "paid") {
+      setState({ kind: "done" });
+      setCardSelected(false);
+      haptic.success();
+      const tmr = setTimeout(onClose, 1800);
+      return () => clearTimeout(tmr);
+    }
+
     setState({ kind: "idle" });
     setCardSelected(false);
+    setWalletError(null);
 
     const pending = readPendingOrder(order.id);
     if (pending) {
@@ -405,7 +430,7 @@ export function PaymentSheet({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id]);
+  }, [order?.id, successOnly]);
 
   const startCardCheckout = useCallback(async () => {
     if (!order || state.kind === "card_loading" || state.kind === "ready") return;
@@ -619,6 +644,7 @@ export function PaymentSheet({
                       total={Number(order.total)}
                       locale={i18n.language}
                       busy={walletBusy}
+                      error={walletError}
                       onPay={async () => {
                         if (!order || walletBusy) return;
                         const okVariant = await ensureVariantOnOrder();
@@ -810,6 +836,7 @@ function WalletMethodRow({
   total,
   locale,
   busy,
+  error,
   onPay,
   onTopUp,
 }: {
@@ -819,6 +846,7 @@ function WalletMethodRow({
   total: number;
   locale: string;
   busy: boolean;
+  error?: string | null;
   onPay: () => void;
   onTopUp: () => void;
 }) {
@@ -827,53 +855,58 @@ function WalletMethodRow({
   const oc = normalizeCurrency(orderCurrency);
   const crossCurrency = wc !== oc;
   const debit = crossCurrency ? convertMoney(total, oc, wc) : total;
-  const enough = balance >= debit;
+  const enough = balance + 1e-9 >= debit && debit > 0;
   return (
-    <button
-      type="button"
-      onClick={busy ? undefined : (enough ? onPay : onTopUp)}
-      disabled={busy}
-      className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
-        enough ? "border-primary bg-primary/5" : "border-border"
-      }`}
-    >
-      <div
-        className="grid h-9 w-9 place-items-center rounded-xl"
-        style={{ backgroundColor: "oklch(0.19 0.06 265)" }}
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={busy ? undefined : (enough ? onPay : onTopUp)}
+        disabled={busy}
+        className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left ${
+          enough ? "border-primary bg-primary/5" : "border-border"
+        }`}
       >
-        <Wallet size={18} color="#c8a24a" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
-        <div className="text-[11px] text-muted-foreground tabular-nums">
-          {formatMoney(balance, wc, locale)}
+        <div
+          className="grid h-9 w-9 place-items-center rounded-xl"
+          style={{ backgroundColor: "oklch(0.19 0.06 265)" }}
+        >
+          <Wallet size={18} color="#c8a24a" />
         </div>
-        {crossCurrency && (
-          <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
-            {t("wallet.debitHint", {
-              defaultValue: "Débit : {{amount}}",
-              amount: formatMoney(debit, wc, locale),
-            })}
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold">{t("wallet.method")}</div>
+          <div className="text-[11px] text-muted-foreground tabular-nums">
+            {formatMoney(balance, wc, locale)}
           </div>
+          {crossCurrency && (
+            <div className="mt-0.5 text-[10.5px] text-muted-foreground tabular-nums">
+              {t("wallet.debitHint", {
+                defaultValue: "Débit : {{amount}}",
+                amount: formatMoney(debit, wc, locale),
+              })}
+            </div>
+          )}
+        </div>
+        {busy ? (
+          <Loader2 className="animate-spin" size={16} />
+        ) : enough ? (
+          <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
+            {t("pay.payNow", { total: formatMoney(total, oc, locale) })}
+          </span>
+        ) : (
+          <span className="flex flex-col items-end gap-0.5">
+            <span className="text-[10px] font-bold text-destructive">
+              {t("wallet.insufficient")}
+            </span>
+            <span className="text-[11px] font-semibold text-primary">
+              {t("wallet.topupCta")}
+            </span>
+          </span>
         )}
-      </div>
-      {busy ? (
-        <Loader2 className="animate-spin" size={16} />
-      ) : enough ? (
-        <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">
-          {t("pay.payNow", { total: formatMoney(total, oc, locale) })}
-        </span>
-      ) : (
-        <span className="flex flex-col items-end gap-0.5">
-          <span className="text-[10px] font-bold text-destructive">
-            {t("wallet.insufficient")}
-          </span>
-          <span className="text-[11px] font-semibold text-primary">
-            {t("wallet.topupCta")}
-          </span>
-        </span>
-      )}
-    </button>
+      </button>
+      {error ? (
+        <p className="px-1 text-[12px] font-medium text-destructive">{error}</p>
+      ) : null}
+    </div>
   );
 }
 

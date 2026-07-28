@@ -9,7 +9,7 @@
 // AND embedded inside the Activité screen's orders tab. Money logic stays in
 // SellerEarningsScreen — this screen owns fulfillment only.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -110,6 +110,9 @@ export function OrdersScreenContent({
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [openPurchase, setOpenPurchase] = useState<OrderRow | null>(null);
   const [payOrder, setPayOrder] = useState<OrderRow | null>(null);
+  const [paySuccessOnly, setPaySuccessOnly] = useState(false);
+  const payOrderRef = useRef<OrderRow | null>(null);
+  payOrderRef.current = payOrder;
   const [reviewOrder, setReviewOrder] = useState<OrderRow | null>(null);
 
   // Sales (seller side)
@@ -173,6 +176,78 @@ export function OrdersScreenContent({
     window.addEventListener("kidi:open-order", onOpen as EventListener);
     return () => window.removeEventListener("kidi:open-order", onOpen as EventListener);
   }, [purchases, sales, user]);
+
+  // PayPal checkout return — PaymentSheet is usually unmounted after the browser
+  // redirect, so show the green success sheet + refresh the purchases list here.
+  useEffect(() => {
+    const showPaid = async (orderId: string | undefined) => {
+      toast.success(
+        t("pay.method.paypalPaid", { defaultValue: "Payé avec PayPal" }),
+      );
+      haptic.success();
+      setTab("purchases");
+      let ord =
+        (orderId ? purchases.find((o) => o.id === orderId) : null) ??
+        (orderId ? await fetchOrderById(orderId).catch(() => null) : null);
+      if (!ord && user) {
+        const rows = await fetchMyOrders(user.id).catch(() => [] as OrderRow[]);
+        setPurchases(rows);
+        ord = orderId ? rows.find((o) => o.id === orderId) ?? null : null;
+      } else if (ord) {
+        setPurchases((os) =>
+          os.map((x) =>
+            x.id === ord!.id
+              ? { ...x, status: "paid", payment_method: "paypal", paid_at: new Date().toISOString() }
+              : x,
+          ),
+        );
+      }
+      if (ord) {
+        setPaySuccessOnly(true);
+        setPayOrder({
+          ...ord,
+          status: "paid",
+          payment_method: "paypal",
+          paid_at: ord.paid_at ?? new Date().toISOString(),
+        });
+      }
+    };
+
+    const onDone = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as
+        | { ok?: boolean; status?: string; orderId?: string }
+        | undefined;
+      if (!(detail?.ok || detail?.status === "ok")) return;
+      const open = payOrderRef.current;
+      // PaymentSheet still open (native browser return) — it shows the green check.
+      if (open && (!detail.orderId || open.id === detail.orderId)) {
+        setPurchases((os) =>
+          os.map((x) =>
+            !detail.orderId || x.id === detail.orderId
+              ? { ...x, status: "paid", payment_method: "paypal", paid_at: new Date().toISOString() }
+              : x,
+          ),
+        );
+        return;
+      }
+      void showPaid(detail.orderId);
+    };
+
+    window.addEventListener("kidi:paypal-order-done", onDone);
+
+    try {
+      const raw = sessionStorage.getItem("kidi:paypal_order_done");
+      if (raw) {
+        sessionStorage.removeItem("kidi:paypal_order_done");
+        const parsed = JSON.parse(raw) as { status?: string; orderId?: string };
+        if (parsed.status === "ok") void showPaid(parsed.orderId);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    return () => window.removeEventListener("kidi:paypal-order-done", onDone);
+  }, [purchases, t, user]);
 
   const onShip = async (orderId: string) => {
     haptic.medium();
@@ -272,7 +347,10 @@ export function OrdersScreenContent({
                     index={i}
                     hasReview={reviewedIds.has(o.id)}
                     onOpen={() => setOpenPurchase(o)}
-                    onPay={() => setPayOrder(o)}
+                    onPay={() => {
+                      setPaySuccessOnly(false);
+                      setPayOrder(o);
+                    }}
                     onReview={() => setReviewOrder(o)}
                     onConfirm={async () => {
                       const r = await confirmOrderDelivered(o.id);
@@ -307,19 +385,34 @@ export function OrdersScreenContent({
       <BuyerOrderDetailScreen order={openPurchase} onClose={() => setOpenPurchase(null)} />
       <PaymentSheet
         order={payOrder}
-        onClose={() => setPayOrder(null)}
+        successOnly={paySuccessOnly}
+        onClose={() => {
+          setPayOrder(null);
+          setPaySuccessOnly(false);
+        }}
         onPaid={(paid) => {
           setPayOrder(null);
+          setPaySuccessOnly(false);
           setPurchases((os) =>
             os.map((x) =>
               x.id === paid.id
-                ? { ...x, status: "paid", payment_method: "wallet", paid_at: new Date().toISOString() }
+                ? {
+                    ...x,
+                    status: "paid",
+                    payment_method: paid.payment_method || "wallet",
+                    paid_at: new Date().toISOString(),
+                  }
                 : x,
             ),
           );
           setOpenPurchase((cur) =>
             cur && cur.id === paid.id
-              ? { ...cur, status: "paid", payment_method: "wallet", paid_at: new Date().toISOString() }
+              ? {
+                  ...cur,
+                  status: "paid",
+                  payment_method: paid.payment_method || "wallet",
+                  paid_at: new Date().toISOString(),
+                }
               : cur,
           );
         }}

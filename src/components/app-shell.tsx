@@ -224,6 +224,9 @@ function AppShellInner() {
                 detail: { ok: status === "ok", status, orderId: orderId ?? undefined, duplicate },
               }),
             );
+            if (status === "ok") {
+              stashSoftSection("orders");
+            }
           } else {
             sessionStorage.setItem(
               "kidi:paypal_done",
@@ -432,10 +435,12 @@ function AppShellInner() {
         position="top-center"
         // Sonner uses `mobileOffset` below 600px (phones) and ignores `offset`.
         // Keep toasts below the home header (safe-area + ~56px bar).
+        // z-index above BottomSheet (90) / PushScreen so pay toasts stay visible.
         offset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
         mobileOffset={{ top: "calc(env(safe-area-inset-top) + 56px + 12px)" }}
-        duration={3000}
+        duration={4000}
         visibleToasts={3}
+        style={{ zIndex: 250 }}
         toastOptions={{
           unstyled: false,
           classNames: {
@@ -447,6 +452,7 @@ function AppShellInner() {
           style: {
             backdropFilter: "saturate(180%) blur(20px)",
             WebkitBackdropFilter: "saturate(180%) blur(20px)",
+            zIndex: 250,
           },
         }}
       />

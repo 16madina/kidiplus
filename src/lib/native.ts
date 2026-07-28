@@ -172,6 +172,12 @@ export async function bootstrapNative(): Promise<void> {
             void import("@/lib/paypal-checkout-client").then(({ clearPendingPaypalCheckout }) => {
               clearPendingPaypalCheckout();
             });
+            if (status === "ok") {
+              void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
+                stashSoftSection("orders");
+                dispatchOpenSection("orders");
+              });
+            }
             window.dispatchEvent(
               new CustomEvent("kidi:paypal-order-done", {
                 detail: {
