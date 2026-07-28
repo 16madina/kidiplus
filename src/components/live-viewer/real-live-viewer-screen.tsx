@@ -25,6 +25,7 @@ import { canDeliver } from "@/lib/delivery-eligibility";
 import type { SellerDeliverySettings } from "@/lib/delivery";
 import { systemMessage, type ChatMsg, type Product } from "@/lib/live-viewer-mock";
 import { useWallet } from "@/lib/wallet-context";
+import { payOrderWithWallet } from "@/lib/wallet-db";
 import { formatMoney, nextBidAmount, normalizeCurrency, convertMoney } from "@/lib/money";
 import {
   conditionLabel,
@@ -572,9 +573,23 @@ export function RealLiveViewerScreen() {
         return;
       }
       void (async () => {
-        // Never auto-debit here — open the payment sheet so the winner picks a method.
+        // Client fallback if server auto-pay didn't run but wallet covers the total.
+        const paid = await payOrderWithWallet(evt.orderId!);
+        if (paid.ok) {
+          toast.success(t("pay.autoPaid", { defaultValue: "Payé automatiquement avec ton solde ✅" }));
+          void refreshWallet();
+          return;
+        }
+        // Not enough wallet funds (or other error): open Pay now sheet / leave 24h window.
         const order = await fetchOrderById(evt.orderId!);
         if (order) setPendingOrder(order);
+        else {
+          toast.message(
+            t("pay.payWithinDeadline", {
+              defaultValue: "Solde insuffisant. Tu as 24 h pour recharger et payer dans Mes achats.",
+            }),
+          );
+        }
         void refreshWallet();
       })();
     };
