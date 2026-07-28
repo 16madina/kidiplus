@@ -41,6 +41,10 @@ export function mapPayErrorToI18n(t: TFunction, code: string | undefined): strin
       return t("pay.errors.orderNotPending", {
         defaultValue: "Cette commande n'est plus en attente de paiement.",
       });
+    case "order_expired":
+      return t("pay.errors.orderExpired", {
+        defaultValue: "Le délai de paiement est dépassé.",
+      });
     case "order_not_found":
       return t("pay.errors.orderNotFound", {
         defaultValue: "Commande introuvable.",
