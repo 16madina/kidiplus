@@ -204,7 +204,7 @@ export function OrdersScreenContent({
         <div className="flex gap-1 rounded-full border border-border p-1">
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")}>
             <span className="inline-flex items-center gap-1.5">
-              <Store size={13} /> {t("myOrders.tabs.sales", { defaultValue: "Commandes" })}
+              <Store size={13} /> {t("myOrders.tabs.sales", { defaultValue: "Mes ventes" })}
               {(paidSalesCount > 0 || pendingSalesCount > 0) && (
                 <span
                   className="ml-1 rounded-full px-1.5 text-[10px] font-bold"
@@ -217,10 +217,19 @@ export function OrdersScreenContent({
           </TabBtn>
           <TabBtn active={tab === "purchases"} onClick={() => setTab("purchases")}>
             <span className="inline-flex items-center gap-1.5">
-              <ShoppingBag size={13} /> {t("myOrders.tabs.purchases", { defaultValue: "Commandé" })}
+              <ShoppingBag size={13} /> {t("myOrders.tabs.purchases", { defaultValue: "Mes achats" })}
             </span>
           </TabBtn>
         </div>
+        <p className="mt-2 px-1 text-[11px] leading-snug text-muted-foreground">
+          {tab === "sales"
+            ? t("myOrders.salesHint", {
+                defaultValue: "Articles que des acheteurs t’ont commandés — à livrer une fois payés.",
+              })
+            : t("myOrders.purchasesHint", {
+                defaultValue: "Articles que tu as commandés chez d’autres vendeurs.",
+              })}
+        </p>
       </div>
 
       {/* Body */}
@@ -435,7 +444,9 @@ function SalesList({
                       style={{ backgroundColor: fm.bg, color: fm.color }}
                     >
                       {isPending
-                        ? t("orders.status.awaitingPayment", { defaultValue: "En attente de paiement" })
+                        ? t("myOrders.awaitingBuyerPay", {
+                            defaultValue: "En attente que l’acheteur paie",
+                          })
                         : t(fm.key)}
                     </span>
                   </div>
