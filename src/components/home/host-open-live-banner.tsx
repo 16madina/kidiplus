@@ -111,7 +111,9 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
             <Press
               onClick={async () => {
                 const { endLiveInDb } = await import("@/lib/lives-db");
+                const { stopLiveReplay } = await import("@/lib/live-replay-client");
                 const { toast } = await import("sonner");
+                await stopLiveReplay(open.id).catch(() => {});
                 const res = await endLiveInDb(open.id);
                 if (!res.ok) {
                   toast.error(

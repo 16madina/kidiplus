@@ -785,6 +785,12 @@ export type Database = {
           reminder_buyer_24h_sent: boolean
           reminder_seller_1h_sent: boolean
           reminder_seller_24h_sent: boolean
+          replay_egress_id: string | null
+          replay_expires_at: string | null
+          replay_ready_at: string | null
+          replay_status: string | null
+          replay_storage_path: string | null
+          replay_url: string | null
           room_name: string
           scheduled_at: string | null
           seller_id: string
@@ -822,6 +828,12 @@ export type Database = {
           reminder_buyer_24h_sent?: boolean
           reminder_seller_1h_sent?: boolean
           reminder_seller_24h_sent?: boolean
+          replay_egress_id?: string | null
+          replay_expires_at?: string | null
+          replay_ready_at?: string | null
+          replay_status?: string | null
+          replay_storage_path?: string | null
+          replay_url?: string | null
           room_name: string
           scheduled_at?: string | null
           seller_id: string
@@ -859,6 +871,12 @@ export type Database = {
           reminder_buyer_24h_sent?: boolean
           reminder_seller_1h_sent?: boolean
           reminder_seller_24h_sent?: boolean
+          replay_egress_id?: string | null
+          replay_expires_at?: string | null
+          replay_ready_at?: string | null
+          replay_status?: string | null
+          replay_storage_path?: string | null
+          replay_url?: string | null
           room_name?: string
           scheduled_at?: string | null
           seller_id?: string
@@ -2454,6 +2472,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      mark_expired_live_replays: { Args: never; Returns: number }
       expire_abandoned_lives: {
         Args: { _max_age_minutes?: number; _seller_id?: string }
         Returns: Json

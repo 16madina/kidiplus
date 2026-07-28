@@ -8,7 +8,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -34,6 +34,12 @@ import { MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { DmChatScreen } from "@/components/dm/dm-chat-screen";
+import { LiveReplayPlayer } from "@/components/live-viewer/live-replay-player";
+import {
+  isReplayPlayable,
+  replayDaysLeft,
+  type LiveReplayMeta,
+} from "@/lib/live-replay-client";
 
 type SellerProfile = {
   id: string;
@@ -680,6 +686,7 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
   const { lang } = useLanguage();
   const { open: openLive } = useLiveViewer();
   const [rows, setRows] = useState<SellerLiveEntry[] | null>(null);
+  const [replay, setReplay] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -698,49 +705,86 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
   }
 
   const openThis = async (row: SellerLiveEntry) => {
-    if (row.status !== "live") return;
-    const stream = await fetchLiveById(row.id);
-    if (stream) { onBack(); setTimeout(() => openLive(stream), 250); }
+    if (row.status === "live") {
+      const stream = await fetchLiveById(row.id);
+      if (stream) { onBack(); setTimeout(() => openLive(stream), 250); }
+      return;
+    }
+    const meta: LiveReplayMeta = {
+      replay_status: (row.replay_status as LiveReplayMeta["replay_status"]) ?? null,
+      replay_url: row.replay_url,
+      replay_expires_at: row.replay_expires_at,
+    };
+    if (isReplayPlayable(meta) && row.replay_url) {
+      haptic.light();
+      setReplay({ url: row.replay_url, title: row.title });
+    }
   };
 
   return (
-    <div className="space-y-2">
-      {rows.map((r) => {
-        const isLive = r.status === "live";
-        const isScheduled = r.status === "scheduled";
-        const clickable = isLive;
-        return (
-          <div
-            key={r.id}
-            onClick={clickable ? () => void openThis(r) : undefined}
-            className={`flex items-center gap-3 rounded-2xl p-2.5 ${clickable ? "cursor-pointer" : ""} ${r.status === "ended" ? "opacity-60" : ""}`}
-            style={{ backgroundColor: "var(--muted)" }}
-          >
-            {r.cover_url ? (
-              <img src={r.cover_url} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" draggable={false} />
-            ) : (
-              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-background">
-                <Radio className="text-muted-foreground" size={20} />
+    <>
+      <div className="space-y-2">
+        {rows.map((r) => {
+          const isLive = r.status === "live";
+          const isScheduled = r.status === "scheduled";
+          const replayMeta: LiveReplayMeta = {
+            replay_status: (r.replay_status as LiveReplayMeta["replay_status"]) ?? null,
+            replay_url: r.replay_url,
+            replay_expires_at: r.replay_expires_at,
+          };
+          const hasReplay = !isLive && !isScheduled && isReplayPlayable(replayMeta);
+          const daysLeft = hasReplay ? replayDaysLeft(r.replay_expires_at) : null;
+          const clickable = isLive || hasReplay;
+          return (
+            <div
+              key={r.id}
+              onClick={clickable ? () => void openThis(r) : undefined}
+              className={`flex items-center gap-3 rounded-2xl p-2.5 ${clickable ? "cursor-pointer" : ""} ${r.status === "ended" && !hasReplay ? "opacity-60" : ""}`}
+              style={{ backgroundColor: "var(--muted)" }}
+            >
+              {r.cover_url ? (
+                <img src={r.cover_url} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" draggable={false} />
+              ) : (
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-background">
+                  <Radio className="text-muted-foreground" size={20} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-semibold">{r.title}</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  {isLive
+                    ? t("seller.liveNow")
+                    : isScheduled
+                      ? (r.scheduled_at ? formatShortDateTime(new Date(r.scheduled_at), lang) : "—")
+                      : hasReplay
+                        ? t("broadcast.replay.badgeDays", {
+                            defaultValue: "Replay · expire dans {{days}}j",
+                            days: daysLeft ?? 1,
+                          })
+                        : (r.ended_at ? t("seller.ended") + " · " + formatShortDateTime(new Date(r.ended_at), lang) : t("seller.ended"))}
+                </p>
               </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-semibold">{r.title}</p>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                {isLive
-                  ? t("seller.liveNow")
-                  : isScheduled
-                    ? (r.scheduled_at ? formatShortDateTime(new Date(r.scheduled_at), lang) : "—")
-                    : (r.ended_at ? t("seller.ended") + " · " + formatShortDateTime(new Date(r.ended_at), lang) : t("seller.ended"))}
-              </p>
+              {isLive && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white" style={{ background: "oklch(0.55 0.22 27)" }}>LIVE</span>
+              )}
+              {isScheduled && <CalendarDays size={16} className="text-muted-foreground" />}
+              {hasReplay && (
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background">
+                  <Play size={14} className="fill-current" />
+                </span>
+              )}
             </div>
-            {isLive && (
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white" style={{ background: "oklch(0.55 0.22 27)" }}>LIVE</span>
-            )}
-            {isScheduled && <CalendarDays size={16} className="text-muted-foreground" />}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      {replay && (
+        <LiveReplayPlayer
+          url={replay.url}
+          title={replay.title}
+          onClose={() => setReplay(null)}
+        />
+      )}
+    </>
   );
 }
 

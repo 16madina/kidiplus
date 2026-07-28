@@ -51,6 +51,10 @@ import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
 import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
+import { Route as ApiLiveReplayPurgeRouteImport } from './routes/api/live-replay/purge'
+import { Route as ApiLiveReplayStartRouteImport } from './routes/api/live-replay/start'
+import { Route as ApiLiveReplayStopRouteImport } from './routes/api/live-replay/stop'
+import { Route as ApiLiveReplayWebhookRouteImport } from './routes/api/live-replay/webhook'
 import { Route as ApiPaypalCheckoutCaptureRouteImport } from './routes/api/paypal-checkout.capture'
 import { Route as ApiPaypalCheckoutCreateRouteImport } from './routes/api/paypal-checkout.create'
 import { Route as ApiPaypalCheckoutReturnRouteImport } from './routes/api/paypal-checkout.return'
@@ -292,6 +296,26 @@ const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
   path: '/api/facebook/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLiveReplayPurgeRoute = ApiLiveReplayPurgeRouteImport.update({
+  id: '/api/live-replay/purge',
+  path: '/api/live-replay/purge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveReplayStartRoute = ApiLiveReplayStartRouteImport.update({
+  id: '/api/live-replay/start',
+  path: '/api/live-replay/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveReplayStopRoute = ApiLiveReplayStopRouteImport.update({
+  id: '/api/live-replay/stop',
+  path: '/api/live-replay/stop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveReplayWebhookRoute = ApiLiveReplayWebhookRouteImport.update({
+  id: '/api/live-replay/webhook',
+  path: '/api/live-replay/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaypalCheckoutCaptureRoute =
   ApiPaypalCheckoutCaptureRouteImport.update({
     id: '/api/paypal-checkout/capture',
@@ -472,6 +496,10 @@ export interface FileRoutesByFullPath {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
+  '/api/live-replay/start': typeof ApiLiveReplayStartRoute
+  '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
+  '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -542,6 +570,10 @@ export interface FileRoutesByTo {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
+  '/api/live-replay/start': typeof ApiLiveReplayStartRoute
+  '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
+  '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -613,6 +645,10 @@ export interface FileRoutesById {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
+  '/api/live-replay/start': typeof ApiLiveReplayStartRoute
+  '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
+  '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -685,6 +721,10 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/purge'
+    | '/api/live-replay/start'
+    | '/api/live-replay/stop'
+    | '/api/live-replay/webhook'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -755,6 +795,10 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/purge'
+    | '/api/live-replay/start'
+    | '/api/live-replay/stop'
+    | '/api/live-replay/webhook'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -825,6 +869,10 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/purge'
+    | '/api/live-replay/start'
+    | '/api/live-replay/stop'
+    | '/api/live-replay/webhook'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -894,6 +942,10 @@ export interface RootRouteChildren {
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
   ApiFacebookStatusRoute: typeof ApiFacebookStatusRoute
+  ApiLiveReplayPurgeRoute: typeof ApiLiveReplayPurgeRoute
+  ApiLiveReplayStartRoute: typeof ApiLiveReplayStartRoute
+  ApiLiveReplayStopRoute: typeof ApiLiveReplayStopRoute
+  ApiLiveReplayWebhookRoute: typeof ApiLiveReplayWebhookRoute
   ApiPaypalCheckoutCaptureRoute: typeof ApiPaypalCheckoutCaptureRoute
   ApiPaypalCheckoutCreateRoute: typeof ApiPaypalCheckoutCreateRoute
   ApiPaypalCheckoutReturnRoute: typeof ApiPaypalCheckoutReturnRoute
@@ -1215,6 +1267,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFacebookStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/live-replay/purge': {
+      id: '/api/live-replay/purge'
+      path: '/api/live-replay/purge'
+      fullPath: '/api/live-replay/purge'
+      preLoaderRoute: typeof ApiLiveReplayPurgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/start': {
+      id: '/api/live-replay/start'
+      path: '/api/live-replay/start'
+      fullPath: '/api/live-replay/start'
+      preLoaderRoute: typeof ApiLiveReplayStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/stop': {
+      id: '/api/live-replay/stop'
+      path: '/api/live-replay/stop'
+      fullPath: '/api/live-replay/stop'
+      preLoaderRoute: typeof ApiLiveReplayStopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/webhook': {
+      id: '/api/live-replay/webhook'
+      path: '/api/live-replay/webhook'
+      fullPath: '/api/live-replay/webhook'
+      preLoaderRoute: typeof ApiLiveReplayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paypal-checkout/capture': {
       id: '/api/paypal-checkout/capture'
       path: '/api/paypal-checkout/capture'
@@ -1482,6 +1562,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
   ApiFacebookStatusRoute: ApiFacebookStatusRoute,
+  ApiLiveReplayPurgeRoute: ApiLiveReplayPurgeRoute,
+  ApiLiveReplayStartRoute: ApiLiveReplayStartRoute,
+  ApiLiveReplayStopRoute: ApiLiveReplayStopRoute,
+  ApiLiveReplayWebhookRoute: ApiLiveReplayWebhookRoute,
   ApiPaypalCheckoutCaptureRoute: ApiPaypalCheckoutCaptureRoute,
   ApiPaypalCheckoutCreateRoute: ApiPaypalCheckoutCreateRoute,
   ApiPaypalCheckoutReturnRoute: ApiPaypalCheckoutReturnRoute,

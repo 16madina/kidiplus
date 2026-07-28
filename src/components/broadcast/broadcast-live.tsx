@@ -566,6 +566,23 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     return () => clearInterval(iv);
   }, [b.liveId]);
 
+  // Auto-record every live for 7-day in-app replay (LiveKit RoomComposite → S3).
+  useEffect(() => {
+    if (!b.liveId) return;
+    let cancelled = false;
+    void import("@/lib/live-replay-client").then(({ startLiveReplay }) => {
+      if (cancelled) return;
+      void startLiveReplay(b.liveId!).then((r) => {
+        if (!r.ok) {
+          console.warn("[live-replay] start failed", r.error);
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [b.liveId]);
+
 
   // Flash + confetti when a fixed-price row goes to "out" (stock 0).
   const seenSoldOutRef = useRef<Set<string>>(new Set());
@@ -957,6 +974,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (isRtmp || b.rtmpCreds) {
       const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
       await deleteLiveIngress(b.liveId).catch(() => {});
+    }
+    {
+      const { stopLiveReplay } = await import("@/lib/live-replay-client");
+      await stopLiveReplay(b.liveId).catch(() => {});
     }
     const { endLiveInDb } = await import("@/lib/lives-db");
     const ended = await endLiveInDb(b.liveId);

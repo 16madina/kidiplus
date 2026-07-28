@@ -1310,6 +1310,9 @@ export type SellerLiveEntry = {
   room_name: string;
   category: string | null;
   currency: string | null;
+  replay_url: string | null;
+  replay_status: string | null;
+  replay_expires_at: string | null;
 };
 
 export async function fetchSellerLives(
@@ -1318,7 +1321,9 @@ export async function fetchSellerLives(
 ): Promise<SellerLiveEntry[]> {
   const { data } = await supabase
     .from("lives")
-    .select("id, title, status, cover_url, started_at, scheduled_at, ended_at, viewer_count, room_name, category, currency")
+    .select(
+      "id, title, status, cover_url, started_at, scheduled_at, ended_at, viewer_count, room_name, category, currency, replay_url, replay_status, replay_expires_at",
+    )
     .eq("seller_id", sellerId)
     .order("started_at", { ascending: false, nullsFirst: false })
     .limit(limit);

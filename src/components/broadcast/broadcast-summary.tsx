@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
-import { Share2, Home } from "lucide-react";
+import { Share2, Home, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { useBroadcast } from "@/lib/broadcast-context";
@@ -12,6 +12,12 @@ import { toast } from "sonner";
 import { fetchOrdersForLive, type OrderRow } from "@/lib/orders-db";
 import { fetchLiveGiftsTotal } from "@/lib/live-gifts-db";
 import { Logo } from "@/components/brand/logo";
+import { LiveReplayPlayer } from "@/components/live-viewer/live-replay-player";
+import {
+  fetchLiveReplayMeta,
+  isReplayPlayable,
+  type LiveReplayMeta,
+} from "@/lib/live-replay-client";
 
 export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   const { t, i18n } = useTranslation();
@@ -22,6 +28,9 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   // recorded locally when the seller's live wasn't backed by a DB row.
   const [realOrders, setRealOrders] = useState<OrderRow[] | null>(null);
   const [giftsTotal, setGiftsTotal] = useState<{ count: number; sellerNet: number } | null>(null);
+  const [replayMeta, setReplayMeta] = useState<LiveReplayMeta | null>(null);
+  const [replayOpen, setReplayOpen] = useState(false);
+
   useEffect(() => {
     if (!liveId) return;
     let alive = true;
@@ -34,11 +43,34 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
     return () => { alive = false; };
   }, [liveId]);
 
+  useEffect(() => {
+    if (!liveId) return;
+    let alive = true;
+    const poll = async () => {
+      const meta = await fetchLiveReplayMeta(liveId);
+      if (alive) setReplayMeta(meta);
+    };
+    void poll();
+    const iv = setInterval(() => {
+      void poll();
+    }, 4000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [liveId]);
+
   const usingReal = (realOrders?.length ?? 0) > 0;
   const revenue = usingReal
     ? (realOrders ?? []).reduce((s, o) => s + Number(o.amount), 0)
     : session.sales.reduce((s, x) => s + x.price, 0);
   const salesCount = usingReal ? realOrders!.length : session.sales.length;
+
+  const replayReady = isReplayPlayable(replayMeta);
+  const replayPending =
+    replayMeta?.replay_status === "recording" ||
+    replayMeta?.replay_status === "processing";
+  const showReplayButton = !!liveId && (replayReady || replayPending);
 
   return (
     <motion.div
@@ -160,6 +192,25 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="flex flex-col gap-2 pt-2">
+          {showReplayButton && (
+            <Press
+              disabled={!replayReady}
+              onClick={() => {
+                if (!replayReady || !replayMeta?.replay_url) return;
+                haptic.light();
+                setReplayOpen(true);
+              }}
+              className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold text-white disabled:opacity-60"
+              style={{
+                background: "linear-gradient(135deg, oklch(0.55 0.18 25), oklch(0.48 0.16 20))",
+              }}
+            >
+              <Play size={16} className="mr-2 fill-current" />
+              {replayReady
+                ? t("broadcast.replay.watch", "Revoir le live")
+                : t("broadcast.replay.preparing", "Replay bientôt disponible…")}
+            </Press>
+          )}
           <Press
             onClick={() => {
               haptic.light();
@@ -179,6 +230,14 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
           </Press>
         </div>
       </div>
+
+      {replayOpen && replayMeta?.replay_url && (
+        <LiveReplayPlayer
+          url={replayMeta.replay_url}
+          title={session.title}
+          onClose={() => setReplayOpen(false)}
+        />
+      )}
     </motion.div>
   );
 }

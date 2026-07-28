@@ -478,6 +478,8 @@ function BroadcastFlow() {
   const endAllOpen = async () => {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");
+    const { stopLiveReplay } = await import("@/lib/live-replay-client");
+    await Promise.all(openLives.map((d) => stopLiveReplay(d.id).catch(() => {})));
     const results = await Promise.all(openLives.map((d) => endLiveInDb(d.id)));
     const failed = results.filter((r) => !r.ok).length;
     if (failed === 0) {
@@ -534,6 +536,8 @@ function BroadcastFlow() {
       const extras = list.filter((l) => l.id !== target.id);
       if (extras.length > 0) {
         const { endLiveInDb } = await import("@/lib/lives-db");
+        const { stopLiveReplay } = await import("@/lib/live-replay-client");
+        await Promise.all(extras.map((d) => stopLiveReplay(d.id).catch(() => {})));
         await Promise.all(extras.map((d) => endLiveInDb(d.id)));
       }
       const { markLiveActiveInDb, touchLiveHostInDb } = await import("@/lib/lives-db");
