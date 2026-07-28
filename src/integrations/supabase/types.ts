@@ -643,8 +643,6 @@ export type Database = {
           colors: Json
           condition: string | null
           created_at: string
-          current_bidder_id: string | null
-          current_bidder_name: string | null
           description: string | null
           extra_images: Json
           final_price: number | null
@@ -657,7 +655,6 @@ export type Database = {
           price: number
           shop_product_id: string | null
           sizes: Json
-          sold_at: string | null
           sold_to_identity: string | null
           start_price: number
           status: string
@@ -673,8 +670,6 @@ export type Database = {
           colors?: Json
           condition?: string | null
           created_at?: string
-          current_bidder_id?: string | null
-          current_bidder_name?: string | null
           description?: string | null
           extra_images?: Json
           final_price?: number | null
@@ -687,7 +682,6 @@ export type Database = {
           price?: number
           shop_product_id?: string | null
           sizes?: Json
-          sold_at?: string | null
           sold_to_identity?: string | null
           start_price?: number
           status?: string
@@ -703,8 +697,6 @@ export type Database = {
           colors?: Json
           condition?: string | null
           created_at?: string
-          current_bidder_id?: string | null
-          current_bidder_name?: string | null
           description?: string | null
           extra_images?: Json
           final_price?: number | null
@@ -717,7 +709,6 @@ export type Database = {
           price?: number
           shop_product_id?: string | null
           sizes?: Json
-          sold_at?: string | null
           sold_to_identity?: string | null
           start_price?: number
           status?: string
