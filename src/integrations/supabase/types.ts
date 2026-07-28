@@ -785,6 +785,12 @@ export type Database = {
           reminder_buyer_24h_sent: boolean
           reminder_seller_1h_sent: boolean
           reminder_seller_24h_sent: boolean
+          replay_egress_id: string | null
+          replay_expires_at: string | null
+          replay_ready_at: string | null
+          replay_status: string | null
+          replay_storage_path: string | null
+          replay_url: string | null
           room_name: string
           scheduled_at: string | null
           seller_id: string
@@ -822,6 +828,12 @@ export type Database = {
           reminder_buyer_24h_sent?: boolean
           reminder_seller_1h_sent?: boolean
           reminder_seller_24h_sent?: boolean
+          replay_egress_id?: string | null
+          replay_expires_at?: string | null
+          replay_ready_at?: string | null
+          replay_status?: string | null
+          replay_storage_path?: string | null
+          replay_url?: string | null
           room_name: string
           scheduled_at?: string | null
           seller_id: string
@@ -859,6 +871,12 @@ export type Database = {
           reminder_buyer_24h_sent?: boolean
           reminder_seller_1h_sent?: boolean
           reminder_seller_24h_sent?: boolean
+          replay_egress_id?: string | null
+          replay_expires_at?: string | null
+          replay_ready_at?: string | null
+          replay_status?: string | null
+          replay_storage_path?: string | null
+          replay_url?: string | null
           room_name?: string
           scheduled_at?: string | null
           seller_id?: string
@@ -2509,6 +2527,7 @@ export type Database = {
       mark_admin_message_read: { Args: { _id: string }; Returns: Json }
       mark_all_notifications_read: { Args: never; Returns: Json }
       mark_dm_thread_read: { Args: { _thread: string }; Returns: undefined }
+      mark_expired_live_replays: { Args: never; Returns: number }
       mark_notification_read: { Args: { _id: string }; Returns: Json }
       mark_order_shipped: { Args: { _order_id: string }; Returns: Json }
       move_to_dlq: {
@@ -2543,6 +2562,7 @@ export type Database = {
         Args: { _buyer_identity?: string; _product_id: string }
         Returns: Json
       }
+      purge_expired_live_replays_http: { Args: never; Returns: undefined }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
