@@ -862,6 +862,8 @@
       "orangeVisaSub": "Paie avec ta carte Visa Orange Money",
       "djamo": "Djamo",
       "djamoSub": "Paie avec ta carte Visa Djamo",
+      "useVisaCardHint": "Utilise ta carte Visa Wave / Orange / Djamo dans le formulaire carte ci-dessous.",
+      "paypalOrdersHint": "PayPal sert à recharger ton portefeuille (Mon portefeuille → Recharger), pas à payer une commande directement. Ensuite paie avec Solde KiDi+.",
       "comingSoon": "Bientôt"
     },
     "notConfigured": {
@@ -974,8 +976,11 @@
   },
   "myOrders": {
     "title": "Mes commandes",
-    "tabs": { "sales": "Commandes", "purchases": "Commandé" },
-    "emptySales": "Aucune commande à expédier pour le moment."
+    "tabs": { "sales": "Mes ventes", "purchases": "Mes achats" },
+    "salesHint": "Articles que des acheteurs t’ont commandés — à livrer une fois payés.",
+    "purchasesHint": "Articles que tu as commandés chez d’autres vendeurs.",
+    "emptySales": "Aucune vente pour le moment.",
+    "awaitingBuyerPay": "En attente que l’acheteur paie"
   },
   "payout": {
     "title": "Retirer mes gains",

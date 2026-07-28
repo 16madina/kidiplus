@@ -862,6 +862,8 @@
       "orangeVisaSub": "Pay with your Orange Money Visa card",
       "djamo": "Djamo",
       "djamoSub": "Pay with your Djamo Visa card",
+      "useVisaCardHint": "Use your Wave / Orange / Djamo Visa card in the card form below.",
+      "paypalOrdersHint": "PayPal is for topping up your wallet (My wallet → Top up), not for paying an order directly. Then pay with KiDi+ balance.",
       "comingSoon": "Soon"
     },
     "notConfigured": {
@@ -974,8 +976,11 @@
   },
   "myOrders": {
     "title": "My orders",
-    "tabs": { "sales": "To ship", "purchases": "Purchased" },
-    "emptySales": "No orders to ship yet."
+    "tabs": { "sales": "My sales", "purchases": "My purchases" },
+    "salesHint": "Items buyers ordered from you — ship them once paid.",
+    "purchasesHint": "Items you ordered from other sellers.",
+    "emptySales": "No sales yet.",
+    "awaitingBuyerPay": "Waiting for the buyer to pay"
   },
   "payout": {
     "title": "Withdraw earnings",

@@ -222,7 +222,8 @@ export function PaymentSheet({
     if (!walletEnough || needsVariant) return;
     let cancelled = false;
     void (async () => {
-      const ok = await tryWalletPay(order, { silent: true });
+      // Not silent: if auto-pay fails, show the real error (limit, expired, etc.)
+      const ok = await tryWalletPay(order, { silent: false });
       if (cancelled || ok) return;
     })();
     return () => {
@@ -473,26 +474,75 @@ export function PaymentSheet({
 
                     {orderCurrency === "XOF" && (
                       <>
-                        <MethodRow
-                          active={false}
-                          brand="wave"
-                          label={t("pay.method.waveVisa")}
-                          subtitle={t("pay.method.waveVisaSub")}
-                        />
-                        <MethodRow
-                          active={false}
-                          brand="orange"
-                          label={t("pay.method.orangeVisa")}
-                          subtitle={t("pay.method.orangeVisaSub")}
-                        />
-                        <MethodRow
-                          active={false}
-                          brand="djamo"
-                          label={t("pay.method.djamo")}
-                          subtitle={t("pay.method.djamoSub")}
-                        />
+                        {/* These are Visa cards issued by Wave/Orange/Djamo — paid via Stripe card form, not mobile-money APIs. */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toast.message(
+                              t("pay.method.useVisaCardHint", {
+                                defaultValue:
+                                  "Utilise ta carte Visa Wave / Orange / Djamo dans le formulaire carte ci-dessous.",
+                              }),
+                            );
+                            void startCardCheckout();
+                          }}
+                          className="w-full text-left"
+                        >
+                          <MethodRow
+                            active={cardSelected}
+                            brand="wave"
+                            label={t("pay.method.waveVisa")}
+                            subtitle={t("pay.method.waveVisaSub")}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toast.message(
+                              t("pay.method.useVisaCardHint", {
+                                defaultValue:
+                                  "Utilise ta carte Visa Wave / Orange / Djamo dans le formulaire carte ci-dessous.",
+                              }),
+                            );
+                            void startCardCheckout();
+                          }}
+                          className="w-full text-left"
+                        >
+                          <MethodRow
+                            active={cardSelected}
+                            brand="orange"
+                            label={t("pay.method.orangeVisa")}
+                            subtitle={t("pay.method.orangeVisaSub")}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toast.message(
+                              t("pay.method.useVisaCardHint", {
+                                defaultValue:
+                                  "Utilise ta carte Visa Wave / Orange / Djamo dans le formulaire carte ci-dessous.",
+                              }),
+                            );
+                            void startCardCheckout();
+                          }}
+                          className="w-full text-left"
+                        >
+                          <MethodRow
+                            active={cardSelected}
+                            brand="djamo"
+                            label={t("pay.method.djamo")}
+                            subtitle={t("pay.method.djamoSub")}
+                          />
+                        </button>
                       </>
                     )}
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      {t("pay.method.paypalOrdersHint", {
+                        defaultValue:
+                          "PayPal sert à recharger ton portefeuille (Mon portefeuille → Recharger), pas à payer une commande directement. Ensuite paie avec Solde KiDi+.",
+                      })}
+                    </p>
 
                   </div>
                 </div>
