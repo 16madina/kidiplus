@@ -325,11 +325,12 @@ export async function createLiveInDb(
 export async function endLiveInDb(
   liveId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const endedAt = new Date().toISOString();
   const { data, error } = await supabase
     .from("lives")
     .update({
       status: "ended",
-      ended_at: new Date().toISOString(),
+      ended_at: endedAt,
       ingress_id: null,
     } as never)
     .eq("id", liveId)
@@ -337,19 +338,31 @@ export async function endLiveInDb(
     .select("id")
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: false, error: "not_updated" };
-  return { ok: true };
+  if (data) return { ok: true };
+
+  // Already ended (or never live) — treat as success only if row is ended.
+  const { data: row } = await supabase
+    .from("lives")
+    .select("status")
+    .eq("id", liveId)
+    .maybeSingle();
+  if (row?.status === "ended") return { ok: true };
+  return { ok: false, error: "not_updated" };
 }
 
+/**
+ * Refresh host presence for an *already open* live.
+ * Never resurrect a live that was properly ended (Finish).
+ */
 export async function markLiveActiveInDb(liveId: string): Promise<void> {
   await supabase
     .from("lives")
     .update({
-      status: "live",
       ended_at: null,
       host_last_seen_at: new Date().toISOString(),
     } as never)
-    .eq("id", liveId);
+    .eq("id", liveId)
+    .eq("status", "live");
 }
 
 /** Host heartbeat — keeps abandoned-live expiry from ending an active session. */

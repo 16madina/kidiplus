@@ -559,12 +559,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     flashTimeoutRef.current = setTimeout(() => setLastBidFlash(null), 1600);
   }, [room.lastBid, room.products]);
 
+  const hostEndingRef = useRef(false);
+
   useEffect(() => {
     if (!b.liveId) return;
+    hostEndingRef.current = false;
     void markLiveActiveInDb(b.liveId).catch(() => {});
     // Keep host_last_seen_at fresh so abandoned lives expire after ~5 min offline.
     void touchLiveHostInDb(b.liveId).catch(() => {});
     const iv = setInterval(() => {
+      if (hostEndingRef.current) return;
       void touchLiveHostInDb(b.liveId!).catch(() => {});
     }, 30_000);
     return () => clearInterval(iv);
@@ -950,6 +954,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       return;
     }
     haptic.medium();
+    // Stop heartbeats immediately so we never re-touch / re-open after Finish.
+    hostEndingRef.current = true;
+    const liveId = b.liveId;
     b.setSession({
       title: b.title,
       category: b.category,
@@ -966,30 +973,37 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           price: Number(p.final_price ?? p.price),
         })),
     });
-    if (ytRestreaming || ytWatchUrl) {
-      await stopYoutubeRestream(b.liveId).catch(() => {});
-    }
-    if (fbRestreaming || fbWatchUrl) {
-      await stopFacebookRestream(b.liveId).catch(() => {});
-    }
-    if (ttRestreaming) {
-      await stopTiktokRestream(b.liveId).catch(() => {});
-    }
-    if (isRtmp || b.rtmpCreds) {
-      const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
-      await deleteLiveIngress(b.liveId).catch(() => {});
-    }
-    {
-      const { stopLiveReplay } = await import("@/lib/live-replay-client");
-      await stopLiveReplay(b.liveId).catch(() => {});
-    }
+
+    // Persist "ended" first — banners key off status=live. Cleanup can wait.
     const { endLiveInDb } = await import("@/lib/lives-db");
-    const ended = await endLiveInDb(b.liveId);
-    // not_updated = already ended (expiry / other device) — still leave to summary.
-    if (!ended.ok && ended.error !== "not_updated") {
+    const ended = await endLiveInDb(liveId);
+    if (!ended.ok) {
+      hostEndingRef.current = false;
       haptic.error();
       toast.error(t("live.endFailed", "Impossible de terminer le live — réessaie"));
       return;
+    }
+    const { notifyHostLiveEnded } = await import(
+      "@/components/home/host-open-live-banner"
+    );
+    notifyHostLiveEnded(liveId);
+
+    if (ytRestreaming || ytWatchUrl) {
+      await stopYoutubeRestream(liveId).catch(() => {});
+    }
+    if (fbRestreaming || fbWatchUrl) {
+      await stopFacebookRestream(liveId).catch(() => {});
+    }
+    if (ttRestreaming) {
+      await stopTiktokRestream(liveId).catch(() => {});
+    }
+    if (isRtmp || b.rtmpCreds) {
+      const { deleteLiveIngress } = await import("@/lib/livekit-ingress");
+      await deleteLiveIngress(liveId).catch(() => {});
+    }
+    {
+      const { stopLiveReplay } = await import("@/lib/live-replay-client");
+      await stopLiveReplay(liveId).catch(() => {});
     }
     haptic.success();
     onEnd();

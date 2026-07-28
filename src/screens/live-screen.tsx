@@ -15,7 +15,10 @@ import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { RESUME_HOST_LIVE_EVENT } from "@/components/home/host-open-live-banner";
+import {
+  HOST_LIVE_ENDED_EVENT,
+  RESUME_HOST_LIVE_EVENT,
+} from "@/components/home/host-open-live-banner";
 import guestLiveHero from "@/assets/guest-live-hero.png.asset.json";
 import kidiLiveLogo from "@/assets/kidi-live-logo-v3.png.asset.json";
 import sellerHero from "@/assets/seller-hero.png.asset.json";
@@ -479,9 +482,16 @@ function BroadcastFlow() {
     setEndingAll(true);
     const { endLiveInDb } = await import("@/lib/lives-db");
     const { stopLiveReplay } = await import("@/lib/live-replay-client");
-    await Promise.all(openLives.map((d) => stopLiveReplay(d.id).catch(() => {})));
-    const results = await Promise.all(openLives.map((d) => endLiveInDb(d.id)));
+    const { notifyHostLiveEnded } = await import(
+      "@/components/home/host-open-live-banner"
+    );
+    const ids = openLives.map((d) => d.id);
+    const results = await Promise.all(ids.map((id) => endLiveInDb(id)));
     const failed = results.filter((r) => !r.ok).length;
+    ids.forEach((id, i) => {
+      if (results[i]?.ok) notifyHostLiveEnded(id);
+    });
+    await Promise.all(ids.map((id) => stopLiveReplay(id).catch(() => {})));
     if (failed === 0) {
       setOpenLives([]);
       toast.success(t("live.danglingEnded", "Lives précédents terminés"));
@@ -634,6 +644,20 @@ function BroadcastFlow() {
     window.addEventListener(RESUME_HOST_LIVE_EVENT, onResume as EventListener);
     return () => window.removeEventListener(RESUME_HOST_LIVE_EVENT, onResume as EventListener);
   }, [stage]);
+
+  // Proper Finish → hide dangling banner immediately (don't wait for refetch).
+  useEffect(() => {
+    const onEnded = (e: Event) => {
+      const id = (e as CustomEvent<{ live_id?: string | null }>).detail?.live_id;
+      if (!id) {
+        setOpenLives([]);
+        return;
+      }
+      setOpenLives((prev) => prev.filter((l) => l.id !== id));
+    };
+    window.addEventListener(HOST_LIVE_ENDED_EVENT, onEnded as EventListener);
+    return () => window.removeEventListener(HOST_LIVE_ENDED_EVENT, onEnded as EventListener);
+  }, []);
 
   const closeToHome = () => {
     reset();

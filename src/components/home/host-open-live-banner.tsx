@@ -8,6 +8,8 @@ import { navigateTab } from "@/lib/push-router";
 import type { OpenLiveRow } from "@/lib/lives-db";
 
 export const RESUME_HOST_LIVE_EVENT = "kidi:resume-host-live";
+/** Fired after a host properly ends a live — banners must hide immediately. */
+export const HOST_LIVE_ENDED_EVENT = "kidi:host-live-ended";
 
 export function requestResumeHostLive(liveId?: string | null) {
   if (typeof window === "undefined") return;
@@ -23,6 +25,19 @@ export function requestResumeHostLive(liveId?: string | null) {
       /* ignore */
     }
   }, 80);
+}
+
+export function notifyHostLiveEnded(liveId?: string | null) {
+  if (typeof window === "undefined" || !liveId) return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(HOST_LIVE_ENDED_EVENT, {
+        detail: { live_id: liveId },
+      }),
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Banner shown on Home (and reusable elsewhere) when the seller still has an open live. */
@@ -72,6 +87,20 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
     return () => window.clearInterval(iv);
   }, [refresh, appActive]);
 
+  useEffect(() => {
+    const onEnded = (e: Event) => {
+      const id = (e as CustomEvent<{ live_id?: string | null }>).detail?.live_id;
+      setOpen((prev) => {
+        if (!prev) return null;
+        if (id && prev.id !== id) return prev;
+        return null;
+      });
+      setMinutesLeft(null);
+    };
+    window.addEventListener(HOST_LIVE_ENDED_EVENT, onEnded as EventListener);
+    return () => window.removeEventListener(HOST_LIVE_ENDED_EVENT, onEnded as EventListener);
+  }, []);
+
   if (!open) return null;
 
   return (
@@ -113,15 +142,17 @@ export function HostOpenLiveBanner({ className }: { className?: string }) {
                 const { endLiveInDb } = await import("@/lib/lives-db");
                 const { stopLiveReplay } = await import("@/lib/live-replay-client");
                 const { toast } = await import("sonner");
-                await stopLiveReplay(open.id).catch(() => {});
-                const res = await endLiveInDb(open.id);
+                const liveId = open.id;
+                const res = await endLiveInDb(liveId);
                 if (!res.ok) {
                   toast.error(
                     t("live.endFailed", "Impossible de terminer le live — réessaie"),
                   );
                   return;
                 }
+                notifyHostLiveEnded(liveId);
                 setOpen(null);
+                await stopLiveReplay(liveId).catch(() => {});
                 toast.success(t("live.danglingEnded", "Lives précédents terminés"));
               }}
               className="!min-h-8 h-8 rounded-full px-3 text-[12px] font-bold text-white"
