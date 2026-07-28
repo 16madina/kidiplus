@@ -500,8 +500,14 @@ function SalesList({
   onOpen: (o: OrderRow) => void;
 }) {
   const { t, i18n } = useTranslation();
-  // Show paid (to ship) + pending (awaiting buyer payment). Hide failed/cancelled noise.
-  const visible = orders.filter((o) => o.status === "paid" || o.status === "pending");
+  // Show paid (to ship) + pending (awaiting buyer payment) + unpaid timeouts
+  // so the seller sees when a buyer never paid.
+  const visible = orders.filter(
+    (o) =>
+      o.status === "paid" ||
+      o.status === "pending" ||
+      (o.status === "cancelled" && o.cancelled_reason === "payment_timeout"),
+  );
   if (visible.length === 0) {
     return (
       <EmptyState
@@ -515,9 +521,13 @@ function SalesList({
       {visible.map((o) => {
         const buyer = buyers[o.buyer_id];
         const isPending = o.status === "pending";
-        const fm = isPending
-          ? { bg: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)", key: "orders.status.pending" }
-          : FULFILL_META[o.fulfillment_status];
+        const isUnpaidTimeout =
+          o.status === "cancelled" && o.cancelled_reason === "payment_timeout";
+        const fm = isUnpaidTimeout
+          ? { bg: "oklch(0.94 0.06 27)", color: "oklch(0.45 0.18 27)", key: "orders.status.paymentTimeout" }
+          : isPending
+            ? { bg: "oklch(0.94 0.05 80)", color: "oklch(0.42 0.14 70)", key: "orders.status.pending" }
+            : FULFILL_META[o.fulfillment_status];
         const snap = asSnapshot(o.address_snapshot);
         const destination = snap
           ? [snap.city, snap.country ? countryName(snap.country, i18n.language) : null]
@@ -536,17 +546,28 @@ function SalesList({
                       className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                       style={{ backgroundColor: fm.bg, color: fm.color }}
                     >
-                      {isPending
-                        ? t("myOrders.awaitingBuyerPay", {
-                            defaultValue: "En attente que l’acheteur paie",
+                      {isUnpaidTimeout
+                        ? t("myOrders.buyerDidNotPay", {
+                            defaultValue: "Acheteur n’a pas payé",
                           })
-                        : t(fm.key)}
+                        : isPending
+                          ? t("myOrders.awaitingBuyerPay", {
+                              defaultValue: "En attente que l’acheteur paie",
+                            })
+                          : t(fm.key)}
                     </span>
                   </div>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
                     {buyer ? `@${buyer.handle}` : t("sales.buyer")} · {orderDateShort(new Date(o.created_at))}
                   </p>
-                  {destination && (
+                  {isUnpaidTimeout && (
+                    <p className="mt-1 text-[11px] font-medium" style={{ color: "oklch(0.45 0.18 27)" }}>
+                      {t("myOrders.buyerDidNotPayHint", {
+                        defaultValue: "Délai de 24 h dépassé — la commande a été annulée.",
+                      })}
+                    </p>
+                  )}
+                  {destination && !isUnpaidTimeout && (
                     <p className="mt-0.5 flex items-center gap-1 text-[12px] text-muted-foreground">
                       <MapPin size={11} className="shrink-0" /> {destination}
                     </p>
@@ -646,6 +667,22 @@ function PurchaseCard({
                   {t("orders.payBefore", { date: formatDeadline(order.payment_deadline, i18n.language) })}
                 </p>
               )}
+              {showAsExpired && (
+                <p
+                  className="mt-1 text-[11px] font-medium leading-snug"
+                  style={{ color: "oklch(0.45 0.18 27)" }}
+                >
+                  {order.kind === "auction"
+                    ? t("orders.expiredAuctionHint", {
+                        defaultValue:
+                          "Délai de paiement dépassé (plus de 24 h). Tu ne peux plus payer cette enchère.",
+                      })
+                    : t("orders.expiredHint", {
+                        defaultValue:
+                          "Délai de paiement dépassé (plus de 24 h). Tu ne peux plus payer cette commande.",
+                      })}
+                </p>
+              )}
             </div>
           </div>
         </Press>
@@ -658,6 +695,15 @@ function PurchaseCard({
             >
               {t("orders.payNow")}
             </Press>
+          </div>
+        )}
+        {showAsExpired && !canPayNow && (
+          <div className="border-t border-border px-3 py-2.5">
+            <p className="text-center text-[12px] font-semibold" style={{ color: "oklch(0.45 0.18 27)" }}>
+              {t("orders.expiredNoPay", {
+                defaultValue: "Paiement impossible — délai de 24 h dépassé",
+              })}
+            </p>
           </div>
         )}
         {isPaid && canConfirm && (

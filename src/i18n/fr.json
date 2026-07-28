@@ -895,13 +895,16 @@
     "empty": "Aucune commande pour le moment.",
     "payBefore": "À payer avant {{date}}",
     "payNow": "Payer maintenant",
+    "expiredNoPay": "Paiement impossible — délai de 24 h dépassé",
+    "expiredHint": "Délai de paiement dépassé (plus de 24 h). Tu ne peux plus payer cette commande.",
+    "expiredAuctionHint": "Délai de paiement dépassé (plus de 24 h). Tu ne peux plus payer cette enchère.",
     "status": {
       "pending": "En attente",
       "awaitingPayment": "En attente de paiement",
       "paid": "Payé",
       "failed": "Échoué",
       "cancelled": "Annulé",
-      "paymentTimeout": "Non payé — annulé"
+      "paymentTimeout": "Non payé — délai dépassé"
     },
     "fulfillment": {
       "awaiting": "À expédier",
@@ -980,7 +983,9 @@
     "salesHint": "Articles que des acheteurs t’ont commandés — à livrer une fois payés.",
     "purchasesHint": "Articles que tu as commandés chez d’autres vendeurs.",
     "emptySales": "Aucune vente pour le moment.",
-    "awaitingBuyerPay": "En attente que l’acheteur paie"
+    "awaitingBuyerPay": "En attente que l’acheteur paie",
+    "buyerDidNotPay": "Acheteur n’a pas payé",
+    "buyerDidNotPayHint": "Délai de 24 h dépassé — la commande a été annulée."
   },
   "payout": {
     "title": "Retirer mes gains",
