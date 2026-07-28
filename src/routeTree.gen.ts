@@ -51,6 +51,9 @@ import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
 import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
+import { Route as ApiPaypalCheckoutCaptureRouteImport } from './routes/api/paypal-checkout.capture'
+import { Route as ApiPaypalCheckoutCreateRouteImport } from './routes/api/paypal-checkout.create'
+import { Route as ApiPaypalCheckoutReturnRouteImport } from './routes/api/paypal-checkout.return'
 import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
 import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
 import { Route as ApiPaypalTopupCaptureRouteImport } from './routes/api/paypal-topup.capture'
@@ -289,6 +292,22 @@ const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
   path: '/api/facebook/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaypalCheckoutCaptureRoute =
+  ApiPaypalCheckoutCaptureRouteImport.update({
+    id: '/api/paypal-checkout/capture',
+    path: '/api/paypal-checkout/capture',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPaypalCheckoutCreateRoute = ApiPaypalCheckoutCreateRouteImport.update({
+  id: '/api/paypal-checkout/create',
+  path: '/api/paypal-checkout/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaypalCheckoutReturnRoute = ApiPaypalCheckoutReturnRouteImport.update({
+  id: '/api/paypal-checkout/return',
+  path: '/api/paypal-checkout/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
   id: '/config',
   path: '/config',
@@ -453,6 +472,9 @@ export interface FileRoutesByFullPath {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
+  '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
+  '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -520,6 +542,9 @@ export interface FileRoutesByTo {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
+  '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
+  '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -588,6 +613,9 @@ export interface FileRoutesById {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
+  '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
+  '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
   '/api/paypal-payout/config': typeof ApiPaypalPayoutConfigRoute
   '/api/paypal-payout/status': typeof ApiPaypalPayoutStatusRoute
   '/api/paypal-topup/capture': typeof ApiPaypalTopupCaptureRoute
@@ -657,6 +685,9 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/paypal-checkout/capture'
+    | '/api/paypal-checkout/create'
+    | '/api/paypal-checkout/return'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -724,6 +755,9 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/paypal-checkout/capture'
+    | '/api/paypal-checkout/create'
+    | '/api/paypal-checkout/return'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -791,6 +825,9 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/paypal-checkout/capture'
+    | '/api/paypal-checkout/create'
+    | '/api/paypal-checkout/return'
     | '/api/paypal-payout/config'
     | '/api/paypal-payout/status'
     | '/api/paypal-topup/capture'
@@ -857,6 +894,9 @@ export interface RootRouteChildren {
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
   ApiFacebookStatusRoute: typeof ApiFacebookStatusRoute
+  ApiPaypalCheckoutCaptureRoute: typeof ApiPaypalCheckoutCaptureRoute
+  ApiPaypalCheckoutCreateRoute: typeof ApiPaypalCheckoutCreateRoute
+  ApiPaypalCheckoutReturnRoute: typeof ApiPaypalCheckoutReturnRoute
   ApiPaypalTopupCaptureRoute: typeof ApiPaypalTopupCaptureRoute
   ApiPaypalTopupCreateRoute: typeof ApiPaypalTopupCreateRoute
   ApiPaypalTopupReturnRoute: typeof ApiPaypalTopupReturnRoute
@@ -1175,6 +1215,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFacebookStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paypal-checkout/capture': {
+      id: '/api/paypal-checkout/capture'
+      path: '/api/paypal-checkout/capture'
+      fullPath: '/api/paypal-checkout/capture'
+      preLoaderRoute: typeof ApiPaypalCheckoutCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-checkout/create': {
+      id: '/api/paypal-checkout/create'
+      path: '/api/paypal-checkout/create'
+      fullPath: '/api/paypal-checkout/create'
+      preLoaderRoute: typeof ApiPaypalCheckoutCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-checkout/return': {
+      id: '/api/paypal-checkout/return'
+      path: '/api/paypal-checkout/return'
+      fullPath: '/api/paypal-checkout/return'
+      preLoaderRoute: typeof ApiPaypalCheckoutReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paypal-payout/config': {
       id: '/api/paypal-payout/config'
       path: '/config'
@@ -1421,6 +1482,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
   ApiFacebookStatusRoute: ApiFacebookStatusRoute,
+  ApiPaypalCheckoutCaptureRoute: ApiPaypalCheckoutCaptureRoute,
+  ApiPaypalCheckoutCreateRoute: ApiPaypalCheckoutCreateRoute,
+  ApiPaypalCheckoutReturnRoute: ApiPaypalCheckoutReturnRoute,
   ApiPaypalTopupCaptureRoute: ApiPaypalTopupCaptureRoute,
   ApiPaypalTopupCreateRoute: ApiPaypalTopupCreateRoute,
   ApiPaypalTopupReturnRoute: ApiPaypalTopupReturnRoute,

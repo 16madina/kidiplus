@@ -139,11 +139,28 @@ export const Route = createFileRoute("/api/public/paypal-webhook")({
             ).toUpperCase();
 
             // custom_id shapes:
-            //   "topup:<userId>:<invoiceId>"                 → same-currency
+            //   "topup:<userId>:<invoiceId>"                 → wallet top-up
             //   "topup:<userId>:<invoiceId>:xof:<xofAmount>" → bridged XOF→EUR
+            //   "order:<buyerId>:<orderId>"                  → commerce order
+            //   "order:<buyerId>:<orderId>:xof:<xofTotal>"   → bridged XOF→EUR
             const parts = customId.split(":");
+            if (parts[0] === "order" && parts[1] && parts[2] && captureId) {
+              const { applyPaypalOrderCapture } = await import(
+                "@/lib/paypal-order-finalize.server"
+              );
+              const applied = await applyPaypalOrderCapture({
+                captureId,
+                customId,
+                amount: amountVal,
+                currency,
+              });
+              if (!applied.ok) {
+                console.error("[paypal-webhook] order capture apply failed:", applied.error);
+              }
+              return json({ received: true, order: applied.ok }, 200);
+            }
             if (parts[0] !== "topup" || !parts[1] || !captureId) {
-              return json({ received: true, ignored: "not_a_topup_capture" }, 200);
+              return json({ received: true, ignored: "not_a_topup_or_order_capture" }, 200);
             }
             const userId = parts[1];
             const isBridgedXof = parts[3] === "xof";

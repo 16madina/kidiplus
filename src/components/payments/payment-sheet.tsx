@@ -43,8 +43,15 @@ import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 import { OrderItemImage } from "@/components/orders/order-item-image";
 import { setOrderProductOptions } from "@/lib/orders-db";
 import { variantSelectionState } from "@/lib/live-product-options";
-
-
+import { isNative } from "@/lib/native";
+import {
+  capturePaypalCheckout,
+  clearPendingPaypalCheckout,
+  createPaypalCheckout,
+  mapPaypalCheckoutError,
+  markPendingPaypalCheckout,
+  readPendingPaypalCheckout,
+} from "@/lib/paypal-checkout-client";
 
 type CheckoutResp = {
   clientSecret?: string;
@@ -84,9 +91,17 @@ export function PaymentSheet({
   const fmt = (n: number) => formatMoney(n, orderCurrency, i18n.language);
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
+  const [paypalBusy, setPaypalBusy] = useState(false);
   const [cardSelected, setCardSelected] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
   const autoTriedRef = useRef<string | null>(null);
+  const paypalFinishedRef = useRef(false);
+  const paypalSupported =
+    orderCurrency === "XOF" ||
+    orderCurrency === "EUR" ||
+    orderCurrency === "CAD" ||
+    orderCurrency === "USD" ||
+    orderCurrency === "GBP";
   const variantState = variantSelectionState(productColors, productSizes);
   const existingOpts = (order?.address_snapshot?.product_options ?? null) as
     | { color?: string | null; size?: string | null }
@@ -173,6 +188,166 @@ export function PaymentSheet({
     },
     [i18n.language, onClose, onPaid, t],
   );
+
+  const finishPaypalPaid = useCallback(
+    (ord: OrderRow) => {
+      paypalFinishedRef.current = true;
+      clearPendingPaypalCheckout();
+      haptic.success();
+      setPaypalBusy(false);
+      setState({ kind: "done" });
+      void cancelOrderPaymentIntent(ord.id);
+      toast.success(
+        t("pay.method.paypalPaid", { defaultValue: "Payé avec PayPal" }),
+      );
+      onPaid?.(ord);
+      setTimeout(onClose, 1400);
+    },
+    [onClose, onPaid, t],
+  );
+
+  const tryCapturePendingPaypal = useCallback(
+    async (paypalOrderId: string, kidiOrder: OrderRow, opts?: { silent?: boolean }) => {
+      if (paypalFinishedRef.current) return true;
+      setState({ kind: "verifying" });
+      const r = await capturePaypalCheckout(paypalOrderId);
+      if (r.ok) {
+        finishPaypalPaid(kidiOrder);
+        try {
+          const { Browser } = await import("@capacitor/browser");
+          await Browser.close();
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+      if (!opts?.silent) {
+        setPaypalBusy(false);
+        setState({ kind: "idle" });
+        toast.error(mapPaypalCheckoutError(r.error, r.message));
+      }
+      return false;
+    },
+    [finishPaypalPaid],
+  );
+
+  // Resume PayPal checkout after native/web return.
+  useEffect(() => {
+    if (!order) return;
+    paypalFinishedRef.current = false;
+
+    const onDone = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as
+        | { ok?: boolean; status?: string; orderId?: string }
+        | undefined;
+      if (detail?.orderId && detail.orderId !== order.id) return;
+      if (detail?.ok || detail?.status === "ok") {
+        finishPaypalPaid(order);
+        return;
+      }
+      if (detail?.status === "cancelled") {
+        clearPendingPaypalCheckout();
+        setPaypalBusy(false);
+        setState({ kind: "idle" });
+        toast.message(mapPaypalCheckoutError("cancelled"));
+        return;
+      }
+      const pending = readPendingPaypalCheckout();
+      if (pending?.kidiOrderId === order.id) {
+        void tryCapturePendingPaypal(pending.paypalOrderId, order, { silent: true });
+      }
+    };
+
+    window.addEventListener("kidi:paypal-order-done", onDone);
+
+    try {
+      const raw = sessionStorage.getItem("kidi:paypal_order_done");
+      if (raw) {
+        sessionStorage.removeItem("kidi:paypal_order_done");
+        const parsed = JSON.parse(raw) as { status?: string; orderId?: string };
+        if (!parsed.orderId || parsed.orderId === order.id) {
+          if (parsed.status === "ok") finishPaypalPaid(order);
+          else if (parsed.status === "cancelled") {
+            clearPendingPaypalCheckout();
+            toast.message(mapPaypalCheckoutError("cancelled"));
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const pending = readPendingPaypalCheckout();
+    if (pending?.kidiOrderId === order.id) {
+      void tryCapturePendingPaypal(pending.paypalOrderId, order, { silent: true });
+    }
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let removeBrowserListener: (() => void) | undefined;
+    if (isNative()) {
+      void import("@capacitor/browser").then(({ Browser }) => {
+        const sub = Browser.addListener("browserFinished", () => {
+          const p = readPendingPaypalCheckout();
+          if (p?.kidiOrderId === order.id) {
+            void tryCapturePendingPaypal(p.paypalOrderId, order, { silent: true });
+          }
+        });
+        removeBrowserListener = () => {
+          void sub.then((h) => h.remove());
+        };
+      });
+      pollTimer = setInterval(() => {
+        if (paypalFinishedRef.current) return;
+        const p = readPendingPaypalCheckout();
+        if (p?.kidiOrderId === order.id) {
+          void tryCapturePendingPaypal(p.paypalOrderId, order, { silent: true });
+        }
+      }, 1600);
+    }
+
+    return () => {
+      window.removeEventListener("kidi:paypal-order-done", onDone);
+      removeBrowserListener?.();
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [order, finishPaypalPaid, tryCapturePendingPaypal]);
+
+  const startPaypalCheckout = async () => {
+    if (!order || paypalBusy) return;
+    const okVariant = await ensureVariantOnOrder();
+    if (!okVariant) return;
+    setPaypalBusy(true);
+    haptic.medium();
+    const created = await createPaypalCheckout(order.id, { native: isNative() });
+    if (!created.ok) {
+      setPaypalBusy(false);
+      toast.error(mapPaypalCheckoutError(created.error, created.message));
+      return;
+    }
+    if (!created.approveUrl) {
+      setPaypalBusy(false);
+      toast.error(mapPaypalCheckoutError("paypal_create_failed"));
+      return;
+    }
+    markPendingPaypalCheckout(created.paypalOrderId, order.id);
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        setState({ kind: "verifying" });
+        await Browser.open({
+          url: created.approveUrl,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
+      } catch {
+        setPaypalBusy(false);
+        setState({ kind: "idle" });
+        toast.error(mapPaypalCheckoutError("paypal_create_failed"));
+      }
+    } else {
+      window.location.assign(created.approveUrl);
+    }
+  };
 
   const tryWalletPay = useCallback(
     async (ord: OrderRow, { silent }: { silent?: boolean } = {}) => {
@@ -537,12 +712,34 @@ export function PaymentSheet({
                         </button>
                       </>
                     )}
-                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                      {t("pay.method.paypalOrdersHint", {
-                        defaultValue:
-                          "PayPal sert à recharger ton portefeuille (Mon portefeuille → Recharger), pas à payer une commande directement. Ensuite paie avec Solde KiDi+.",
-                      })}
-                    </p>
+                    {paypalSupported && (
+                      <button
+                        type="button"
+                        onClick={() => { void startPaypalCheckout(); }}
+                        disabled={paypalBusy}
+                        className="w-full text-left"
+                      >
+                        <MethodRow
+                          active={paypalBusy || state.kind === "verifying"}
+                          brand="paypal"
+                          label={t("pay.method.paypal", { defaultValue: "PayPal" })}
+                          subtitle={
+                            orderCurrency === "XOF"
+                              ? t("pay.method.paypalXofSub", {
+                                  defaultValue: "Paiement en euros (équivalent XOF)",
+                                })
+                              : t("pay.method.paypalSub", {
+                                  defaultValue: "Payer cette commande avec ton compte PayPal",
+                                })
+                          }
+                          right={
+                            paypalBusy ? (
+                              <Loader2 className="animate-spin" size={16} />
+                            ) : undefined
+                          }
+                        />
+                      </button>
+                    )}
 
                   </div>
                 </div>

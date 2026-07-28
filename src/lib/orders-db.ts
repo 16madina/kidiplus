@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type OrderStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
 export type OrderKind = "auction" | "fixed";
-export type PaymentMethod = "card" | "wave" | "orange_money" | "wallet";
+export type PaymentMethod = "card" | "wave" | "orange_money" | "wallet" | "paypal";
 export type FulfillmentStatus = "awaiting" | "shipped" | "delivered" | "disputed";
 export type DeliveryMode = "zones" | "flat" | "courier";
 

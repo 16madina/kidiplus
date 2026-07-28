@@ -211,22 +211,39 @@ function AppShellInner() {
         const u = new URL(window.location.href);
         if (u.searchParams.get("paypal_done") === "1") {
           const status = u.searchParams.get("status") ?? "ok";
-          sessionStorage.setItem(
-            "kidi:paypal_done",
-            JSON.stringify({
-              status,
-              amount: u.searchParams.get("amount"),
-              currency: u.searchParams.get("currency"),
-              duplicate: u.searchParams.get("duplicate") === "1",
-            }),
-          );
-          stashSoftSection("wallet");
+          const kind = u.searchParams.get("kind") ?? "topup";
+          const duplicate = u.searchParams.get("duplicate") === "1";
+          if (kind === "order") {
+            const orderId = u.searchParams.get("orderId");
+            sessionStorage.setItem(
+              "kidi:paypal_order_done",
+              JSON.stringify({ status, orderId, duplicate }),
+            );
+            window.dispatchEvent(
+              new CustomEvent("kidi:paypal-order-done", {
+                detail: { ok: status === "ok", status, orderId: orderId ?? undefined, duplicate },
+              }),
+            );
+          } else {
+            sessionStorage.setItem(
+              "kidi:paypal_done",
+              JSON.stringify({
+                status,
+                amount: u.searchParams.get("amount"),
+                currency: u.searchParams.get("currency"),
+                duplicate,
+              }),
+            );
+            stashSoftSection("wallet");
+          }
           u.searchParams.delete("paypal_done");
           u.searchParams.delete("status");
           u.searchParams.delete("amount");
           u.searchParams.delete("currency");
           u.searchParams.delete("duplicate");
           u.searchParams.delete("reason");
+          u.searchParams.delete("kind");
+          u.searchParams.delete("orderId");
           window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}` || "/");
         }
       } catch {
