@@ -20,7 +20,7 @@ import { bumpHeart } from "@/lib/heart-bus";
 import {
   fetchLiveProducts,
   updateLiveViewerCount,
-  resolveLiveImage,
+  resolveProductDisplayImage,
   normalizeLiveProductRow,
   type LiveProductRow,
 } from "@/lib/lives-db";
@@ -32,11 +32,12 @@ import {
 async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
   const normalized = normalizeLiveProductRow(row);
   if (!normalized.image_url) return normalized;
-  if (/^(https?:|blob:|data:)/i.test(normalized.image_url)) return normalized;
+  if (/^(blob:|data:)/i.test(normalized.image_url)) return normalized;
+  // Absolute http(s) may be expired signed URLs — re-resolve via path extract.
   const path = normalized.image_url;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const url = await resolveLiveImage("live-products", path, "card");
+      const url = await resolveProductDisplayImage(path, "card");
       if (url) return { ...normalized, image_url: url };
     } catch (err) {
       console.warn("[live-room] hydrateImage error", err, path);
@@ -44,7 +45,7 @@ async function hydrateImage(row: LiveProductRow): Promise<LiveProductRow> {
     if (attempt < 3) await new Promise((r) => setTimeout(r, attempt === 0 ? 700 : 1400));
   }
   console.warn("[live-room] failed to sign product image after retry", path);
-  return normalized;
+  return { ...normalized, image_url: null };
 }
 
 function isTerminalProductStatus(status: string | null | undefined): boolean {

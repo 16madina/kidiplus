@@ -18,6 +18,7 @@ import {
   startScheduledLiveInDb,
   scheduledStartWindow,
   resolveLiveImage,
+  resolveProductDisplayImage,
   type ScheduledLiveRow,
 } from "@/lib/lives-db";
 import { notifyLiveReminders } from "@/lib/live-reminders-db";
@@ -115,11 +116,11 @@ export function GoLiveEntryScreen({
       b.clearProducts();
       for (const p of full.products) {
         const img = p.image_url
-          ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
+          ? (await resolveProductDisplayImage(p.image_url)) ?? ""
           : "";
         const extras = await Promise.all(
           (p.extra_images ?? []).map(async (path) =>
-            (await resolveLiveImage("live-products", path)) ?? path,
+            (await resolveProductDisplayImage(path)) ?? path,
           ),
         );
         b.addProduct({
@@ -161,11 +162,11 @@ export function GoLiveEntryScreen({
       b.clearProducts();
       for (const p of full.products) {
         const img = p.image_url
-          ? (await resolveLiveImage("live-products", p.image_url)) ?? p.image_url
+          ? (await resolveProductDisplayImage(p.image_url)) ?? ""
           : "";
         const extras = await Promise.all(
           (p.extra_images ?? []).map(async (path) =>
-            (await resolveLiveImage("live-products", path)) ?? path,
+            (await resolveProductDisplayImage(path)) ?? path,
           ),
         );
         b.addProduct({

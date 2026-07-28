@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
-import { resolveLiveImage, type LiveImageSize } from "@/lib/lives-db";
+import { resolveProductDisplayImage, type LiveImageSize } from "@/lib/lives-db";
 import { cn } from "@/lib/utils";
-
-const DIRECT_IMAGE_RE = /^(https?:|blob:|data:)/i;
 
 export function LiveProductImage({
   src,
@@ -37,7 +35,8 @@ export function LiveProductImage({
       };
     }
 
-    if (DIRECT_IMAGE_RE.test(src)) {
+    // blob/data only — https may be an expired signed URL; always re-resolve.
+    if (/^(blob:|data:)/i.test(src)) {
       setDisplaySrc(src);
       return () => {
         alive = false;
@@ -49,7 +48,7 @@ export function LiveProductImage({
       for (const delay of delays) {
         if (delay) await new Promise((r) => setTimeout(r, delay));
         if (!alive) return;
-        const signed = await resolveLiveImage("live-products", src, size);
+        const signed = await resolveProductDisplayImage(src, size);
         if (signed) {
           if (alive) setDisplaySrc(signed);
           return;

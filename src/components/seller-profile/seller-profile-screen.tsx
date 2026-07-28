@@ -196,9 +196,15 @@ function SellerProfileInner({
   dragX: ReturnType<typeof useMotionValue<number>>;
 }) {
   const { t } = useTranslation();
+  const { consumeInitialTab } = useSellerProfile();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const scrollY = useMotionValue(0);
-  const [tab, setTab] = useState<TabKey>("boutique");
+  const [tab, setTab] = useState<TabKey>(() => consumeInitialTab() ?? "boutique");
+
+  useEffect(() => {
+    const next = consumeInitialTab();
+    if (next) setTab(next);
+  }, [profile.id, consumeInitialTab]);
 
   const heroScale = useTransform(scrollY, [0, HEADER_MAX], [1, 0.85]);
   const heroOpacity = useTransform(scrollY, [0, HEADER_MAX * 0.75, HEADER_MAX], [1, 0.4, 0]);
@@ -735,6 +741,13 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
           const hasReplay = !isLive && !isScheduled && isReplayPlayable(replayMeta);
           const daysLeft = hasReplay ? replayDaysLeft(r.replay_expires_at) : null;
           const clickable = isLive || hasReplay;
+          const replayPending =
+            !isLive &&
+            !isScheduled &&
+            (replayMeta.replay_status === "recording" ||
+              replayMeta.replay_status === "processing");
+          const replayFailed =
+            !isLive && !isScheduled && replayMeta.replay_status === "failed";
           return (
             <div
               key={r.id}
@@ -761,6 +774,14 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
                             defaultValue: "Replay · expire dans {{days}}j",
                             days: daysLeft ?? 1,
                           })
+                        : replayPending
+                          ? t("broadcast.replay.preparing", {
+                              defaultValue: "Replay en préparation…",
+                            })
+                          : replayFailed
+                            ? t("broadcast.replay.unavailable", {
+                                defaultValue: "Replay indisponible",
+                              })
                         : (r.ended_at ? t("seller.ended") + " · " + formatShortDateTime(new Date(r.ended_at), lang) : t("seller.ended"))}
                 </p>
               </div>

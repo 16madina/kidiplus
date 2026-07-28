@@ -38,6 +38,7 @@ import { CoverCropperSheet } from "./cover-cropper-sheet";
 import { YoutubeConnectCard } from "./youtube-connect-card";
 import { FacebookConnectCard } from "./facebook-connect-card";
 import { TiktokConnectCard } from "./tiktok-connect-card";
+import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { DeliverySetupPromptDialog } from "./delivery-setup-prompt-dialog";
 import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
 import { fetchDeliverySettings } from "@/lib/delivery-db";
@@ -797,15 +798,11 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   className="relative h-20 w-20 overflow-hidden rounded-2xl"
                   style={{ border: `1px solid ${GOLD_SOFT}` }}
                 >
-                  <img
+                  <LiveProductImage
                     key={p.image || p.id}
                     src={p.image}
-                    alt=""
                     className="h-full w-full object-cover"
-                    ref={(el) => {
-                      if (el?.complete) el.setAttribute("data-loaded", "true");
-                    }}
-                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                    size="thumb"
                   />
                   <Press
                     onClick={() => b.removeProduct(p.id)}

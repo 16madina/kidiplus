@@ -20,6 +20,7 @@ import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
 import { AddProductSheet } from "./add-product-sheet";
 import { ShopPickerSheet } from "@/components/shop/shop-picker-sheet";
+import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { useBroadcast } from "@/lib/broadcast-context";
 
 import {
@@ -755,15 +756,11 @@ export function ScheduleLiveSetup({ onExit }: { onExit: () => void }) {
               >
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
                   {p.image ? (
-                    <img
+                    <LiveProductImage
                       key={p.image || p.id}
                       src={p.image}
-                      alt=""
                       className="h-full w-full object-cover"
-                      ref={(el) => {
-                        if (el?.complete) el.setAttribute("data-loaded", "true");
-                      }}
-                      onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                      size="thumb"
                     />
                   ) : (
                     <div className="grid h-full w-full place-items-center bg-white/5">

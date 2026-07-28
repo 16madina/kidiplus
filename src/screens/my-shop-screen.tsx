@@ -38,6 +38,7 @@ import { ShopProductDetailSheet } from "@/components/shop/shop-product-detail-sh
 import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
 import { formatProductMetaLine, conditionLabel } from "@/lib/live-product-options";
+import { useSellerProfile } from "@/lib/seller-profile-context";
 
 /* ============================================================
    Design tokens — warm cream / gold / navy palette
@@ -78,6 +79,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
+  const { open: openSellerProfile } = useSellerProfile();
   const user = profile as (typeof profile & { banner_url?: string | null }) | null;
 
   const load = async () => {
@@ -347,7 +349,21 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
         >
           <StatCol icon={<ShoppingBag size={16} style={{ color: GOLD }} />} label="Produits" value={String(items?.length ?? 0)} />
           <StatCol icon={<UsersIcon size={16} style={{ color: GOLD }} />} label="Abonnés" value={formatCompact(followers)} />
-          <StatCol icon={<Video size={16} style={{ color: GOLD }} />} label="Lives réalisés" value={String(livesCount)} />
+          <StatCol
+            icon={<Video size={16} style={{ color: GOLD }} />}
+            label="Lives réalisés"
+            value={String(livesCount)}
+            onClick={() => {
+              const handle = user?.handle;
+              if (!handle) {
+                toast.error("Profil incomplet — ajoute un @pseudo");
+                return;
+              }
+              haptic.light();
+              onClose();
+              setTimeout(() => openSellerProfile(handle, "lives"), 80);
+            }}
+          />
           <div className="flex flex-col items-center gap-0.5 border-l border-border/50 pl-2">
             <span className="text-[10px] font-medium text-muted-foreground">Boutique</span>
             <span className="inline-flex items-center gap-1 text-[13px] font-extrabold" style={{ color: online ? "#12703B" : "#8A8578" }}>
@@ -620,12 +636,37 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-function StatCol({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
+function StatCol({
+  icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       {icon}
       <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
       <span className="text-[15px] font-extrabold" style={{ color: NAVY }}>{value}</span>
+    </>
+  );
+  if (onClick) {
+    return (
+      <Press
+        onClick={onClick}
+        className="!min-h-0 flex flex-col items-center gap-0.5 rounded-xl p-1"
+      >
+        {content}
+      </Press>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      {content}
     </div>
   );
 }

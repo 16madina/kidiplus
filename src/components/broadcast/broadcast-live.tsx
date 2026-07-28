@@ -355,6 +355,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       ts: Date.now(),
     });
     void (async () => {
+      let lastError = "";
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           const res = await finalizeAuctionInDb({
@@ -381,13 +382,16 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             return;
           }
           console.warn("[auction] finalize failed", res.error, `attempt=${attempt}`);
+          lastError = res.error || "finalize_failed";
         } catch (e) {
           console.warn("[auction] finalize threw", e, `attempt=${attempt}`);
+          lastError = e instanceof Error ? e.message : String(e);
         }
         if (attempt < 3) await new Promise((r) => setTimeout(r, 1200));
       }
       toast.error(
-        t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie."),
+        t("live.finalizeFailed", "Impossible de clôturer l'enchère. Réessaie.") +
+          (lastError ? ` (${lastError})` : ""),
       );
       // Force server settle + keep local end (do NOT clear endingRef in a way
       // that revives the 00:01 zombie — product must leave `active`).

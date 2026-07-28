@@ -22,7 +22,10 @@ export function liveReplayS3Config(): LiveReplayS3Config | null {
   const secret = (process.env.LIVE_REPLAY_S3_SECRET_KEY ?? "").trim();
   const bucket =
     (process.env.LIVE_REPLAY_S3_BUCKET ?? "").trim() || LIVE_REPLAY_BUCKET;
-  const region = (process.env.LIVE_REPLAY_S3_REGION ?? "").trim() || "us-east-1";
+  const regionRaw = (process.env.LIVE_REPLAY_S3_REGION ?? "").trim();
+  // LiveKit Cloud rejects region "auto"; R2 works with us-east-1.
+  const region =
+    !regionRaw || regionRaw.toLowerCase() === "auto" ? "us-east-1" : regionRaw;
   const endpoint = (process.env.LIVE_REPLAY_S3_ENDPOINT ?? "").trim();
   const forcePathStyle =
     (process.env.LIVE_REPLAY_S3_FORCE_PATH_STYLE ?? "true").trim().toLowerCase() !==

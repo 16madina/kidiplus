@@ -104,6 +104,36 @@ export async function resolveLiveImage(
 }
 
 /**
+ * Resolve a product image that may live in live-products OR shop-products.
+ * Shop picks now persist durable shop paths; live uploads use live-products.
+ */
+export async function resolveProductDisplayImage(
+  value: string | null | undefined,
+  size: LiveImageSize = "card",
+): Promise<string | null> {
+  if (!value) return null;
+  if (/^(blob:|data:)/i.test(value)) return value;
+
+  if (/^https?:\/\//i.test(value)) {
+    const parsed = parseSupabaseStorageUrl(value);
+    if (!parsed) return value;
+    if (parsed.bucket === "shop-products") {
+      const { resolveShopImage } = await import("@/lib/shop-db");
+      return resolveShopImage(value, size);
+    }
+    if (parsed.bucket === "live-products" || parsed.bucket === "live-covers") {
+      return resolveLiveImage(parsed.bucket, value, size);
+    }
+    return value;
+  }
+
+  const fromLive = await resolveLiveImage("live-products", value, size);
+  if (fromLive) return fromLive;
+  const { resolveShopImage } = await import("@/lib/shop-db");
+  return resolveShopImage(value, size);
+}
+
+/**
  * Upload a File to a private bucket under the user's own folder.
  * Returns the storage object path (never a URL) — DB stores paths.
  */
