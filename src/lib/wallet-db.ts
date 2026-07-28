@@ -107,7 +107,18 @@ export type PayWithWalletResult =
 
 export async function payOrderWithWallet(orderId: string): Promise<PayWithWalletResult> {
   const { data, error } = await sb.rpc("pay_order_with_wallet", { _order_id: orderId });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const msg = String(error.message ?? "");
+    const code =
+      /account_banned/i.test(msg) ? "account_banned"
+      : /account_suspended/i.test(msg) ? "account_suspended"
+      : /order_expired|payment_deadline/i.test(msg) ? "order_expired"
+      : /insufficient/i.test(msg) ? "insufficient_funds"
+      : /updated_at/i.test(msg) ? "wallet_pay_schema"
+      : /permission denied|42501/i.test(msg) ? "forbidden"
+      : msg.trim() || "unknown";
+    return { ok: false, error: code };
+  }
   const raw = (data ?? {}) as {
     ok: boolean;
     error?: string;

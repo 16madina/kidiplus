@@ -50,6 +50,13 @@ export function mapPayErrorToI18n(t: TFunction, code: string | undefined): strin
       return t("pay.errors.orderExpired", {
         defaultValue: "Le délai de paiement est dépassé.",
       });
+    case "wallet_pay_schema":
+    case "account_inactive":
+      return t("pay.errors.walletPayFailed", {
+        defaultValue: "Paiement portefeuille indisponible. Réessaie dans un instant.",
+      });
+    case "unknown":
+      return t("pay.errors.generic");
     case "order_not_found":
       return t("pay.errors.orderNotFound", {
         defaultValue: "Commande introuvable.",
