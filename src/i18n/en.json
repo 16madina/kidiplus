@@ -895,13 +895,16 @@
     "empty": "No orders yet.",
     "payBefore": "Pay before {{date}}",
     "payNow": "Pay now",
+    "expiredNoPay": "Payment unavailable — 24h deadline passed",
+    "expiredHint": "Payment deadline passed (over 24 hours). You can no longer pay for this order.",
+    "expiredAuctionHint": "Payment deadline passed (over 24 hours). You can no longer pay for this auction.",
     "status": {
       "pending": "Pending",
       "awaitingPayment": "Awaiting payment",
       "paid": "Paid",
       "failed": "Failed",
       "cancelled": "Cancelled",
-      "paymentTimeout": "Unpaid — cancelled"
+      "paymentTimeout": "Unpaid — deadline passed"
     },
     "fulfillment": {
       "awaiting": "To ship",
@@ -980,7 +983,9 @@
     "salesHint": "Items buyers ordered from you — ship them once paid.",
     "purchasesHint": "Items you ordered from other sellers.",
     "emptySales": "No sales yet.",
-    "awaitingBuyerPay": "Waiting for the buyer to pay"
+    "awaitingBuyerPay": "Waiting for the buyer to pay",
+    "buyerDidNotPay": "Buyer did not pay",
+    "buyerDidNotPayHint": "24h deadline passed — the order was cancelled."
   },
   "payout": {
     "title": "Withdraw earnings",

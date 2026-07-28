@@ -98,7 +98,6 @@ export function PaymentSheet({
   const [walletError, setWalletError] = useState<string | null>(null);
   const [cardSelected, setCardSelected] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
-  const autoTriedRef = useRef<string | null>(null);
   const paypalFinishedRef = useRef(false);
   const paypalSupported =
     orderCurrency === "XOF" ||
@@ -382,13 +381,13 @@ export function PaymentSheet({
     [finishWalletPaid, t],
   );
 
-  // Reset + wallet auto-pay when a new order opens. Do NOT create a Stripe PI yet.
+  // Reset sheet when a new order opens. Do NOT create a Stripe PI yet.
+  // Do NOT auto-debit wallet — buyer chooses Solde KiDi+ / card / PayPal.
   useEffect(() => {
     if (!order) {
       setState({ kind: "idle" });
       setCardSelected(false);
       setWalletError(null);
-      autoTriedRef.current = null;
       return;
     }
 
@@ -415,20 +414,7 @@ export function PaymentSheet({
         }
       });
     }
-
-    // Auto-debit once per order when wallet covers total and no variant pick needed.
-    if (autoTriedRef.current === order.id) return;
-    autoTriedRef.current = order.id;
-    if (!walletEnough || needsVariant) return;
-    let cancelled = false;
-    void (async () => {
-      // Not silent: if auto-pay fails, show the real error (limit, expired, etc.)
-      const ok = await tryWalletPay(order, { silent: false });
-      if (cancelled || ok) return;
-    })();
-    return () => {
-      cancelled = true;
-    };
+    // Do NOT auto-debit the wallet — buyer must pick Solde KiDi+ / card / PayPal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, successOnly]);
 
@@ -772,7 +758,7 @@ export function PaymentSheet({
 
                 {/* Stripe Elements — only after user picks card */}
                 <div className="mt-5 flex-1">
-                  {state.kind === "idle" && !walletEnough && (
+                  {state.kind === "idle" && (
                     <p className="text-center text-[12px] text-muted-foreground">
                       {t("pay.chooseMethod", {
                         defaultValue: "Choisis une méthode de paiement ci-dessus.",
