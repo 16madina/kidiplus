@@ -8,6 +8,13 @@
 
 export const DEEP_LINK_HOSTS = new Set(["kidiplus.com", "www.kidiplus.com"]);
 
+/**
+ * Note: Android App Links only claim the apex host `kidiplus.com`.
+ * `www.kidiplus.com` 302-redirects to apex, which breaks Digital Asset Links
+ * verification (Google disallows redirects for assetlinks.json).
+ * Keep www here so if a www URL somehow reaches the app, we still route it.
+ */
+
 export function isAllowedDeepLinkPath(pathname: string): boolean {
   if (pathname.startsWith("/live/")) return true;
   if (pathname.startsWith("/join/")) return true;

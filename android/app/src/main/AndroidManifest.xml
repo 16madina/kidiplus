@@ -29,16 +29,16 @@
             </intent-filter>
 
             <!-- Android App Links: open https://kidiplus.com URLs in the app.
-                 Requires /.well-known/assetlinks.json to list the signing cert
-                 SHA-256. Only the paths declared here are captured; other
-                 kidiplus.com URLs stay in the browser. -->
+                 Requires /.well-known/assetlinks.json (no redirects) listing the
+                 Play App Signing SHA-256. Do NOT claim www.kidiplus.com here —
+                 www 302-redirects to apex, and Google DAL rejects redirects, which
+                 fails domain verification and marks every path as broken. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="kidiplus.com" />
-                <data android:host="www.kidiplus.com" />
                 <data android:pathPrefix="/join/" />
                 <data android:pathPrefix="/live/" />
                 <data android:pathPrefix="/open" />
