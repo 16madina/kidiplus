@@ -27,6 +27,11 @@ export function LiveReplayPlayer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const close = () => {
+    haptic.light();
+    onClose();
+  };
+
   const onDownload = async () => {
     if (downloading) return;
     setDownloading(true);
@@ -60,59 +65,70 @@ export function LiveReplayPlayer({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex flex-col bg-black"
+      className="fixed inset-0 z-[200] flex flex-col bg-black/95"
       role="dialog"
       aria-modal="true"
       aria-label={t("broadcast.replay.playerTitle", "Replay du live")}
+      onClick={close}
     >
+      {/* Always-visible chrome — above the video, never covered by native controls */}
       <div
-        className="flex items-center justify-between gap-3 px-4 pb-2 pt-safe"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 12px)" }}
+        className="relative z-[210] flex items-center gap-2 px-3 pb-3"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 14px)" }}
+        onClick={(e) => e.stopPropagation()}
       >
         <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-white">
           {title?.trim() || t("broadcast.replay.playerTitle", "Replay du live")}
         </p>
-        <div className="flex shrink-0 items-center gap-2">
-          <Press
-            onClick={() => void onDownload()}
-            disabled={downloading}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white/15 px-3 text-[12px] font-bold text-white disabled:opacity-60"
-            aria-label={t("broadcast.replay.download", "Télécharger")}
-          >
-            {downloading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-            <span>
-              {downloading
-                ? t("common.loading", "…")
-                : t("broadcast.replay.download", "Télécharger")}
-            </span>
-          </Press>
-          <Press
-            onClick={() => {
-              haptic.light();
-              onClose();
-            }}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white"
-            aria-label={t("common.close", "Fermer")}
-          >
-            <X size={18} />
-          </Press>
-        </div>
+        <Press
+          onClick={() => void onDownload()}
+          disabled={downloading}
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3.5 text-[12px] font-bold text-white disabled:opacity-60"
+          aria-label={t("broadcast.replay.download", "Télécharger")}
+        >
+          {downloading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Download size={16} />
+          )}
+          <span>
+            {downloading
+              ? t("common.loading", "…")
+              : t("broadcast.replay.download", "Télécharger")}
+          </span>
+        </Press>
+        <Press
+          onClick={close}
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-black shadow-lg"
+          aria-label={t("common.close", "Fermer")}
+        >
+          <X size={22} strokeWidth={2.5} />
+        </Press>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-safe">
+
+      <div
+        className="relative z-[205] flex min-h-0 flex-1 items-center justify-center px-3 pb-safe"
+        onClick={(e) => e.stopPropagation()}
+      >
         <video
           key={url}
           src={url}
           controls
           playsInline
           autoPlay
-          className="max-h-full max-w-full rounded-lg bg-black"
+          controlsList="nodownload"
+          className="max-h-full max-w-full rounded-xl bg-black"
           style={{ width: "100%", maxHeight: "100%" }}
         />
       </div>
+
+      <p
+        className="relative z-[210] px-4 pb-safe text-center text-[11px] text-white/55"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {t("broadcast.replay.tapOutsideToClose", "Touche hors de la vidéo ou ✕ pour fermer")}
+      </p>
     </div>
   );
 }

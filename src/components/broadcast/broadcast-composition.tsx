@@ -44,6 +44,8 @@ export type BroadcastCompositionProps = {
   title?: string | null;
   coverUrl?: string | null;
   currency?: string | null;
+  /** Large KiDi+ mark burned into the frame (replay / social egress). */
+  showWatermark?: boolean;
 };
 
 export function BroadcastComposition({
@@ -55,6 +57,7 @@ export function BroadcastComposition({
   title,
   coverUrl,
   currency,
+  showWatermark = true,
 }: BroadcastCompositionProps) {
   const { t, i18n } = useTranslation();
   const liveCurrency = normalizeCurrency(currency ?? "EUR");
@@ -217,6 +220,30 @@ export function BroadcastComposition({
         onStatus={setVideoStatus}
         brighten
       />
+
+      {/* Large brand mark — top-right, hard to crop out of the MP4 */}
+      {showWatermark ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute z-40 rounded-2xl"
+          style={{
+            top: "2.2%",
+            right: "2.5%",
+            width: "42%",
+            maxWidth: 480,
+            padding: "10px 14px",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+          }}
+        >
+          <img
+            src="/kidiplus-watermark.png"
+            alt=""
+            draggable={false}
+            style={{ display: "block", width: "100%", height: "auto" }}
+          />
+        </div>
+      ) : null}
 
       {/* ── Inner safe rectangle ── */}
       <div

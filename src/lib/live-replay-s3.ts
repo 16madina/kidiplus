@@ -75,19 +75,3 @@ export function liveReplayExpiresAt(from: Date = new Date()): string {
   return d.toISOString();
 }
 
-/**
- * Public URL of the RoomComposite template that burns the KiDi+ watermark.
- * LiveKit appends ?url=&token=&layout= to this base.
- */
-export function liveReplayEgressTemplateBaseUrl(): string {
-  const fromEnv = (process.env.LIVE_REPLAY_EGRESS_TEMPLATE_URL ?? "").trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  const site = (
-    process.env.PUBLIC_APP_URL ??
-    process.env.APP_URL ??
-    "https://kidiplus.com"
-  )
-    .trim()
-    .replace(/\/$/, "");
-  return `${site}/egress-template`;
-}

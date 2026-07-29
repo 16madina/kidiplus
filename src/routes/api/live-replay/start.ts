@@ -1,12 +1,12 @@
 // POST /api/live-replay/start
-// Start LiveKit RoomComposite MP4 recording for a seller's live.
+// Start LiveKit Web Egress MP4 recording of the full KiDi+ live UI
+// (camera + auctions + products + chat) — same composition as YouTube restream.
 
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
   EncodedFileOutput,
   EncodedFileType,
-  EncodingOptionsPreset,
   S3Upload,
 } from "livekit-server-sdk";
 import {
@@ -16,11 +16,10 @@ import {
   liveReplayLivekitEnv,
   requireLiveReplayApiUser,
 } from "@/lib/live-replay-api-auth";
-import {
-  liveReplayEgressTemplateBaseUrl,
-  liveReplayObjectPath,
-  liveReplayS3Config,
-} from "@/lib/live-replay-s3";
+import { liveReplayObjectPath, liveReplayS3Config } from "@/lib/live-replay-s3";
+import { signBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
+import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
+import { socialRestreamEncodingOptions } from "@/lib/social-egress-encoding";
 
 export const Route = createFileRoute("/api/live-replay/start")({
   server: {
@@ -106,13 +105,33 @@ export const Route = createFileRoute("/api/live-replay/start")({
           );
         }
 
+        const ticket = signBroadcastEgressTicket({
+          liveId,
+          roomName: liveRow.room_name,
+          ttlSec: 5 * 3600,
+        });
+        if (!ticket) {
+          return liveReplayJson(
+            {
+              error: "egress_ticket_failed",
+              message:
+                "Impossible de signer le ticket broadcast (secret manquant).",
+            },
+            500,
+            origin,
+          );
+        }
+
+        const appOrigin = broadcastEgressOrigin();
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}&wm=1`;
         const storagePath = liveReplayObjectPath(liveId);
         const egress = new EgressClient(lk.host, lk.apiKey, lk.apiSecret);
 
         let egressInfo;
         try {
-          egressInfo = await egress.startRoomCompositeEgress(
-            liveRow.room_name,
+          // Web Egress = full shopping UI (same page as YouTube/Facebook restream).
+          egressInfo = await egress.startWebEgress(
+            compositionUrl,
             new EncodedFileOutput({
               fileType: EncodedFileType.MP4,
               filepath: storagePath,
@@ -130,14 +149,12 @@ export const Route = createFileRoute("/api/live-replay/start")({
               },
             }),
             {
-              layout: "speaker",
-              encodingOptions: EncodingOptionsPreset.PORTRAIT_H264_720P_30,
-              // Custom page with large top-right KiDi+ watermark burned into the MP4.
-              customBaseUrl: liveReplayEgressTemplateBaseUrl(),
+              awaitStartSignal: true,
+              encodingOptions: socialRestreamEncodingOptions(),
             },
           );
         } catch (e) {
-          console.error("[live-replay/start] startRoomCompositeEgress failed", e);
+          console.error("[live-replay/start] startWebEgress failed", e);
           const msg = e instanceof Error ? e.message : String(e);
           await supabaseAdmin
             .from("lives")
@@ -150,9 +167,10 @@ export const Route = createFileRoute("/api/live-replay/start")({
           return liveReplayJson(
             {
               error: "egress_failed",
-              message: msg.includes("egress") || msg.includes("Egress")
-                ? msg
-                : "Impossible de démarrer l’enregistrement LiveKit",
+              message:
+                msg.includes("egress") || msg.includes("Egress")
+                  ? msg
+                  : "Impossible de démarrer l’enregistrement LiveKit",
             },
             502,
             origin,
@@ -185,7 +203,7 @@ export const Route = createFileRoute("/api/live-replay/start")({
           .eq("id", liveId);
 
         return liveReplayJson(
-          { ok: true, egressId, storagePath },
+          { ok: true, egressId, storagePath, compositionUrl: appOrigin + `/broadcast/${liveId}` },
           200,
           origin,
         );
