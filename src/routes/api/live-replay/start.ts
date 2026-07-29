@@ -17,6 +17,7 @@ import {
   requireLiveReplayApiUser,
 } from "@/lib/live-replay-api-auth";
 import {
+  liveReplayEgressTemplateBaseUrl,
   liveReplayObjectPath,
   liveReplayS3Config,
 } from "@/lib/live-replay-s3";
@@ -131,6 +132,8 @@ export const Route = createFileRoute("/api/live-replay/start")({
             {
               layout: "speaker",
               encodingOptions: EncodingOptionsPreset.PORTRAIT_H264_720P_30,
+              // Custom page with large top-right KiDi+ watermark burned into the MP4.
+              customBaseUrl: liveReplayEgressTemplateBaseUrl(),
             },
           );
         } catch (e) {
