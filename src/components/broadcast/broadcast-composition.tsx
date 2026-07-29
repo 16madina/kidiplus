@@ -225,7 +225,8 @@ export function BroadcastComposition({
           aria-hidden
           className="pointer-events-none absolute z-40"
           style={{
-            top: "50%",
+            // Horizontally centered, upper third (not mid-screen).
+            top: "18%",
             left: "50%",
             transform: "translate(-50%, -50%)",
             padding: "14px 20px 14px 22px",
