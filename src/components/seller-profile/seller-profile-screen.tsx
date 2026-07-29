@@ -1,6 +1,6 @@
 // Real seller profile: header pulls avatar/counts/rating from `profiles`,
 // tabs read real data (shop, lives, reviews). No mock data.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   motion,
@@ -8,7 +8,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video, Play } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -39,6 +39,7 @@ import {
   isReplayPlayable,
   replayDaysLeft,
   resolvePlayableReplayUrl,
+  deleteLiveReplay,
   type LiveReplayMeta,
 } from "@/lib/live-replay-client";
 
@@ -241,6 +242,11 @@ function SellerProfileInner({
   const [dmOpen, setDmOpen] = useState(false);
   const { user } = useAuth();
   const { openAuth } = useAuthPrompt();
+  const isOwner = !!user?.id && user.id === profile.id;
+
+  useEffect(() => {
+    if (!isOwner && tab === "lives") setTab("boutique");
+  }, [isOwner, tab]);
 
   const openDm = () => {
     haptic.light();
@@ -483,12 +489,32 @@ function SellerProfileInner({
         >
           {TAB_KEYS.map((key) => {
             const active = key === tab;
+            const livesLocked = key === "lives" && !isOwner;
             return (
               <Press
                 key={key} data-tab
-                onClick={() => setTab(key)}
+                onClick={() => {
+                  if (livesLocked) {
+                    haptic.light();
+                    toast.message(
+                      t(
+                        "sellerProfile.livesOwnerOnly",
+                        "Les replays sont privés — seuls toi peux les ouvrir depuis ta boutique.",
+                      ),
+                    );
+                    return;
+                  }
+                  setTab(key);
+                }}
                 className="!min-h-11 rounded-none px-3 text-[14px] font-semibold"
-                style={{ color: active ? "var(--foreground)" : "var(--muted-foreground)", transition: "color 150ms" }}
+                style={{
+                  color: livesLocked
+                    ? "color-mix(in oklch, var(--muted-foreground) 55%, transparent)"
+                    : active
+                      ? "var(--foreground)"
+                      : "var(--muted-foreground)",
+                  transition: "color 150ms",
+                }}
               >
                 {t(`seller.tabs.${key}`)}
               </Press>
@@ -511,7 +537,9 @@ function SellerProfileInner({
               transition={{ duration: 0.18, ease: EASE_IOS }}
             >
               {tab === "boutique" && <BoutiqueTab sellerId={profile.id} currency={profile.currency} />}
-              {tab === "lives" && <LivesTab sellerId={profile.id} onBack={onBack} />}
+              {tab === "lives" && isOwner && (
+                <LivesTab sellerId={profile.id} onBack={onBack} />
+              )}
               {tab === "avis" && <AvisTab sellerId={profile.id} />}
             </motion.div>
           </AnimatePresence>
@@ -688,25 +716,103 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
 
 /* ============ LIVES ============ */
 
+function ReplaySwipeRow({
+  onDelete,
+  deleting,
+  children,
+}: {
+  onDelete: () => void;
+  deleting: boolean;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const x = useMotionValue(0);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <div className="absolute inset-y-0 right-0 flex w-24 items-stretch justify-end">
+        <button
+          type="button"
+          className="flex w-24 flex-col items-center justify-center gap-1 bg-red-500 text-[11px] font-bold text-white disabled:opacity-70"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          disabled={deleting}
+        >
+          {deleting ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Trash2 size={18} />
+          )}
+          {t("broadcast.replay.delete", "Supprimer")}
+        </button>
+      </div>
+      <motion.div
+        drag="x"
+        style={{ x, touchAction: "pan-y" }}
+        dragConstraints={{ left: -96, right: 0 }}
+        dragElastic={0.06}
+        onDragEnd={(_, info) => {
+          const open = info.offset.x < -48 || info.velocity.x < -500;
+          void animate(x, open ? -96 : 0, {
+            type: "spring",
+            stiffness: 420,
+            damping: 36,
+          });
+        }}
+        className="relative z-[1]"
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
 function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { lang } = useLanguage();
   const { open: openLive } = useLiveViewer();
   const [rows, setRows] = useState<SellerLiveEntry[] | null>(null);
-  const [replay, setReplay] = useState<{ url: string; title: string } | null>(null);
+  const [replay, setReplay] = useState<{
+    url: string;
+    title: string;
+    liveId: string;
+  } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const reload = async () => {
+    const r = await fetchSellerLives(sellerId);
+    setRows(r);
+  };
 
   useEffect(() => {
     let alive = true;
-    void fetchSellerLives(sellerId).then((r) => { if (alive) setRows(r); });
-    return () => { alive = false; };
+    void fetchSellerLives(sellerId).then((r) => {
+      if (alive) setRows(r);
+    });
+    return () => {
+      alive = false;
+    };
   }, [sellerId]);
 
-  if (rows === null) return <div className="grid place-items-center py-14"><Loader2 className="animate-spin text-muted-foreground" /></div>;
+  if (rows === null)
+    return (
+      <div className="grid place-items-center py-14">
+        <Loader2 className="animate-spin text-muted-foreground" />
+      </div>
+    );
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center py-16 text-center">
-        <div className="grid h-14 w-14 place-items-center rounded-full bg-muted"><Radio className="text-muted-foreground" /></div>
-        <p className="mt-3 text-[13px] text-muted-foreground">{t("sellerProfile.livesEmpty", { defaultValue: "Aucun live pour le moment." })}</p>
+        <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
+          <Radio className="text-muted-foreground" />
+        </div>
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {t("sellerProfile.livesEmpty", {
+            defaultValue: "Aucun live pour le moment.",
+          })}
+        </p>
       </div>
     );
   }
@@ -714,7 +820,10 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
   const openThis = async (row: SellerLiveEntry) => {
     if (row.status === "live") {
       const stream = await fetchLiveById(row.id);
-      if (stream) { onBack(); setTimeout(() => openLive(stream), 250); }
+      if (stream) {
+        onBack();
+        setTimeout(() => openLive(stream), 250);
+      }
       return;
     }
     const meta: LiveReplayMeta = {
@@ -728,11 +837,53 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
     if (!url || /r2\.cloudflarestorage\.com|amazonaws\.com/i.test(url)) {
       url = await resolvePlayableReplayUrl(row.id);
     }
-    if (url) setReplay({ url, title: row.title });
+    if (url) setReplay({ url, title: row.title, liveId: row.id });
+  };
+
+  const removeReplay = async (liveId: string) => {
+    if (deletingId) return;
+    const ok = window.confirm(
+      t(
+        "broadcast.replay.deleteConfirm",
+        "Supprimer ce replay définitivement ? Tu ne pourras plus le revoir.",
+      ),
+    );
+    if (!ok) return;
+    setDeletingId(liveId);
+    haptic.medium();
+    const res = await deleteLiveReplay(liveId);
+    setDeletingId(null);
+    if (!res.ok) {
+      toast.error(
+        t("broadcast.replay.deleteFailed", "Impossible de supprimer — réessaie"),
+      );
+      return;
+    }
+    haptic.success();
+    toast.success(t("broadcast.replay.deleted", "Replay supprimé"));
+    if (replay?.liveId === liveId) setReplay(null);
+    setRows((prev) =>
+      (prev ?? []).map((r) =>
+        r.id === liveId
+          ? {
+              ...r,
+              replay_url: null,
+              replay_status: "expired",
+              replay_expires_at: null,
+            }
+          : r,
+      ),
+    );
   };
 
   return (
     <>
+      <p className="mb-3 text-[12px] text-muted-foreground">
+        {t(
+          "sellerProfile.swipeToDeleteReplay",
+          "Glisse un replay vers la gauche pour le supprimer.",
+        )}
+      </p>
       <div className="space-y-2">
         {rows.map((r) => {
           const isLive = r.status === "live";
@@ -752,15 +903,20 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
               replayMeta.replay_status === "processing");
           const replayFailed =
             !isLive && !isScheduled && replayMeta.replay_status === "failed";
-          return (
+
+          const rowInner = (
             <div
-              key={r.id}
-              onClick={clickable ? () => void openThis(r) : undefined}
               className={`flex items-center gap-3 rounded-2xl p-2.5 ${clickable ? "cursor-pointer" : ""} ${r.status === "ended" && !hasReplay ? "opacity-60" : ""}`}
               style={{ backgroundColor: "var(--muted)" }}
+              onClick={clickable ? () => void openThis(r) : undefined}
             >
               {r.cover_url ? (
-                <img src={r.cover_url} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" draggable={false} />
+                <img
+                  src={r.cover_url}
+                  alt=""
+                  className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                  draggable={false}
+                />
               ) : (
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-background">
                   <Radio className="text-muted-foreground" size={20} />
@@ -772,7 +928,9 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
                   {isLive
                     ? t("seller.liveNow")
                     : isScheduled
-                      ? (r.scheduled_at ? formatShortDateTime(new Date(r.scheduled_at), lang) : "—")
+                      ? r.scheduled_at
+                        ? formatShortDateTime(new Date(r.scheduled_at), lang)
+                        : "—"
                       : hasReplay
                         ? t("broadcast.replay.badgeDays", {
                             defaultValue: "Replay · expire dans {{days}}j",
@@ -786,13 +944,24 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
                             ? t("broadcast.replay.unavailable", {
                                 defaultValue: "Replay indisponible",
                               })
-                        : (r.ended_at ? t("seller.ended") + " · " + formatShortDateTime(new Date(r.ended_at), lang) : t("seller.ended"))}
+                            : r.ended_at
+                              ? t("seller.ended") +
+                                " · " +
+                                formatShortDateTime(new Date(r.ended_at), lang)
+                              : t("seller.ended")}
                 </p>
               </div>
               {isLive && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white" style={{ background: "oklch(0.55 0.22 27)" }}>LIVE</span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white"
+                  style={{ background: "oklch(0.55 0.22 27)" }}
+                >
+                  LIVE
+                </span>
               )}
-              {isScheduled && <CalendarDays size={16} className="text-muted-foreground" />}
+              {isScheduled && (
+                <CalendarDays size={16} className="text-muted-foreground" />
+              )}
               {hasReplay && (
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background">
                   <Play size={14} className="fill-current" />
@@ -800,13 +969,43 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
               )}
             </div>
           );
+
+          if (!hasReplay) {
+            return <div key={r.id}>{rowInner}</div>;
+          }
+
+          return (
+            <ReplaySwipeRow
+              key={r.id}
+              deleting={deletingId === r.id}
+              onDelete={() => void removeReplay(r.id)}
+            >
+              {rowInner}
+            </ReplaySwipeRow>
+          );
         })}
       </div>
       {replay && (
         <LiveReplayPlayer
           url={replay.url}
           title={replay.title}
+          liveId={replay.liveId}
           onClose={() => setReplay(null)}
+          onDeleted={() => {
+            setRows((prev) =>
+              (prev ?? []).map((r) =>
+                r.id === replay.liveId
+                  ? {
+                      ...r,
+                      replay_url: null,
+                      replay_status: "expired",
+                      replay_expires_at: null,
+                    }
+                  : r,
+              ),
+            );
+            void reload();
+          }}
         />
       )}
     </>

@@ -1,23 +1,30 @@
 import { useEffect, useState } from "react";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, Loader2, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { downloadLiveReplay } from "@/lib/live-replay-download";
+import { deleteLiveReplay } from "@/lib/live-replay-client";
 
-/** Full-screen HTML5 player for a public live replay MP4. */
+/** Full-screen HTML5 player for a seller's own live replay MP4. */
 export function LiveReplayPlayer({
   url,
   title,
+  liveId,
   onClose,
+  onDeleted,
 }: {
   url: string;
   title?: string;
+  /** When set, shows a delete control (owner-only flows). */
+  liveId?: string;
   onClose: () => void;
+  onDeleted?: () => void;
 }) {
   const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -63,6 +70,31 @@ export function LiveReplayPlayer({
     }
   };
 
+  const onDelete = async () => {
+    if (!liveId || deleting) return;
+    const ok = window.confirm(
+      t(
+        "broadcast.replay.deleteConfirm",
+        "Supprimer ce replay définitivement ? Tu ne pourras plus le revoir.",
+      ),
+    );
+    if (!ok) return;
+    setDeleting(true);
+    haptic.medium();
+    const res = await deleteLiveReplay(liveId);
+    setDeleting(false);
+    if (!res.ok) {
+      toast.error(
+        t("broadcast.replay.deleteFailed", "Impossible de supprimer — réessaie"),
+      );
+      return;
+    }
+    haptic.success();
+    toast.success(t("broadcast.replay.deleted", "Replay supprimé"));
+    onDeleted?.();
+    onClose();
+  };
+
   return (
     <div
       className="fixed inset-0 z-[200] flex flex-col bg-black/95"
@@ -71,7 +103,6 @@ export function LiveReplayPlayer({
       aria-label={t("broadcast.replay.playerTitle", "Replay du live")}
       onClick={close}
     >
-      {/* Always-visible chrome — above the video, never covered by native controls */}
       <div
         className="relative z-[210] flex items-center gap-2 px-3 pb-3"
         style={{ paddingTop: "max(env(safe-area-inset-top), 14px)" }}
@@ -82,7 +113,7 @@ export function LiveReplayPlayer({
         </p>
         <Press
           onClick={() => void onDownload()}
-          disabled={downloading}
+          disabled={downloading || deleting}
           className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3.5 text-[12px] font-bold text-white disabled:opacity-60"
           aria-label={t("broadcast.replay.download", "Télécharger")}
         >
@@ -97,6 +128,25 @@ export function LiveReplayPlayer({
               : t("broadcast.replay.download", "Télécharger")}
           </span>
         </Press>
+        {liveId ? (
+          <Press
+            onClick={() => void onDelete()}
+            disabled={deleting || downloading}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-red-500/90 px-3.5 text-[12px] font-bold text-white disabled:opacity-60"
+            aria-label={t("broadcast.replay.delete", "Supprimer")}
+          >
+            {deleting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Trash2 size={16} />
+            )}
+            <span>
+              {deleting
+                ? t("common.loading", "…")
+                : t("broadcast.replay.delete", "Supprimer")}
+            </span>
+          </Press>
+        ) : null}
         <Press
           onClick={close}
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-black shadow-lg"

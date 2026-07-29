@@ -130,12 +130,39 @@ function looksLikePrivateReplayUrl(url: string): boolean {
   }
 }
 
+export async function deleteLiveReplay(
+  liveId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/live-replay/delete", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ liveId }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: body.message || body.error || `delete failed (${res.status})`,
+      };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function resolvePlayableReplayUrl(
   liveId: string,
 ): Promise<string | null> {
   try {
+    const headers = await authHeaders().catch(() => ({} as HeadersInit));
     const res = await fetch(
       `/api/live-replay/play-url?liveId=${encodeURIComponent(liveId)}`,
+      { headers },
     );
     if (!res.ok) return null;
     const body = (await res.json().catch(() => ({}))) as { url?: string };

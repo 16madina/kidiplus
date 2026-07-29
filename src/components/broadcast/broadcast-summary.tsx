@@ -231,11 +231,24 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      {replayOpen && replayMeta?.replay_url && (
+      {replayOpen && replayMeta?.replay_url && liveId && (
         <LiveReplayPlayer
           url={replayMeta.replay_url}
           title={session.title}
+          liveId={liveId}
           onClose={() => setReplayOpen(false)}
+          onDeleted={() => {
+            setReplayOpen(false);
+            setReplayMeta((m) =>
+              m
+                ? {
+                    ...m,
+                    replay_status: "expired",
+                    replay_url: null,
+                  }
+                : m,
+            );
+          }}
         />
       )}
     </motion.div>
