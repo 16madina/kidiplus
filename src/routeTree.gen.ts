@@ -52,6 +52,7 @@ import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
 import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
+import { Route as ApiLiveReplayPlayUrlRouteImport } from './routes/api/live-replay/play-url'
 import { Route as ApiLiveReplayPurgeRouteImport } from './routes/api/live-replay/purge'
 import { Route as ApiLiveReplayStartRouteImport } from './routes/api/live-replay/start'
 import { Route as ApiLiveReplayStopRouteImport } from './routes/api/live-replay/stop'
@@ -302,6 +303,11 @@ const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
   path: '/api/facebook/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLiveReplayPlayUrlRoute = ApiLiveReplayPlayUrlRouteImport.update({
+  id: '/api/live-replay/play-url',
+  path: '/api/live-replay/play-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLiveReplayPurgeRoute = ApiLiveReplayPurgeRouteImport.update({
   id: '/api/live-replay/purge',
   path: '/api/live-replay/purge',
@@ -503,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/play-url': typeof ApiLiveReplayPlayUrlRoute
   '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
@@ -578,6 +585,7 @@ export interface FileRoutesByTo {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/play-url': typeof ApiLiveReplayPlayUrlRoute
   '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
@@ -654,6 +662,7 @@ export interface FileRoutesById {
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
   '/api/facebook/status': typeof ApiFacebookStatusRoute
+  '/api/live-replay/play-url': typeof ApiLiveReplayPlayUrlRoute
   '/api/live-replay/purge': typeof ApiLiveReplayPurgeRoute
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
@@ -731,6 +740,7 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/play-url'
     | '/api/live-replay/purge'
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
@@ -806,6 +816,7 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/play-url'
     | '/api/live-replay/purge'
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
@@ -881,6 +892,7 @@ export interface FileRouteTypes {
     | '/api/facebook/pages'
     | '/api/facebook/restream'
     | '/api/facebook/status'
+    | '/api/live-replay/play-url'
     | '/api/live-replay/purge'
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
@@ -955,6 +967,7 @@ export interface RootRouteChildren {
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
   ApiFacebookStatusRoute: typeof ApiFacebookStatusRoute
+  ApiLiveReplayPlayUrlRoute: typeof ApiLiveReplayPlayUrlRoute
   ApiLiveReplayPurgeRoute: typeof ApiLiveReplayPurgeRoute
   ApiLiveReplayStartRoute: typeof ApiLiveReplayStartRoute
   ApiLiveReplayStopRoute: typeof ApiLiveReplayStopRoute
@@ -1287,6 +1300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFacebookStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/live-replay/play-url': {
+      id: '/api/live-replay/play-url'
+      path: '/api/live-replay/play-url'
+      fullPath: '/api/live-replay/play-url'
+      preLoaderRoute: typeof ApiLiveReplayPlayUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/live-replay/purge': {
       id: '/api/live-replay/purge'
       path: '/api/live-replay/purge'
@@ -1583,6 +1603,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
   ApiFacebookStatusRoute: ApiFacebookStatusRoute,
+  ApiLiveReplayPlayUrlRoute: ApiLiveReplayPlayUrlRoute,
   ApiLiveReplayPurgeRoute: ApiLiveReplayPurgeRoute,
   ApiLiveReplayStartRoute: ApiLiveReplayStartRoute,
   ApiLiveReplayStopRoute: ApiLiveReplayStopRoute,

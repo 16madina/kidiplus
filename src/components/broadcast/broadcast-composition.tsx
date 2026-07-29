@@ -23,7 +23,6 @@ import {
   BroadcastEgressVideo,
   type BroadcastEgressVideoStatus,
 } from "./broadcast-egress-video";
-import { KIDIPLUS_WATERMARK_DATA_URL } from "@/lib/kidiplus-watermark-data";
 
 /** Wider safe band — previous 22%/46%/18% crushed UI into a tiny middle strip. */
 const SAFE_TOP = "12%";
@@ -220,30 +219,37 @@ export function BroadcastComposition({
         brighten
       />
 
-      {/* Large brand mark — top-right; data-URL so egress never shows an empty white plate */}
+      {/* Brand mark — CSS wordmark only (egress Chromium often fails PNG/data-URL imgs). */}
       {showWatermark ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-40 flex items-center gap-2 rounded-2xl px-3 py-2"
+          className="pointer-events-none absolute z-40"
           style={{
             top: "2%",
             right: "2.5%",
-            maxWidth: "46%",
-            background: "rgba(255,255,255,0.95)",
-            boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+            padding: "10px 14px 10px 16px",
+            borderRadius: 14,
+            background: "rgba(16, 22, 43, 0.92)",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(255,255,255,0.18)",
           }}
         >
-          <img
-            src={KIDIPLUS_WATERMARK_DATA_URL}
-            alt="KiDi+"
-            draggable={false}
+          <span
             style={{
-              display: "block",
-              height: 52,
-              width: "auto",
-              maxWidth: "100%",
+              display: "inline-flex",
+              alignItems: "baseline",
+              fontWeight: 900,
+              fontSize: 28,
+              letterSpacing: "-0.03em",
+              lineHeight: 1,
+              color: "#fff",
+              fontFamily:
+                'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
             }}
-          />
+          >
+            KiDi
+            <span style={{ color: "#E8B84A", marginLeft: 1 }}>+</span>
+          </span>
         </div>
       ) : null}
 

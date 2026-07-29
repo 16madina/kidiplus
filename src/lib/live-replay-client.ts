@@ -101,11 +101,48 @@ export async function fetchLiveReplayMeta(
       replay_expires_at: expires,
     };
   }
+
+  let replayUrl = data.replay_url as string | null;
+  if (status === "ready" && replayUrl && looksLikePrivateReplayUrl(replayUrl)) {
+    const fixed = await resolvePlayableReplayUrl(liveId);
+    if (fixed) replayUrl = fixed;
+  } else if (status === "ready" && !replayUrl) {
+    const fixed = await resolvePlayableReplayUrl(liveId);
+    if (fixed) replayUrl = fixed;
+  }
+
   return {
     replay_status: status,
-    replay_url: data.replay_url,
+    replay_url: replayUrl,
     replay_expires_at: expires,
   };
+}
+
+function looksLikePrivateReplayUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host.includes("r2.cloudflarestorage.com") ||
+      (host.endsWith(".amazonaws.com") && host.includes("s3"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function resolvePlayableReplayUrl(
+  liveId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `/api/live-replay/play-url?liveId=${encodeURIComponent(liveId)}`,
+    );
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => ({}))) as { url?: string };
+    return typeof body.url === "string" && body.url ? body.url : null;
+  } catch {
+    return null;
+  }
 }
 
 export function isReplayPlayable(meta: LiveReplayMeta | null | undefined): boolean {

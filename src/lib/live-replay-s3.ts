@@ -65,8 +65,47 @@ export function liveReplayPublicUrl(
   cfg: LiveReplayS3Config,
   storagePath: string,
 ): string {
-  const path = storagePath.replace(/^\//, "");
+  const path = normalizeReplayStoragePath(storagePath) ?? storagePath.replace(/^\//, "");
   return `${cfg.publicBaseUrl}/${path}`;
+}
+
+/** Strip leading bucket name from R2/S3 path-style object keys. */
+export function normalizeReplayStoragePath(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  let path = value.trim().replace(/^\//, "");
+  if (!path) return null;
+
+  const cfg = liveReplayS3Config();
+  const bucket = cfg?.bucket;
+  if (bucket) {
+    const prefix = `${bucket}/`;
+    if (path.toLowerCase().startsWith(prefix.toLowerCase())) {
+      path = path.slice(prefix.length);
+    }
+  }
+  // Also strip common default bucket names if env bucket differs.
+  for (const b of ["kidiplus-live-replays", "live-replays"]) {
+    const prefix = `${b}/`;
+    if (path.toLowerCase().startsWith(prefix)) {
+      path = path.slice(prefix.length);
+      break;
+    }
+  }
+  return path || null;
+}
+
+/** True for S3/R2 API hosts that browsers cannot stream without signed auth. */
+export function isPrivateObjectStorageUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("r2.cloudflarestorage.com")) return true;
+    if (host.endsWith(".amazonaws.com") && host.includes("s3")) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function liveReplayExpiresAt(from: Date = new Date()): string {

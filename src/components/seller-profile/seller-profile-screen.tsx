@@ -38,6 +38,7 @@ import { LiveReplayPlayer } from "@/components/live-viewer/live-replay-player";
 import {
   isReplayPlayable,
   replayDaysLeft,
+  resolvePlayableReplayUrl,
   type LiveReplayMeta,
 } from "@/lib/live-replay-client";
 
@@ -721,10 +722,13 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
       replay_url: row.replay_url,
       replay_expires_at: row.replay_expires_at,
     };
-    if (isReplayPlayable(meta) && row.replay_url) {
-      haptic.light();
-      setReplay({ url: row.replay_url, title: row.title });
+    if (!isReplayPlayable(meta) && row.replay_status !== "ready") return;
+    haptic.light();
+    let url = row.replay_url;
+    if (!url || /r2\.cloudflarestorage\.com|amazonaws\.com/i.test(url)) {
+      url = await resolvePlayableReplayUrl(row.id);
     }
+    if (url) setReplay({ url, title: row.title });
   };
 
   return (
