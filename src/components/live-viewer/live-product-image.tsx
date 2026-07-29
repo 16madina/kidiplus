@@ -54,6 +54,12 @@ export function LiveProductImage({
           return;
         }
       }
+      // Egress / guests may already hold a service-signed https URL — use it
+      // if client re-sign keeps failing (private bucket RLS).
+      if (alive && /^https?:\/\//i.test(src)) {
+        setDisplaySrc(src);
+        return;
+      }
       if (alive) setFailed(true);
     })();
 

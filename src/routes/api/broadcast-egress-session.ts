@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AccessToken } from "livekit-server-sdk";
 import { isAllowedOrigin } from "@/lib/api-cors";
 import { verifyBroadcastEgressTicket } from "@/lib/broadcast-egress-token";
+import { signBroadcastProductImage } from "@/lib/broadcast-egress-sign-image.server";
 
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
@@ -100,6 +101,28 @@ export const Route = createFileRoute("/api/broadcast-egress-session")({
           .eq("id", live.seller_id)
           .maybeSingle();
 
+        const { data: productRows } = await supabaseAdmin
+          .from("live_products")
+          .select("id, image_url")
+          .eq("live_id", liveId);
+
+        const productImages: Record<string, string> = {};
+        await Promise.all(
+          (productRows ?? []).map(async (row) => {
+            const signed = await signBroadcastProductImage(
+              supabaseAdmin,
+              row.image_url,
+            );
+            if (signed) productImages[row.id] = signed;
+          }),
+        );
+
+        const coverUrl =
+          (await signBroadcastProductImage(
+            supabaseAdmin,
+            live.cover_url,
+          )) ?? live.cover_url;
+
         const identity = `egress-yt-${liveId.slice(0, 8)}-${Date.now().toString(36)}`;
         const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
           identity,
@@ -122,12 +145,13 @@ export const Route = createFileRoute("/api/broadcast-egress-session")({
             identity,
             roomName: live.room_name,
             title: live.title,
-            coverUrl: live.cover_url,
+            coverUrl,
             currency: live.currency,
             hostName:
               profile?.display_name?.trim() ||
               profile?.handle?.trim() ||
               "Host",
+            productImages,
           },
           200,
           origin,

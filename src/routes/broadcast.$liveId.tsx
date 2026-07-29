@@ -11,6 +11,7 @@ type SessionOk = {
   coverUrl: string | null;
   currency: string | null;
   hostName: string;
+  productImages?: Record<string, string>;
 };
 
 export const Route = createFileRoute("/broadcast/$liveId")({
@@ -65,6 +66,10 @@ function BroadcastEgressPage() {
           coverUrl: body.coverUrl ?? null,
           currency: body.currency ?? null,
           hostName: body.hostName || "Host",
+          productImages:
+            body.productImages && typeof body.productImages === "object"
+              ? body.productImages
+              : undefined,
         });
       } catch (e) {
         if (!cancelled) {
@@ -108,6 +113,7 @@ function BroadcastEgressPage() {
       coverUrl={session.coverUrl}
       currency={session.currency}
       showWatermark={wm !== "0"}
+      productImages={session.productImages}
     />
   );
 }

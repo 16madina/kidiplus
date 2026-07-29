@@ -11,7 +11,6 @@ import { Eye, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLiveRoom } from "@/lib/live-room";
 import { formatMoney, normalizeCurrency } from "@/lib/money";
-import type { LiveProductRow } from "@/lib/lives-db";
 import { signalLivekitEgressStartRecording } from "@/lib/broadcast-egress-signal";
 import { GiftAnimationsLayer } from "@/components/live-viewer/gift-animations";
 import { Confetti } from "@/components/live-viewer/confetti";
@@ -24,9 +23,7 @@ import {
   BroadcastEgressVideo,
   type BroadcastEgressVideoStatus,
 } from "./broadcast-egress-video";
-
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=70";
+import { KIDIPLUS_WATERMARK_DATA_URL } from "@/lib/kidiplus-watermark-data";
 
 /** Wider safe band — previous 22%/46%/18% crushed UI into a tiny middle strip. */
 const SAFE_TOP = "12%";
@@ -46,6 +43,8 @@ export type BroadcastCompositionProps = {
   currency?: string | null;
   /** Large KiDi+ mark burned into the frame (replay / social egress). */
   showWatermark?: boolean;
+  /** Service-signed product photos (egress has no Supabase user session). */
+  productImages?: Record<string, string>;
 };
 
 export function BroadcastComposition({
@@ -58,6 +57,7 @@ export function BroadcastComposition({
   coverUrl,
   currency,
   showWatermark = true,
+  productImages,
 }: BroadcastCompositionProps) {
   const { t, i18n } = useTranslation();
   const liveCurrency = normalizeCurrency(currency ?? "EUR");
@@ -144,7 +144,6 @@ export function BroadcastComposition({
   }, [room.chat]);
 
   const displayViewers = Math.max(1, room.viewerCount);
-  const imgFor = (p: LiveProductRow) => p.image_url || FALLBACK_IMG;
 
   const [confettiKey, setConfettiKey] = useState(0);
   const [winnerReveal, setWinnerReveal] = useState<{
@@ -221,26 +220,29 @@ export function BroadcastComposition({
         brighten
       />
 
-      {/* Large brand mark — top-right, hard to crop out of the MP4 */}
+      {/* Large brand mark — top-right; data-URL so egress never shows an empty white plate */}
       {showWatermark ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-40 rounded-2xl"
+          className="pointer-events-none absolute z-40 flex items-center gap-2 rounded-2xl px-3 py-2"
           style={{
-            top: "2.2%",
+            top: "2%",
             right: "2.5%",
-            width: "42%",
-            maxWidth: 480,
-            padding: "10px 14px",
-            background: "rgba(255,255,255,0.92)",
+            maxWidth: "46%",
+            background: "rgba(255,255,255,0.95)",
             boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
           }}
         >
           <img
-            src="/kidiplus-watermark.png"
-            alt=""
+            src={KIDIPLUS_WATERMARK_DATA_URL}
+            alt="KiDi+"
             draggable={false}
-            style={{ display: "block", width: "100%", height: "auto" }}
+            style={{
+              display: "block",
+              height: 52,
+              width: "auto",
+              maxWidth: "100%",
+            }}
           />
         </div>
       ) : null}
@@ -301,7 +303,9 @@ export function BroadcastComposition({
             >
               <div className="relative mb-1.5">
                 <LiveProductImage
-                  src={imgFor(featured)}
+                  src={
+                    productImages?.[featured.id] ?? featured.image_url
+                  }
                   className="h-[5.25rem] w-full rounded-xl object-cover"
                   iconClassName="text-white/60"
                 />
