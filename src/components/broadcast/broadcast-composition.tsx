@@ -219,19 +219,20 @@ export function BroadcastComposition({
         brighten
       />
 
-      {/* Brand mark — CSS wordmark only (egress Chromium often fails PNG/data-URL imgs). */}
+      {/* Brand mark — centered, slightly larger CSS wordmark */}
       {showWatermark ? (
         <div
           aria-hidden
           className="pointer-events-none absolute z-40"
           style={{
-            top: "2%",
-            right: "2.5%",
-            padding: "10px 14px 10px 16px",
-            borderRadius: 14,
-            background: "rgba(16, 22, 43, 0.92)",
-            boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(255,255,255,0.18)",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            padding: "14px 20px 14px 22px",
+            borderRadius: 16,
+            background: "rgba(16, 22, 43, 0.88)",
+            boxShadow: "0 10px 32px rgba(0,0,0,0.55)",
+            border: "1px solid rgba(255,255,255,0.2)",
           }}
         >
           <span
@@ -239,7 +240,7 @@ export function BroadcastComposition({
               display: "inline-flex",
               alignItems: "baseline",
               fontWeight: 900,
-              fontSize: 28,
+              fontSize: 42,
               letterSpacing: "-0.03em",
               lineHeight: 1,
               color: "#fff",
@@ -248,7 +249,7 @@ export function BroadcastComposition({
             }}
           >
             KiDi
-            <span style={{ color: "#E8B84A", marginLeft: 1 }}>+</span>
+            <span style={{ color: "#E8B84A", marginLeft: 2 }}>+</span>
           </span>
         </div>
       ) : null}
