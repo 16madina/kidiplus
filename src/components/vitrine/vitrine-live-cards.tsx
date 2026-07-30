@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Radio, Users } from "lucide-react";
+import { Bell, BellOff, CalendarClock, Radio, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -54,16 +54,35 @@ export function VitrineLiveCard({
         }}
       />
       <div className="absolute left-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-10 flex items-center gap-2">
-        <span
-          className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
-          style={{ background: "oklch(0.55 0.22 25)" }}
-        >
-          LIVE
-        </span>
-        <span className="flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
-          <Users size={12} />
-          {stream.viewers}
-        </span>
+        {stream.scheduled ? (
+          <span
+            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+            style={{ background: "oklch(0.55 0.16 260)" }}
+          >
+            <CalendarClock size={12} strokeWidth={2.4} />
+            {t("vitrine.badge.scheduled", { defaultValue: "Programmé" })}
+          </span>
+        ) : stream.fictitious ? (
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+            style={{ background: "oklch(0.45 0.08 250)" }}
+          >
+            {t("vitrine.badge.demo", { defaultValue: "Démo" })}
+          </span>
+        ) : (
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+            style={{ background: "oklch(0.55 0.22 25)" }}
+          >
+            LIVE
+          </span>
+        )}
+        {!stream.scheduled && (
+          <span className="flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
+            <Users size={12} />
+            {stream.viewers}
+          </span>
+        )}
       </div>
       <div
         className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"

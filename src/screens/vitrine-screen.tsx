@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Loader2, RefreshCw, Compass, Home, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,10 @@ import {
   type ScheduledLiveWithSeller,
 } from "@/lib/lives-db";
 import type { LiveStream } from "@/lib/live-mock";
+import {
+  sampleLivesForCategory,
+  sortLivesNewestFirst,
+} from "@/lib/home-categories";
 import { useAppActive } from "@/lib/app-state";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { EASE_IOS } from "@/lib/motion";
@@ -135,9 +139,16 @@ export function VitrineScreen() {
     if (cat === "soon" && soonIndex > 0) setStoriesOpen(false);
   }, [cat, postIndex, liveIndex, soonIndex]);
 
-  const liveVisible = lives.filter(
-    (s) => !s.sellerId || !blockedIds.has(s.sellerId),
-  );
+  // Same composition as Home "Pour toi": real DB lives first, then the
+  // Guideline 2.1(a) fictitious sample filler so En direct never looks empty
+  // when Home is showing demo/review lives.
+  const liveVisible = useMemo(() => {
+    const realVisible = lives.filter(
+      (s) => !s.sellerId || !blockedIds.has(s.sellerId),
+    );
+    const samples = sampleLivesForCategory("Pour toi", realVisible.length);
+    return [...sortLivesNewestFirst(realVisible), ...samples];
+  }, [lives, blockedIds]);
 
   const goHome = () => {
     haptic.light();

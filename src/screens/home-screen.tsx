@@ -7,12 +7,12 @@ import { Logo } from "@/components/brand/logo";
 import { CategoryTiles, CategoryTilesSkeleton } from "@/components/category-tiles";
 import { FilterPills } from "@/components/filter-pills";
 import { LiveCard, LiveCardSkeleton } from "@/components/live-card";
-import { makeStreams, type LiveStream } from "@/lib/live-mock";
+import type { LiveStream } from "@/lib/live-mock";
 import {
   applyHomeCategory,
   applyHomeFilter,
+  sampleLivesForCategory,
   sortLivesNewestFirst,
-  HOME_CATEGORY_META,
   type HomeCategory,
   type HomeFilter,
 } from "@/lib/home-categories";
@@ -37,36 +37,6 @@ const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
 /** Safety-net poll while Home is visible — Android WebViews often drop Realtime. */
 const FEED_POLL_MS = 12_000;
-
-/**
- * Deterministic sample lives filtered to the categories a home tile matches.
- * Used as a Guideline 2.1(a) safety net so the reviewer (or any signed-out
- * visitor) always sees a populated feed / category, even when no real live is
- * running. Sample cards look identical to real ones and route into a real
- * mock live viewer when tapped — never a dead end.
- */
-const SAMPLE_POOL: LiveStream[] = makeStreams(0, 48);
-
-function sampleLivesForCategory(
-  category: HomeCategory,
-  realCount: number,
-): LiveStream[] {
-  const meta = HOME_CATEGORY_META[category];
-  const wanted = Math.max(0, 12 - Math.min(realCount, 12));
-  if (wanted === 0) return [];
-  const pool =
-    meta.match === "all"
-      ? SAMPLE_POOL
-      : SAMPLE_POOL.filter((s) => (meta.match as string[]).includes(s.category));
-  // Repeat / cycle so every category always has enough visible cards even for
-  // the narrower slices (e.g. Bijoux only has 4 seed streams).
-  const out: LiveStream[] = [];
-  for (let i = 0; i < wanted; i += 1) {
-    const src = pool[i % pool.length];
-    out.push({ ...src, id: `${src.id}_sample_${category}_${i}` });
-  }
-  return out;
-}
 
 export function HomeScreen() {
   const { t } = useTranslation();
