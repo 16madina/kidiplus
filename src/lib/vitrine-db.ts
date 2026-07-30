@@ -3,6 +3,14 @@
 // When tables are missing or empty, we fall back to demo posts so Pour toi is never blank.
 
 import { supabase } from "@/integrations/supabase/client";
+import vitrine1 from "@/assets/vitrine/vitrine-1.jpg";
+import vitrine2 from "@/assets/vitrine/vitrine-2.jpg";
+import vitrine2b from "@/assets/vitrine/vitrine-2b.jpg";
+import vitrine2c from "@/assets/vitrine/vitrine-2c.jpg";
+import vitrine3 from "@/assets/vitrine/vitrine-3.jpg";
+import vitrine4 from "@/assets/vitrine/vitrine-4.jpg";
+import vitrine5 from "@/assets/vitrine/vitrine-5.jpg";
+import vitrine6 from "@/assets/vitrine/vitrine-6.jpg";
 
 export type VitrineMediaType = "image" | "video" | "carousel";
 
@@ -62,7 +70,7 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "image",
     media_urls: [
-      "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=1080&q=80",
+      vitrine1,
     ],
     caption: "Nouvelle collection été — dispo en live ce soir ✨",
     product_id: null,
@@ -78,9 +86,9 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "carousel",
     media_urls: [
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1080&q=80",
-      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=1080&q=80",
-      "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=1080&q=80",
+      vitrine2,
+      vitrine2b,
+      vitrine2c,
     ],
     caption: "Sneakers limited drop — enchères en live demain",
     product_id: "demo-product",
@@ -96,7 +104,7 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "image",
     media_urls: [
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1080&q=80",
+      vitrine3,
     ],
     caption: "Beauté glow — swatches en boutique",
     product_id: "demo-product",
@@ -112,7 +120,7 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "image",
     media_urls: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1080&q=80",
+      vitrine4,
     ],
     caption: "Montres & accessoires — stock limité",
     product_id: null,
@@ -128,7 +136,7 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "image",
     media_urls: [
-      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1080&q=80",
+      vitrine5,
     ],
     caption: "Mode femme — look du jour",
     product_id: "demo-product",
@@ -144,7 +152,7 @@ const DEMO_POSTS: VitrinePost[] = [
     user_id: null,
     media_type: "image",
     media_urls: [
-      "https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=1080&q=80",
+      vitrine6,
     ],
     caption: "Parfums niche — découvre en live",
     product_id: null,
@@ -161,7 +169,7 @@ const DEMO_STORIES: VitrineStory[] = [
   {
     id: "demo-s1",
     user_id: "demo-u1",
-    media_url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&q=70",
+    media_url: vitrine1,
     expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     created_at: new Date().toISOString(),
     unread: true,
@@ -170,7 +178,7 @@ const DEMO_STORIES: VitrineStory[] = [
   {
     id: "demo-s2",
     user_id: "demo-u2",
-    media_url: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&q=70",
+    media_url: vitrine2,
     expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     created_at: new Date().toISOString(),
     unread: true,
@@ -179,7 +187,7 @@ const DEMO_STORIES: VitrineStory[] = [
   {
     id: "demo-s3",
     user_id: "demo-u3",
-    media_url: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=70",
+    media_url: vitrine3,
     expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     created_at: new Date().toISOString(),
     unread: false,

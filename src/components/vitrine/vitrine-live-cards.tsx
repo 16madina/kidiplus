@@ -15,9 +15,10 @@ import {
   removeLiveReminder,
 } from "@/lib/live-reminders-db";
 
+import vitrineFallback from "@/assets/vitrine/vitrine-2.jpg";
+
 const GOLD = "#E8B93B";
-const FALLBACK =
-  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1080&q=80";
+const FALLBACK = vitrineFallback;
 
 export function VitrineLiveCard({
   stream,
