@@ -3,6 +3,14 @@
 // When tables are missing or empty, we fall back to demo posts so Pour toi is never blank.
 
 import { supabase } from "@/integrations/supabase/client";
+import vitrine1 from "@/assets/vitrine/vitrine-1.jpg";
+import vitrine2 from "@/assets/vitrine/vitrine-2.jpg";
+import vitrine2b from "@/assets/vitrine/vitrine-2b.jpg";
+import vitrine2c from "@/assets/vitrine/vitrine-2c.jpg";
+import vitrine3 from "@/assets/vitrine/vitrine-3.jpg";
+import vitrine4 from "@/assets/vitrine/vitrine-4.jpg";
+import vitrine5 from "@/assets/vitrine/vitrine-5.jpg";
+import vitrine6 from "@/assets/vitrine/vitrine-6.jpg";
 
 export type VitrineMediaType = "image" | "video" | "carousel";
 
