@@ -245,6 +245,16 @@ function AppShellInner() {
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onOpen as EventListener);
   }, []);
 
+  // Refresh Profile unread badges when Activity closes.
+  const closeActivity = () => {
+    setActivityOpen(false);
+    try {
+      window.dispatchEvent(new CustomEvent("kidi:activity-unread"));
+    } catch {
+      /* ignore */
+    }
+  };
+
   // Soft profile URLs (/wallet, /orders, …) stash a section then redirect here.
   // Also resume `kidi.pending_path` on web (native bootstrap already handles Capacitor).
   // Web PayPal return lands on /?paypal_done=1&status=…
@@ -487,14 +497,11 @@ function AppShellInner() {
 
       <PushScreen
         open={activityOpen}
-        onClose={() => setActivityOpen(false)}
+        onClose={closeActivity}
         title={t("activity.title")}
-        zIndex={72}
+        zIndex={80}
       >
-        <ErrorBoundary
-          boundary="activity_overlay"
-          onReset={() => setActivityOpen(false)}
-        >
+        <ErrorBoundary boundary="activity_overlay" onReset={closeActivity}>
           <ActivityScreen embedded initialTab={activityTab} />
         </ErrorBoundary>
       </PushScreen>

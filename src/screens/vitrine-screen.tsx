@@ -165,6 +165,14 @@ export function VitrineScreen() {
     setStoriesOpen(true);
   };
 
+  const CAT_ORDER: Cat[] = ["forYou", "live", "soon"];
+  const swipeCategory = (dir: "left" | "right") => {
+    const i = CAT_ORDER.indexOf(cat);
+    const next = dir === "left" ? i + 1 : i - 1;
+    if (next < 0 || next >= CAT_ORDER.length) return;
+    selectCat(CAT_ORDER[next]!);
+  };
+
   const empty = (
     message: string,
     onRefresh: () => void,
@@ -215,6 +223,7 @@ export function VitrineScreen() {
             if (i > 0) setStoriesOpen(false);
           }}
           onPullReveal={() => setStoriesOpen(true)}
+          onSwipeCategory={swipeCategory}
         >
           {(i) => {
             const post = posts[i];
@@ -255,6 +264,7 @@ export function VitrineScreen() {
             if (i > 0) setStoriesOpen(false);
           }}
           onPullReveal={() => setStoriesOpen(true)}
+          onSwipeCategory={swipeCategory}
         >
           {(i) => {
             const stream = liveVisible[i];
@@ -289,6 +299,7 @@ export function VitrineScreen() {
           if (i > 0) setStoriesOpen(false);
         }}
         onPullReveal={() => setStoriesOpen(true)}
+        onSwipeCategory={swipeCategory}
       >
         {(i) => {
           const row = soon[i];

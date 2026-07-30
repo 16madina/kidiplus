@@ -67,14 +67,9 @@ import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
 import { fetchMyPromoCodes } from "@/lib/referrals-db";
-import {
-  ACTIVITY_UNREAD_EVENT,
-  notifyActivityUnreadChanged,
-} from "@/lib/push-router";
+import { ACTIVITY_UNREAD_EVENT, openActivity } from "@/lib/push-router";
 import { fetchMyNotifications, subscribeMyNotifications } from "@/lib/notifications-db";
 import { listMyDmThreads, subscribeMyDmInbox } from "@/lib/dm-db";
-import { ActivityScreen } from "@/screens/activity-screen";
-import { ErrorBoundary } from "@/components/error-boundary";
 
 import { convertMoney, formatMoney, formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -272,8 +267,6 @@ function ProfileScreenAuthed() {
 
   const [notifUnread, setNotifUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
-  const [activityOpen, setActivityOpen] = useState(false);
-  const [activityTab, setActivityTab] = useState<"notifs" | "messages">("notifs");
 
   useEffect(() => {
     const userId = profile?.id;
@@ -306,19 +299,15 @@ function ProfileScreenAuthed() {
     };
   }, [profile?.id]);
 
+  // Open Activity via AppShell overlay (same path as Home bell) — avoid
+  // importing ActivityScreen here (heavy; can break the Profile tab tree).
   const goNotifs = () => {
     haptic.light();
-    setActivityTab("notifs");
-    setActivityOpen(true);
+    openActivity({ tab: "notifs" });
   };
   const goMessages = () => {
     haptic.light();
-    setActivityTab("messages");
-    setActivityOpen(true);
-  };
-  const closeActivity = () => {
-    setActivityOpen(false);
-    notifyActivityUnreadChanged();
+    openActivity({ tab: "messages" });
   };
 
   const handleBecomeSeller = async () => {
@@ -360,15 +349,19 @@ function ProfileScreenAuthed() {
           {/* Top row: Activité | avatar | Message */}
           <div className="relative flex items-start justify-between pt-2">
             <Press
+              type="button"
               aria-label={t("profile.hero.activity", { defaultValue: "Activité" })}
-              onClick={goNotifs}
-              className="relative z-10 mt-1 !min-h-0 w-[72px] flex-col gap-0.5 !bg-transparent p-0 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                goNotifs();
+              }}
+              className="relative z-20 mt-1 !min-h-12 w-[76px] flex-col gap-1 !bg-transparent px-1 py-1 text-white"
             >
-              <span className="relative grid h-11 w-11 place-items-center">
+              <span className="relative grid h-11 w-11 place-items-center rounded-full">
                 <Bell size={24} strokeWidth={1.9} />
                 {notifUnread > 0 && <UnreadPill count={notifUnread} />}
               </span>
-              <span className="text-[10px] font-medium leading-none text-white/80">
+              <span className="text-[10px] font-semibold leading-none text-white/85">
                 {t("profile.hero.activity", { defaultValue: "Activité" })}
               </span>
             </Press>
@@ -415,15 +408,19 @@ function ProfileScreenAuthed() {
             </Press>
 
             <Press
+              type="button"
               aria-label={t("profile.hero.message", { defaultValue: "Message" })}
-              onClick={goMessages}
-              className="relative z-10 mt-1 !min-h-0 w-[72px] flex-col gap-0.5 !bg-transparent p-0 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                goMessages();
+              }}
+              className="relative z-20 mt-1 !min-h-12 w-[76px] flex-col gap-1 !bg-transparent px-1 py-1 text-white"
             >
-              <span className="relative grid h-11 w-11 place-items-center">
+              <span className="relative grid h-11 w-11 place-items-center rounded-full">
                 <MessageCircle size={24} strokeWidth={1.9} />
                 {dmUnread > 0 && <UnreadPill count={dmUnread} />}
               </span>
-              <span className="text-[10px] font-medium leading-none text-white/80">
+              <span className="text-[10px] font-semibold leading-none text-white/85">
                 {t("profile.hero.message", { defaultValue: "Message" })}
               </span>
             </Press>
@@ -678,17 +675,6 @@ function ProfileScreenAuthed() {
       <ReferralScreen open={referralOpen} onClose={() => setReferralOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
       <DiscoverScreen open={discoverOpen} onClose={() => setDiscoverOpen(false)} />
-
-      <PushScreen
-        open={activityOpen}
-        onClose={closeActivity}
-        title={t("activity.title")}
-        zIndex={72}
-      >
-        <ErrorBoundary boundary="profile_activity" onReset={closeActivity}>
-          <ActivityScreen embedded initialTab={activityTab} />
-        </ErrorBoundary>
-      </PushScreen>
     </div>
   );
 }

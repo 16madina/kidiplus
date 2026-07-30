@@ -10,7 +10,7 @@ import {
   createVitrinePost,
   createVitrineStory,
   isVideoUrl,
-  uploadVitrineMedia,
+  uploadVitrineMediaDetailed,
 } from "@/lib/vitrine-db";
 
 const GOLD = "#E8B93B";
@@ -121,6 +121,33 @@ export function CreateVitrineContentSheet({
     });
   };
 
+  const uploadErrorMessage = (code: string) => {
+    switch (code) {
+      case "not_authenticated":
+        return t("vitrine.authRequired", { defaultValue: "Connecte-toi pour continuer" });
+      case "file_too_large":
+        return t("publish.fileTooLarge", {
+          defaultValue: "Fichier trop lourd (max 100 Mo).",
+        });
+      case "bad_mime":
+        return t("publish.badMime", {
+          defaultValue: "Format non supporté. Utilise MP4 ou MOV.",
+        });
+      case "bucket_missing":
+        return t("publish.bucketMissing", {
+          defaultValue: "Stockage Vitrine indisponible. Réessaie plus tard.",
+        });
+      case "forbidden":
+        return t("publish.uploadForbidden", {
+          defaultValue: "Envoi refusé. Vérifie que tu es bien connecté en vendeur.",
+        });
+      case "empty_file":
+        return t("publish.emptyFile", { defaultValue: "Fichier vide. Choisis une autre vidéo." });
+      default:
+        return t("vitrine.uploadFail", { defaultValue: "Échec de l'envoi. Réessaie." });
+    }
+  };
+
   const publish = async () => {
     if (!files.length || busy) return;
     setBusy(true);
@@ -128,12 +155,12 @@ export function CreateVitrineContentSheet({
     try {
       const urls: string[] = [];
       for (const f of files) {
-        const url = await uploadVitrineMedia(f);
-        if (!url) {
-          toast.error(t("vitrine.uploadFail", { defaultValue: "Échec de l'envoi. Réessaie." }));
+        const up = await uploadVitrineMediaDetailed(f);
+        if (!up.ok) {
+          toast.error(uploadErrorMessage(up.error));
           return;
         }
-        urls.push(url);
+        urls.push(up.url);
       }
 
       if (kind === "story") {

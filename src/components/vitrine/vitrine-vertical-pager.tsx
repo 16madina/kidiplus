@@ -8,6 +8,7 @@ export function VitrineVerticalPager({
   index,
   onIndexChange,
   onPullReveal,
+  onSwipeCategory,
   children,
 }: {
   count: number;
@@ -15,9 +16,12 @@ export function VitrineVerticalPager({
   onIndexChange: (i: number) => void;
   /** Pull down past threshold while on the first item → reveal stories chrome. */
   onPullReveal?: () => void;
+  /** Strong horizontal swipe → change Vitrine category (left = next, right = prev). */
+  onSwipeCategory?: (dir: "left" | "right") => void;
   children: (i: number) => React.ReactNode;
 }) {
   const dragY = useMotionValue(0);
+  const dragX = useMotionValue(0);
   const hasNext = index < count - 1;
   const hasPrev = index > 0;
 
@@ -26,37 +30,60 @@ export function VitrineVerticalPager({
       <motion.div
         className="absolute inset-0"
         style={{
-          touchAction: "pan-y",
+          touchAction: "none",
+          x: dragX,
           y: dragY,
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
-        drag="y"
+        drag
         dragDirectionLock
-        dragElastic={{ top: hasNext ? 0.4 : 0.08, bottom: hasPrev || !!onPullReveal ? 0.55 : 0.08 }}
-        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.35}
+        dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
         dragMomentum={false}
         onDrag={(_, info) => {
-          // Ignore sideways drift so the feed feels locked vertically.
-          if (Math.abs(info.offset.x) > Math.abs(info.offset.y) * 1.15) return;
-          dragY.set(info.offset.y);
+          const absX = Math.abs(info.offset.x);
+          const absY = Math.abs(info.offset.y);
+          if (absX > absY) {
+            dragX.set(info.offset.x);
+            dragY.set(0);
+          } else {
+            dragY.set(info.offset.y);
+            dragX.set(0);
+          }
         }}
         onDragEnd={(_, info) => {
           const absY = Math.abs(info.offset.y);
           const absX = Math.abs(info.offset.x);
-          // Treat mostly-horizontal gestures as accidental — snap back.
-          if (absX > absY * 1.1) {
-            animate(dragY, 0, { duration: 0.2, ease: EASE_IOS });
+          const h = typeof window !== "undefined" ? window.innerHeight : 800;
+          const w = typeof window !== "undefined" ? window.innerWidth : 390;
+
+          // Horizontal category change (Pour toi ↔ En direct ↔ Bientôt).
+          const horizontal =
+            absX > absY * 1.05 &&
+            (absX > 64 || Math.abs(info.velocity.x) > 400);
+          if (horizontal && onSwipeCategory) {
+            const dir = info.offset.x < 0 ? "left" : "right";
+            haptic.selection();
+            void animate(dragX, dir === "left" ? -w * 0.35 : w * 0.35, {
+              duration: 0.16,
+              ease: EASE_IOS,
+            }).then(() => {
+              dragX.set(0);
+              dragY.set(0);
+              onSwipeCategory(dir);
+            });
             return;
           }
+
           const strong = absY > 80 || Math.abs(info.velocity.y) > 450;
           const up = info.offset.y < 0;
           const down = info.offset.y > 0;
-          const h = typeof window !== "undefined" ? window.innerHeight : 800;
 
           // Pull down on first item → reveal stories (TikTok-style).
           if (down && strong && !hasPrev) {
             dragY.set(0);
+            dragX.set(0);
             if (onPullReveal) {
               haptic.light();
               onPullReveal();
@@ -70,6 +97,7 @@ export function VitrineVerticalPager({
             haptic.selection();
             void animate(dragY, -h, { duration: 0.22, ease: EASE_IOS }).then(() => {
               dragY.set(0);
+              dragX.set(0);
               onIndexChange(index + 1);
             });
             return;
@@ -78,11 +106,13 @@ export function VitrineVerticalPager({
             haptic.selection();
             void animate(dragY, h, { duration: 0.22, ease: EASE_IOS }).then(() => {
               dragY.set(0);
+              dragX.set(0);
               onIndexChange(index - 1);
             });
             return;
           }
           animate(dragY, 0, { duration: 0.22, ease: EASE_IOS });
+          animate(dragX, 0, { duration: 0.22, ease: EASE_IOS });
         }}
       >
         {children(index)}

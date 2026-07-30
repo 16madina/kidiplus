@@ -396,20 +396,83 @@ export function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) || url.includes("video/");
 }
 
-/** Upload an image/video into the public vitrine-media bucket. Returns public URL. */
+const VITRINE_MAX_BYTES = 100 * 1024 * 1024; // match storage bucket (100 MiB)
+
+function guessVitrineContentType(file: File): string {
+  if (file.type && file.type !== "application/octet-stream") return file.type;
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const map: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    heic: "image/heic",
+    heif: "image/heif",
+    mp4: "video/mp4",
+    m4v: "video/mp4",
+    mov: "video/quicktime",
+    qt: "video/quicktime",
+    webm: "video/webm",
+    "3gp": "video/3gpp",
+    "3gpp": "video/3gpp",
+  };
+  return map[ext] || "application/octet-stream";
+}
+
+export type VitrineUploadResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+/** Upload an image/video into the public vitrine-media bucket. */
 export async function uploadVitrineMedia(file: File): Promise<string | null> {
+  const r = await uploadVitrineMediaDetailed(file);
+  return r.ok ? r.url : null;
+}
+
+/** Same as uploadVitrineMedia but returns a readable error for toasts. */
+export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUploadResult> {
   const uid = (await sb.auth.getUser()).data.user?.id;
-  if (!uid) return null;
-  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  if (!uid) return { ok: false, error: "not_authenticated" };
+  if (file.size <= 0) return { ok: false, error: "empty_file" };
+  if (file.size > VITRINE_MAX_BYTES) return { ok: false, error: "file_too_large" };
+
+  const contentType = guessVitrineContentType(file);
+  let ext = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!ext || ext === "bin") {
+    if (contentType.includes("quicktime")) ext = "mov";
+    else if (contentType.startsWith("video/")) ext = "mp4";
+    else if (contentType === "image/png") ext = "png";
+    else if (contentType === "image/webp") ext = "webp";
+    else if (contentType.startsWith("image/")) ext = "jpg";
+    else ext = "bin";
+  }
   const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from("vitrine-media").upload(path, file, {
     cacheControl: "3600",
     upsert: false,
-    contentType: file.type || undefined,
+    contentType,
   });
-  if (error) return null;
+  if (error) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("bucket") || msg.includes("not found")) {
+      return { ok: false, error: "bucket_missing" };
+    }
+    if (msg.includes("mime") || msg.includes("not supported") || msg.includes("invalid")) {
+      return { ok: false, error: "bad_mime" };
+    }
+    if (msg.includes("maximum") || msg.includes("too large") || msg.includes("size")) {
+      return { ok: false, error: "file_too_large" };
+    }
+    if (msg.includes("row-level") || msg.includes("policy") || msg.includes("denied")) {
+      return { ok: false, error: "forbidden" };
+    }
+    console.warn("[vitrine] upload failed", error.message);
+    return { ok: false, error: error.message || "upload_failed" };
+  }
   const { data } = supabase.storage.from("vitrine-media").getPublicUrl(path);
-  return data.publicUrl || null;
+  if (!data.publicUrl) return { ok: false, error: "upload_failed" };
+  return { ok: true, url: data.publicUrl };
 }
 
 export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory | null> {
@@ -423,14 +486,26 @@ export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory
         media_url: mediaUrl,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       })
-      .select(
-        `
-        id, user_id, media_url, expires_at, created_at,
-        seller:profiles!vitrine_stories_user_id_fkey(display_name, handle, avatar_url)
-        `,
-      )
+      .select("id, user_id, media_url, expires_at, created_at")
       .maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.warn("[vitrine] create story failed", error.message);
+      return null;
+    }
+    if (!data) return null;
+
+    let seller: VitrineStory["seller"] = null;
+    try {
+      const { data: prof } = await sb
+        .from("profiles")
+        .select("display_name, handle, avatar_url")
+        .eq("id", uid)
+        .maybeSingle();
+      if (prof) seller = prof;
+    } catch {
+      /* ignore */
+    }
+
     return {
       id: data.id,
       user_id: data.user_id,
@@ -438,9 +513,10 @@ export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory
       expires_at: data.expires_at,
       created_at: data.created_at,
       unread: true,
-      seller: data.seller ?? null,
+      seller,
     };
-  } catch {
+  } catch (e) {
+    console.warn("[vitrine] create story exception", e);
     return null;
   }
 }
@@ -457,6 +533,8 @@ export async function createVitrinePost(input: {
   if (!uid) return null;
   if (input.mediaUrls.length === 0 && !input.liveId) return null;
   try {
+    // Insert + plain select (no join) — join-on-insert fails on some PostgREST
+    // setups and made publish look broken after a successful upload.
     const { data, error } = await sb
       .from("vitrine_posts")
       .insert({
@@ -469,14 +547,27 @@ export async function createVitrinePost(input: {
         active: true,
       })
       .select(
-        `
-        id, user_id, media_type, media_urls, caption, product_id, live_id,
-        like_count, comment_count, created_at,
-        seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
-        `,
+        "id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at",
       )
       .maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.warn("[vitrine] create post failed", error.message);
+      return null;
+    }
+    if (!data) return null;
+
+    let seller: VitrinePost["seller"] = null;
+    try {
+      const { data: prof } = await sb
+        .from("profiles")
+        .select("display_name, handle, avatar_url, is_verified")
+        .eq("id", uid)
+        .maybeSingle();
+      if (prof) seller = prof;
+    } catch {
+      /* ignore */
+    }
+
     return {
       id: data.id,
       user_id: data.user_id,
@@ -489,10 +580,11 @@ export async function createVitrinePost(input: {
       comment_count: Number(data.comment_count ?? 0),
       created_at: data.created_at,
       liked_by_me: false,
-      seller: data.seller ?? null,
+      seller,
       live_status: null,
     };
-  } catch {
+  } catch (e) {
+    console.warn("[vitrine] create post exception", e);
     return null;
   }
 }
