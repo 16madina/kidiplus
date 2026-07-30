@@ -16,10 +16,15 @@ import {
   subscribeMyNotifications,
   type NotificationRow,
 } from "@/lib/notifications-db";
-import { payloadFromNotificationRow, openFromPush } from "@/lib/push-router";
+import {
+  payloadFromNotificationRow,
+  openFromPush,
+  notifyActivityUnreadChanged,
+} from "@/lib/push-router";
 import { GuestActivityScreen } from "@/components/guest-activity-screen";
 import { OrdersScreen } from "@/screens/orders-screen";
 import { DmInboxContent, OPEN_DM_EVENT } from "@/components/dm/dm-inbox";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 type Tab = "notifs" | "messages";
 
@@ -32,8 +37,15 @@ export function ActivityScreen({
   initialTab?: Tab;
 }) {
   const { guestMode } = useAuth();
-  if (guestMode) return <GuestActivityScreen />;
-  return <ActivityScreenAuthed embedded={embedded} initialTab={initialTab} />;
+  return (
+    <ErrorBoundary boundary="activity_screen">
+      {guestMode ? (
+        <GuestActivityScreen />
+      ) : (
+        <ActivityScreenAuthed embedded={embedded} initialTab={initialTab} />
+      )}
+    </ErrorBoundary>
+  );
 }
 
 function ActivityScreenAuthed({
@@ -98,12 +110,12 @@ function ActivityScreenAuthed({
 
   const removeNotif = (id: string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
-    void markNotificationRead(id);
+    void markNotificationRead(id).finally(() => notifyActivityUnreadChanged());
     toast(t("common.remove"));
   };
   const markRead = (id: string) => {
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)));
-    void markNotificationRead(id);
+    void markNotificationRead(id).finally(() => notifyActivityUnreadChanged());
   };
   const openNotif = (n: NotificationRow) => {
     markRead(n.id);
@@ -111,7 +123,7 @@ function ActivityScreenAuthed({
   };
   const markAll = () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
-    void markAllNotificationsRead();
+    void markAllNotificationsRead().finally(() => notifyActivityUnreadChanged());
   };
 
   return (
@@ -253,7 +265,7 @@ function Segmented<T extends string>({
           >
             {active && (
               <motion.span
-                layoutId="seg-pill"
+                layoutId="activity-seg-pill"
                 className="absolute inset-0 -z-0 rounded-lg bg-background shadow-sm"
                 transition={{ duration: 0.2, ease: EASE_IOS }}
                 style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 1px rgba(0,0,0,0.04)" }}

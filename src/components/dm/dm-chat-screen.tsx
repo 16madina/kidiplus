@@ -24,6 +24,7 @@ import {
   subscribeDmThread,
   type DmMessageRow,
 } from "@/lib/dm-db";
+import { notifyActivityUnreadChanged } from "@/lib/push-router";
 
 export type DmChatTarget = {
   otherId: string;
@@ -78,7 +79,7 @@ export function DmChatScreen({
         const rows = await listDmMessages(tid);
         if (!alive) return;
         setMessages(rows);
-        void markDmThreadRead(tid);
+        void markDmThreadRead(tid).finally(() => notifyActivityUnreadChanged());
       }
       setLoading(false);
       requestAnimationFrame(() => scrollToBottom());
@@ -100,7 +101,7 @@ export function DmChatScreen({
     const unsub = subscribeDmThread(threadId, () => {
       void listDmMessages(threadId).then((rows) => {
         setMessages(rows);
-        void markDmThreadRead(threadId);
+        void markDmThreadRead(threadId).finally(() => notifyActivityUnreadChanged());
         requestAnimationFrame(() => scrollToBottom(true));
       });
     });

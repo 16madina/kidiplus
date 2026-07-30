@@ -642,6 +642,10 @@
       "discover": "Discover"
     },
     "editAvatar": "Change photo",
+    "hero": {
+      "activity": "Activity",
+      "message": "Message"
+    },
     "stats": {
       "followers": "Followers",
       "sales": "Sales",

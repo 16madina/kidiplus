@@ -491,7 +491,12 @@ function AppShellInner() {
         title={t("activity.title")}
         zIndex={72}
       >
-        <ActivityScreen embedded initialTab={activityTab} />
+        <ErrorBoundary
+          boundary="activity_overlay"
+          onReset={() => setActivityOpen(false)}
+        >
+          <ActivityScreen embedded initialTab={activityTab} />
+        </ErrorBoundary>
       </PushScreen>
 
       <PublishHub />

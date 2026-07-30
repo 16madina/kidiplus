@@ -67,9 +67,14 @@ import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
 import { fetchMyPromoCodes } from "@/lib/referrals-db";
-import { openActivity } from "@/lib/push-router";
+import {
+  ACTIVITY_UNREAD_EVENT,
+  notifyActivityUnreadChanged,
+} from "@/lib/push-router";
 import { fetchMyNotifications, subscribeMyNotifications } from "@/lib/notifications-db";
-import { listMyDmThreads } from "@/lib/dm-db";
+import { listMyDmThreads, subscribeMyDmInbox } from "@/lib/dm-db";
+import { ActivityScreen } from "@/screens/activity-screen";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 import { convertMoney, formatMoney, formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -267,6 +272,9 @@ function ProfileScreenAuthed() {
 
   const [notifUnread, setNotifUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityTab, setActivityTab] = useState<"notifs" | "messages">("notifs");
+
   useEffect(() => {
     const userId = profile?.id;
     if (!userId) { setNotifUnread(0); setDmUnread(0); return; }
@@ -281,25 +289,36 @@ function ProfileScreenAuthed() {
       setDmUnread(d.unread);
     };
     void load();
-    const unsub = subscribeMyNotifications(userId, () => { void load(); });
+    const unsubN = subscribeMyNotifications(userId, () => { void load(); });
+    const unsubD = subscribeMyDmInbox(userId, () => { void load(); });
+    const onUnread = () => { void load(); };
+    window.addEventListener(ACTIVITY_UNREAD_EVENT, onUnread);
     const int = setInterval(() => {
       if (document.visibilityState === "hidden") return;
       void load();
     }, 30_000);
     return () => {
       alive = false;
-      unsub();
+      unsubN();
+      unsubD();
+      window.removeEventListener(ACTIVITY_UNREAD_EVENT, onUnread);
       clearInterval(int);
     };
   }, [profile?.id]);
 
   const goNotifs = () => {
     haptic.light();
-    openActivity({ tab: "notifs" });
+    setActivityTab("notifs");
+    setActivityOpen(true);
   };
   const goMessages = () => {
     haptic.light();
-    openActivity({ tab: "messages" });
+    setActivityTab("messages");
+    setActivityOpen(true);
+  };
+  const closeActivity = () => {
+    setActivityOpen(false);
+    notifyActivityUnreadChanged();
   };
 
   const handleBecomeSeller = async () => {
@@ -338,15 +357,20 @@ function ProfileScreenAuthed() {
             boxShadow: "0 12px 30px -12px rgba(16,22,43,0.45)",
           }}
         >
-          {/* Top row: Notifications | avatar | Messages — same placement as mockup */}
+          {/* Top row: Activité | avatar | Message */}
           <div className="relative flex items-start justify-between pt-2">
             <Press
-              aria-label={t("activity.tabs.notifications")}
+              aria-label={t("profile.hero.activity", { defaultValue: "Activité" })}
               onClick={goNotifs}
-              className="relative z-10 mt-1 h-11 w-11 rounded-full text-white"
+              className="relative z-10 mt-1 !min-h-0 w-[72px] flex-col gap-0.5 !bg-transparent p-0 text-white"
             >
-              <Bell size={24} strokeWidth={1.9} />
-              {notifUnread > 0 && <UnreadDot />}
+              <span className="relative grid h-11 w-11 place-items-center">
+                <Bell size={24} strokeWidth={1.9} />
+                {notifUnread > 0 && <UnreadPill count={notifUnread} />}
+              </span>
+              <span className="text-[10px] font-medium leading-none text-white/80">
+                {t("profile.hero.activity", { defaultValue: "Activité" })}
+              </span>
             </Press>
 
             <Press
@@ -391,12 +415,17 @@ function ProfileScreenAuthed() {
             </Press>
 
             <Press
-              aria-label={t("activity.tabs.messages", { defaultValue: "Messages" })}
+              aria-label={t("profile.hero.message", { defaultValue: "Message" })}
               onClick={goMessages}
-              className="relative z-10 mt-1 h-11 w-11 rounded-full text-white"
+              className="relative z-10 mt-1 !min-h-0 w-[72px] flex-col gap-0.5 !bg-transparent p-0 text-white"
             >
-              <MessageCircle size={24} strokeWidth={1.9} />
-              {dmUnread > 0 && <UnreadDot />}
+              <span className="relative grid h-11 w-11 place-items-center">
+                <MessageCircle size={24} strokeWidth={1.9} />
+                {dmUnread > 0 && <UnreadPill count={dmUnread} />}
+              </span>
+              <span className="text-[10px] font-medium leading-none text-white/80">
+                {t("profile.hero.message", { defaultValue: "Message" })}
+              </span>
             </Press>
           </div>
 
@@ -649,6 +678,17 @@ function ProfileScreenAuthed() {
       <ReferralScreen open={referralOpen} onClose={() => setReferralOpen(false)} />
       <HelpSupportScreen open={helpOpen} onClose={() => setHelpOpen(false)} />
       <DiscoverScreen open={discoverOpen} onClose={() => setDiscoverOpen(false)} />
+
+      <PushScreen
+        open={activityOpen}
+        onClose={closeActivity}
+        title={t("activity.title")}
+        zIndex={72}
+      >
+        <ErrorBoundary boundary="profile_activity" onReset={closeActivity}>
+          <ActivityScreen embedded initialTab={activityTab} />
+        </ErrorBoundary>
+      </PushScreen>
     </div>
   );
 }
@@ -720,17 +760,20 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-/** Gold unread marker matching the profile mockup (dot on bell / messages). */
-function UnreadDot() {
+/** Gold unread count pill on Activité / Message hero buttons. */
+function UnreadPill({ count }: { count: number }) {
+  const label = count > 99 ? "99+" : String(count);
   return (
     <span
-      className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full"
+      className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-[#10162B]"
       style={{
         background: GOLD,
-        boxShadow: "0 0 0 2px rgba(16,22,43,0.9)",
+        boxShadow: "0 0 0 2px rgba(16,22,43,0.95)",
       }}
       aria-hidden
-    />
+    >
+      {label}
+    </span>
   );
 }
 

@@ -18,12 +18,24 @@ export const PUSH_OPEN_EVENT = "kidi:push-open";
 export const NAV_TAB_EVENT = "kidi:navigate-tab";
 /** Open Activity as a PushScreen overlay (not a bottom tab). */
 export const OPEN_ACTIVITY_EVENT = "kidi:open-activity";
+/** Fired when notif/DM unread counts may have changed (mark read, new message…). */
+export const ACTIVITY_UNREAD_EVENT = "kidi:activity-unread";
 
 export type OpenActivityPayload = {
   tab?: "notifs" | "messages";
   thread_id?: string;
   order_id?: string;
 };
+
+/** Ask Profile / Home badges to refetch unread counts. Safe on SSR. */
+export function notifyActivityUnreadChanged() {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent(ACTIVITY_UNREAD_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Open notifications / DMs overlay. Safe on SSR (no-op). */
 export function openActivity(payload: OpenActivityPayload = {}) {
