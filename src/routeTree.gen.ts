@@ -72,6 +72,7 @@ import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/
 import { Route as ApiSocialChatPollRouteImport } from './routes/api/social-chat/poll'
 import { Route as ApiSocialChatReplyRouteImport } from './routes/api/social-chat/reply'
 import { Route as ApiTiktokRestreamRouteImport } from './routes/api/tiktok/restream'
+import { Route as ApiVitrineSignedUploadRouteImport } from './routes/api/vitrine/signed-upload'
 import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
 import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/disconnect'
 import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
@@ -406,6 +407,11 @@ const ApiTiktokRestreamRoute = ApiTiktokRestreamRouteImport.update({
   path: '/api/tiktok/restream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVitrineSignedUploadRoute = ApiVitrineSignedUploadRouteImport.update({
+  id: '/api/vitrine/signed-upload',
+  path: '/api/vitrine/signed-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
@@ -535,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/tiktok/restream': typeof ApiTiktokRestreamRoute
+  '/api/vitrine/signed-upload': typeof ApiVitrineSignedUploadRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -612,6 +619,7 @@ export interface FileRoutesByTo {
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/tiktok/restream': typeof ApiTiktokRestreamRoute
+  '/api/vitrine/signed-upload': typeof ApiVitrineSignedUploadRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -690,6 +698,7 @@ export interface FileRoutesById {
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
   '/api/tiktok/restream': typeof ApiTiktokRestreamRoute
+  '/api/vitrine/signed-upload': typeof ApiVitrineSignedUploadRoute
   '/api/wallet-topup/confirm': typeof ApiWalletTopupConfirmRoute
   '/api/youtube/disconnect': typeof ApiYoutubeDisconnectRoute
   '/api/youtube/restream': typeof ApiYoutubeRestreamRoute
@@ -769,6 +778,7 @@ export interface FileRouteTypes {
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
     | '/api/tiktok/restream'
+    | '/api/vitrine/signed-upload'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -846,6 +856,7 @@ export interface FileRouteTypes {
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
     | '/api/tiktok/restream'
+    | '/api/vitrine/signed-upload'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -923,6 +934,7 @@ export interface FileRouteTypes {
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
     | '/api/tiktok/restream'
+    | '/api/vitrine/signed-upload'
     | '/api/wallet-topup/confirm'
     | '/api/youtube/disconnect'
     | '/api/youtube/restream'
@@ -997,6 +1009,7 @@ export interface RootRouteChildren {
   ApiSocialChatPollRoute: typeof ApiSocialChatPollRoute
   ApiSocialChatReplyRoute: typeof ApiSocialChatReplyRoute
   ApiTiktokRestreamRoute: typeof ApiTiktokRestreamRoute
+  ApiVitrineSignedUploadRoute: typeof ApiVitrineSignedUploadRoute
   ApiYoutubeDisconnectRoute: typeof ApiYoutubeDisconnectRoute
   ApiYoutubeRestreamRoute: typeof ApiYoutubeRestreamRoute
   ApiYoutubeStatusRoute: typeof ApiYoutubeStatusRoute
@@ -1453,6 +1466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTiktokRestreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/vitrine/signed-upload': {
+      id: '/api/vitrine/signed-upload'
+      path: '/api/vitrine/signed-upload'
+      fullPath: '/api/vitrine/signed-upload'
+      preLoaderRoute: typeof ApiVitrineSignedUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/wallet-topup/confirm': {
       id: '/api/wallet-topup/confirm'
       path: '/confirm'
@@ -1641,6 +1661,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialChatPollRoute: ApiSocialChatPollRoute,
   ApiSocialChatReplyRoute: ApiSocialChatReplyRoute,
   ApiTiktokRestreamRoute: ApiTiktokRestreamRoute,
+  ApiVitrineSignedUploadRoute: ApiVitrineSignedUploadRoute,
   ApiYoutubeDisconnectRoute: ApiYoutubeDisconnectRoute,
   ApiYoutubeRestreamRoute: ApiYoutubeRestreamRoute,
   ApiYoutubeStatusRoute: ApiYoutubeStatusRoute,
@@ -1656,13 +1677,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

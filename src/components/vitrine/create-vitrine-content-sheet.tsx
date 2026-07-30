@@ -143,8 +143,11 @@ export function CreateVitrineContentSheet({
         });
       case "empty_file":
         return t("publish.emptyFile", { defaultValue: "Fichier vide. Choisis une autre vidéo." });
-      default:
-        return t("vitrine.uploadFail", { defaultValue: "Échec de l'envoi. Réessaie." });
+      default: {
+        const base = t("vitrine.uploadFail", { defaultValue: "Échec de l'envoi. Réessaie." });
+        if (code && code.length > 2 && code.length < 140) return `${base} (${code})`;
+        return base;
+      }
     }
   };
 

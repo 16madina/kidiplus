@@ -430,6 +430,50 @@ export async function uploadVitrineMedia(file: File): Promise<string | null> {
   return r.ok ? r.url : null;
 }
 
+async function requestSignedUpload(file: File, contentType: string, ext: string) {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) return null;
+
+  const res = await fetch("/api/vitrine/signed-upload", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ ext, contentType }),
+  });
+  if (!res.ok) {
+    let message = `http_${res.status}`;
+    try {
+      const j = (await res.json()) as { message?: string; error?: string };
+      message = j.message || j.error || message;
+    } catch {
+      /* ignore */
+    }
+    console.warn("[vitrine] signed-upload API failed", message);
+    return { error: message } as const;
+  }
+  const j = (await res.json()) as {
+    ok?: boolean;
+    path?: string;
+    token?: string;
+    publicUrl?: string;
+  };
+  if (!j.path || !j.token || !j.publicUrl) {
+    return { error: "signed_url_failed" } as const;
+  }
+
+  const { error: upErr } = await supabase.storage
+    .from("vitrine-media")
+    .uploadToSignedUrl(j.path, j.token, file, { contentType, upsert: false });
+  if (upErr) {
+    console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
+    return { error: upErr.message } as const;
+  }
+  return { url: j.publicUrl } as const;
+}
+
 /** Same as uploadVitrineMedia but returns a readable error for toasts. */
 export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUploadResult> {
   const uid = (await sb.auth.getUser()).data.user?.id;
@@ -447,6 +491,15 @@ export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUpl
     else if (contentType.startsWith("image/")) ext = "jpg";
     else ext = "bin";
   }
+
+  // Preferred path: server-minted signed URL (works even if storage RLS
+  // migrations were never applied on Lovable).
+  const signed = await requestSignedUpload(file, contentType, ext);
+  if (signed && "url" in signed && signed.url) {
+    return { ok: true, url: signed.url };
+  }
+
+  // Fallback: direct client upload (needs bucket + insert policy).
   const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from("vitrine-media").upload(path, file, {
     cacheControl: "3600",
@@ -455,7 +508,8 @@ export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUpl
   });
   if (error) {
     const msg = (error.message || "").toLowerCase();
-    if (msg.includes("bucket") || msg.includes("not found")) {
+    const signedMsg = signed && "error" in signed ? String(signed.error) : "";
+    if (msg.includes("bucket") || msg.includes("not found") || /bucket/i.test(signedMsg)) {
       return { ok: false, error: "bucket_missing" };
     }
     if (msg.includes("mime") || msg.includes("not supported") || msg.includes("invalid")) {
@@ -467,8 +521,8 @@ export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUpl
     if (msg.includes("row-level") || msg.includes("policy") || msg.includes("denied")) {
       return { ok: false, error: "forbidden" };
     }
-    console.warn("[vitrine] upload failed", error.message);
-    return { ok: false, error: error.message || "upload_failed" };
+    console.warn("[vitrine] upload failed", error.message, signedMsg);
+    return { ok: false, error: error.message || signedMsg || "upload_failed" };
   }
   const { data } = supabase.storage.from("vitrine-media").getPublicUrl(path);
   if (!data.publicUrl) return { ok: false, error: "upload_failed" };
