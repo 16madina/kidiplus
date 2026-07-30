@@ -6,7 +6,7 @@ import type { TabKey } from "./app-shell";
 import {
   HomeIcon,
   ExploreIcon,
-  BellIcon,
+  VitrineIcon,
   PersonIcon,
 } from "./brand/tab-icons";
 // Bundle the live badge as a real hashed same-origin asset. The previous
@@ -28,7 +28,7 @@ const leftTabs: TabDef[] = [
 ];
 
 const rightTabs: TabDef[] = [
-  { key: "activity", labelKey: "tabs.activity", Icon: BellIcon },
+  { key: "vitrine", labelKey: "tabs.vitrine", Icon: VitrineIcon },
   { key: "profile", labelKey: "tabs.profile", Icon: PersonIcon },
 ];
 

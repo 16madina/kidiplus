@@ -15,6 +15,26 @@ export type PushOpenPayload = {
 
 export const PUSH_OPEN_EVENT = "kidi:push-open";
 export const NAV_TAB_EVENT = "kidi:navigate-tab";
+/** Open Activity as a PushScreen overlay (not a bottom tab). */
+export const OPEN_ACTIVITY_EVENT = "kidi:open-activity";
+
+export type OpenActivityPayload = {
+  tab?: "notifs" | "messages";
+  thread_id?: string;
+  order_id?: string;
+};
+
+/** Open notifications / DMs overlay. Safe on SSR (no-op). */
+export function openActivity(payload: OpenActivityPayload = {}) {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent<OpenActivityPayload>(OPEN_ACTIVITY_EVENT, { detail: payload }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Normalize a raw FCM `data` block (all values are strings on the wire). */
 export function normalizePushData(raw: unknown): PushOpenPayload | null {
@@ -43,7 +63,7 @@ export function openFromPush(payload: PushOpenPayload | null | undefined) {
 }
 
 /** Convenience: navigate the bottom tab bar. */
-export function navigateTab(tab: "home" | "search" | "live" | "activity" | "profile") {
+export function navigateTab(tab: "home" | "search" | "live" | "vitrine" | "profile") {
   if (typeof window === "undefined") return;
   try {
     window.dispatchEvent(new CustomEvent(NAV_TAB_EVENT, { detail: tab }));

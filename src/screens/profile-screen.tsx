@@ -29,6 +29,7 @@ import {
   ScanFace,
   Play,
   HeartHandshake,
+  MessageCircle,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -64,6 +65,9 @@ import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
 import { fetchMyPromoCodes } from "@/lib/referrals-db";
+import { openActivity } from "@/lib/push-router";
+import { fetchMyNotifications, subscribeMyNotifications } from "@/lib/notifications-db";
+import { listMyDmThreads } from "@/lib/dm-db";
 
 import { convertMoney, formatMoney, formatMoneyShort, normalizeCurrency } from "@/lib/money";
 import { supabase } from "@/integrations/supabase/client";
@@ -256,13 +260,44 @@ function ProfileScreenAuthed() {
   };
 
   const initial = (profile?.display_name || "?").slice(0, 1).toUpperCase();
-  const soon = t("common.loading");
 
   const walletCaption = formatMoneyShort(balance, normalizeCurrency(currency), lang);
 
-  const goActivity = () => {
+  const [notifUnread, setNotifUnread] = useState(0);
+  const [dmUnread, setDmUnread] = useState(0);
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) { setNotifUnread(0); setDmUnread(0); return; }
+    let alive = true;
+    const load = async () => {
+      const [n, d] = await Promise.all([
+        fetchMyNotifications(1),
+        listMyDmThreads(50),
+      ]);
+      if (!alive) return;
+      setNotifUnread(n.unread);
+      setDmUnread(d.unread);
+    };
+    void load();
+    const unsub = subscribeMyNotifications(userId, () => { void load(); });
+    const int = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void load();
+    }, 30_000);
+    return () => {
+      alive = false;
+      unsub();
+      clearInterval(int);
+    };
+  }, [profile?.id]);
+
+  const goNotifs = () => {
     haptic.light();
-    window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "activity" }));
+    openActivity({ tab: "notifs" });
+  };
+  const goMessages = () => {
+    haptic.light();
+    openActivity({ tab: "messages" });
   };
 
   const handleBecomeSeller = async () => {
@@ -282,8 +317,40 @@ function ProfileScreenAuthed() {
 
   return (
     <div className="flex h-full flex-col bg-background">
+      {/* Top bar: bell + messages */}
       <div
-        className="min-h-0 flex-1 overflow-y-auto pt-safe"
+        className="relative z-20 flex shrink-0 items-center justify-between px-3 pt-safe"
+        style={{
+          backgroundColor: "color-mix(in oklch, var(--background) 92%, transparent)",
+          backdropFilter: "saturate(180%) blur(16px)",
+          WebkitBackdropFilter: "saturate(180%) blur(16px)",
+        }}
+      >
+        <Press
+          aria-label={t("activity.tabs.notifications")}
+          onClick={goNotifs}
+          className="relative h-11 w-11 rounded-full"
+          style={{ color: "var(--foreground)" }}
+        >
+          <Bell size={22} strokeWidth={1.9} />
+          {notifUnread > 0 && <UnreadPill count={notifUnread} />}
+        </Press>
+        <span className="text-[15px] font-semibold tracking-tight text-foreground">
+          {t("tabs.profile")}
+        </span>
+        <Press
+          aria-label={t("activity.tabs.messages", { defaultValue: "Messages" })}
+          onClick={goMessages}
+          className="relative h-11 w-11 rounded-full"
+          style={{ color: "var(--foreground)" }}
+        >
+          <MessageCircle size={22} strokeWidth={1.9} />
+          {dmUnread > 0 && <UnreadPill count={dmUnread} />}
+        </Press>
+      </div>
+
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
         style={{
           WebkitOverflowScrolling: "touch",
           overscrollBehavior: "contain",
@@ -433,10 +500,69 @@ function ProfileScreenAuthed() {
           </motion.div>
         </div>
 
-        {/* ============ DÉCOUVRIR KIDI+ ============ */}
-        <SectionHeader label={t("profile.sections.discover", { defaultValue: "Découvrir" })} />
+        {/* ============ BOUTIQUE ============ */}
+        {(profile?.is_seller) && (
+          <>
+            <SectionHeader label={t("profile.sections.boutique", { defaultValue: "Boutique" })} />
+            <MenuGroup
+              index={0}
+              items={[
+                { icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) },
+                { icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) },
+                {
+                  icon: <BadgeCheck size={16} />,
+                  label: t("verify.menuLabel", "Certification"),
+                  tint: "oklch(0.68 0.16 80)",
+                  trailing: profile?.is_verified ? "✓" : undefined,
+                  onClick: () => setCertOpen(true),
+                },
+              ]}
+            />
+          </>
+        )}
+
+        {/* ============ FINANCES (quick actions already cover wallet/earnings) ============ */}
+        <SectionHeader label={t("profile.sections.finances", { defaultValue: "Finances" })} />
         <MenuGroup
-          index={0}
+          index={1}
+          items={[
+            {
+              icon: <WalletIcon size={16} />,
+              label: t("profile.quick.wallet"),
+              tint: "oklch(0.68 0.14 75)",
+              trailing: walletCaption,
+              onClick: () => { haptic.light(); setWalletOpen(true); },
+            },
+            ...(profile?.is_seller
+              ? [{
+                  icon: <TrendingUp size={16} />,
+                  label: t("profile.quick.earnings"),
+                  tint: "oklch(0.6 0.17 155)",
+                  onClick: () => { haptic.light(); setSalesOpen(true); },
+                }]
+              : []),
+          ]}
+        />
+
+        {/* ============ ACHATS ============ */}
+        <SectionHeader label={t("profile.sections.purchases", { defaultValue: "Achats" })} />
+        <MenuGroup
+          index={2}
+          items={[
+            {
+              icon: <ShoppingBag size={16} />,
+              label: t("profile.quick.orders"),
+              tint: "oklch(0.6 0.2 250)",
+              onClick: () => { haptic.light(); setOrdersOpen(true); },
+            },
+            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
+          ]}
+        />
+
+        {/* ============ COMMUNAUTÉ ============ */}
+        <SectionHeader label={t("profile.sections.community", { defaultValue: "Communauté" })} />
+        <MenuGroup
+          index={3}
           items={[
             {
               icon: <Play size={16} />,
@@ -444,14 +570,6 @@ function ProfileScreenAuthed() {
               tint: "oklch(0.65 0.18 75)",
               onClick: () => { haptic.light(); setDiscoverOpen(true); },
             },
-          ]}
-        />
-
-        {/* ============ PARRAINAGE (all logged-in users) ============ */}
-        <SectionHeader label={t("referral.title", "Parrainage 🤝")} />
-        <MenuGroup
-          index={0}
-          items={[
             {
               icon: <HeartHandshake size={16} />,
               label: isInfluencer
@@ -460,50 +578,23 @@ function ProfileScreenAuthed() {
               tint: "oklch(0.65 0.18 40)",
               onClick: () => { haptic.light(); setReferralOpen(true); },
             },
-          ]}
-        />
-
-
-
-        {/* ============ GÉNÉRAL ============ */}
-
-        <SectionHeader label={t("profile.sections.general")} />
-        <MenuGroup
-          index={1}
-          items={[
-            { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
-            ...(profile?.is_seller
-              ? [{ icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) }]
-              : []),
-            { icon: <MapPin size={16} />, label: t("address.title"), tint: "oklch(0.6 0.17 155)", onClick: () => setAddressesOpen(true) },
-            ...(profile?.is_seller
-              ? [{ icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) }]
-              : []),
-            { icon: <Languages size={16} />, label: t("settings.language"), tint: "oklch(0.55 0.16 210)", trailing: lang === "fr" ? t("settings.french") : t("settings.english"), onClick: () => setLanguageOpen(true) },
-            { icon: <Coins size={16} />, label: t("settings.currency"), tint: "oklch(0.68 0.14 75)", trailing: currencyLabel, onClick: () => setCurrencyOpen(true) },
-            { icon: <Moon size={16} />, label: t("profile.menu.darkMode"), tint: "oklch(0.35 0.02 285)", toggle: { checked: dark, onChange: setDark } },
+            { icon: <UserX size={16} />, label: t("block.listTitle"), tint: "oklch(0.55 0.12 30)", onClick: () => setBlockedOpen(true) },
+            { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
           ]}
         />
 
         {/* ============ COMPTE ============ */}
         <SectionHeader label={t("profile.sections.account")} />
         <MenuGroup
-          index={2}
+          index={4}
           items={[
+            { icon: <UserPen size={16} />, label: t("profile.editProfile"), tint: "oklch(0.6 0.2 250)", onClick: () => setEditOpen(true) },
+            { icon: <Languages size={16} />, label: t("settings.language"), tint: "oklch(0.55 0.16 210)", trailing: lang === "fr" ? t("settings.french") : t("settings.english"), onClick: () => setLanguageOpen(true) },
+            { icon: <Coins size={16} />, label: t("settings.currency"), tint: "oklch(0.68 0.14 75)", trailing: currencyLabel, onClick: () => setCurrencyOpen(true) },
+            { icon: <Moon size={16} />, label: t("profile.menu.darkMode"), tint: "oklch(0.35 0.02 285)", toggle: { checked: dark, onChange: setDark } },
             { icon: <Bell size={16} />, label: t("profile.menu.notifications"), tint: "oklch(0.62 0.24 20)", onClick: () => setSettingsOpen(true) },
-            ...(profile?.is_seller
-              ? [{
-                  icon: <BadgeCheck size={16} />,
-                  label: t("verify.menuLabel", "Certification"),
-                  tint: "oklch(0.68 0.16 80)",
-                  trailing: profile?.is_verified ? "✓" : undefined,
-                  onClick: () => setCertOpen(true),
-                }]
-              : []),
-            { icon: <UserX size={16} />, label: t("block.listTitle"), tint: "oklch(0.55 0.12 30)", onClick: () => setBlockedOpen(true) },
             { icon: <FileText size={16} />, label: t("profile.menu.privacy"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("privacy") },
             { icon: <FileText size={16} />, label: t("profile.menu.terms"), tint: "oklch(0.5 0.06 265)", onClick: () => setLegalOpen("terms") },
-            { icon: <ShieldAlert size={16} />, label: t("legal.community"), tint: "oklch(0.55 0.16 155)", onClick: () => setLegalOpen("community") },
             { icon: <SettingsIcon size={16} />, label: t("profile.menu.settings"), tint: "oklch(0.55 0.02 285)", onClick: () => setSettingsOpen(true) },
             { icon: <HelpCircle size={16} />, label: t("profile.menu.help"), tint: "oklch(0.55 0.16 300)", onClick: () => setHelpOpen(true) },
           ]}
@@ -514,7 +605,7 @@ function ProfileScreenAuthed() {
           <>
             <SectionHeader label={t("profile.sections.admin")} />
             <MenuGroup
-              index={3}
+              index={5}
               items={[
                 { icon: <ShieldCheck size={16} />, label: t("admin.title"), tint: "oklch(0.3 0.06 265)", onClick: () => setAdminOpen(true) },
               ]}
@@ -524,7 +615,7 @@ function ProfileScreenAuthed() {
 
         {/* ============ Danger ============ */}
         <MenuGroup
-          index={4}
+          index={6}
           items={[
             {
               icon: signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />,
@@ -635,6 +726,19 @@ function SectionHeader({ label }: { label: string }) {
     <h2 className="mb-2 mt-6 px-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
       {label}
     </h2>
+  );
+}
+
+function UnreadPill({ count }: { count: number }) {
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <span
+      className="absolute right-1 top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+      style={{ background: "oklch(0.58 0.22 25)", boxShadow: "0 0 0 2px var(--background)" }}
+      aria-hidden
+    >
+      {label}
+    </span>
   );
 }
 

@@ -23,20 +23,37 @@ import { DmInboxContent, OPEN_DM_EVENT } from "@/components/dm/dm-inbox";
 
 type Tab = "notifs" | "messages";
 
-export function ActivityScreen() {
+export function ActivityScreen({
+  embedded = false,
+  initialTab = "notifs",
+}: {
+  /** When true, hide the page title (PushScreen already shows it) and trim tab padding. */
+  embedded?: boolean;
+  initialTab?: Tab;
+}) {
   const { guestMode } = useAuth();
   if (guestMode) return <GuestActivityScreen />;
-  return <ActivityScreenAuthed />;
+  return <ActivityScreenAuthed embedded={embedded} initialTab={initialTab} />;
 }
 
-function ActivityScreenAuthed() {
+function ActivityScreenAuthed({
+  embedded,
+  initialTab,
+}: {
+  embedded: boolean;
+  initialTab: Tab;
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  const [tab, setTab] = useState<Tab>("notifs");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<NotificationRow[]>([]);
   const [ordersOpen, setOrdersOpen] = useState(false);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     if (!user) { setNotifs([]); setLoading(false); return; }
@@ -101,15 +118,22 @@ function ActivityScreenAuthed() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div
-        className="shrink-0 pt-safe"
-        style={{
-          backgroundColor: "color-mix(in oklch, var(--background) 90%, transparent)",
-          backdropFilter: "saturate(180%) blur(18px)",
-          WebkitBackdropFilter: "saturate(180%) blur(18px)",
-        }}
+        className="shrink-0"
+        style={
+          embedded
+            ? undefined
+            : {
+                paddingTop: "env(safe-area-inset-top)",
+                backgroundColor: "color-mix(in oklch, var(--background) 90%, transparent)",
+                backdropFilter: "saturate(180%) blur(18px)",
+                WebkitBackdropFilter: "saturate(180%) blur(18px)",
+              }
+        }
       >
         <div className="px-4 pb-2 pt-2">
-          <h1 className="mb-2 text-[22px] font-bold tracking-tight">{t("activity.title")}</h1>
+          {!embedded && (
+            <h1 className="mb-2 text-[22px] font-bold tracking-tight">{t("activity.title")}</h1>
+          )}
           <Segmented
             value={tab}
             onChange={setTab}
@@ -127,7 +151,9 @@ function ActivityScreenAuthed() {
         style={{
           WebkitOverflowScrolling: "touch",
           overscrollBehavior: "contain",
-          paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
+          paddingBottom: embedded
+            ? "calc(1rem + env(safe-area-inset-bottom))"
+            : "calc(5.5rem + env(safe-area-inset-bottom))",
         }}
       >
         <AnimatePresence mode="wait">

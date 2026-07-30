@@ -25,6 +25,7 @@ import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
 import { useAppActive } from "@/lib/app-state";
 import { TabVisibilityContext } from "@/components/app-shell";
+import { openActivity } from "@/lib/push-router";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -269,9 +270,7 @@ export function HomeScreen() {
               className="h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
               onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "activity" }));
-                } catch {}
+                openActivity({ tab: "notifs" });
               }}
             >
               <Bell size={22} strokeWidth={1.9} />

@@ -130,8 +130,7 @@ export function ExploreIcon({ active = false }: IconProps) {
   return <IconWrap active={active} outline={outline} filled={filled} />;
 }
 
-/* ---------- Activité — wrapped gift box with bow ---------- */
-// Kept the BellIcon export name so existing imports (bottom-tab-bar) keep working.
+/* ---------- Activité — wrapped gift box with bow (kept for overlays) ---------- */
 export function BellIcon({ active = false }: IconProps) {
   // Box body + lid + vertical ribbon + bow loops on top.
   const body = "M4.5 11 H19.5 V19 Q19.5 20 18.5 20 H5.5 Q4.5 20 4.5 19 Z";
@@ -154,6 +153,25 @@ export function BellIcon({ active = false }: IconProps) {
       <path d={lid} fill="var(--accent)" stroke="var(--accent)" />
       <path d={ribbon} stroke="var(--primary-foreground)" strokeWidth={1.4} />
       <path d={bow} fill="var(--accent)" stroke="var(--accent)" />
+    </Svg>
+  );
+  return <IconWrap active={active} outline={outline} filled={filled} />;
+}
+
+/* ---------- Vitrine — play triangle inside a rounded square ---------- */
+export function VitrineIcon({ active = false }: IconProps) {
+  const frame = "M5 4.5 H19 Q20.5 4.5 20.5 6 V18 Q20.5 19.5 19 19.5 H5 Q3.5 19.5 3.5 18 V6 Q3.5 4.5 5 4.5 Z";
+  const play = "M10 8.2 L16.2 12 L10 15.8 Z";
+  const outline = (
+    <Svg>
+      <path d={frame} />
+      <path d={play} />
+    </Svg>
+  );
+  const filled = (
+    <Svg>
+      <path d={frame} fill="var(--accent)" stroke="var(--accent)" />
+      <path d={play} fill="var(--primary-foreground)" stroke="var(--primary-foreground)" strokeWidth={0.8} />
     </Svg>
   );
   return <IconWrap active={active} outline={outline} filled={filled} />;

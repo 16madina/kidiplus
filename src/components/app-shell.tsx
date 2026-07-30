@@ -10,6 +10,7 @@ import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
 import { ActivityScreen } from "@/screens/activity-screen";
+import { VitrineScreen } from "@/screens/vitrine-screen";
 import { ProfileScreen } from "@/screens/profile-screen";
 import {
   LiveViewerProvider,
@@ -19,7 +20,13 @@ import {
   SellerProfileProvider,
   useSellerProfile,
 } from "@/lib/seller-profile-context";
-import { PUSH_OPEN_EVENT, type PushOpenPayload } from "@/lib/push-router";
+import {
+  PUSH_OPEN_EVENT,
+  OPEN_ACTIVITY_EVENT,
+  openActivity,
+  type PushOpenPayload,
+  type OpenActivityPayload,
+} from "@/lib/push-router";
 import { fetchLiveById } from "@/lib/lives-db";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
@@ -43,10 +50,12 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthPromptProvider } from "@/lib/auth-prompt-context";
 import { GuestShell } from "@/components/guest-shell";
 import { useInSystemPip } from "@/lib/pip-session";
+import { PushScreen } from "./push-screen";
+import { useTranslation } from "react-i18next";
 
 
 
-export type TabKey = "home" | "search" | "live" | "activity" | "profile";
+export type TabKey = "home" | "search" | "live" | "vitrine" | "profile";
 
 export function AppShell() {
   const [splashDone, setSplashDone] = useState(() => {
@@ -151,7 +160,10 @@ function AuthGate() {
 
 
 function AppShellInner() {
+  const { t } = useTranslation();
   const [active, setActive] = useState<TabKey>("home");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityTab, setActivityTab] = useState<"notifs" | "messages">("notifs");
   const {
     active: liveStream,
     close: closeLive,
@@ -178,15 +190,49 @@ function AppShellInner() {
   }, []);
 
   // Cross-screen tab navigation (dispatched via CustomEvent "kidi:navigate-tab").
+  // Legacy "activity" tab opens the Activity overlay instead of switching tabs.
   useEffect(() => {
     const onNav = (e: Event) => {
-      const detail = (e as CustomEvent<TabKey>).detail;
-      if (detail && ["home", "search", "live", "activity", "profile"].includes(detail)) {
-        setActive(detail);
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail === "activity") {
+        openActivity({ tab: "notifs" });
+        return;
+      }
+      if (detail && ["home", "search", "live", "vitrine", "profile"].includes(detail)) {
+        setActive(detail as TabKey);
       }
     };
     window.addEventListener("kidi:navigate-tab", onNav);
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
+  }, []);
+
+  // Activity overlay (Profile header, Home bell, push deep-links).
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const p = (e as CustomEvent<OpenActivityPayload>).detail ?? {};
+      setActivityTab(p.tab === "messages" ? "messages" : "notifs");
+      setActivityOpen(true);
+      if (p.thread_id) {
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("kidi:open-dm", { detail: { thread_id: p.thread_id } }),
+            );
+          } catch { /* ignore */ }
+        }, 80);
+      }
+      if (p.order_id) {
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent("kidi:open-order", { detail: { order_id: p.order_id } }),
+            );
+          } catch { /* ignore */ }
+        }, 80);
+      }
+    };
+    window.addEventListener(OPEN_ACTIVITY_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onOpen as EventListener);
   }, []);
 
   // Soft profile URLs (/wallet, /orders, …) stash a section then redirect here.
@@ -288,15 +334,7 @@ function AppShellInner() {
         return;
       }
       if (kind === "chat" && p.thread_id) {
-        // Direct message → activity tab, Messages inbox opens the thread.
-        setActive("activity");
-        setTimeout(() => {
-          try {
-            window.dispatchEvent(
-              new CustomEvent("kidi:open-dm", { detail: { thread_id: p.thread_id } }),
-            );
-          } catch {}
-        }, 80);
+        openActivity({ tab: "messages", thread_id: p.thread_id });
         return;
       }
       if (kind === "live" || kind === "chat") {
@@ -308,15 +346,7 @@ function AppShellInner() {
         return;
       }
       if (kind === "order") {
-        setActive("activity");
-        // Give the tab a tick to mount, then ask activity to open the detail.
-        if (p.order_id) {
-          setTimeout(() => {
-            try {
-              window.dispatchEvent(new CustomEvent("kidi:open-order", { detail: { order_id: p.order_id } }));
-            } catch {}
-          }, 60);
-        }
+        openActivity({ tab: "notifs", order_id: p.order_id });
         return;
       }
       if (kind === "seller") {
@@ -328,8 +358,8 @@ function AppShellInner() {
         setActive("home");
         return;
       }
-      // Fallback → activity tab.
-      setActive("activity");
+      // Fallback → Activity overlay (notifications).
+      openActivity({ tab: "notifs" });
     };
     window.addEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
     return () => window.removeEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
@@ -390,8 +420,8 @@ function AppShellInner() {
       <TabPane visible={active === "live"}>
         <ErrorBoundary boundary="tab_live"><LiveScreen /></ErrorBoundary>
       </TabPane>
-      <TabPane visible={active === "activity"}>
-        <ErrorBoundary boundary="tab_activity"><ActivityScreen /></ErrorBoundary>
+      <TabPane visible={active === "vitrine"}>
+        <ErrorBoundary boundary="tab_vitrine"><VitrineScreen /></ErrorBoundary>
       </TabPane>
       <TabPane visible={active === "profile"}>
         <ErrorBoundary boundary="tab_profile"><ProfileScreen /></ErrorBoundary>
@@ -430,6 +460,14 @@ function AppShellInner() {
         )}
       </AnimatePresence>
 
+      <PushScreen
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        title={t("activity.title")}
+        zIndex={72}
+      >
+        <ActivityScreen embedded initialTab={activityTab} />
+      </PushScreen>
 
       <Toaster
         position="top-center"

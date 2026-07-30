@@ -214,6 +214,7 @@
     "search": "Explorer",
     "live": "Live",
     "activity": "Activité",
+    "vitrine": "Vitrine",
     "profile": "Profil"
   },
   "categories": {
@@ -633,7 +634,12 @@
     "sections": {
       "general": "GÉNÉRAL",
       "account": "COMPTE",
-      "admin": "ADMINISTRATION"
+      "admin": "ADMINISTRATION",
+      "boutique": "Boutique",
+      "finances": "Finances",
+      "purchases": "Achats",
+      "community": "Communauté",
+      "discover": "Découvrir"
     },
     "editAvatar": "Changer la photo",
     "stats": {
@@ -686,6 +692,37 @@
       "notifications": "Aucune notification pour l'instant.",
       "orders": "Aucune commande pour l'instant."
     }
+  },
+  "vitrine": {
+    "title": "Vitrine",
+    "tabs": {
+      "forYou": "Pour toi",
+      "live": "En direct",
+      "soon": "Bientôt"
+    },
+    "yourStory": "Votre story",
+    "storySoon": "Bientôt disponible",
+    "emptyForYou": "Aucun post pour le moment.",
+    "emptyLive": "Aucun live en cours.",
+    "emptySoon": "Aucun live à venir.",
+    "explore": "Explorer",
+    "refresh": "Actualiser",
+    "followShops": "Suivre des boutiques",
+    "cta": {
+      "join": "Rejoindre",
+      "remind": "Me rappeler",
+      "reminded": "Rappel activé",
+      "viewProduct": "Voir le produit",
+      "viewShop": "Voir la boutique"
+    },
+    "like": "J'aime",
+    "comment": "Commenter",
+    "share": "Partager",
+    "shop": "Boutique",
+    "commentsTitle": "Commentaires",
+    "commentsEmpty": "Aucun commentaire pour l'instant.",
+    "commentsStub": "Les commentaires arrivent bientôt.",
+    "authRequired": "Connecte-toi pour continuer"
   },
   "dm": {
     "title": "Message",

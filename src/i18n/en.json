@@ -214,6 +214,7 @@
     "search": "Explore",
     "live": "Live",
     "activity": "Activity",
+    "vitrine": "Showcase",
     "profile": "Profile"
   },
   "categories": {
@@ -633,7 +634,12 @@
     "sections": {
       "general": "GENERAL",
       "account": "ACCOUNT",
-      "admin": "ADMINISTRATION"
+      "admin": "ADMINISTRATION",
+      "boutique": "Shop",
+      "finances": "Finances",
+      "purchases": "Purchases",
+      "community": "Community",
+      "discover": "Discover"
     },
     "editAvatar": "Change photo",
     "stats": {
@@ -686,6 +692,37 @@
       "notifications": "No notifications yet.",
       "orders": "No orders yet."
     }
+  },
+  "vitrine": {
+    "title": "Showcase",
+    "tabs": {
+      "forYou": "For you",
+      "live": "Live now",
+      "soon": "Coming up"
+    },
+    "yourStory": "Your story",
+    "storySoon": "Coming soon",
+    "emptyForYou": "No posts yet.",
+    "emptyLive": "No lives right now.",
+    "emptySoon": "No upcoming lives.",
+    "explore": "Explore",
+    "refresh": "Refresh",
+    "followShops": "Follow shops",
+    "cta": {
+      "join": "Join",
+      "remind": "Remind me",
+      "reminded": "Reminder on",
+      "viewProduct": "View product",
+      "viewShop": "View shop"
+    },
+    "like": "Like",
+    "comment": "Comment",
+    "share": "Share",
+    "shop": "Shop",
+    "commentsTitle": "Comments",
+    "commentsEmpty": "No comments yet.",
+    "commentsStub": "Comments coming soon.",
+    "authRequired": "Sign in to continue"
   },
   "dm": {
     "title": "Message",

@@ -2,7 +2,7 @@
 // Onboarding pitch with soft gold background, CTAs pinned at top, illustration
 // and features below. Feature tiles open the auth flow (no dead ends / 404).
 
-import { UserPlus, LogIn, Wallet, Package, MapPin, Settings, ShieldCheck, TrendingUp, Store } from "lucide-react";
+import { UserPlus, LogIn, Wallet, Package, MapPin, Settings, ShieldCheck, TrendingUp, Store, Bell, MessageCircle } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -30,7 +30,7 @@ export function GuestProfileScreen() {
 
   return (
     <div
-      className="relative flex h-full flex-col overflow-y-auto pt-safe"
+      className="relative flex h-full flex-col overflow-y-auto"
       style={{
         WebkitOverflowScrolling: "touch",
         paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))",
@@ -41,7 +41,27 @@ export function GuestProfileScreen() {
         backgroundColor: "#FBF6EC",
       }}
     >
-      <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-4 text-center">
+      <div className="relative z-10 flex items-center justify-between px-3 pt-safe">
+        <Press
+          aria-label={t("activity.tabs.notifications")}
+          onClick={go}
+          className="h-11 w-11 rounded-full text-[#10162B]"
+        >
+          <Bell size={22} strokeWidth={1.9} />
+        </Press>
+        <span className="text-[15px] font-semibold tracking-tight text-[#10162B]">
+          {t("tabs.profile")}
+        </span>
+        <Press
+          aria-label={t("activity.tabs.messages", { defaultValue: "Messages" })}
+          onClick={go}
+          className="h-11 w-11 rounded-full text-[#10162B]"
+        >
+          <MessageCircle size={22} strokeWidth={1.9} />
+        </Press>
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 pt-2 text-center">
         {/* Brand */}
         <div className="mb-1">
           <Logo size={160} />
