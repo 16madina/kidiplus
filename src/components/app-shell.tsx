@@ -59,14 +59,22 @@ import { useTranslation } from "react-i18next";
 export type TabKey = "home" | "search" | "live" | "vitrine" | "profile";
 
 export function AppShell() {
-  const [splashDone, setSplashDone] = useState(() => {
-    if (typeof window === "undefined") return true;
+  // Always start false so SSR HTML includes the navy SplashScreen overlay.
+  // Reading sessionStorage in the initializer made SSR skip splash (true) while
+  // the client often remounted it — and cold start could flash white AuthGate.
+  const [splashDone, setSplashDone] = useState(false);
+  useEffect(() => {
     try {
-      return window.sessionStorage.getItem("kp:splashShown") === "1";
+      if (window.sessionStorage.getItem("kp:splashShown") === "1") {
+        setSplashDone(true);
+      }
     } catch {
-      return false;
+      /* ignore */
     }
-  });
+    // Run native bootstrap at the root so splash hide / deep links work even
+    // when AuthGate is still loading or the guest shell is shown.
+    void bootstrapNative();
+  }, []);
   const handleSplashDone = () => {
     try {
       window.sessionStorage.setItem("kp:splashShown", "1");
@@ -108,10 +116,10 @@ function AuthGate() {
   if (loading) {
     return (
       <div
-        className="mx-auto flex h-[100dvh] w-full max-w-xl items-center justify-center bg-background"
-        style={{ isolation: "isolate" }}
+        className="mx-auto flex h-[100dvh] w-full max-w-xl items-center justify-center"
+        style={{ isolation: "isolate", background: "#10162B" }}
       >
-        <Loader2 className="animate-spin text-muted-foreground" size={22} />
+        <Loader2 className="animate-spin text-white/50" size={22} />
       </div>
     );
   }
@@ -182,10 +190,9 @@ function AppShellInner() {
   const keyboardOpen = useKeyboardOpen();
   const expandShell = immersive || liveFullScreen || vitrineFullScreen;
 
-  // Native bootstrap (status bar, splash, keyboard, theme sync).
+  // Opportunistic cleanup — cancel overdue unpaid auction orders on app load.
+  // Native bootstrap runs once from AppShell (root) so it isn't gated on auth.
   useEffect(() => {
-    void bootstrapNative();
-    // Opportunistic cleanup — cancel overdue unpaid auction orders on app load.
     void import("@/lib/lives-db").then((m) => {
       m.expireOverdueOrders().catch(() => 0);
       m.cancelStaleScheduledLives().catch(() => 0);

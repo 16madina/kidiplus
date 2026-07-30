@@ -50,10 +50,11 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       // Keep the native navy splash until React calls hideNativeSplash()
-      // when the intro video's first frame paints. Auto-hide is a long
-      // safety net only (never leave the user stuck forever).
-      launchShowDuration: 12_000,
-      launchAutoHide: true,
+      // when the intro video's first frame paints. Do not auto-hide early —
+      // that revealed a white AuthGate on slow iOS cold starts. bootstrapNative
+      // still has a 10s ceiling hide so users are never stuck forever.
+      launchShowDuration: 0,
+      launchAutoHide: false,
       launchFadeOutDuration: 250,
       backgroundColor: "#10162B", // KiDi+ deep navy
       androidSplashResourceName: "splash",

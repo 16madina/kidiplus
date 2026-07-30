@@ -143,16 +143,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // 2) Hydrate current session.
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        void fetchProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
-    return () => sub.subscription.unsubscribe();
+    // 2) Hydrate current session. Cap wait so a hung getSession (cold-start
+    // WKWebView / storage lock) never leaves AuthGate on a white spinner forever.
+    let finished = false;
+    const finishLoading = () => {
+      if (finished) return;
+      finished = true;
+      setLoading(false);
+    };
+    const bootTimer =
+      typeof window !== "undefined"
+        ? window.setTimeout(finishLoading, 5_000)
+        : undefined;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        if (data.session?.user) {
+          void fetchProfile(data.session.user.id).finally(finishLoading);
+        } else {
+          finishLoading();
+        }
+      })
+      .catch(() => finishLoading())
+      .finally(() => {
+        if (bootTimer !== undefined) window.clearTimeout(bootTimer);
+      });
+    return () => {
+      sub.subscription.unsubscribe();
+      if (bootTimer !== undefined) window.clearTimeout(bootTimer);
+    };
   }, [fetchProfile]);
 
   const signUp = useCallback<AuthCtx["signUp"]>(
