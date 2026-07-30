@@ -391,3 +391,73 @@ export async function addVitrineComment(
 export function vitrinePostShareUrl(postId: string): string {
   return `https://kidiplus.com/?vitrine=${encodeURIComponent(postId)}`;
 }
+
+export function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) || url.includes("video/");
+}
+
+/** Upload an image/video into the public vitrine-media bucket. Returns public URL. */
+export async function uploadVitrineMedia(file: File): Promise<string | null> {
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid) return null;
+  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("vitrine-media").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  if (error) return null;
+  const { data } = supabase.storage.from("vitrine-media").getPublicUrl(path);
+  return data.publicUrl || null;
+}
+
+export async function createVitrinePost(input: {
+  mediaUrls: string[];
+  mediaType: VitrineMediaType;
+  caption?: string;
+  productId?: string | null;
+  liveId?: string | null;
+}): Promise<VitrinePost | null> {
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid || input.mediaUrls.length === 0) return null;
+  try {
+    const { data, error } = await sb
+      .from("vitrine_posts")
+      .insert({
+        user_id: uid,
+        media_type: input.mediaType,
+        media_urls: input.mediaUrls,
+        caption: input.caption?.trim() || null,
+        product_id: input.productId ?? null,
+        live_id: input.liveId ?? null,
+        active: true,
+      })
+      .select(
+        `
+        id, user_id, media_type, media_urls, caption, product_id, live_id,
+        like_count, comment_count, created_at,
+        seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
+        `,
+      )
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      media_type: (data.media_type ?? "image") as VitrineMediaType,
+      media_urls: normalizeMediaUrls(data.media_urls),
+      caption: data.caption,
+      product_id: data.product_id,
+      live_id: data.live_id,
+      like_count: Number(data.like_count ?? 0),
+      comment_count: Number(data.comment_count ?? 0),
+      created_at: data.created_at,
+      liked_by_me: false,
+      seller: data.seller ?? null,
+      live_status: null,
+    };
+  } catch {
+    return null;
+  }
+}

@@ -32,6 +32,11 @@ export function VitrineLiveCard({
   const { t } = useTranslation();
   const { openList } = useLiveViewer();
 
+  const join = () => {
+    haptic.medium();
+    openList(list, index);
+  };
+
   return (
     <div className="relative h-full w-full bg-black">
       <img
@@ -39,6 +44,7 @@ export function VitrineLiveCard({
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         draggable={false}
+        style={{ pointerEvents: "none" }}
       />
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0"
@@ -47,7 +53,7 @@ export function VitrineLiveCard({
           backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
         }}
       />
-      <div className="absolute left-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-10 flex items-center gap-2">
+      <div className="absolute left-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-10 flex items-center gap-2">
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
           style={{ background: "oklch(0.55 0.22 25)" }}
@@ -60,18 +66,15 @@ export function VitrineLiveCard({
         </span>
       </div>
       <div
-        className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+        className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
         <p className="text-[15px] font-bold text-white">{stream.seller}</p>
         <p className="mt-0.5 line-clamp-2 text-[13px] text-white/90">{stream.title}</p>
         <Press
-          onClick={() => {
-            haptic.medium();
-            openList(list, index);
-          }}
-          className="mt-3 !min-h-10 flex h-10 items-center justify-center gap-2 rounded-full text-[14px] font-bold text-[#10162B]"
+          onClick={join}
+          className="mt-3 !min-h-11 flex h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-bold text-[#10162B]"
           style={{ background: GOLD }}
         >
           <Radio size={16} />
@@ -164,7 +167,7 @@ export function VitrineSoonCard({ live }: { live: ScheduledLiveWithSeller }) {
           backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
         }}
       />
-      <div className="absolute left-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-10">
+      <div className="absolute left-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-10">
         <span
           className="rounded-full px-2 py-0.5 text-[11px] font-bold text-[#10162B]"
           style={{ background: GOLD }}
@@ -173,7 +176,7 @@ export function VitrineSoonCard({ live }: { live: ScheduledLiveWithSeller }) {
         </span>
       </div>
       <div
-        className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+        className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >

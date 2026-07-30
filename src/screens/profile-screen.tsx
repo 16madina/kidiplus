@@ -317,38 +317,6 @@ function ProfileScreenAuthed() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* Top bar: bell + messages */}
-      <div
-        className="relative z-20 flex shrink-0 items-center justify-between px-3 pt-safe"
-        style={{
-          backgroundColor: "color-mix(in oklch, var(--background) 92%, transparent)",
-          backdropFilter: "saturate(180%) blur(16px)",
-          WebkitBackdropFilter: "saturate(180%) blur(16px)",
-        }}
-      >
-        <Press
-          aria-label={t("activity.tabs.notifications")}
-          onClick={goNotifs}
-          className="relative h-11 w-11 rounded-full"
-          style={{ color: "var(--foreground)" }}
-        >
-          <Bell size={22} strokeWidth={1.9} />
-          {notifUnread > 0 && <UnreadPill count={notifUnread} />}
-        </Press>
-        <span className="text-[15px] font-semibold tracking-tight text-foreground">
-          {t("tabs.profile")}
-        </span>
-        <Press
-          aria-label={t("activity.tabs.messages", { defaultValue: "Messages" })}
-          onClick={goMessages}
-          className="relative h-11 w-11 rounded-full"
-          style={{ color: "var(--foreground)" }}
-        >
-          <MessageCircle size={22} strokeWidth={1.9} />
-          {dmUnread > 0 && <UnreadPill count={dmUnread} />}
-        </Press>
-      </div>
-
       <div
         className="min-h-0 flex-1 overflow-y-auto"
         style={{
@@ -357,10 +325,28 @@ function ProfileScreenAuthed() {
           paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))",
         }}
       >
-        {/* ============ HERO CARD ============ */}
-        <div className="relative mx-4 mt-14">
-          {/* Avatar overlapping the card top edge — tap to edit */}
-          <div className="absolute left-1/2 -top-11 z-10 -translate-x-1/2">
+        {/* ============ HERO (full-bleed navy — bell left, messages right) ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: EASE_IOS }}
+          className="relative px-4 pb-5 pt-safe text-white"
+          style={{
+            background: `linear-gradient(155deg, ${NAVY_TOP} 0%, ${NAVY_BOTTOM} 100%)`,
+            boxShadow: "0 12px 30px -12px rgba(16,22,43,0.45)",
+          }}
+        >
+          {/* Top row: Notifications | avatar | Messages — same placement as mockup */}
+          <div className="relative flex items-start justify-between pt-2">
+            <Press
+              aria-label={t("activity.tabs.notifications")}
+              onClick={goNotifs}
+              className="relative z-10 mt-1 h-11 w-11 rounded-full text-white"
+            >
+              <Bell size={24} strokeWidth={1.9} />
+              {notifUnread > 0 && <UnreadDot />}
+            </Press>
+
             <Press
               type="button"
               onClick={() => { haptic.light(); setEditOpen(true); }}
@@ -401,104 +387,98 @@ function ProfileScreenAuthed() {
                 <Camera size={13} />
               </span>
             </Press>
+
+            <Press
+              aria-label={t("activity.tabs.messages", { defaultValue: "Messages" })}
+              onClick={goMessages}
+              className="relative z-10 mt-1 h-11 w-11 rounded-full text-white"
+            >
+              <MessageCircle size={24} strokeWidth={1.9} />
+              {dmUnread > 0 && <UnreadDot />}
+            </Press>
           </div>
 
+          {/* Identity */}
+          <div className="mt-3 text-center">
+            <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
+              {profile?.display_name ?? "…"}
+              <VerifiedBadge verified={profile?.is_verified} size={16} />
+              <ReferredBadge referred={profile?.is_referred} size={13} />
+              {profile?.is_seller && (
+                <span
+                  aria-hidden
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: GOLD, boxShadow: `0 0 0 3px rgba(232,185,59,0.18)` }}
+                />
+              )}
+            </h1>
+            <p className="mt-0.5 text-[13px] text-white/70">
+              @{profile?.handle ?? "…"}
+            </p>
+            {profile?.email && (
+              <p className="text-[12px] text-white/50">{profile.email}</p>
+            )}
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: EASE_IOS }}
-            className="rounded-3xl px-5 pb-4 pt-16 text-white"
+          {/* Inset panel: stats + quick actions */}
+          <div
+            className="mt-4 rounded-2xl px-3 py-3"
             style={{
-              background: `linear-gradient(155deg, ${NAVY_TOP} 0%, ${NAVY_BOTTOM} 100%)`,
-              boxShadow:
-                "0 12px 30px -12px rgba(16,22,43,0.45), inset 0 1px 0 rgba(255,255,255,0.04)",
+              background: NAVY_INSET,
+              border: "1px solid rgba(255,255,255,0.06)",
             }}
           >
-            {/* Identity */}
-            <div className="text-center">
-              <h1 className="flex items-center justify-center gap-1.5 text-[19px] font-bold tracking-tight text-white">
-                {profile?.display_name ?? "…"}
-                <VerifiedBadge verified={profile?.is_verified} size={16} />
-                <ReferredBadge referred={profile?.is_referred} size={13} />
-                {profile?.is_seller && (
-                  <span
-                    aria-hidden
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ background: GOLD, boxShadow: `0 0 0 3px rgba(232,185,59,0.18)` }}
-                  />
-                )}
-              </h1>
-              <p className="mt-0.5 text-[13px] text-white/70">
-                @{profile?.handle ?? "…"}
-              </p>
-              {profile?.email && (
-                <p className="text-[12px] text-white/50">{profile.email}</p>
-              )}
+            <div className="grid grid-cols-3">
+              <HeroStat label={t("profile.stats.followers")} value={String(followers)} />
+              <HeroStatDivider />
+              <HeroStat label={t("profile.stats.sales")} value={salesCount === null ? "—" : String(salesCount)} />
+              <HeroStatDivider />
+              <HeroStat label={t("profile.stats.following")} value={String(following)} />
             </div>
 
-            {/* Inset panel: stats + quick actions */}
-            <div
-              className="mt-4 rounded-2xl px-3 py-3"
-              style={{
-                background: NAVY_INSET,
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              {/* Stats */}
-              <div className="grid grid-cols-3">
-                <HeroStat label={t("profile.stats.followers")} value={String(followers)} />
-                <HeroStatDivider />
-                <HeroStat label={t("profile.stats.sales")} value={salesCount === null ? "—" : String(salesCount)} />
-                <HeroStatDivider />
-                <HeroStat label={t("profile.stats.following")} value={String(following)} />
-              </div>
+            <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
 
-              <div className="my-3 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-
-              {/* Quick actions */}
-              <div className="grid grid-cols-4 gap-1">
-                {profile?.is_seller ? (
-                  <QuickAction
-                    icon={<Store size={18} />}
-                    label={t("profile.quick.myShop")}
-                    onClick={() => { haptic.light(); setShopOpen(true); }}
-                  />
-                ) : (
-                  <QuickAction
-                    icon={<Plus size={18} />}
-                    label={t("profile.quick.recharge")}
-                    onClick={() => { haptic.light(); setWalletOpen(true); }}
-                  />
-                )}
+            <div className="grid grid-cols-4 gap-1">
+              {profile?.is_seller ? (
                 <QuickAction
-                  icon={<WalletIcon size={18} />}
-                  label={t("profile.quick.wallet")}
-                  caption={walletCaption}
+                  icon={<Store size={18} />}
+                  label={t("profile.quick.myShop")}
+                  onClick={() => { haptic.light(); setShopOpen(true); }}
+                />
+              ) : (
+                <QuickAction
+                  icon={<Plus size={18} />}
+                  label={t("profile.quick.recharge")}
                   onClick={() => { haptic.light(); setWalletOpen(true); }}
                 />
-                {profile?.is_seller ? (
-                  <QuickAction
-                    icon={<TrendingUp size={18} />}
-                    label={t("profile.quick.earnings")}
-                    onClick={() => { haptic.light(); setSalesOpen(true); }}
-                  />
-                ) : (
-                  <QuickAction
-                    icon={<Store size={18} />}
-                    label={t("profile.quick.becomeSeller")}
-                    onClick={handleBecomeSeller}
-                  />
-                )}
+              )}
+              <QuickAction
+                icon={<WalletIcon size={18} />}
+                label={t("profile.quick.wallet")}
+                caption={walletCaption}
+                onClick={() => { haptic.light(); setWalletOpen(true); }}
+              />
+              {profile?.is_seller ? (
                 <QuickAction
-                  icon={<ShoppingBag size={18} />}
-                  label={t("profile.quick.orders")}
-                  onClick={() => { haptic.light(); setOrdersOpen(true); }}
+                  icon={<TrendingUp size={18} />}
+                  label={t("profile.quick.earnings")}
+                  onClick={() => { haptic.light(); setSalesOpen(true); }}
                 />
-              </div>
+              ) : (
+                <QuickAction
+                  icon={<Store size={18} />}
+                  label={t("profile.quick.becomeSeller")}
+                  onClick={handleBecomeSeller}
+                />
+              )}
+              <QuickAction
+                icon={<ShoppingBag size={18} />}
+                label={t("profile.quick.orders")}
+                onClick={() => { haptic.light(); setOrdersOpen(true); }}
+              />
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
 
         {/* ============ BOUTIQUE ============ */}
         {(profile?.is_seller) && (
@@ -729,16 +709,17 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-function UnreadPill({ count }: { count: number }) {
-  const label = count > 99 ? "99+" : String(count);
+/** Gold unread marker matching the profile mockup (dot on bell / messages). */
+function UnreadDot() {
   return (
     <span
-      className="absolute right-1 top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
-      style={{ background: "oklch(0.58 0.22 25)", boxShadow: "0 0 0 2px var(--background)" }}
+      className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full"
+      style={{
+        background: GOLD,
+        boxShadow: "0 0 0 2px rgba(16,22,43,0.9)",
+      }}
       aria-hidden
-    >
-      {label}
-    </span>
+    />
   );
 }
 

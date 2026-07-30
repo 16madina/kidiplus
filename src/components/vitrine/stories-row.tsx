@@ -11,22 +11,36 @@ const NAVY = "#10162B";
 export function StoriesRow({
   stories,
   collapsed,
+  tone = "light",
+  onCreate,
 }: {
   stories: VitrineStory[];
   collapsed?: boolean;
+  /** Dark = overlay on fullscreen Vitrine feed. */
+  tone?: "light" | "dark";
+  /** Create a Vitrine post (photo/video). Falls back to stub toast. */
+  onCreate?: () => void;
 }) {
   const { t } = useTranslation();
   if (collapsed) return null;
 
+  const labelColor = tone === "dark" ? "rgba(255,255,255,0.85)" : "var(--foreground)";
+  const mutedColor = tone === "dark" ? "rgba(255,255,255,0.55)" : "var(--muted-foreground)";
+  const ringIdle = tone === "dark" ? "rgba(255,255,255,0.35)" : "var(--border)";
+  const avatarBorder = tone === "dark" ? "rgba(0,0,0,0.55)" : "var(--background)";
+
   const onYourStory = () => {
     haptic.light();
-    toast(t("vitrine.storySoon"));
+    if (onCreate) onCreate();
+    else toast(t("vitrine.storySoon"));
   };
 
   return (
     <div
       className="flex gap-3 overflow-x-auto px-4 py-2"
-      style={{ WebkitOverflowScrolling: "touch" }}
+      style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
     >
       <button
         type="button"
@@ -44,7 +58,10 @@ export function StoriesRow({
             <Plus size={22} />
           </span>
         </span>
-        <span className="w-full truncate text-center text-[10px] font-medium text-muted-foreground">
+        <span
+          className="w-full truncate text-center text-[10px] font-medium"
+          style={{ color: mutedColor }}
+        >
           {t("vitrine.yourStory")}
         </span>
       </button>
@@ -68,12 +85,12 @@ export function StoriesRow({
               style={{
                 background: s.unread
                   ? `linear-gradient(135deg, ${GOLD}, #C8A24B)`
-                  : "var(--border)",
+                  : ringIdle,
               }}
             >
               <span
                 className="block h-full w-full overflow-hidden rounded-full"
-                style={{ border: "2px solid var(--background)" }}
+                style={{ border: `2px solid ${avatarBorder}` }}
               >
                 <img
                   src={s.seller?.avatar_url || s.media_url}
@@ -83,7 +100,10 @@ export function StoriesRow({
                 />
               </span>
             </span>
-            <span className="w-full truncate text-center text-[10px] font-medium text-foreground">
+            <span
+              className="w-full truncate text-center text-[10px] font-medium"
+              style={{ color: labelColor }}
+            >
               {name}
             </span>
           </Press>

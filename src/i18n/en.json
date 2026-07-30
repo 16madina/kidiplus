@@ -701,6 +701,7 @@
       "soon": "Coming up"
     },
     "yourStory": "Your story",
+    "pullStories": "Pull down for stories",
     "storySoon": "Coming soon",
     "emptyForYou": "No posts yet.",
     "emptyLive": "No lives right now.",
@@ -722,7 +723,18 @@
     "commentsTitle": "Comments",
     "commentsEmpty": "No comments yet.",
     "commentsStub": "Comments coming soon.",
-    "authRequired": "Sign in to continue"
+    "commentPlaceholder": "Add a comment…",
+    "commentSent": "Comment posted",
+    "authRequired": "Sign in to continue",
+    "linkCopied": "Link copied",
+    "createTitle": "New post",
+    "pickMedia": "Add a photo or video",
+    "captionPlaceholder": "Caption…",
+    "publish": "Publish",
+    "published": "Post is live",
+    "uploadFail": "Upload failed. Try again.",
+    "publishFail": "Could not publish.",
+    "badMedia": "Pick a photo or video."
   },
   "dm": {
     "title": "Message",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Heart,
   MessageCircle,
@@ -46,9 +46,16 @@ export function VitrinePostCard({
   const { open: openLive } = useLiveViewer();
   const [liked, setLiked] = useState(!!post.liked_by_me);
   const [likes, setLikes] = useState(post.like_count);
+  const [comments, setComments] = useState(post.comment_count);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState(false);
+
+  useEffect(() => {
+    setLiked(!!post.liked_by_me);
+    setLikes(post.like_count);
+    setComments(post.comment_count);
+  }, [post.id, post.liked_by_me, post.like_count, post.comment_count]);
 
   const requireAuth = () => {
     if (guestMode || !user) {
@@ -61,16 +68,19 @@ export function VitrinePostCard({
   const onLike = async () => {
     if (!requireAuth()) return;
     haptic.light();
-    const next = !liked;
-    setLiked(next);
-    setLikes((n) => Math.max(0, n + (next ? 1 : -1)));
-    const res = await toggleVitrineLike(post.id, liked);
+    const prevLiked = liked;
+    const prevLikes = likes;
+    const nextLiked = !prevLiked;
+    const nextLikes = Math.max(0, prevLikes + (nextLiked ? 1 : -1));
+    setLiked(nextLiked);
+    setLikes(nextLikes);
+    const res = await toggleVitrineLike(post.id, prevLiked);
     if (!res.ok) {
-      setLiked(liked);
-      setLikes(post.like_count);
-    } else {
-      onUpdated?.({ ...post, liked_by_me: res.liked, like_count: likes + (res.liked ? 1 : -1) });
+      setLiked(prevLiked);
+      setLikes(prevLikes);
+      return;
     }
+    onUpdated?.({ ...post, liked_by_me: res.liked, like_count: nextLikes });
   };
 
   const onShare = async () => {
@@ -82,7 +92,7 @@ export function VitrinePostCard({
     } catch {
       try {
         await navigator.clipboard.writeText(url);
-        toast.success("Lien copié");
+        toast.success(t("vitrine.linkCopied", { defaultValue: "Lien copié" }));
       } catch { /* ignore */ }
     }
   };
@@ -121,10 +131,6 @@ export function VitrinePostCard({
       }
       return;
     }
-    if (post.product_id) {
-      onShop();
-      return;
-    }
     onShop();
   };
 
@@ -155,7 +161,6 @@ export function VitrinePostCard({
         }}
       />
 
-      {/* Right rail */}
       <div
         className="pointer-events-auto absolute bottom-[22%] right-2 z-[30] flex flex-col items-center gap-4"
         onPointerDown={(e) => e.stopPropagation()}
@@ -185,7 +190,7 @@ export function VitrinePostCard({
         />
         <RailBtn
           icon={<MessageCircle size={22} color="#fff" />}
-          label={String(post.comment_count)}
+          label={String(comments)}
           onClick={() => {
             haptic.light();
             setCommentsOpen(true);
@@ -206,9 +211,8 @@ export function VitrinePostCard({
         />
       </div>
 
-      {/* Bottom meta + CTA */}
       <div
-        className="pointer-events-auto absolute inset-x-0 bottom-0 z-[30] px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+        className="pointer-events-auto absolute inset-x-0 bottom-0 z-[30] px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
@@ -245,6 +249,11 @@ export function VitrinePostCard({
         open={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         postId={post.id}
+        onCommentAdded={() => {
+          const next = comments + 1;
+          setComments(next);
+          onUpdated?.({ ...post, comment_count: next, liked_by_me: liked, like_count: likes });
+        }}
       />
     </div>
   );

@@ -7,11 +7,14 @@ export function VitrineVerticalPager({
   count,
   index,
   onIndexChange,
+  onPullReveal,
   children,
 }: {
   count: number;
   index: number;
   onIndexChange: (i: number) => void;
+  /** Pull down past threshold while on the first item → reveal stories chrome. */
+  onPullReveal?: () => void;
   children: (i: number) => React.ReactNode;
 }) {
   const dragY = useMotionValue(0);
@@ -20,26 +23,49 @@ export function VitrineVerticalPager({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      {/* Content lives inside the drag layer so CTAs/rail receive taps;
-          interactive controls call stopPropagation to avoid accidental swipes. */}
       <motion.div
         className="absolute inset-0"
         style={{
-          touchAction: "none",
+          touchAction: "pan-y",
           y: dragY,
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
         drag="y"
-        dragElastic={{ top: hasNext ? 0.45 : 0.1, bottom: hasPrev ? 0.45 : 0.1 }}
+        dragDirectionLock
+        dragElastic={{ top: hasNext ? 0.4 : 0.08, bottom: hasPrev || !!onPullReveal ? 0.55 : 0.08 }}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragMomentum={false}
-        onDrag={(_, info) => dragY.set(info.offset.y)}
+        onDrag={(_, info) => {
+          // Ignore sideways drift so the feed feels locked vertically.
+          if (Math.abs(info.offset.x) > Math.abs(info.offset.y) * 1.15) return;
+          dragY.set(info.offset.y);
+        }}
         onDragEnd={(_, info) => {
-          const strong =
-            Math.abs(info.offset.y) > 80 || Math.abs(info.velocity.y) > 450;
+          const absY = Math.abs(info.offset.y);
+          const absX = Math.abs(info.offset.x);
+          // Treat mostly-horizontal gestures as accidental — snap back.
+          if (absX > absY * 1.1) {
+            animate(dragY, 0, { duration: 0.2, ease: EASE_IOS });
+            return;
+          }
+          const strong = absY > 80 || Math.abs(info.velocity.y) > 450;
           const up = info.offset.y < 0;
+          const down = info.offset.y > 0;
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
+
+          // Pull down on first item → reveal stories (TikTok-style).
+          if (down && strong && !hasPrev) {
+            dragY.set(0);
+            if (onPullReveal) {
+              haptic.light();
+              onPullReveal();
+            } else {
+              animate(dragY, 0, { duration: 0.2, ease: EASE_IOS });
+            }
+            return;
+          }
+
           if (up && strong && hasNext) {
             haptic.selection();
             void animate(dragY, -h, { duration: 0.22, ease: EASE_IOS }).then(() => {
@@ -65,7 +91,43 @@ export function VitrineVerticalPager({
   );
 }
 
-/** Horizontal photo carousel — stops propagation so SwipeableTabs don't switch. */
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+}
+
+function MediaSlide({
+  url,
+  className,
+}: {
+  url: string;
+  className?: string;
+}) {
+  if (isVideoUrl(url)) {
+    return (
+      <video
+        src={url}
+        className={className ?? "h-full w-full object-cover"}
+        autoPlay
+        muted
+        loop
+        playsInline
+        controls={false}
+        style={{ pointerEvents: "none", touchAction: "none" }}
+      />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className={className ?? "h-full w-full object-cover"}
+      draggable={false}
+      style={{ pointerEvents: "none", touchAction: "none" }}
+    />
+  );
+}
+
+/** Horizontal photo/video carousel — only for multi-media posts; isolated from tab swipes. */
 export function MediaCarousel({
   urls,
   className,
@@ -78,14 +140,7 @@ export function MediaCarousel({
     return <div className={className} style={{ background: "#1C2440" }} />;
   }
   if (urls.length === 1) {
-    return (
-      <img
-        src={urls[0]}
-        alt=""
-        className={className ?? "h-full w-full object-cover"}
-        draggable={false}
-      />
-    );
+    return <MediaSlide url={urls[0]!} className={className} />;
   }
   return (
     <div
@@ -95,7 +150,11 @@ export function MediaCarousel({
     >
       <div
         className="flex h-full w-full snap-x snap-mandatory overflow-x-auto"
-        style={{ WebkitOverflowScrolling: "touch", scrollSnapType: "x mandatory" }}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          scrollSnapType: "x mandatory",
+          touchAction: "pan-x",
+        }}
         onScroll={(e) => {
           const el = e.currentTarget;
           const w = el.clientWidth || 1;
@@ -103,16 +162,12 @@ export function MediaCarousel({
         }}
       >
         {urls.map((u) => (
-          <img
-            key={u}
-            src={u}
-            alt=""
-            className="h-full w-full shrink-0 snap-center object-cover"
-            draggable={false}
-          />
+          <div key={u} className="h-full w-full shrink-0 snap-center">
+            <MediaSlide url={u} className="h-full w-full object-cover" />
+          </div>
         ))}
       </div>
-      <div className="pointer-events-none absolute bottom-24 left-0 right-0 z-10 flex justify-center gap-1">
+      <div className="pointer-events-none absolute bottom-28 left-0 right-0 z-10 flex justify-center gap-1">
         {urls.map((_, idx) => (
           <span
             key={idx}

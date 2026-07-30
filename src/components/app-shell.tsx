@@ -174,10 +174,12 @@ function AppShellInner() {
   const liveFullScreen = !!liveStream && presentation === "full";
   const liveMinimized = !!liveStream && presentation === "minimized";
   const inSystemPip = useInSystemPip();
-  const hideTabs = liveFullScreen || inSystemPip;
+  const vitrineFullScreen = active === "vitrine";
+  const hideTabs = liveFullScreen || inSystemPip || vitrineFullScreen;
   const { activeSeller, close: closeSeller, open: openSeller } = useSellerProfile();
   const { immersive } = useImmersive();
   const keyboardOpen = useKeyboardOpen();
+  const expandShell = immersive || liveFullScreen || vitrineFullScreen;
 
   // Native bootstrap (status bar, splash, keyboard, theme sync).
   useEffect(() => {
@@ -354,6 +356,21 @@ function AppShellInner() {
         setActive("profile");
         return;
       }
+      if (kind === "vitrine") {
+        setActive("vitrine");
+        if (p.post_id) {
+          setTimeout(() => {
+            try {
+              window.dispatchEvent(
+                new CustomEvent("kidi:open-vitrine-post", {
+                  detail: { post_id: p.post_id },
+                }),
+              );
+            } catch { /* ignore */ }
+          }, 80);
+        }
+        return;
+      }
       if (kind === "home" || kind === "welcome") {
         setActive("home");
         return;
@@ -404,7 +421,7 @@ function AppShellInner() {
   return (
     <div
       className={
-        immersive || liveFullScreen
+        expandShell
           ? "relative mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-background"
           : "relative mx-auto flex h-[100dvh] w-full max-w-xl flex-col overflow-hidden bg-background"
       }

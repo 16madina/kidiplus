@@ -9,6 +9,7 @@ export type PushOpenPayload = {
   seller_handle?: string;
   seller_id?: string;
   thread_id?: string;
+  post_id?: string;
   // Free-form extras
   [key: string]: unknown;
 };
@@ -90,6 +91,7 @@ export function payloadFromNotificationRow(row: {
     else if (row.kind === "moderator_promoted") kind = "live";
     else if (row.kind === "live_host_absent") kind = "resume_host_live";
     else if (row.kind === "new_follower") kind = "seller";
+    else if (row.kind === "vitrine_like" || row.kind === "vitrine_comment") kind = "vitrine";
     else if (/^chat_/.test(row.kind)) kind = "chat";
     else kind = "notif";
   }
@@ -100,5 +102,6 @@ export function payloadFromNotificationRow(row: {
     seller_handle: data.seller_handle as string | undefined,
     seller_id: data.seller_id as string | undefined,
     thread_id: data.thread_id as string | undefined,
+    post_id: data.post_id as string | undefined,
   };
 }

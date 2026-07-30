@@ -701,6 +701,7 @@
       "soon": "Bientôt"
     },
     "yourStory": "Votre story",
+    "pullStories": "Tire vers le bas pour les stories",
     "storySoon": "Bientôt disponible",
     "emptyForYou": "Aucun post pour le moment.",
     "emptyLive": "Aucun live en cours.",
@@ -722,7 +723,18 @@
     "commentsTitle": "Commentaires",
     "commentsEmpty": "Aucun commentaire pour l'instant.",
     "commentsStub": "Les commentaires arrivent bientôt.",
-    "authRequired": "Connecte-toi pour continuer"
+    "commentPlaceholder": "Ajouter un commentaire…",
+    "commentSent": "Commentaire publié",
+    "authRequired": "Connecte-toi pour continuer",
+    "linkCopied": "Lien copié",
+    "createTitle": "Nouveau post",
+    "pickMedia": "Ajouter une photo ou une vidéo",
+    "captionPlaceholder": "Légende…",
+    "publish": "Publier",
+    "published": "Publication en ligne",
+    "uploadFail": "Échec de l'envoi. Réessaie.",
+    "publishFail": "Impossible de publier.",
+    "badMedia": "Choisis une photo ou une vidéo."
   },
   "dm": {
     "title": "Message",
