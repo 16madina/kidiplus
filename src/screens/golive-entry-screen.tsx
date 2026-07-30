@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
+import { PublishCtaButton } from "@/components/vitrine/publish-hub";
 import { useBroadcast } from "@/lib/broadcast-context";
 import { useAuth } from "@/lib/auth-context";
 import { EASE_IOS, listContainer, listItem } from "@/lib/motion";
@@ -337,6 +338,14 @@ export function GoLiveEntryScreen({
             onSchedule();
           }}
         />
+      </div>
+
+      {/* Publish content (stories, posts, live announce) */}
+      <div className="px-4 pt-5">
+        <h2 className="mb-2 px-1 text-[15px] font-bold text-white">
+          {t("publish.sectionTitle", { defaultValue: "Publier du contenu" })}
+        </h2>
+        <PublishCtaButton />
       </div>
 
       {/* Scheduled list */}

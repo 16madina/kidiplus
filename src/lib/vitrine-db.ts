@@ -412,6 +412,39 @@ export async function uploadVitrineMedia(file: File): Promise<string | null> {
   return data.publicUrl || null;
 }
 
+export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory | null> {
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid || !mediaUrl) return null;
+  try {
+    const { data, error } = await sb
+      .from("vitrine_stories")
+      .insert({
+        user_id: uid,
+        media_url: mediaUrl,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .select(
+        `
+        id, user_id, media_url, expires_at, created_at,
+        seller:profiles!vitrine_stories_user_id_fkey(display_name, handle, avatar_url)
+        `,
+      )
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      media_url: data.media_url,
+      expires_at: data.expires_at,
+      created_at: data.created_at,
+      unread: true,
+      seller: data.seller ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function createVitrinePost(input: {
   mediaUrls: string[];
   mediaType: VitrineMediaType;
@@ -420,7 +453,9 @@ export async function createVitrinePost(input: {
   liveId?: string | null;
 }): Promise<VitrinePost | null> {
   const uid = (await sb.auth.getUser()).data.user?.id;
-  if (!uid || input.mediaUrls.length === 0) return null;
+  // Live announcements may ship with cover URL only, or caption + live_id.
+  if (!uid) return null;
+  if (input.mediaUrls.length === 0 && !input.liveId) return null;
   try {
     const { data, error } = await sb
       .from("vitrine_posts")

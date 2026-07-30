@@ -48,6 +48,7 @@ import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 import { ModerationBanGate } from "@/components/moderation/moderation-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthPromptProvider } from "@/lib/auth-prompt-context";
+import { PublishHub } from "@/components/vitrine/publish-hub";
 import { GuestShell } from "@/components/guest-shell";
 import { useInSystemPip } from "@/lib/pip-session";
 import { PushScreen } from "./push-screen";
@@ -485,6 +486,8 @@ function AppShellInner() {
       >
         <ActivityScreen embedded initialTab={activityTab} />
       </PushScreen>
+
+      <PublishHub />
 
       <Toaster
         position="top-center"

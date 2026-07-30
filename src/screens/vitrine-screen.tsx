@@ -7,8 +7,8 @@ import { StoriesRow } from "@/components/vitrine/stories-row";
 import { VitrinePostCard } from "@/components/vitrine/vitrine-post-card";
 import { VitrineLiveCard, VitrineSoonCard } from "@/components/vitrine/vitrine-live-cards";
 import { VitrineVerticalPager } from "@/components/vitrine/vitrine-vertical-pager";
-import { CreateVitrinePostSheet } from "@/components/vitrine/create-vitrine-post-sheet";
 import { haptic } from "@/lib/haptics";
+import { openPublish } from "@/lib/publish";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import {
@@ -44,7 +44,6 @@ export function VitrineScreen() {
 
   const [cat, setCat] = useState<Cat>("forYou");
   const [storiesOpen, setStoriesOpen] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
 
   const [posts, setPosts] = useState<VitrinePost[]>([]);
   const [stories, setStories] = useState<VitrineStory[]>([]);
@@ -91,6 +90,15 @@ export function VitrineScreen() {
     });
     return unsub;
   }, [appActive, tabVisible, refreshLives, refreshSoon, refreshPosts]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void refreshPosts();
+      void refreshSoon();
+    };
+    window.addEventListener("kidi:vitrine-refresh", onRefresh);
+    return () => window.removeEventListener("kidi:vitrine-refresh", onRefresh);
+  }, [refreshPosts, refreshSoon]);
 
   useEffect(() => {
     if (!appActive || !tabVisible) return;
@@ -357,7 +365,7 @@ export function VitrineScreen() {
                     openAuth();
                     return;
                   }
-                  setCreateOpen(true);
+                  openPublish();
                 }}
               />
               <div className="flex justify-center pb-1">
@@ -385,16 +393,6 @@ export function VitrineScreen() {
         )}
       </div>
 
-      <CreateVitrinePostSheet
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={(post) => {
-          setPosts((prev) => [post, ...prev.filter((p) => !p.demo)]);
-          setCat("forYou");
-          setPostIndex(0);
-          setStoriesOpen(false);
-        }}
-      />
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   Play,
   HeartHandshake,
   MessageCircle,
+  PlusCircle,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { GuestProfileScreen } from "@/components/guest-profile-screen";
+import { openPublish } from "@/lib/publish";
 
 import { PushScreen } from "@/components/push-screen";
 import { usePush } from "@/lib/push";
@@ -487,6 +489,15 @@ function ProfileScreenAuthed() {
             <MenuGroup
               index={0}
               items={[
+                {
+                  icon: <PlusCircle size={16} />,
+                  label: t("publish.cta", { defaultValue: "Publier" }),
+                  tint: "oklch(0.68 0.16 80)",
+                  onClick: () => {
+                    haptic.light();
+                    openPublish();
+                  },
+                },
                 { icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) },
                 { icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) },
                 {

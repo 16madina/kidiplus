@@ -736,6 +736,44 @@
     "publishFail": "Impossible de publier.",
     "badMedia": "Choisis une photo ou une vidéo."
   },
+  "publish": {
+    "title": "Publier",
+    "cta": "Publier",
+    "sectionTitle": "Publier du contenu",
+    "chooseType": "Choisir le type de contenu",
+    "sellersOnly": "Réservé aux vendeurs. Active ton espace vendeur pour publier.",
+    "needVideo": "Choisis une vidéo.",
+    "needPhoto": "Choisis une photo.",
+    "pickVideo": "Ajouter une vidéo",
+    "pickPhoto": "Ajouter une photo",
+    "addPhoto": "Ajouter",
+    "storyHint": "Visible 24 heures",
+    "storyPublished": "Story en ligne · 24 h",
+    "carouselMin": "Ajoute au moins 2 photos",
+    "announceHint": "Choisis un live programmé. L’annonce apparaît dans Pour toi et Bientôt.",
+    "announceCaption": "Message (optionnel)…",
+    "announceEmpty": "Programme un live d’abord, puis publie l’annonce.",
+    "announcePublished": "Annonce publiée dans la Vitrine",
+    "announceDefaultCaption": "Live à venir · {{title}}",
+    "types": {
+      "story": "Story (24h)",
+      "storySub": "Visible pendant 24 heures",
+      "video": "Vidéo",
+      "videoSub": "Partage une vidéo dans la vitrine",
+      "photo": "Photo",
+      "photoSub": "Partage une photo",
+      "carousel": "Carrousel photos",
+      "carouselSub": "Plusieurs photos",
+      "announce": "Annonce de live",
+      "announceSub": "Annonce un live à venir"
+    },
+    "compose": {
+      "story": "Nouvelle story",
+      "video": "Nouvelle vidéo",
+      "photo": "Nouvelle photo",
+      "carousel": "Carrousel"
+    }
+  },
   "dm": {
     "title": "Message",
     "messageButton": "Message",

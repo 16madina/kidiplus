@@ -736,6 +736,44 @@
     "publishFail": "Could not publish.",
     "badMedia": "Pick a photo or video."
   },
+  "publish": {
+    "title": "Publish",
+    "cta": "Publish",
+    "sectionTitle": "Publish content",
+    "chooseType": "Choose a content type",
+    "sellersOnly": "Sellers only. Activate your seller space to publish.",
+    "needVideo": "Pick a video.",
+    "needPhoto": "Pick a photo.",
+    "pickVideo": "Add a video",
+    "pickPhoto": "Add a photo",
+    "addPhoto": "Add",
+    "storyHint": "Visible for 24 hours",
+    "storyPublished": "Story live · 24h",
+    "carouselMin": "Add at least 2 photos",
+    "announceHint": "Pick a scheduled live. The teaser shows in For you and Coming up.",
+    "announceCaption": "Message (optional)…",
+    "announceEmpty": "Schedule a live first, then publish the announcement.",
+    "announcePublished": "Announcement posted to Showcase",
+    "announceDefaultCaption": "Upcoming live · {{title}}",
+    "types": {
+      "story": "Story (24h)",
+      "storySub": "Visible for 24 hours",
+      "video": "Video",
+      "videoSub": "Share a video in the showcase",
+      "photo": "Photo",
+      "photoSub": "Share a photo",
+      "carousel": "Photo carousel",
+      "carouselSub": "Multiple photos",
+      "announce": "Live announcement",
+      "announceSub": "Announce an upcoming live"
+    },
+    "compose": {
+      "story": "New story",
+      "video": "New video",
+      "photo": "New photo",
+      "carousel": "Carousel"
+    }
+  },
   "dm": {
     "title": "Message",
     "messageButton": "Message",
