@@ -4,6 +4,7 @@ import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
+import { useVitrineSound } from "@/lib/vitrine-sound";
 import { Press } from "@/components/press";
 
 export function VitrineVerticalPager({
