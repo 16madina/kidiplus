@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -23,10 +23,10 @@ import {
 import {
   PUSH_OPEN_EVENT,
   OPEN_ACTIVITY_EVENT,
-  openActivity,
   type PushOpenPayload,
   type OpenActivityPayload,
 } from "@/lib/push-router";
+import { ActivityOverlayProvider } from "@/lib/activity-overlay-context";
 import { fetchLiveById } from "@/lib/lives-db";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
@@ -199,13 +199,41 @@ function AppShellInner() {
     });
   }, []);
 
+  // Open Activity overlay — used by Profile/Home via context, and by push via event.
+  const openActivityOverlay = useCallback((payload: OpenActivityPayload = {}) => {
+    setActivityTab(payload.tab === "messages" ? "messages" : "notifs");
+    setActivityOpen(true);
+    if (payload.thread_id) {
+      window.setTimeout(() => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("kidi:open-dm", { detail: { thread_id: payload.thread_id } }),
+          );
+        } catch {
+          /* ignore */
+        }
+      }, 80);
+    }
+    if (payload.order_id) {
+      window.setTimeout(() => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("kidi:open-order", { detail: { order_id: payload.order_id } }),
+          );
+        } catch {
+          /* ignore */
+        }
+      }, 80);
+    }
+  }, []);
+
   // Cross-screen tab navigation (dispatched via CustomEvent "kidi:navigate-tab").
   // Legacy "activity" tab opens the Activity overlay instead of switching tabs.
   useEffect(() => {
     const onNav = (e: Event) => {
       const detail = (e as CustomEvent<string>).detail;
       if (detail === "activity") {
-        openActivity({ tab: "notifs" });
+        openActivityOverlay({ tab: "notifs" });
         return;
       }
       if (detail && ["home", "search", "live", "vitrine", "profile"].includes(detail)) {
@@ -214,36 +242,17 @@ function AppShellInner() {
     };
     window.addEventListener("kidi:navigate-tab", onNav);
     return () => window.removeEventListener("kidi:navigate-tab", onNav);
-  }, []);
+  }, [openActivityOverlay]);
 
-  // Activity overlay (Profile header, Home bell, push deep-links).
+  // Activity overlay (push deep-links + any code still using openActivity()).
   useEffect(() => {
     const onOpen = (e: Event) => {
       const p = (e as CustomEvent<OpenActivityPayload>).detail ?? {};
-      setActivityTab(p.tab === "messages" ? "messages" : "notifs");
-      setActivityOpen(true);
-      if (p.thread_id) {
-        setTimeout(() => {
-          try {
-            window.dispatchEvent(
-              new CustomEvent("kidi:open-dm", { detail: { thread_id: p.thread_id } }),
-            );
-          } catch { /* ignore */ }
-        }, 80);
-      }
-      if (p.order_id) {
-        setTimeout(() => {
-          try {
-            window.dispatchEvent(
-              new CustomEvent("kidi:open-order", { detail: { order_id: p.order_id } }),
-            );
-          } catch { /* ignore */ }
-        }, 80);
-      }
+      openActivityOverlay(p);
     };
     window.addEventListener(OPEN_ACTIVITY_EVENT, onOpen as EventListener);
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onOpen as EventListener);
-  }, []);
+  }, [openActivityOverlay]);
 
   // Refresh Profile unread badges when Activity closes.
   const closeActivity = () => {
@@ -354,7 +363,7 @@ function AppShellInner() {
         return;
       }
       if (kind === "chat" && p.thread_id) {
-        openActivity({ tab: "messages", thread_id: p.thread_id });
+        openActivityOverlay({ tab: "messages", thread_id: p.thread_id });
         return;
       }
       if (kind === "live" || kind === "chat") {
@@ -366,7 +375,7 @@ function AppShellInner() {
         return;
       }
       if (kind === "order") {
-        openActivity({ tab: "notifs", order_id: p.order_id });
+        openActivityOverlay({ tab: "notifs", order_id: p.order_id });
         return;
       }
       if (kind === "seller") {
@@ -394,11 +403,11 @@ function AppShellInner() {
         return;
       }
       // Fallback → Activity overlay (notifications).
-      openActivity({ tab: "notifs" });
+      openActivityOverlay({ tab: "notifs" });
     };
     window.addEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
     return () => window.removeEventListener(PUSH_OPEN_EVENT, onOpen as EventListener);
-  }, [openLive, openSeller]);
+  }, [openLive, openSeller, openActivityOverlay]);
 
 
   // Android hardware back: full live → mini player; mini → close; else tabs/minimize app.
@@ -437,6 +446,7 @@ function AppShellInner() {
   }, [liveFullScreen, liveMinimized, activeSeller, active, closeLive, closeSeller, minimizeLive]);
 
   return (
+    <ActivityOverlayProvider value={{ openActivity: openActivityOverlay }}>
     <div
       className={
         expandShell
@@ -499,7 +509,7 @@ function AppShellInner() {
         open={activityOpen}
         onClose={closeActivity}
         title={t("activity.title")}
-        zIndex={80}
+        zIndex={100}
       >
         <ErrorBoundary boundary="activity_overlay" onReset={closeActivity}>
           <ActivityScreen embedded initialTab={activityTab} />
@@ -534,6 +544,7 @@ function AppShellInner() {
         }}
       />
     </div>
+    </ActivityOverlayProvider>
   );
 }
 

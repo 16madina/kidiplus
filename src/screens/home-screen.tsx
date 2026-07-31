@@ -25,7 +25,7 @@ import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
 import { useAppActive } from "@/lib/app-state";
 import { TabVisibilityContext } from "@/components/app-shell";
-import { openActivity } from "@/lib/push-router";
+import { useActivityOverlay } from "@/lib/activity-overlay-context";
 
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
@@ -41,6 +41,7 @@ const FEED_POLL_MS = 12_000;
 export function HomeScreen() {
   const { t } = useTranslation();
   const { dark, setDark } = useSettings();
+  const { openActivity } = useActivityOverlay();
   const appActive = useAppActive();
   const tabVisible = useContext(TabVisibilityContext);
   const [category, setCategory] = useState<HomeCategory>("Pour toi");

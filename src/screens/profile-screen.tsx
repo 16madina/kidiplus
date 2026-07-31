@@ -67,7 +67,8 @@ import { DiscoverScreen } from "@/components/discover/discover-screen";
 import { getAdminStatus } from "@/lib/admin.functions";
 import { ReferralScreen } from "@/components/referral/referral-screen";
 import { fetchMyPromoCodes } from "@/lib/referrals-db";
-import { ACTIVITY_UNREAD_EVENT, openActivity } from "@/lib/push-router";
+import { ACTIVITY_UNREAD_EVENT } from "@/lib/push-router";
+import { useActivityOverlay } from "@/lib/activity-overlay-context";
 import { fetchMyNotifications, subscribeMyNotifications } from "@/lib/notifications-db";
 import { listMyDmThreads, subscribeMyDmInbox } from "@/lib/dm-db";
 
@@ -299,8 +300,8 @@ function ProfileScreenAuthed() {
     };
   }, [profile?.id]);
 
-  // Open Activity via AppShell overlay (same path as Home bell) — avoid
-  // importing ActivityScreen here (heavy; can break the Profile tab tree).
+  const { openActivity } = useActivityOverlay();
+  // Direct AppShell context open — avoids missing CustomEvent listeners.
   const goNotifs = () => {
     haptic.light();
     openActivity({ tab: "notifs" });
@@ -346,16 +347,14 @@ function ProfileScreenAuthed() {
             boxShadow: "0 12px 30px -12px rgba(16,22,43,0.45)",
           }}
         >
-          {/* Top row: Activité | avatar | Message */}
-          <div className="relative flex items-start justify-between pt-2">
-            <Press
+          {/* Top row: Activité | avatar | Message — avatar absolute so it never steals side taps */}
+          <div className="relative flex min-h-[96px] items-start justify-between pt-2">
+            <button
               type="button"
               aria-label={t("profile.hero.activity", { defaultValue: "Activité" })}
-              onClick={(e) => {
-                e.stopPropagation();
-                goNotifs();
-              }}
-              className="relative z-20 mt-1 !min-h-12 w-[76px] flex-col gap-1 !bg-transparent px-1 py-1 text-white"
+              onClick={goNotifs}
+              className="relative z-30 mt-1 flex min-h-12 w-[84px] flex-col items-center gap-1 bg-transparent px-1 py-1 text-white active:opacity-80"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               <span className="relative grid h-11 w-11 place-items-center rounded-full">
                 <Bell size={24} strokeWidth={1.9} />
@@ -364,17 +363,24 @@ function ProfileScreenAuthed() {
               <span className="text-[10px] font-semibold leading-none text-white/85">
                 {t("profile.hero.activity", { defaultValue: "Activité" })}
               </span>
-            </Press>
+            </button>
 
-            <Press
+            <button
               type="button"
-              onClick={() => { haptic.light(); setEditOpen(true); }}
-              aria-label={t("profile.editAvatar", { defaultValue: lang === "fr" ? "Changer la photo" : "Change photo" })}
-              className="relative grid h-[88px] w-[88px] place-items-center rounded-full"
+              onClick={() => {
+                haptic.light();
+                setEditOpen(true);
+              }}
+              aria-label={t("profile.editAvatar", {
+                defaultValue: lang === "fr" ? "Changer la photo" : "Change photo",
+              })}
+              className="absolute left-1/2 top-2 z-10 grid h-[88px] w-[88px] -translate-x-1/2 place-items-center rounded-full active:opacity-90"
               style={{
                 background: GOLD,
                 padding: 3,
                 boxShadow: "0 8px 24px rgba(16,22,43,0.35)",
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
               }}
             >
               {avatarUrl ? (
@@ -405,16 +411,14 @@ function ProfileScreenAuthed() {
               >
                 <Camera size={13} />
               </span>
-            </Press>
+            </button>
 
-            <Press
+            <button
               type="button"
               aria-label={t("profile.hero.message", { defaultValue: "Message" })}
-              onClick={(e) => {
-                e.stopPropagation();
-                goMessages();
-              }}
-              className="relative z-20 mt-1 !min-h-12 w-[76px] flex-col gap-1 !bg-transparent px-1 py-1 text-white"
+              onClick={goMessages}
+              className="relative z-30 mt-1 flex min-h-12 w-[84px] flex-col items-center gap-1 bg-transparent px-1 py-1 text-white active:opacity-80"
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               <span className="relative grid h-11 w-11 place-items-center rounded-full">
                 <MessageCircle size={24} strokeWidth={1.9} />
@@ -423,7 +427,7 @@ function ProfileScreenAuthed() {
               <span className="text-[10px] font-semibold leading-none text-white/85">
                 {t("profile.hero.message", { defaultValue: "Message" })}
               </span>
-            </Press>
+            </button>
           </div>
 
           {/* Identity */}
