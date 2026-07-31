@@ -140,7 +140,12 @@ function MediaSlide({
     const el = videoRef.current;
     if (!el || !asVideo) return;
     el.muted = muted;
-    void el.play().catch(() => undefined);
+    el.volume = 1;
+    void el.play().catch(() => {
+      // Autoplay with sound can be blocked — fall back to muted playback.
+      el.muted = true;
+      void el.play().catch(() => undefined);
+    });
   }, [url, asVideo, muted]);
 
   if (asVideo) {
