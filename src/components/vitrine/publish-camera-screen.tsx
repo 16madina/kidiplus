@@ -20,23 +20,20 @@ import {
   isVideoUrl,
   uploadVitrineMediaDetailed,
 } from "@/lib/vitrine-db";
+import {
+  MAX_PUBLISH_VIDEO_SEC,
+  MAX_STORY_VIDEO_SEC,
+  isImageFile,
+  isVideoFile,
+} from "@/lib/publish-media-edit";
+import { PublishEditor } from "@/components/vitrine/publish-editor";
 
 const GOLD = "#E8B93B";
 const MODES = ["story", "photo", "video"] as const;
 export type PublishCameraMode = (typeof MODES)[number];
 
-const MAX_VIDEO_MS = 60_000;
-const MAX_STORY_VIDEO_MS = 15_000;
-
-function isVideoFile(f: File) {
-  return f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm|3gp|qt)$/i.test(f.name);
-}
-function isImageFile(f: File) {
-  return (
-    f.type.startsWith("image/") ||
-    /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name)
-  );
-}
+const MAX_VIDEO_MS = MAX_PUBLISH_VIDEO_SEC * 1000;
+const MAX_STORY_VIDEO_MS = MAX_STORY_VIDEO_SEC * 1000;
 
 async function captureStill(video: HTMLVideoElement): Promise<File | null> {
   const w = video.videoWidth;
@@ -382,12 +379,12 @@ export function PublishCameraScreen({
     }
   };
 
-  const publish = async () => {
-    if (!file || busy) return;
+  const publish = async (uploadFile: File) => {
+    if (!uploadFile || busy) return;
     setBusy(true);
     haptic.medium();
     try {
-      const up = await uploadVitrineMediaDetailed(file);
+      const up = await uploadVitrineMediaDetailed(uploadFile);
       if (!up.ok) {
         toast.error(uploadErrorMessage(up.error));
         return;
@@ -401,7 +398,9 @@ export function PublishCameraScreen({
         toast.success(t("publish.storyPublished", { defaultValue: "Story en ligne · 24 h" }));
       } else {
         const mediaType =
-          mode === "video" || isVideoFile(file) || isVideoUrl(up.url) ? "video" : "image";
+          mode === "video" || isVideoFile(uploadFile) || isVideoUrl(up.url)
+            ? "video"
+            : "image";
         const post = await createVitrinePost({
           mediaUrls: [up.url],
           mediaType,
@@ -433,7 +432,6 @@ export function PublishCameraScreen({
   if (typeof document === "undefined") return null;
 
   const recordSec = Math.floor(recordMs / 1000);
-  const reviewIsVideo = !!(file && isVideoFile(file));
 
   return createPortal(
     <AnimatePresence>
@@ -619,65 +617,26 @@ export function PublishCameraScreen({
                 </p>
               </div>
             </>
-          ) : (
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-                <Press
-                  onClick={() => {
-                    revokePreview();
-                    setFile(null);
-                    setPreview(null);
-                    setCaption("");
-                    setPhase("camera");
-                  }}
-                  className="h-11 w-11 rounded-full bg-white/10 text-white"
-                >
-                  <X size={22} />
-                </Press>
-                <p className="text-[15px] font-bold">
-                  {modeLabel(mode)}
-                </p>
-                <div className="w-11" />
-              </div>
-
-              <div className="relative mx-4 mt-2 min-h-0 flex-1 overflow-hidden rounded-2xl bg-neutral-900">
-                {preview && reviewIsVideo ? (
-                  <video
-                    src={preview}
-                    className="h-full w-full object-contain"
-                    controls
-                    playsInline
-                    autoPlay
-                    loop
-                  />
-                ) : preview ? (
-                  <img src={preview} alt="" className="h-full w-full object-contain" />
-                ) : null}
-              </div>
-
-              {mode !== "story" && (
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value.slice(0, 500))}
-                  rows={2}
-                  placeholder={t("vitrine.captionPlaceholder", { defaultValue: "Légende…" })}
-                  className="mx-4 mt-3 resize-none rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] text-white outline-none placeholder:text-white/40"
-                />
-              )}
-
-              <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-                <Press
-                  onClick={() => void publish()}
-                  disabled={!file || busy}
-                  className="!min-h-12 flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-bold text-[#10162B] disabled:opacity-40"
-                  style={{ background: GOLD }}
-                >
-                  {busy ? <Loader2 size={18} className="animate-spin" /> : null}
-                  {t("vitrine.publish", { defaultValue: "Publier" })}
-                </Press>
-              </div>
-            </div>
-          )}
+          ) : file && preview ? (
+            <PublishEditor
+              file={file}
+              previewUrl={preview}
+              isStory={mode === "story"}
+              caption={caption}
+              onCaptionChange={setCaption}
+              busy={busy}
+              onBack={() => {
+                revokePreview();
+                setFile(null);
+                setPreview(null);
+                setCaption("");
+                setPhase("camera");
+              }}
+              onConfirm={(edited) => {
+                void publish(edited);
+              }}
+            />
+          ) : null}
         </motion.div>
       )}
     </AnimatePresence>,
