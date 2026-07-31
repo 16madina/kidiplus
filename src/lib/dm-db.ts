@@ -92,7 +92,7 @@ export async function markDmThreadRead(threadId: string): Promise<void> {
 /** Realtime: new/updated messages in a specific thread. */
 export function subscribeDmThread(threadId: string, onChange: () => void): () => void {
   const ch = supabase
-    .channel(`dm-thread:${threadId}`)
+    .channel(`dm-thread:${threadId}:${Math.random().toString(36).slice(2)}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "dm_messages", filter: `thread_id=eq.${threadId}` },
@@ -107,7 +107,7 @@ export function subscribeDmThread(threadId: string, onChange: () => void): () =>
 /** Realtime: any thread metadata change involving me (inbox refresh). */
 export function subscribeMyDmInbox(userId: string, onChange: () => void): () => void {
   const chA = supabase
-    .channel(`dm-inbox-a:${userId}`)
+    .channel(`dm-inbox-a:${userId}:${Math.random().toString(36).slice(2)}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "dm_threads", filter: `user_a=eq.${userId}` },
@@ -115,7 +115,7 @@ export function subscribeMyDmInbox(userId: string, onChange: () => void): () => 
     )
     .subscribe();
   const chB = supabase
-    .channel(`dm-inbox-b:${userId}`)
+    .channel(`dm-inbox-b:${userId}:${Math.random().toString(36).slice(2)}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "dm_threads", filter: `user_b=eq.${userId}` },

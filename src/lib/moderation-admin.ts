@@ -59,7 +59,7 @@ export async function markAdminMessageRead(id: string) {
 
 export function subscribeMyAdminMessages(userId: string, onChange: () => void) {
   const ch = supabase
-    .channel(`admin_messages:${userId}`)
+    .channel(`admin_messages:${userId}:${Math.random().toString(36).slice(2)}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "admin_messages", filter: `user_id=eq.${userId}` },
