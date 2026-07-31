@@ -94,15 +94,25 @@ export function DmInboxContent() {
 
   // Push / notification deep link → open a specific thread.
   useEffect(() => {
-    const onOpen = (e: Event) => {
-      const threadId = (e as CustomEvent<{ thread_id?: string }>).detail?.thread_id;
-      if (!threadId) return;
+    const openById = (threadId: string) => {
       void listMyDmThreads(50).then((r) => {
         setThreads(r.rows);
         setLoading(false);
         const th = r.rows.find((row) => row.id === threadId);
         if (th) openThread(th);
       });
+    };
+    // Consume a deep link fired before this tab was mounted.
+    if (pendingDmThreadId) {
+      const id = pendingDmThreadId;
+      pendingDmThreadId = null;
+      openById(id);
+    }
+    const onOpen = (e: Event) => {
+      const threadId = (e as CustomEvent<{ thread_id?: string }>).detail?.thread_id;
+      if (!threadId) return;
+      pendingDmThreadId = null;
+      openById(threadId);
     };
     window.addEventListener(OPEN_DM_EVENT, onOpen as EventListener);
     return () => window.removeEventListener(OPEN_DM_EVENT, onOpen as EventListener);
