@@ -258,21 +258,32 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
       }
     }
 
-    return data.map((r: any) => ({
-      id: r.id,
-      user_id: r.user_id,
-      media_type: (r.media_type ?? "image") as VitrineMediaType,
-      media_urls: normalizeMediaUrls(r.media_urls),
-      caption: r.caption,
-      product_id: r.product_id,
-      live_id: r.live_id,
-      like_count: Number(r.like_count ?? 0),
-      comment_count: Number(r.comment_count ?? 0),
-      created_at: r.created_at,
-      liked_by_me: likedIds.has(r.id),
-      seller: r.seller ?? null,
-      live_status: r.live_id ? (liveStatus.get(r.live_id) ?? null) : null,
-    }));
+    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+    return Promise.all(
+      data.map(async (r: any) => {
+        const seller = r.seller
+          ? {
+              ...r.seller,
+              avatar_url: (await resolveAvatarUrl(r.seller.avatar_url)) ?? r.seller.avatar_url,
+            }
+          : null;
+        return {
+          id: r.id,
+          user_id: r.user_id,
+          media_type: (r.media_type ?? "image") as VitrineMediaType,
+          media_urls: normalizeMediaUrls(r.media_urls),
+          caption: r.caption,
+          product_id: r.product_id,
+          live_id: r.live_id,
+          like_count: Number(r.like_count ?? 0),
+          comment_count: Number(r.comment_count ?? 0),
+          created_at: r.created_at,
+          liked_by_me: likedIds.has(r.id),
+          seller,
+          live_status: r.live_id ? (liveStatus.get(r.live_id) ?? null) : null,
+        };
+      }),
+    );
   } catch {
     return DEMO_POSTS;
   }
@@ -292,15 +303,26 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error || !data || data.length === 0) return DEMO_STORIES;
-    return data.map((r: any) => ({
-      id: r.id,
-      user_id: r.user_id,
-      media_url: r.media_url,
-      expires_at: r.expires_at,
-      created_at: r.created_at,
-      unread: true,
-      seller: r.seller ?? null,
-    }));
+    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+    return Promise.all(
+      data.map(async (r: any) => {
+        const seller = r.seller
+          ? {
+              ...r.seller,
+              avatar_url: (await resolveAvatarUrl(r.seller.avatar_url)) ?? r.seller.avatar_url,
+            }
+          : null;
+        return {
+          id: r.id,
+          user_id: r.user_id,
+          media_url: r.media_url,
+          expires_at: r.expires_at,
+          created_at: r.created_at,
+          unread: true,
+          seller,
+        };
+      }),
+    );
   } catch {
     return DEMO_STORIES;
   }
@@ -555,7 +577,13 @@ export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory
         .select("display_name, handle, avatar_url")
         .eq("id", uid)
         .maybeSingle();
-      if (prof) seller = prof;
+      if (prof) {
+        const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+        seller = {
+          ...prof,
+          avatar_url: (await resolveAvatarUrl(prof.avatar_url)) ?? prof.avatar_url,
+        };
+      }
     } catch {
       /* ignore */
     }
@@ -617,7 +645,13 @@ export async function createVitrinePost(input: {
         .select("display_name, handle, avatar_url, is_verified")
         .eq("id", uid)
         .maybeSingle();
-      if (prof) seller = prof;
+      if (prof) {
+        const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+        seller = {
+          ...prof,
+          avatar_url: (await resolveAvatarUrl(prof.avatar_url)) ?? prof.avatar_url,
+        };
+      }
     } catch {
       /* ignore */
     }

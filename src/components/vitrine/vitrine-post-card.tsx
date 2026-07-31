@@ -27,6 +27,7 @@ import {
   vitrinePostShareUrl,
   type VitrinePost,
 } from "@/lib/vitrine-db";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { MediaCarousel } from "./vitrine-vertical-pager";
 import { VitrineCommentsSheet } from "./vitrine-comments-sheet";
 
@@ -50,12 +51,26 @@ export function VitrinePostCard({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    post.seller?.avatar_url ?? null,
+  );
 
   useEffect(() => {
     setLiked(!!post.liked_by_me);
     setLikes(post.like_count);
     setComments(post.comment_count);
   }, [post.id, post.liked_by_me, post.like_count, post.comment_count]);
+
+  useEffect(() => {
+    let alive = true;
+    setAvatarUrl(post.seller?.avatar_url ?? null);
+    void resolveAvatarUrl(post.seller?.avatar_url).then((url) => {
+      if (alive) setAvatarUrl(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [post.id, post.seller?.avatar_url]);
 
   const requireAuth = () => {
     if (guestMode || !user) {
@@ -151,6 +166,7 @@ export function VitrinePostCard({
       <MediaCarousel
         urls={post.media_urls}
         className="absolute inset-0 h-full w-full object-cover"
+        forceVideo={post.media_type === "video"}
       />
 
       <div
@@ -171,15 +187,21 @@ export function VitrinePostCard({
           className="!min-h-0 relative grid h-11 w-11 place-items-center rounded-full p-0"
           style={{ background: GOLD, boxShadow: "0 4px 12px rgba(0,0,0,0.35)" }}
         >
-          {post.seller?.avatar_url ? (
+          {avatarUrl ? (
             <img
-              src={post.seller.avatar_url}
+              src={avatarUrl}
               alt=""
               className="h-10 w-10 rounded-full object-cover"
               style={{ border: `2px solid ${GOLD}` }}
+              onError={() => setAvatarUrl(null)}
             />
           ) : (
-            <Store size={18} color="#10162B" />
+            <span
+              className="grid h-10 w-10 place-items-center rounded-full text-[13px] font-bold text-[#10162B]"
+              style={{ background: GOLD, border: `2px solid ${GOLD}` }}
+            >
+              {(sellerName || "?").slice(0, 1).toUpperCase()}
+            </span>
           )}
         </Press>
         <RailBtn

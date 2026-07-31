@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
+import { isVideoUrl } from "@/lib/vitrine-db";
+import { Press } from "@/components/press";
 
 export function VitrineVerticalPager({
   count,
@@ -58,7 +61,6 @@ export function VitrineVerticalPager({
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
           const w = typeof window !== "undefined" ? window.innerWidth : 390;
 
-          // Horizontal category change (Pour toi ↔ En direct ↔ Bientôt).
           const horizontal =
             absX > absY * 1.05 &&
             (absX > 64 || Math.abs(info.velocity.x) > 400);
@@ -80,7 +82,6 @@ export function VitrineVerticalPager({
           const up = info.offset.y < 0;
           const down = info.offset.y > 0;
 
-          // Pull down on first item → reveal stories (TikTok-style).
           if (down && strong && !hasPrev) {
             dragY.set(0);
             dragX.set(0);
@@ -121,24 +122,35 @@ export function VitrineVerticalPager({
   );
 }
 
-function isVideoUrl(url: string): boolean {
-  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
-}
-
 function MediaSlide({
   url,
   className,
+  forceVideo,
+  muted,
 }: {
   url: string;
   className?: string;
+  forceVideo?: boolean;
+  muted: boolean;
 }) {
-  if (isVideoUrl(url)) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const asVideo = forceVideo || isVideoUrl(url);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !asVideo) return;
+    el.muted = muted;
+    void el.play().catch(() => undefined);
+  }, [url, asVideo, muted]);
+
+  if (asVideo) {
     return (
       <video
+        ref={videoRef}
         src={url}
         className={className ?? "h-full w-full object-cover"}
         autoPlay
-        muted
+        muted={muted}
         loop
         playsInline
         controls={false}
@@ -161,53 +173,93 @@ function MediaSlide({
 export function MediaCarousel({
   urls,
   className,
+  forceVideo,
 }: {
   urls: string[];
   className?: string;
+  /** When post.media_type is video, treat slides as video even if extension is odd. */
+  forceVideo?: boolean;
 }) {
   const [i, setI] = useState(0);
+  // Autoplay requires muted start; user unmutes with the speaker control.
+  const [muted, setMuted] = useState(true);
+  const hasVideo =
+    !!forceVideo || urls.some((u) => isVideoUrl(u));
+
   if (urls.length === 0) {
     return <div className={className} style={{ background: "#1C2440" }} />;
   }
-  if (urls.length === 1) {
-    return <MediaSlide url={urls[0]!} className={className} />;
-  }
-  return (
-    <div
-      className="relative h-full w-full"
-      onPointerDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
+
+  const body =
+    urls.length === 1 ? (
+      <MediaSlide
+        url={urls[0]!}
+        className={className}
+        forceVideo={forceVideo}
+        muted={muted}
+      />
+    ) : (
       <div
-        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          scrollSnapType: "x mandatory",
-          touchAction: "pan-x",
-        }}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          const w = el.clientWidth || 1;
-          setI(Math.round(el.scrollLeft / w));
-        }}
+        className="relative h-full w-full"
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
-        {urls.map((u) => (
-          <div key={u} className="h-full w-full shrink-0 snap-center">
-            <MediaSlide url={u} className="h-full w-full object-cover" />
-          </div>
-        ))}
+        <div
+          className="flex h-full w-full snap-x snap-mandatory overflow-x-auto"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            scrollSnapType: "x mandatory",
+            touchAction: "pan-x",
+          }}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const w = el.clientWidth || 1;
+            setI(Math.round(el.scrollLeft / w));
+          }}
+        >
+          {urls.map((u) => (
+            <div key={u} className="h-full w-full shrink-0 snap-center">
+              <MediaSlide
+                url={u}
+                className="h-full w-full object-cover"
+                forceVideo={forceVideo}
+                muted={muted}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute bottom-28 left-0 right-0 z-10 flex justify-center gap-1">
+          {urls.map((_, idx) => (
+            <span
+              key={idx}
+              className="h-1 w-1 rounded-full"
+              style={{
+                background: idx === i ? "#E8B93B" : "rgba(255,255,255,0.45)",
+              }}
+            />
+          ))}
+        </div>
       </div>
-      <div className="pointer-events-none absolute bottom-28 left-0 right-0 z-10 flex justify-center gap-1">
-        {urls.map((_, idx) => (
-          <span
-            key={idx}
-            className="h-1 w-1 rounded-full"
-            style={{
-              background: idx === i ? "#E8B93B" : "rgba(255,255,255,0.45)",
-            }}
-          />
-        ))}
-      </div>
+    );
+
+  return (
+    <div className="relative h-full w-full">
+      {body}
+      {hasVideo && (
+        <Press
+          aria-label={muted ? "Unmute" : "Mute"}
+          onClick={(e) => {
+            e.stopPropagation();
+            haptic.light();
+            setMuted((m) => !m);
+          }}
+          className="pointer-events-auto absolute left-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] z-[35] h-10 w-10 rounded-full bg-black/45 text-white"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </Press>
+      )}
     </div>
   );
 }

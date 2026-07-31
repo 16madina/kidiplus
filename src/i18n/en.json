@@ -751,6 +751,7 @@
     "pickVideo": "Add a video",
     "pickPhoto": "Add a photo",
     "addPhoto": "Add",
+    "changeMedia": "Change",
     "storyHint": "Visible for 24 hours",
     "storyPublished": "Story live · 24h",
     "fileTooLarge": "File too large (max 100 MB).",

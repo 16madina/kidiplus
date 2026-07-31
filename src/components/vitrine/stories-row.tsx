@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import type { VitrineStory } from "@/lib/vitrine-db";
+import { VitrineStoryViewer } from "./vitrine-story-viewer";
 
 const GOLD = "#E8B93B";
 const NAVY = "#10162B";
@@ -22,6 +24,7 @@ export function StoriesRow({
   onCreate?: () => void;
 }) {
   const { t } = useTranslation();
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   if (collapsed) return null;
 
   const labelColor = tone === "dark" ? "rgba(255,255,255,0.85)" : "var(--foreground)";
@@ -66,7 +69,7 @@ export function StoriesRow({
         </span>
       </button>
 
-      {stories.map((s) => {
+      {stories.map((s, i) => {
         const name =
           s.seller?.display_name?.trim() ||
           s.seller?.handle ||
@@ -76,7 +79,7 @@ export function StoriesRow({
             key={s.id}
             onClick={() => {
               haptic.selection();
-              toast(t("vitrine.storySoon"));
+              setViewerIndex(i);
             }}
             className="!min-h-0 flex w-[68px] shrink-0 flex-col items-center gap-1 !bg-transparent p-0"
           >
@@ -109,6 +112,13 @@ export function StoriesRow({
           </Press>
         );
       })}
+
+      <VitrineStoryViewer
+        open={viewerIndex != null}
+        stories={stories}
+        startIndex={viewerIndex ?? 0}
+        onClose={() => setViewerIndex(null)}
+      />
     </div>
   );
 }

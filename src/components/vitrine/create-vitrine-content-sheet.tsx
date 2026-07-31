@@ -78,21 +78,27 @@ export function CreateVitrineContentSheet({
     onClose();
   };
 
+  const isVideoFile = (f: File) =>
+    f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm|3gp|qt)$/i.test(f.name);
+  const isImageFile = (f: File) =>
+    f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name);
+
   const onPick = (list: FileList | null) => {
     if (!list?.length) return;
     const next: File[] = [];
     for (let i = 0; i < list.length; i++) {
       const f = list.item(i);
       if (!f) continue;
-      if (kind === "video" && !f.type.startsWith("video/")) {
+      // iOS often leaves file.type empty — fall back to extension.
+      if (kind === "video" && !isVideoFile(f)) {
         toast.error(t("publish.needVideo", { defaultValue: "Choisis une vidéo." }));
         return;
       }
-      if ((kind === "photo" || kind === "carousel") && !f.type.startsWith("image/")) {
+      if ((kind === "photo" || kind === "carousel") && !isImageFile(f)) {
         toast.error(t("publish.needPhoto", { defaultValue: "Choisis une photo." }));
         return;
       }
-      if (kind === "story" && !f.type.startsWith("image/") && !f.type.startsWith("video/")) {
+      if (kind === "story" && !isImageFile(f) && !isVideoFile(f)) {
         toast.error(t("vitrine.badMedia", { defaultValue: "Choisis une photo ou une vidéo." }));
         return;
       }
@@ -101,6 +107,13 @@ export function CreateVitrineContentSheet({
       if (next.length >= 10) break;
     }
     if (!next.length) return;
+    previews.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {
+        /* ignore */
+      }
+    });
     const merged = kind === "carousel" ? [...files, ...next].slice(0, 10) : next;
     setFiles(merged);
     setPreviews(merged.map((f) => URL.createObjectURL(f)));
@@ -240,7 +253,11 @@ export function CreateVitrineContentSheet({
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
             {previews.map((src, i) => (
               <div key={src} className="relative h-36 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                {files[i] && isVideoFile(files[i]!) ? (
+                  <video src={src} className="h-full w-full object-cover" muted playsInline />
+                ) : (
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                )}
                 <Press
                   onClick={() => removeAt(i)}
                   className="absolute right-1 top-1 !min-h-7 !min-w-7 h-7 w-7 rounded-full bg-black/55 text-white"
@@ -261,43 +278,57 @@ export function CreateVitrineContentSheet({
               </Press>
             )}
           </div>
+        ) : previews[0] ? (
+          <div className="relative aspect-[9/14] w-full overflow-hidden rounded-2xl border border-border bg-black">
+            {kind === "video" || (files[0] && isVideoFile(files[0])) ? (
+              <video
+                key={previews[0]}
+                src={previews[0]}
+                className="absolute inset-0 h-full w-full object-cover"
+                playsInline
+                controls
+                autoPlay
+                muted
+                preload="auto"
+              />
+            ) : (
+              <img
+                src={previews[0]}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <Press
+              onClick={() => inputRef.current?.click()}
+              className="absolute bottom-3 right-3 z-10 !min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B]"
+              style={{ background: GOLD }}
+            >
+              {t("publish.changeMedia", { defaultValue: "Changer" })}
+            </Press>
+          </div>
         ) : (
           <Press
             onClick={() => inputRef.current?.click()}
             className="relative flex aspect-[9/14] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
           >
-            {previews[0] ? (
-              files[0]?.type.startsWith("video/") ? (
-                <video
-                  src={previews[0]}
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                  controls
-                />
-              ) : (
-                <img src={previews[0]} alt="" className="h-full w-full object-cover" />
-              )
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <div className="flex gap-3">
-                  {kind === "video" ? <Video size={28} /> : <ImagePlus size={28} />}
-                  {kind === "story" ? <Video size={28} /> : null}
-                </div>
-                <p className="px-4 text-center text-[13px] font-medium">
-                  {kind === "video"
-                    ? t("publish.pickVideo", { defaultValue: "Ajouter une vidéo" })
-                    : kind === "story"
-                      ? t("vitrine.pickMedia", { defaultValue: "Ajouter une photo ou une vidéo" })
-                      : t("publish.pickPhoto", { defaultValue: "Ajouter une photo" })}
-                </p>
-                {kind === "story" && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {t("publish.storyHint", { defaultValue: "Visible 24 heures" })}
-                  </p>
-                )}
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="flex gap-3">
+                {kind === "video" ? <Video size={28} /> : <ImagePlus size={28} />}
+                {kind === "story" ? <Video size={28} /> : null}
               </div>
-            )}
+              <p className="px-4 text-center text-[13px] font-medium">
+                {kind === "video"
+                  ? t("publish.pickVideo", { defaultValue: "Ajouter une vidéo" })
+                  : kind === "story"
+                    ? t("vitrine.pickMedia", { defaultValue: "Ajouter une photo ou une vidéo" })
+                    : t("publish.pickPhoto", { defaultValue: "Ajouter une photo" })}
+              </p>
+              {kind === "story" && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t("publish.storyHint", { defaultValue: "Visible 24 heures" })}
+                </p>
+              )}
+            </div>
           </Press>
         )}
 
