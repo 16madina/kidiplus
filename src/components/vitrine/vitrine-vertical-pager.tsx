@@ -4,6 +4,7 @@ import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
+import { useVitrineSound } from "@/lib/vitrine-sound";
 import { Press } from "@/components/press";
 
 export function VitrineVerticalPager({
@@ -140,7 +141,12 @@ function MediaSlide({
     const el = videoRef.current;
     if (!el || !asVideo) return;
     el.muted = muted;
-    void el.play().catch(() => undefined);
+    el.volume = 1;
+    void el.play().catch(() => {
+      // Autoplay with sound can be blocked — fall back to muted playback.
+      el.muted = true;
+      void el.play().catch(() => undefined);
+    });
   }, [url, asVideo, muted]);
 
   if (asVideo) {
@@ -181,8 +187,8 @@ export function MediaCarousel({
   forceVideo?: boolean;
 }) {
   const [i, setI] = useState(0);
-  // Autoplay requires muted start; user unmutes with the speaker control.
-  const [muted, setMuted] = useState(true);
+  // Autoplay requires muted start; once unmuted the choice sticks across posts.
+  const [muted, toggleMuted] = useVitrineSound();
   const hasVideo =
     !!forceVideo || urls.some((u) => isVideoUrl(u));
 
@@ -251,7 +257,7 @@ export function MediaCarousel({
           onClick={(e) => {
             e.stopPropagation();
             haptic.light();
-            setMuted((m) => !m);
+            toggleMuted();
           }}
           className="pointer-events-auto absolute left-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] z-[35] h-10 w-10 rounded-full bg-black/45 text-white"
           onPointerDown={(e) => e.stopPropagation()}
