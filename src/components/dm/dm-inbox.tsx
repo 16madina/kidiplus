@@ -54,11 +54,22 @@ export function DmInboxContent() {
   };
 
   useEffect(() => {
-    if (!user) { setThreads([]); setLoading(false); return; }
+    if (!user) {
+      setThreads([]);
+      setLoading(false);
+      return;
+    }
     let alive = true;
-    void load().then(() => { if (!alive) return; });
-    const unsub = subscribeMyDmInbox(user.id, () => { void load(); });
-    return () => { alive = false; unsub(); };
+    void load().then(() => {
+      if (!alive) return;
+    });
+    const unsub = subscribeMyDmInbox(user.id, () => {
+      void load();
+    });
+    return () => {
+      alive = false;
+      unsub();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -76,7 +87,9 @@ export function DmInboxContent() {
       for (const [id, url] of entries) if (url) next[id] = url;
       if (Object.keys(next).length) setAvatars((prev) => ({ ...prev, ...next }));
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads]);
 
@@ -143,7 +156,10 @@ export function DmInboxContent() {
         <ul>
           {visibleThreads.map((th) => {
             const unread = th.unread > 0;
-            const minutes = Math.max(0, Math.floor((Date.now() - new Date(th.last_message_at).getTime()) / 60000));
+            const minutes = Math.max(
+              0,
+              Math.floor((Date.now() - new Date(th.last_message_at).getTime()) / 60000),
+            );
             const mine = th.last_sender_id === user?.id;
             return (
               <li key={th.id}>
@@ -164,18 +180,30 @@ export function DmInboxContent() {
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1 text-[14px]">
-                        <span className={unread ? "truncate font-bold" : "truncate font-semibold text-foreground/90"}>
+                        <span
+                          className={
+                            unread
+                              ? "truncate font-bold"
+                              : "truncate font-semibold text-foreground/90"
+                          }
+                        >
                           {th.other_name || th.other_handle || "…"}
                         </span>
                         <VerifiedBadge verified={th.other_is_verified} size={13} />
                       </p>
-                      <p className={`mt-0.5 truncate text-[12.5px] ${unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                      <p
+                        className={`mt-0.5 truncate text-[12.5px] ${
+                          unread ? "font-semibold text-foreground" : "text-muted-foreground"
+                        }`}
+                      >
                         {mine ? `${t("dm.you", { defaultValue: "Toi" })} : ` : ""}
                         {th.last_message_preview || ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="text-[11px] text-muted-foreground">{formatRelative(minutes)}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatRelative(minutes)}
+                      </span>
                       {unread && (
                         <span
                           className="grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10.5px] font-bold text-white"
@@ -193,8 +221,10 @@ export function DmInboxContent() {
         </ul>
       )}
 
+      {/* zIndex 110 > Activity overlay (100) so the chat is not hidden underneath */}
       <DmChatScreen
         open={chatOpen}
+        zIndex={110}
         onClose={() => {
           setChatOpen(false);
           void load();

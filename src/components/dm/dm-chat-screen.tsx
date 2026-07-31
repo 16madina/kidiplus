@@ -38,10 +38,13 @@ export function DmChatScreen({
   open,
   onClose,
   target,
+  /** Above Activity overlay (100) when opened from Messages inbox. */
+  zIndex = 80,
 }: {
   open: boolean;
   onClose: () => void;
   target: DmChatTarget | null;
+  zIndex?: number;
 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -155,7 +158,7 @@ export function DmChatScreen({
     <PushScreen
       open={open}
       onClose={onClose}
-      zIndex={80}
+      zIndex={zIndex}
       title={target.otherName || t("dm.title", { defaultValue: "Message" })}
       right={
         <div className="flex items-center gap-1">

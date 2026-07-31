@@ -206,9 +206,9 @@ function AppShellInner() {
     setActivityOpen(true);
     if (payload.thread_id) {
       const tid = payload.thread_id;
-      window.setTimeout(() => {
-        requestOpenDm(tid);
-      }, 80);
+      // Replay after Activity + Messages tab mount (AnimatePresence can be ~150ms).
+      window.setTimeout(() => requestOpenDm(tid), 80);
+      window.setTimeout(() => requestOpenDm(tid), 400);
     }
     if (payload.order_id) {
       window.setTimeout(() => {
@@ -358,11 +358,14 @@ function AppShellInner() {
         }, 80);
         return;
       }
-      if (kind === "chat" && p.thread_id) {
-        openActivityOverlay({ tab: "messages", thread_id: p.thread_id });
+      if (kind === "chat") {
+        openActivityOverlay({
+          tab: "messages",
+          thread_id: typeof p.thread_id === "string" ? p.thread_id : undefined,
+        });
         return;
       }
-      if (kind === "live" || kind === "chat") {
+      if (kind === "live") {
         if (p.live_id) {
           const stream = await fetchLiveById(p.live_id).catch(() => null);
           if (stream) { openLive(stream); return; }
