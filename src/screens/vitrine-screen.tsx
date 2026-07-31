@@ -238,6 +238,7 @@ export function VitrineScreen() {
             if (!post) return null;
             return (
               <VitrinePostCard
+                key={post.id}
                 post={post}
                 onUpdated={(p) =>
                   setPosts((prev) => prev.map((x) => (x.id === p.id ? p : x)))

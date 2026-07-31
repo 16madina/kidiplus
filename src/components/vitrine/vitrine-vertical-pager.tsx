@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
 import { useVitrineSound } from "@/lib/vitrine-sound";
+import { useAppActive } from "@/lib/app-state";
+import { TabVisibilityContext } from "@/components/app-shell";
 import { Press } from "@/components/press";
+
+export const VITRINE_TOGGLE_PAUSE_EVENT = "kidi:vitrine-toggle-pause";
 
 export function VitrineVerticalPager({
   count,
@@ -45,6 +49,15 @@ export function VitrineVerticalPager({
         dragElastic={0.35}
         dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
         dragMomentum={false}
+        onTap={(e) => {
+          const t = e.target as HTMLElement | null;
+          if (t?.closest?.("button, a, textarea, input, [data-no-pause]")) return;
+          try {
+            window.dispatchEvent(new CustomEvent(VITRINE_TOGGLE_PAUSE_EVENT));
+          } catch {
+            /* ignore */
+          }
+        }}
         onDrag={(_, info) => {
           const absX = Math.abs(info.offset.x);
           const absY = Math.abs(info.offset.y);
@@ -128,11 +141,14 @@ function MediaSlide({
   className,
   forceVideo,
   muted,
+  playing,
 }: {
   url: string;
   className?: string;
   forceVideo?: boolean;
   muted: boolean;
+  /** When false, video is paused (left tab / app background / user tap). */
+  playing: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const asVideo = forceVideo || isVideoUrl(url);
@@ -142,20 +158,40 @@ function MediaSlide({
     if (!el || !asVideo) return;
     el.muted = muted;
     el.volume = 1;
+    if (!playing) {
+      el.pause();
+      return;
+    }
     void el.play().catch(() => {
       // Autoplay with sound can be blocked — fall back to muted playback.
       el.muted = true;
       void el.play().catch(() => undefined);
     });
-  }, [url, asVideo, muted]);
+  }, [url, asVideo, muted, playing]);
+
+  // Hard-stop on unmount so audio never leaks after leaving Vitrine.
+  useEffect(() => {
+    const el = videoRef.current;
+    return () => {
+      if (!el) return;
+      try {
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
 
   if (asVideo) {
     return (
       <video
         ref={videoRef}
+        data-vitrine-feed
         src={url}
         className={className ?? "h-full w-full object-cover"}
-        autoPlay
+        autoPlay={playing}
         muted={muted}
         loop
         playsInline
@@ -187,10 +223,51 @@ export function MediaCarousel({
   forceVideo?: boolean;
 }) {
   const [i, setI] = useState(0);
-  // Autoplay requires muted start; once unmuted the choice sticks across posts.
+  const [userPaused, setUserPaused] = useState(false);
+  const [showPauseHint, setShowPauseHint] = useState(false);
+  const hintTimer = useRef<number | null>(null);
+  const tabVisible = useContext(TabVisibilityContext);
+  const appActive = useAppActive();
   const [muted, toggleMuted] = useVitrineSound();
-  const hasVideo =
-    !!forceVideo || urls.some((u) => isVideoUrl(u));
+  const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
+  const playing = tabVisible && appActive && !userPaused;
+
+  // Reset pause when the slide set changes (new post).
+  useEffect(() => {
+    setUserPaused(false);
+  }, [urls[0], forceVideo]);
+
+  useEffect(() => {
+    const onToggle = () => {
+      if (!hasVideo) return;
+      setUserPaused((p) => {
+        const next = !p;
+        haptic.light();
+        setShowPauseHint(true);
+        if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
+        hintTimer.current = window.setTimeout(() => setShowPauseHint(false), 700);
+        return next;
+      });
+    };
+    window.addEventListener(VITRINE_TOGGLE_PAUSE_EVENT, onToggle);
+    return () => {
+      window.removeEventListener(VITRINE_TOGGLE_PAUSE_EVENT, onToggle);
+      if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
+    };
+  }, [hasVideo]);
+
+  // Leaving Vitrine / backgrounding: force pause even if React lags on display:none.
+  useEffect(() => {
+    if (tabVisible && appActive) return;
+    setUserPaused(false); // clear user pause so it resumes when coming back
+    try {
+      document.querySelectorAll<HTMLVideoElement>("video[data-vitrine-feed]").forEach((v) => {
+        v.pause();
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [tabVisible, appActive]);
 
   if (urls.length === 0) {
     return <div className={className} style={{ background: "#1C2440" }} />;
@@ -203,6 +280,7 @@ export function MediaCarousel({
         className={className}
         forceVideo={forceVideo}
         muted={muted}
+        playing={playing}
       />
     ) : (
       <div
@@ -223,13 +301,14 @@ export function MediaCarousel({
             setI(Math.round(el.scrollLeft / w));
           }}
         >
-          {urls.map((u) => (
+          {urls.map((u, idx) => (
             <div key={u} className="h-full w-full shrink-0 snap-center">
               <MediaSlide
                 url={u}
                 className="h-full w-full object-cover"
                 forceVideo={forceVideo}
                 muted={muted}
+                playing={playing && idx === i}
               />
             </div>
           ))}
@@ -251,8 +330,23 @@ export function MediaCarousel({
   return (
     <div className="relative h-full w-full">
       {body}
+      {hasVideo && showPauseHint && (
+        <div className="pointer-events-none absolute inset-0 z-[20] grid place-items-center">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white">
+            {userPaused ? <Play size={28} fill="white" /> : <Pause size={28} fill="white" />}
+          </span>
+        </div>
+      )}
+      {hasVideo && userPaused && !showPauseHint && (
+        <div className="pointer-events-none absolute inset-0 z-[20] grid place-items-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-black/35 text-white">
+            <Play size={26} fill="white" />
+          </span>
+        </div>
+      )}
       {hasVideo && (
         <Press
+          data-no-pause
           aria-label={muted ? "Unmute" : "Mute"}
           onClick={(e) => {
             e.stopPropagation();
