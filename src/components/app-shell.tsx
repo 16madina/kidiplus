@@ -10,6 +10,7 @@ import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
 import { ActivityScreen } from "@/screens/activity-screen";
+import { requestOpenDm } from "@/components/dm/dm-inbox";
 import { VitrineScreen } from "@/screens/vitrine-screen";
 import { ProfileScreen } from "@/screens/profile-screen";
 import {
