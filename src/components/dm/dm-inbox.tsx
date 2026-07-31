@@ -21,6 +21,20 @@ import { DmChatScreen, type DmChatTarget } from "@/components/dm/dm-chat-screen"
 
 export const OPEN_DM_EVENT = "kidi:open-dm";
 
+// Deep-link handoff: the Messages tab may not be mounted yet when a push /
+// notification tap fires the event (tab switch animation). We stash the
+// thread id so DmInboxContent can consume it as soon as it mounts.
+let pendingDmThreadId: string | null = null;
+
+export function requestOpenDm(threadId: string) {
+  pendingDmThreadId = threadId;
+  try {
+    window.dispatchEvent(new CustomEvent(OPEN_DM_EVENT, { detail: { thread_id: threadId } }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function DmInboxContent() {
   const { t } = useTranslation();
   const { user } = useAuth();
