@@ -13,7 +13,7 @@ import { haptic } from "@/lib/haptics";
 const REASONS: ReportReason[] = ["inappropriate", "fraud", "counterfeit", "harassment", "other"];
 
 export function ReportSheet({
-  open, onClose, targetType, targetId, defaultReason, defaultNote,
+  open, onClose, targetType, targetId, defaultReason, defaultNote, zIndex = 90,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,6 +21,8 @@ export function ReportSheet({
   targetId: string;
   defaultReason?: ReportReason;
   defaultNote?: string;
+  /** Above story viewer / Activity when opened from Vitrine. */
+  zIndex?: number;
 }) {
   const { t } = useTranslation();
   const [reason, setReason] = useState<ReportReason | null>(defaultReason ?? null);
@@ -56,7 +58,8 @@ export function ReportSheet({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50"
+          className="fixed inset-0 flex items-end justify-center bg-black/50"
+          style={{ zIndex }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
         >

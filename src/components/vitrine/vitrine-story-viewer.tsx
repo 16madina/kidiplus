@@ -12,6 +12,7 @@ import {
   resumeVitrinePlayback,
   suspendVitrinePlayback,
 } from "@/lib/vitrine-playback";
+import { VitrineModerationMenu } from "./vitrine-moderation-menu";
 
 const GOLD = "#E8B93B";
 const IMAGE_MS = 5500;
@@ -31,6 +32,7 @@ export function VitrineStoryViewer({
   const [index, setIndex] = useState(startIndex);
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -59,7 +61,7 @@ export function VitrineStoryViewer({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !story || video) return;
+    if (!open || !story || video || menuOpen) return;
     setProgress(0);
     const started = performance.now();
     let raf = 0;
@@ -75,18 +77,22 @@ export function VitrineStoryViewer({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, story?.id, video, index]);
+  }, [open, story?.id, video, index, menuOpen]);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!open || !el || !video) return;
+    if (menuOpen) {
+      el.pause();
+      return;
+    }
     el.muted = muted;
     void el.play().catch(() => {
       el.muted = true;
       setMuted(true);
       void el.play().catch(() => undefined);
     });
-  }, [open, story?.id, video, muted, index]);
+  }, [open, story?.id, video, muted, index, menuOpen]);
 
   const close = () => {
     if (!guardBack()) return;
@@ -235,6 +241,32 @@ export function VitrineStoryViewer({
                 >
                   {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
                 </Press>
+              )}
+              {story.user_id && (
+                <VitrineModerationMenu
+                  target={{
+                    userId: story.user_id,
+                    displayName: story.seller?.display_name,
+                    handle: story.seller?.handle,
+                    avatarUrl: story.seller?.avatar_url,
+                    contentKind: "story",
+                    contentId: story.id,
+                  }}
+                  sheetZIndex={120}
+                  onOpenChange={setMenuOpen}
+                  onBlocked={() => {
+                    // Skip this author's remaining stories, or close if none left.
+                    const nextIdx = stories.findIndex(
+                      (s, i) => i > index && s.user_id !== story.user_id,
+                    );
+                    if (nextIdx >= 0) {
+                      setProgress(0);
+                      setIndex(nextIdx);
+                    } else {
+                      close();
+                    }
+                  }}
+                />
               )}
               <Press
                 onClick={close}

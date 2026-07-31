@@ -169,6 +169,26 @@ export function VitrineScreen() {
     return [...sortLivesNewestFirst(realVisible), ...samples];
   }, [lives, blockedIds]);
 
+  // Hide UGC from blocked authors (posts / stories / bientôt).
+  const postsVisible = useMemo(
+    () =>
+      posts.filter(
+        (p) => !p.user_id || p.user_id.startsWith("demo-") || !blockedIds.has(p.user_id),
+      ),
+    [posts, blockedIds],
+  );
+  const storiesVisible = useMemo(
+    () =>
+      stories.filter(
+        (s) => !s.user_id || s.user_id.startsWith("demo-") || !blockedIds.has(s.user_id),
+      ),
+    [stories, blockedIds],
+  );
+  const soonVisible = useMemo(
+    () => soon.filter((s) => !s.seller_id || !blockedIds.has(s.seller_id)),
+    [soon, blockedIds],
+  );
+
   const goHome = () => {
     haptic.light();
     window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "home" }));
@@ -235,7 +255,7 @@ export function VitrineScreen() {
           </div>
         );
       }
-      if (posts.length === 0) {
+      if (postsVisible.length === 0) {
         return empty(t("vitrine.emptyForYou"), () => {
           setLoadingPosts(true);
           void refreshPosts();
@@ -243,8 +263,8 @@ export function VitrineScreen() {
       }
       return (
         <VitrineVerticalPager
-          count={posts.length}
-          index={Math.min(postIndex, posts.length - 1)}
+          count={postsVisible.length}
+          index={Math.min(postIndex, postsVisible.length - 1)}
           onIndexChange={(i) => {
             setPostIndex(i);
             if (i > 0) setStoriesOpen(false);
@@ -253,7 +273,7 @@ export function VitrineScreen() {
           onSwipeCategory={swipeCategory}
         >
           {(i) => {
-            const post = posts[i];
+            const post = postsVisible[i];
             if (!post) return null;
             return (
               <VitrinePostCard
@@ -266,6 +286,10 @@ export function VitrineScreen() {
                 onCommentsAutoOpened={() => {
                   setOpenCommentsPostId(null);
                   setHighlightCommentId(null);
+                }}
+                onBlocked={() => {
+                  // Advance past this post; blockedIds filter removes the author.
+                  setPostIndex((idx) => Math.min(idx, Math.max(0, postsVisible.length - 2)));
                 }}
                 onUpdated={(p) =>
                   setPosts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
@@ -320,7 +344,7 @@ export function VitrineScreen() {
         </div>
       );
     }
-    if (soon.length === 0) {
+    if (soonVisible.length === 0) {
       return empty(t("vitrine.emptySoon"), () => {
         setLoadingSoon(true);
         void refreshSoon();
@@ -328,8 +352,8 @@ export function VitrineScreen() {
     }
     return (
       <VitrineVerticalPager
-        count={soon.length}
-        index={Math.min(soonIndex, soon.length - 1)}
+        count={soonVisible.length}
+        index={Math.min(soonIndex, soonVisible.length - 1)}
         onIndexChange={(i) => {
           setSoonIndex(i);
           if (i > 0) setStoriesOpen(false);
@@ -338,7 +362,7 @@ export function VitrineScreen() {
         onSwipeCategory={swipeCategory}
       >
         {(i) => {
-          const row = soon[i];
+          const row = soonVisible[i];
           if (!row) return null;
           return <VitrineSoonCard live={row} />;
         }}
@@ -416,7 +440,7 @@ export function VitrineScreen() {
               className="pointer-events-auto overflow-hidden"
             >
               <StoriesRow
-                stories={stories}
+                stories={storiesVisible}
                 tone="dark"
                 onCreate={() => {
                   if (guestMode || !user) {

@@ -30,18 +30,22 @@ import {
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { MediaCarousel } from "./vitrine-vertical-pager";
 import { VitrineCommentsSheet } from "./vitrine-comments-sheet";
+import { VitrineModerationMenu } from "./vitrine-moderation-menu";
 
 const GOLD = "#E8B93B";
 
 export function VitrinePostCard({
   post,
   onUpdated,
+  onBlocked,
   autoOpenComments = false,
   highlightCommentId = null,
   onCommentsAutoOpened,
 }: {
   post: VitrinePost;
   onUpdated?: (p: VitrinePost) => void;
+  /** After block: parent should drop this author from the feed. */
+  onBlocked?: () => void;
   /** Deep-link from Activity / push: open comments once after landing on this post. */
   autoOpenComments?: boolean;
   highlightCommentId?: string | null;
@@ -244,6 +248,21 @@ export function VitrinePostCard({
           onClick={onShop}
           aria={t("vitrine.shop")}
         />
+        {/* Report / block — App Store / Play UGC (Guideline 1.2). */}
+        {post.user_id && (
+          <VitrineModerationMenu
+            target={{
+              userId: post.user_id,
+              displayName: post.seller?.display_name,
+              handle: post.seller?.handle,
+              avatarUrl: post.seller?.avatar_url ?? avatarUrl,
+              contentKind: "post",
+              contentId: post.id,
+            }}
+            onBlocked={onBlocked}
+            buttonClassName="!min-h-0 grid h-10 w-10 place-items-center !bg-transparent p-0 text-white drop-shadow-md"
+          />
+        )}
       </div>
 
       <div
