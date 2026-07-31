@@ -18,11 +18,14 @@ export function VitrineCommentsSheet({
   open,
   onClose,
   postId,
+  highlightCommentId = null,
   onCommentAdded,
 }: {
   open: boolean;
   onClose: () => void;
   postId: string;
+  /** Scroll/highlight this comment when opening from an Activity deep-link. */
+  highlightCommentId?: string | null;
   onCommentAdded?: () => void;
 }) {
   const { t } = useTranslation();
@@ -48,16 +51,25 @@ export function VitrineCommentsSheet({
       if (!alive) return;
       setRows(r);
       setLoading(false);
+      if (highlightCommentId) {
+        window.setTimeout(() => {
+          const el = document.getElementById(`vitrine-comment-${highlightCommentId}`);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 420);
+      }
     });
     // Focus after bottom-sheet slide-up so iOS opens the keyboard.
+    // Skip auto-focus when deep-linking to a specific comment (avoid stealing scroll).
     const tFocus = window.setTimeout(() => {
-      inputRef.current?.focus({ preventScroll: true });
+      if (!highlightCommentId) {
+        inputRef.current?.focus({ preventScroll: true });
+      }
     }, 380);
     return () => {
       alive = false;
       window.clearTimeout(tFocus);
     };
-  }, [open, postId]);
+  }, [open, postId, highlightCommentId]);
 
   // Keep composer above the software keyboard (TikTok-style).
   useEffect(() => {
@@ -169,8 +181,18 @@ export function VitrineCommentsSheet({
                   .slice(0, 1)
                   .toUpperCase();
                 const avatar = avatars[c.id];
+                const highlighted = highlightCommentId === c.id;
                 return (
-                  <li key={c.id} className="flex gap-2.5">
+                  <li
+                    id={`vitrine-comment-${c.id}`}
+                    key={c.id}
+                    className="flex gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors"
+                    style={
+                      highlighted
+                        ? { background: "color-mix(in oklch, #E8B93B 22%, transparent)" }
+                        : undefined
+                    }
+                  >
                     <div
                       className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[12px] font-bold text-white"
                       style={{ background: "#10162B" }}

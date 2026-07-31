@@ -10,6 +10,9 @@ export type PushOpenPayload = {
   seller_id?: string;
   thread_id?: string;
   post_id?: string;
+  comment_id?: string;
+  /** "1" / "true" → open the post comments sheet after jumping to the post. */
+  open_comments?: string;
   // Free-form extras
   [key: string]: unknown;
 };
@@ -107,6 +110,12 @@ export function payloadFromNotificationRow(row: {
     else if (/^chat_/.test(row.kind)) kind = "chat";
     else kind = "notif";
   }
+  const commentId =
+    typeof data.comment_id === "string" && data.comment_id.trim()
+      ? data.comment_id.trim()
+      : undefined;
+  const openComments =
+    row.kind === "vitrine_comment" || !!commentId ? "1" : undefined;
   return {
     kind,
     order_id: row.order_id ?? (data.order_id as string | undefined),
@@ -115,5 +124,7 @@ export function payloadFromNotificationRow(row: {
     seller_id: data.seller_id as string | undefined,
     thread_id: data.thread_id as string | undefined,
     post_id: data.post_id as string | undefined,
+    comment_id: commentId,
+    open_comments: openComments,
   };
 }

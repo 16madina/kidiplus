@@ -374,7 +374,7 @@ function ProfileScreenAuthed() {
               aria-label={t("profile.editAvatar", {
                 defaultValue: lang === "fr" ? "Changer la photo" : "Change photo",
               })}
-              className="absolute left-1/2 top-2 z-10 grid h-[88px] w-[88px] -translate-x-1/2 place-items-center rounded-full active:opacity-90"
+              className="absolute left-1/2 top-2 z-10 h-[88px] w-[88px] -translate-x-1/2 rounded-full active:opacity-90"
               style={{
                 background: GOLD,
                 padding: 3,
@@ -383,26 +383,29 @@ function ProfileScreenAuthed() {
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt=""
-                  className="h-full w-full rounded-full object-cover"
-                  style={{ background: NAVY_TOP }}
-                  draggable={false}
-                  onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-                />
-              ) : (
-                <div
-                  className="grid h-full w-full place-items-center rounded-full text-[30px] font-bold text-white"
-                  style={{ background: NAVY_TOP }}
-                >
-                  {initial}
-                </div>
-              )}
+              {/* Inner clip: padding + grid % sizing was letting portrait avatars overflow as an oval. */}
+              <span className="relative block h-full w-full overflow-hidden rounded-full">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{ background: NAVY_TOP }}
+                    draggable={false}
+                    onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
+                  />
+                ) : (
+                  <span
+                    className="grid h-full w-full place-items-center text-[30px] font-bold text-white"
+                    style={{ background: NAVY_TOP }}
+                  >
+                    {initial}
+                  </span>
+                )}
+              </span>
               <span
                 aria-hidden
-                className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full text-white"
+                className="absolute -bottom-0.5 -right-0.5 z-20 grid h-7 w-7 place-items-center rounded-full text-white"
                 style={{
                   background: NAVY_TOP,
                   border: `2px solid ${GOLD}`,

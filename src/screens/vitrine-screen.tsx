@@ -12,6 +12,7 @@ import { openPublish } from "@/lib/publish";
 import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import {
+  fetchVitrinePostById,
   fetchVitrinePosts,
   fetchVitrineStories,
   type VitrinePost,
@@ -59,6 +60,9 @@ export function VitrineScreen() {
   const [postIndex, setPostIndex] = useState(0);
   const [liveIndex, setLiveIndex] = useState(0);
   const [soonIndex, setSoonIndex] = useState(0);
+  /** Deep-link: open comments on this post after landing on it. */
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
 
   const refreshLives = useCallback(async () => {
     const rows = await fetchActiveLives(60);
@@ -116,15 +120,30 @@ export function VitrineScreen() {
   // Deep-link from like/comment notifications → jump to that post in Pour toi.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const postId = (e as CustomEvent<{ post_id?: string }>).detail?.post_id;
+      const detail = (e as CustomEvent<{
+        post_id?: string;
+        comment_id?: string;
+        open_comments?: boolean;
+      }>).detail;
+      const postId = detail?.post_id;
       if (!postId) return;
       setCat("forYou");
       setStoriesOpen(false);
+      setOpenCommentsPostId(detail?.open_comments ? postId : null);
+      setHighlightCommentId(detail?.comment_id ?? null);
       void (async () => {
         const rows = await fetchVitrinePosts(60);
-        setPosts(rows);
+        let next = rows;
+        let idx = rows.findIndex((p) => p.id === postId);
+        if (idx < 0) {
+          const targeted = await fetchVitrinePostById(postId);
+          if (targeted) {
+            next = [targeted, ...rows.filter((p) => p.id !== targeted.id)];
+            idx = 0;
+          }
+        }
+        setPosts(next);
         setLoadingPosts(false);
-        const idx = rows.findIndex((p) => p.id === postId);
         setPostIndex(idx >= 0 ? idx : 0);
       })();
     };
@@ -240,6 +259,14 @@ export function VitrineScreen() {
               <VitrinePostCard
                 key={post.id}
                 post={post}
+                autoOpenComments={openCommentsPostId === post.id}
+                highlightCommentId={
+                  openCommentsPostId === post.id ? highlightCommentId : null
+                }
+                onCommentsAutoOpened={() => {
+                  setOpenCommentsPostId(null);
+                  setHighlightCommentId(null);
+                }}
                 onUpdated={(p) =>
                   setPosts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
                 }

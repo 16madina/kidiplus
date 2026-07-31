@@ -36,9 +36,16 @@ const GOLD = "#E8B93B";
 export function VitrinePostCard({
   post,
   onUpdated,
+  autoOpenComments = false,
+  highlightCommentId = null,
+  onCommentsAutoOpened,
 }: {
   post: VitrinePost;
   onUpdated?: (p: VitrinePost) => void;
+  /** Deep-link from Activity / push: open comments once after landing on this post. */
+  autoOpenComments?: boolean;
+  highlightCommentId?: string | null;
+  onCommentsAutoOpened?: () => void;
 }) {
   const { t } = useTranslation();
   const { user, guestMode } = useAuth();
@@ -49,6 +56,12 @@ export function VitrinePostCard({
   const [likes, setLikes] = useState(post.like_count);
   const [comments, setComments] = useState(post.comment_count);
   const [commentsOpen, setCommentsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!autoOpenComments) return;
+    setCommentsOpen(true);
+    onCommentsAutoOpened?.();
+  }, [autoOpenComments, post.id]); // onCommentsAutoOpened intentionally omitted (parent inline callback)
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
@@ -271,6 +284,7 @@ export function VitrinePostCard({
         open={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         postId={post.id}
+        highlightCommentId={highlightCommentId}
         onCommentAdded={() => {
           const next = comments + 1;
           setComments(next);

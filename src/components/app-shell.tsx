@@ -383,17 +383,29 @@ function AppShellInner() {
         return;
       }
       if (kind === "vitrine") {
+        // Leave Activity so the Vitrine feed isn't hidden under the overlay.
+        setActivityOpen(false);
         setActive("vitrine");
         if (p.post_id) {
-          setTimeout(() => {
+          const openComments =
+            p.open_comments === "1" ||
+            p.open_comments === "true" ||
+            !!p.comment_id;
+          const fire = () => {
             try {
               window.dispatchEvent(
                 new CustomEvent("kidi:open-vitrine-post", {
-                  detail: { post_id: p.post_id },
+                  detail: {
+                    post_id: p.post_id,
+                    comment_id: typeof p.comment_id === "string" ? p.comment_id : undefined,
+                    open_comments: openComments,
+                  },
                 }),
               );
             } catch { /* ignore */ }
-          }, 80);
+          };
+          window.setTimeout(fire, 80);
+          window.setTimeout(fire, 400);
         }
         return;
       }

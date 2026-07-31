@@ -289,6 +289,76 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
   }
 }
 
+/** Fetch a single Vitrine post by id (deep-link from like/comment notifications). */
+export async function fetchVitrinePostById(postId: string): Promise<VitrinePost | null> {
+  if (!postId || postId.startsWith("demo-")) {
+    return DEMO_POSTS.find((p) => p.id === postId) ?? null;
+  }
+  try {
+    const { data, error } = await sb
+      .from("vitrine_posts")
+      .select(
+        `
+        id, user_id, media_type, media_urls, caption, product_id, live_id,
+        like_count, comment_count, created_at, active,
+        seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
+        `,
+      )
+      .eq("id", postId)
+      .maybeSingle();
+    if (error || !data) return null;
+
+    const uid = (await sb.auth.getUser()).data.user?.id ?? null;
+    let liked = false;
+    if (uid) {
+      const { data: like } = await sb
+        .from("vitrine_likes")
+        .select("post_id")
+        .eq("user_id", uid)
+        .eq("post_id", postId)
+        .maybeSingle();
+      liked = !!like;
+    }
+
+    let liveStatus: "live" | "scheduled" | "ended" | null = null;
+    if (data.live_id) {
+      const { data: live } = await sb
+        .from("lives")
+        .select("id, status")
+        .eq("id", data.live_id)
+        .maybeSingle();
+      liveStatus = (live?.status as "live" | "scheduled" | "ended" | undefined) ?? null;
+    }
+
+    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+    const seller = data.seller
+      ? {
+          ...data.seller,
+          avatar_url:
+            (await resolveAvatarUrl(data.seller.avatar_url)) ?? data.seller.avatar_url,
+        }
+      : null;
+
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      media_type: (data.media_type ?? "image") as VitrineMediaType,
+      media_urls: normalizeMediaUrls(data.media_urls),
+      caption: data.caption,
+      product_id: data.product_id,
+      live_id: data.live_id,
+      like_count: Number(data.like_count ?? 0),
+      comment_count: Number(data.comment_count ?? 0),
+      created_at: data.created_at,
+      liked_by_me: liked,
+      seller,
+      live_status: liveStatus,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
   try {
     const { data, error } = await sb
