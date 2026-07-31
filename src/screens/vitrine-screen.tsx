@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Loader2, RefreshCw, Compass, Home, ChevronDown } from "lucide-react";
+import { Plus, Loader2, RefreshCw, Compass, Home, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { StoriesRow } from "@/components/vitrine/stories-row";
@@ -157,6 +157,14 @@ export function VitrineScreen() {
   const goExplore = () => {
     haptic.light();
     window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "search" }));
+  };
+  const goPublish = () => {
+    if (guestMode || !user) {
+      openAuth();
+      return;
+    }
+    haptic.medium();
+    openPublish();
   };
 
   const selectCat = (next: Cat) => {
@@ -360,11 +368,11 @@ export function VitrineScreen() {
           </div>
 
           <Press
-            aria-label={t("vitrine.explore")}
-            onClick={goExplore}
+            aria-label={t("publish.cta", { defaultValue: "Publier" })}
+            onClick={goPublish}
             className="h-11 w-11 shrink-0 rounded-full text-white"
           >
-            <Search size={22} strokeWidth={1.9} />
+            <Plus size={26} strokeWidth={2.2} />
           </Press>
         </div>
 
