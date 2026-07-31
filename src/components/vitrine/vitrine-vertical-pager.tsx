@@ -257,7 +257,7 @@ export function MediaCarousel({
           onClick={(e) => {
             e.stopPropagation();
             haptic.light();
-            setMuted((m) => !m);
+            toggleMuted();
           }}
           className="pointer-events-auto absolute left-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] z-[35] h-10 w-10 rounded-full bg-black/45 text-white"
           onPointerDown={(e) => e.stopPropagation()}
