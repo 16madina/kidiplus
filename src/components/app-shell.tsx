@@ -204,14 +204,9 @@ function AppShellInner() {
     setActivityTab(payload.tab === "messages" ? "messages" : "notifs");
     setActivityOpen(true);
     if (payload.thread_id) {
+      const tid = payload.thread_id;
       window.setTimeout(() => {
-        try {
-          window.dispatchEvent(
-            new CustomEvent("kidi:open-dm", { detail: { thread_id: payload.thread_id } }),
-          );
-        } catch {
-          /* ignore */
-        }
+        requestOpenDm(tid);
       }, 80);
     }
     if (payload.order_id) {
