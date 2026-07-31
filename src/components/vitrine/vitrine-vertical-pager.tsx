@@ -186,8 +186,8 @@ export function MediaCarousel({
   forceVideo?: boolean;
 }) {
   const [i, setI] = useState(0);
-  // Autoplay requires muted start; user unmutes with the speaker control.
-  const [muted, setMuted] = useState(true);
+  // Autoplay requires muted start; once unmuted the choice sticks across posts.
+  const [muted, toggleMuted] = useVitrineSound();
   const hasVideo =
     !!forceVideo || urls.some((u) => isVideoUrl(u));
 
