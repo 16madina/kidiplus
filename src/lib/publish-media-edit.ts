@@ -34,68 +34,76 @@ export function getVideoDuration(file: File): Promise<number> {
   });
 }
 
-export type AspectPreset = "original" | "9:16" | "1:1" | "4:5";
+export type AspectPreset = "free" | "9:16" | "1:1" | "4:5";
 
-export function aspectRatioValue(preset: AspectPreset, naturalW: number, naturalH: number) {
-  if (preset === "original") return naturalW / Math.max(1, naturalH);
+export function aspectRatioValue(preset: AspectPreset): number | null {
+  if (preset === "free") return null;
   if (preset === "1:1") return 1;
   if (preset === "4:5") return 4 / 5;
   return 9 / 16;
 }
 
-/** Center-crop an image to an aspect ratio and optionally burn text. */
+/** Normalized crop inside the source image (0–1). */
+export type CropRect = { x: number; y: number; w: number; h: number };
+
+/** Text sticker in normalized image coords (0–1), scale relative to width. */
+export type TextSticker = {
+  text: string;
+  x: number;
+  y: number;
+  scale: number;
+  color: string;
+};
+
+/**
+ * Render image with a free/aspect crop + optional text stickers.
+ * Crop is in source-image normalized coordinates.
+ */
 export async function renderEditedImage(
   file: File,
   opts: {
-    aspect: AspectPreset;
-    text?: string;
-    textColor?: string;
+    crop: CropRect;
+    texts?: TextSticker[];
   },
 ): Promise<File> {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
-    const ratio = aspectRatioValue(opts.aspect, img.naturalWidth, img.naturalHeight);
-    let srcW = img.naturalWidth;
-    let srcH = img.naturalHeight;
-    let sx = 0;
-    let sy = 0;
-    const srcRatio = srcW / srcH;
-    if (srcRatio > ratio) {
-      srcW = Math.round(srcH * ratio);
-      sx = Math.round((img.naturalWidth - srcW) / 2);
-    } else if (srcRatio < ratio) {
-      srcH = Math.round(srcW / ratio);
-      sy = Math.round((img.naturalHeight - srcH) / 2);
-    }
+    const sx = Math.round(clamp01(opts.crop.x) * img.naturalWidth);
+    const sy = Math.round(clamp01(opts.crop.y) * img.naturalHeight);
+    const sw = Math.max(1, Math.round(clamp01(opts.crop.w) * img.naturalWidth));
+    const sh = Math.max(1, Math.round(clamp01(opts.crop.h) * img.naturalHeight));
 
-    // Cap output size for upload weight.
     const maxEdge = 1440;
-    const scale = Math.min(1, maxEdge / Math.max(srcW, srcH));
-    const outW = Math.max(1, Math.round(srcW * scale));
-    const outH = Math.max(1, Math.round(srcH * scale));
+    const scale = Math.min(1, maxEdge / Math.max(sw, sh));
+    const outW = Math.max(1, Math.round(sw * scale));
+    const outH = Math.max(1, Math.round(sh * scale));
 
     const canvas = document.createElement("canvas");
     canvas.width = outW;
     canvas.height = outH;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("canvas");
-    ctx.drawImage(img, sx, sy, srcW, srcH, 0, 0, outW, outH);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
 
-    const text = opts.text?.trim();
-    if (text) {
-      const fontSize = Math.max(22, Math.round(outW * 0.055));
+    for (const sticker of opts.texts ?? []) {
+      const text = sticker.text.trim();
+      if (!text) continue;
+      const fontSize = Math.max(16, Math.round(outW * 0.08 * sticker.scale));
       ctx.font = `700 ${fontSize}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const x = outW / 2;
-      const y = outH * 0.78;
-      const color = opts.textColor || "#FFFFFF";
-      ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
-      ctx.strokeStyle = "rgba(0,0,0,0.65)";
-      ctx.strokeText(text, x, y, outW * 0.9);
-      ctx.fillStyle = color;
-      ctx.fillText(text, x, y, outW * 0.9);
+      // Sticker x/y are relative to full source; map into crop space.
+      const nx = (sticker.x - opts.crop.x) / Math.max(0.0001, opts.crop.w);
+      const ny = (sticker.y - opts.crop.y) / Math.max(0.0001, opts.crop.h);
+      const x = nx * outW;
+      const y = ny * outH;
+      if (x < -outW || x > outW * 2 || y < -outH || y > outH * 2) continue;
+      ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.14));
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.strokeText(text, x, y, outW * 0.92);
+      ctx.fillStyle = sticker.color || "#FFFFFF";
+      ctx.fillText(text, x, y, outW * 0.92);
     }
 
     const blob = await new Promise<Blob | null>((resolve) =>
@@ -106,6 +114,10 @@ export async function renderEditedImage(
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+function clamp01(n: number) {
+  return Math.min(1, Math.max(0, n));
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {

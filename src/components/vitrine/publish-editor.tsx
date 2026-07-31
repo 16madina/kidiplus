@@ -15,6 +15,9 @@ import {
   MAX_PUBLISH_VIDEO_SEC,
   MAX_STORY_VIDEO_SEC,
   type AspectPreset,
+  type CropRect,
+  type TextSticker,
+  aspectRatioValue,
   getVideoDuration,
   isVideoFile,
   renderEditedImage,
@@ -22,6 +25,7 @@ import {
 } from "@/lib/publish-media-edit";
 
 const GOLD = "#E8B93B";
+const TEXT_COLORS = ["#FFFFFF", "#E8B93B", "#FF4D6A", "#4D9FFF", "#111111"];
 
 type Tool = "none" | "trim" | "crop" | "text";
 
@@ -41,25 +45,42 @@ export function PublishEditor({
   caption: string;
   onCaptionChange: (v: string) => void;
   onBack: () => void;
-  /** Called with the (possibly edited) file ready to upload. */
   onConfirm: (file: File) => void;
   busy?: boolean;
 }) {
   const { t } = useTranslation();
-  const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const asVideo = isVideoFile(file);
   const maxSec = isStory ? MAX_STORY_VIDEO_SEC : MAX_PUBLISH_VIDEO_SEC;
 
-  const [tool, setTool] = useState<Tool>("none");
+  const [tool, setTool] = useState<Tool>(asVideo ? "trim" : "crop");
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
-  const [aspect, setAspect] = useState<AspectPreset>("original");
-  const [overlayText, setOverlayText] = useState("");
+  const [aspect, setAspect] = useState<AspectPreset>("9:16");
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [natural, setNatural] = useState({ w: 1, h: 1 });
+  const [texts, setTexts] = useState<TextSticker[]>([]);
+  const [activeText, setActiveText] = useState(0);
   const [applying, setApplying] = useState(false);
   const [trimProgress, setTrimProgress] = useState(0);
 
+  const stageRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const dragRef = useRef<{
+    mode: "pan" | "text" | "trim" | "pinch";
+    x0: number;
+    y0: number;
+    pan0: { x: number; y: number };
+    text0?: { x: number; y: number; scale: number };
+    trim0?: number;
+    pinch0?: number;
+    dist0?: number;
+  } | null>(null);
+
   const needsTrim = asVideo && duration > maxSec + 0.25;
-  const trimEnd = Math.min(duration, trimStart + maxSec);
+  const windowSec = Math.min(maxSec, duration || maxSec);
+  const maxTrimStart = Math.max(0, (duration || 0) - windowSec);
+  const trimEnd = Math.min(duration || windowSec, trimStart + windowSec);
 
   useEffect(() => {
     if (!asVideo) return;
@@ -69,27 +90,68 @@ export function PublishEditor({
         if (!alive) return;
         setDuration(d);
         setTrimStart(0);
-        if (d > maxSec + 0.25) setTool("trim");
+        setTool("trim");
       })
-      .catch(() => {
-        if (alive) setDuration(0);
-      });
+      .catch(() => alive && setDuration(0));
     return () => {
       alive = false;
     };
-  }, [file, asVideo, maxSec]);
+  }, [file, asVideo]);
 
   useEffect(() => {
-    const el = videoPreviewRef.current;
+    if (asVideo) return;
+    const img = new Image();
+    img.onload = () => setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = previewUrl;
+  }, [previewUrl, asVideo]);
+
+  useEffect(() => {
+    const el = videoRef.current;
     if (!el || !asVideo) return;
-    el.currentTime = trimStart;
+    const seek = () => {
+      try {
+        el.currentTime = trimStart;
+      } catch {
+        /* ignore */
+      }
+    };
+    seek();
   }, [trimStart, asVideo]);
 
-  const trimLabel = useMemo(() => {
-    const a = formatTime(trimStart);
-    const b = formatTime(trimEnd);
-    return `${a} – ${b} · ${Math.round(Math.min(maxSec, trimEnd - trimStart))}s`;
-  }, [trimStart, trimEnd, maxSec]);
+  const cropRect: CropRect = useMemo(() => {
+    // Map zoom/pan into a source crop covering the stage aspect.
+    const stage = stageRef.current;
+    const stageW = stage?.clientWidth || 390;
+    const stageH = stage?.clientHeight || 520;
+    const targetRatio = aspectRatioValue(aspect) ?? stageW / stageH;
+    const imgRatio = natural.w / natural.h;
+
+    // Base cover scale (image fills stage), then user zoom.
+    let baseW: number;
+    let baseH: number;
+    if (imgRatio > targetRatio) {
+      baseH = natural.h / zoom;
+      baseW = baseH * targetRatio;
+    } else {
+      baseW = natural.w / zoom;
+      baseH = baseW / targetRatio;
+    }
+    baseW = Math.min(natural.w, Math.max(1, baseW));
+    baseH = Math.min(natural.h, Math.max(1, baseH));
+
+    const maxPanX = (natural.w - baseW) / 2;
+    const maxPanY = (natural.h - baseH) / 2;
+    const ox = clamp(pan.x * maxPanX, -maxPanX, maxPanX);
+    const oy = clamp(pan.y * maxPanY, -maxPanY, maxPanY);
+    const sx = (natural.w - baseW) / 2 + ox;
+    const sy = (natural.h - baseH) / 2 + oy;
+    return {
+      x: sx / natural.w,
+      y: sy / natural.h,
+      w: baseW / natural.w,
+      h: baseH / natural.h,
+    };
+  }, [aspect, zoom, pan, natural]);
 
   const applyAndConfirm = async () => {
     if (applying || busy) return;
@@ -97,76 +159,158 @@ export function PublishEditor({
     haptic.medium();
     try {
       if (asVideo) {
-        if (needsTrim || tool === "trim") {
-          if (duration <= 0) {
-            toast.error(
-              t("publish.edit.durationFail", {
-                defaultValue: "Impossible de lire la durée de la vidéo.",
-              }),
-            );
+        if (needsTrim) {
+          try {
+            setTrimProgress(0);
+            const trimmed = await trimVideoFile(file, trimStart, maxSec, setTrimProgress);
+            onConfirm(trimmed);
             return;
-          }
-          if (duration > maxSec + 0.25) {
-            try {
-              setTrimProgress(0);
-              const trimmed = await trimVideoFile(
-                file,
-                trimStart,
-                maxSec,
-                setTrimProgress,
-              );
-              onConfirm(trimmed);
-              return;
-            } catch (e) {
-              const code = e instanceof Error ? e.message : "";
-              if (code === "capture_unsupported" || code === "recorder_unsupported") {
-                toast.error(
-                  t("publish.edit.trimUnsupported", {
-                    defaultValue:
-                      "Coupe la vidéo à 1 min max dans ta galerie, puis réessaie.",
-                  }),
-                );
-                return;
-              }
+          } catch (e) {
+            const code = e instanceof Error ? e.message : "";
+            if (code === "capture_unsupported" || code === "recorder_unsupported") {
               toast.error(
-                t("publish.edit.trimFail", {
-                  defaultValue: "Échec du découpage. Réessaie avec une vidéo plus courte.",
+                t("publish.edit.trimUnsupported", {
+                  defaultValue:
+                    "Coupe la vidéo à 1 min max dans ta galerie, puis réessaie.",
                 }),
               );
               return;
             }
+            toast.error(
+              t("publish.edit.trimFail", {
+                defaultValue: "Échec du découpage. Réessaie avec une vidéo plus courte.",
+              }),
+            );
+            return;
           }
         }
         onConfirm(file);
         return;
       }
 
-      // Photo: crop + text
-      if (aspect !== "original" || overlayText.trim()) {
-        const edited = await renderEditedImage(file, {
-          aspect,
-          text: overlayText,
-        });
-        onConfirm(edited);
-        return;
-      }
-      onConfirm(file);
+      const edited = await renderEditedImage(file, {
+        crop: cropRect,
+        texts: texts.filter((x) => x.text.trim()),
+      });
+      onConfirm(edited);
     } finally {
       setApplying(false);
       setTrimProgress(0);
     }
   };
 
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (asVideo) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-text-sticker]")) {
+      const idx = Number(target.getAttribute("data-text-sticker"));
+      setActiveText(idx);
+      setTool("text");
+      const st = texts[idx];
+      if (!st) return;
+      dragRef.current = {
+        mode: "text",
+        x0: e.clientX,
+        y0: e.clientY,
+        pan0: pan,
+        text0: { x: st.x, y: st.y, scale: st.scale },
+      };
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      return;
+    }
+    if (tool !== "crop" && tool !== "none") return;
+    if (e.pointerType === "touch" && (e as unknown as TouchEvent).touches?.length === 2) return;
+    dragRef.current = {
+      mode: "pan",
+      x0: e.clientX,
+      y0: e.clientY,
+      pan0: { ...pan },
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || asVideo) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    const dx = e.clientX - d.x0;
+    const dy = e.clientY - d.y0;
+    if (d.mode === "pan") {
+      setPan({
+        x: clamp(d.pan0.x + dx / (stage.clientWidth * 0.45), -1, 1),
+        y: clamp(d.pan0.y + dy / (stage.clientHeight * 0.45), -1, 1),
+      });
+    } else if (d.mode === "text" && d.text0 != null) {
+      const idx = activeText;
+      setTexts((prev) =>
+        prev.map((st, i) =>
+          i === idx
+            ? {
+                ...st,
+                x: clamp(d.text0!.x + dx / stage.clientWidth, 0.05, 0.95),
+                y: clamp(d.text0!.y + dy / stage.clientHeight, 0.05, 0.95),
+              }
+            : st,
+        ),
+      );
+    }
+  };
+
+  const onPointerUp = () => {
+    dragRef.current = null;
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (asVideo || e.touches.length !== 2) return;
+    const a = e.touches[0]!;
+    const b = e.touches[1]!;
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    dragRef.current = {
+      mode: "pinch",
+      x0: 0,
+      y0: 0,
+      pan0: pan,
+      pinch0: zoom,
+      dist0: dist,
+    };
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = dragRef.current;
+    if (!d || d.mode !== "pinch" || e.touches.length !== 2) return;
+    e.preventDefault();
+    const a = e.touches[0]!;
+    const b = e.touches[1]!;
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const next = clamp((d.pinch0 || 1) * (dist / Math.max(1, d.dist0 || 1)), 1, 4);
+    setZoom(next);
+  };
+
+  const addText = () => {
+    haptic.selection();
+    setTexts((prev) => [
+      ...prev,
+      {
+        text: t("publish.edit.textDefault", { defaultValue: "Texte" }),
+        x: 0.5,
+        y: 0.5,
+        scale: 1,
+        color: "#FFFFFF",
+      },
+    ]);
+    setActiveText(texts.length);
+    setTool("text");
+  };
+
   const working = applying || !!busy;
+  const trimPctStart = duration > 0 ? (trimStart / duration) * 100 : 0;
+  const trimPctWidth = duration > 0 ? (windowSec / duration) * 100 : 100;
 
   return (
     <div className="flex h-full flex-col bg-black text-white">
       <div className="flex items-center justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <Press
-          onClick={onBack}
-          disabled={working}
-          className="h-11 w-11 rounded-full bg-white/10 text-white"
-        >
+        <Press onClick={onBack} disabled={working} className="h-11 w-11 rounded-full bg-white/10">
           <X size={22} />
         </Press>
         <p className="text-[15px] font-bold">
@@ -174,65 +318,91 @@ export function PublishEditor({
         </p>
         <Press
           onClick={() => void applyAndConfirm()}
-          disabled={working || (needsTrim && duration <= 0)}
+          disabled={working}
           className="h-11 min-w-11 rounded-full px-3 text-[13px] font-bold text-[#10162B] disabled:opacity-40"
           style={{ background: GOLD }}
         >
-          {working ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Check size={20} />
-          )}
+          {working ? <Loader2 size={18} className="animate-spin" /> : <Check size={20} />}
         </Press>
       </div>
 
-      <div className="relative mx-4 mt-2 min-h-0 flex-1 overflow-hidden rounded-2xl bg-neutral-900">
+      {/* Stage */}
+      <div
+        ref={stageRef}
+        className="relative mx-3 mt-2 min-h-0 flex-1 touch-none overflow-hidden rounded-2xl bg-neutral-950"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onPointerUp}
+      >
         {asVideo ? (
           <video
-            ref={videoPreviewRef}
+            ref={videoRef}
             src={previewUrl}
             className="h-full w-full object-contain"
-            controls
             playsInline
-            style={
-              aspect === "original"
-                ? undefined
-                : { objectFit: "cover", aspectRatio: aspect.replace(":", " / ") }
-            }
+            muted={false}
+            controls={false}
+            onClick={() => {
+              const el = videoRef.current;
+              if (!el) return;
+              if (el.paused) void el.play();
+              else el.pause();
+            }}
           />
         ) : (
-          <div
-            className="relative mx-auto h-full max-w-full overflow-hidden"
-            style={
-              aspect === "original"
-                ? { height: "100%" }
-                : {
-                    aspectRatio: aspect.replace(":", " / "),
-                    height: "100%",
-                    maxHeight: "100%",
-                  }
-            }
-          >
-            <img
-              src={previewUrl}
-              alt=""
-              className="h-full w-full object-cover"
-              draggable={false}
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${previewUrl})`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: `${50 + pan.x * 40}% ${50 + pan.y * 40}%`,
+                backgroundSize: `${100 * zoom}%`,
+              }}
             />
-            {overlayText.trim() && (
-              <p
-                className="pointer-events-none absolute inset-x-4 bottom-[18%] text-center text-[22px] font-bold leading-snug text-white"
-                style={{ textShadow: "0 2px 8px rgba(0,0,0,0.75)" }}
-              >
-                {overlayText.trim()}
-              </p>
+            {/* Rule-of-thirds grid */}
+            {(tool === "crop" || tool === "none") && (
+              <div className="pointer-events-none absolute inset-0 z-10">
+                <div className="absolute inset-y-0 left-1/3 w-px bg-white/35" />
+                <div className="absolute inset-y-0 left-2/3 w-px bg-white/35" />
+                <div className="absolute inset-x-0 top-1/3 h-px bg-white/35" />
+                <div className="absolute inset-x-0 top-2/3 h-px bg-white/35" />
+                <div className="absolute inset-2 rounded-xl border border-white/50" />
+              </div>
             )}
-          </div>
+            {texts.map((st, idx) => (
+              <div
+                key={idx}
+                data-text-sticker={idx}
+                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab px-2 py-1 active:cursor-grabbing"
+                style={{
+                  left: `${st.x * 100}%`,
+                  top: `${st.y * 100}%`,
+                  color: st.color,
+                  fontSize: `${Math.round(22 * st.scale)}px`,
+                  fontWeight: 800,
+                  textShadow: "0 2px 10px rgba(0,0,0,0.75)",
+                  outline: activeText === idx && tool === "text" ? `2px solid ${GOLD}` : "none",
+                  borderRadius: 8,
+                  maxWidth: "90%",
+                  textAlign: "center",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {st.text}
+              </div>
+            ))}
+          </>
         )}
 
         {applying && asVideo && (
-          <div className="absolute inset-0 z-10 grid place-items-center bg-black/55 px-6 text-center">
-            <div>
+          <div className="absolute inset-0 z-30 grid place-items-center bg-black/60">
+            <div className="text-center">
               <Loader2 className="mx-auto mb-2 animate-spin" size={22} />
               <p className="text-[13px] font-semibold">
                 {t("publish.edit.trimming", { defaultValue: "Découpage…" })}{" "}
@@ -245,7 +415,7 @@ export function PublishEditor({
 
       {/* Tools */}
       <div className="mt-3 flex justify-center gap-2 px-4">
-        {asVideo && (
+        {asVideo ? (
           <ToolBtn
             active={tool === "trim"}
             icon={<Scissors size={18} />}
@@ -255,8 +425,7 @@ export function PublishEditor({
               setTool("trim");
             }}
           />
-        )}
-        {!asVideo && (
+        ) : (
           <>
             <ToolBtn
               active={tool === "crop"}
@@ -272,95 +441,199 @@ export function PublishEditor({
               icon={<Type size={18} />}
               label={t("publish.edit.text", { defaultValue: "Texte" })}
               onClick={() => {
-                haptic.selection();
-                setTool("text");
+                if (!texts.length) addText();
+                else {
+                  haptic.selection();
+                  setTool("text");
+                }
               }}
             />
           </>
         )}
       </div>
 
-      <div className="min-h-[7.5rem] px-4 pt-3">
-        {tool === "trim" && asVideo && (
+      <div className="min-h-[8.5rem] px-4 pt-2">
+        {asVideo && tool === "trim" && (
           <div>
-            {needsTrim ? (
-              <p className="mb-2 text-center text-[12px] text-white/70">
-                {t("publish.edit.trimHint", {
-                  defaultValue:
-                    "Choisis un extrait de {{sec}} s max (la vidéo fait {{dur}} s).",
-                  sec: maxSec,
-                  dur: Math.round(duration),
-                })}
-              </p>
-            ) : (
-              <p className="mb-2 text-center text-[12px] text-white/70">
-                {t("publish.edit.trimOk", {
-                  defaultValue: "Vidéo déjà ≤ {{sec}} s — tu peux publier.",
-                  sec: maxSec,
-                })}
-              </p>
-            )}
-            <p className="mb-2 text-center text-[12px] font-semibold text-[color:var(--accent,#E8B93B)]" style={{ color: GOLD }}>
-              {trimLabel}
+            <p className="mb-2 text-center text-[12px] text-white/70">
+              {needsTrim
+                ? t("publish.edit.trimHint", {
+                    defaultValue:
+                      "Glisse la fenêtre pour choisir {{sec}} s (vidéo {{dur}} s).",
+                    sec: maxSec,
+                    dur: Math.round(duration),
+                  })
+                : t("publish.edit.trimOk", {
+                    defaultValue: "Vidéo déjà ≤ {{sec}} s — tu peux publier.",
+                    sec: maxSec,
+                  })}
             </p>
-            <input
-              type="range"
-              min={0}
-              max={Math.max(0, duration - Math.min(maxSec, duration))}
-              step={0.1}
-              value={trimStart}
-              disabled={duration <= maxSec}
-              onChange={(e) => setTrimStart(Number(e.target.value))}
-              className="w-full accent-[#E8B93B]"
-            />
-          </div>
-        )}
-
-        {tool === "crop" && !asVideo && (
-          <div className="flex flex-wrap justify-center gap-2">
-            {(
-              [
-                ["original", t("publish.edit.aspectOriginal", { defaultValue: "Original" })],
-                ["9:16", "9:16"],
-                ["1:1", "1:1"],
-                ["4:5", "4:5"],
-              ] as const
-            ).map(([key, label]) => (
-              <Press
-                key={key}
-                onClick={() => {
-                  haptic.selection();
-                  setAspect(key);
-                }}
-                className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold"
+            <p className="mb-2 text-center text-[12px] font-bold" style={{ color: GOLD }}>
+              {formatTime(trimStart)} – {formatTime(trimEnd)}
+            </p>
+            {/* YouTube-style window over a track */}
+            <div
+              className="relative h-14 overflow-hidden rounded-xl"
+              style={{
+                background:
+                  "repeating-linear-gradient(90deg, #2a3148 0 10px, #1c2238 10px 20px)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+              onPointerDown={(e) => {
+                if (maxTrimStart <= 0) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const rel = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+                const next = clamp(rel * duration - windowSec / 2, 0, maxTrimStart);
+                setTrimStart(next);
+                dragRef.current = {
+                  mode: "trim",
+                  x0: e.clientX,
+                  y0: 0,
+                  pan0: pan,
+                  trim0: next,
+                };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                const d = dragRef.current;
+                if (!d || d.mode !== "trim" || maxTrimStart <= 0) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const delta = ((e.clientX - d.x0) / rect.width) * duration;
+                setTrimStart(clamp((d.trim0 || 0) + delta, 0, maxTrimStart));
+              }}
+              onPointerUp={onPointerUp}
+            >
+              <div
+                className="absolute inset-y-1 rounded-lg"
                 style={{
-                  background: aspect === key ? GOLD : "rgba(255,255,255,0.12)",
-                  color: aspect === key ? "#10162B" : "#fff",
+                  left: `${trimPctStart}%`,
+                  width: `${trimPctWidth}%`,
+                  border: `2px solid ${GOLD}`,
+                  background: "rgba(232,185,59,0.18)",
+                  boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
                 }}
               >
-                {label}
-              </Press>
-            ))}
+                <span className="absolute inset-y-0 left-0 w-1.5 rounded-l bg-[color:var(--g)]" style={{ background: GOLD }} />
+                <span className="absolute inset-y-0 right-0 w-1.5 rounded-r" style={{ background: GOLD }} />
+              </div>
+            </div>
           </div>
         )}
 
-        {tool === "text" && !asVideo && (
-          <input
-            value={overlayText}
-            onChange={(e) => setOverlayText(e.target.value.slice(0, 80))}
-            placeholder={t("publish.edit.textPlaceholder", {
-              defaultValue: "Ajouter un texte…",
-            })}
-            className="w-full rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] text-white outline-none placeholder:text-white/40"
-          />
+        {!asVideo && tool === "crop" && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap justify-center gap-2">
+              {(
+                [
+                  ["9:16", "9:16"],
+                  ["1:1", "1:1"],
+                  ["4:5", "4:5"],
+                  ["free", t("publish.edit.aspectFree", { defaultValue: "Libre" })],
+                ] as const
+              ).map(([key, label]) => (
+                <Press
+                  key={key}
+                  onClick={() => {
+                    haptic.selection();
+                    setAspect(key);
+                    setZoom(1);
+                    setPan({ x: 0, y: 0 });
+                  }}
+                  className="!min-h-9 h-9 rounded-full px-3 text-[12px] font-bold"
+                  style={{
+                    background: aspect === key ? GOLD : "rgba(255,255,255,0.12)",
+                    color: aspect === key ? "#10162B" : "#fff",
+                  }}
+                >
+                  {label}
+                </Press>
+              ))}
+            </div>
+            <div>
+              <p className="mb-1 text-center text-[11px] text-white/55">
+                {t("publish.edit.pinchHint", {
+                  defaultValue: "Pince pour zoomer · Glisse pour déplacer",
+                })}
+              </p>
+              <input
+                type="range"
+                min={1}
+                max={4}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-[#E8B93B]"
+              />
+            </div>
+          </div>
         )}
 
-        {tool === "none" && !asVideo && (
-          <p className="text-center text-[12px] text-white/50">
-            {t("publish.edit.hint", {
-              defaultValue: "Recadre, ajoute du texte, puis valide.",
-            })}
-          </p>
+        {!asVideo && tool === "text" && (
+          <div className="space-y-2">
+            <input
+              value={texts[activeText]?.text ?? ""}
+              onChange={(e) => {
+                const v = e.target.value.slice(0, 80);
+                setTexts((prev) =>
+                  prev.map((st, i) => (i === activeText ? { ...st, text: v } : st)),
+                );
+              }}
+              placeholder={t("publish.edit.textPlaceholder", {
+                defaultValue: "Ajouter un texte…",
+              })}
+              className="w-full rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] outline-none placeholder:text-white/40"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-2">
+                {TEXT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      haptic.selection();
+                      setTexts((prev) =>
+                        prev.map((st, i) =>
+                          i === activeText ? { ...st, color: c } : st,
+                        ),
+                      );
+                    }}
+                    className="h-8 w-8 rounded-full border-2"
+                    style={{
+                      background: c,
+                      borderColor:
+                        texts[activeText]?.color === c ? GOLD : "rgba(255,255,255,0.25)",
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-white/55">A</span>
+                <input
+                  type="range"
+                  min={0.6}
+                  max={2.4}
+                  step={0.05}
+                  value={texts[activeText]?.scale ?? 1}
+                  onChange={(e) => {
+                    const scale = Number(e.target.value);
+                    setTexts((prev) =>
+                      prev.map((st, i) =>
+                        i === activeText ? { ...st, scale } : st,
+                      ),
+                    );
+                  }}
+                  className="w-24 accent-[#E8B93B]"
+                />
+                <span className="text-[16px] font-bold text-white/55">A</span>
+              </div>
+            </div>
+            <Press
+              onClick={addText}
+              className="!min-h-9 h-9 w-full rounded-full bg-white/10 text-[12px] font-semibold"
+            >
+              + {t("publish.edit.addText", { defaultValue: "Ajouter un texte" })}
+            </Press>
+          </div>
         )}
       </div>
 
@@ -370,7 +643,7 @@ export function PublishEditor({
           onChange={(e) => onCaptionChange(e.target.value.slice(0, 500))}
           rows={2}
           placeholder={t("vitrine.captionPlaceholder", { defaultValue: "Légende…" })}
-          className="mx-4 mt-1 resize-none rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] text-white outline-none placeholder:text-white/40"
+          className="mx-4 mt-1 resize-none rounded-2xl border border-white/15 bg-white/10 px-3 py-2.5 text-[14px] outline-none placeholder:text-white/40"
         />
       )}
 
@@ -420,4 +693,8 @@ function formatTime(sec: number) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
 }

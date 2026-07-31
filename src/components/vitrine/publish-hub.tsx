@@ -6,6 +6,10 @@ import { useAuth } from "@/lib/auth-context";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { haptic } from "@/lib/haptics";
 import { OPEN_PUBLISH_EVENT } from "@/lib/publish";
+import {
+  resumeVitrinePlayback,
+  suspendVitrinePlayback,
+} from "@/lib/vitrine-playback";
 import { PublishCameraScreen } from "@/components/vitrine/publish-camera-screen";
 
 const GOLD = "#E8B93B";
@@ -37,18 +41,30 @@ export function PublishHub() {
         return;
       }
       haptic.light();
+      // Publish overlays Vitrine — stop feed audio immediately.
+      suspendVitrinePlayback("publish");
       setOpen(true);
     };
     window.addEventListener(OPEN_PUBLISH_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_PUBLISH_EVENT, onOpen);
   }, [guestMode, profile?.is_seller, openAuth, t]);
 
+  useEffect(() => {
+    if (open) suspendVitrinePlayback("publish");
+    else resumeVitrinePlayback("publish");
+  }, [open]);
+
+  const closePublish = () => {
+    setOpen(false);
+    resumeVitrinePlayback("publish");
+  };
+
   return (
     <PublishCameraScreen
       open={open}
-      onClose={() => setOpen(false)}
+      onClose={closePublish}
       onDone={() => {
-        setOpen(false);
+        closePublish();
         window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "vitrine" }));
         window.dispatchEvent(new CustomEvent("kidi:vitrine-refresh"));
       }}

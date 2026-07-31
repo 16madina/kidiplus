@@ -6,6 +6,12 @@ import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
 import { useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
+import {
+  isVitrinePlaybackSuspended,
+  subscribeVitrinePlayback,
+  suspendVitrinePlayback,
+  resumeVitrinePlayback,
+} from "@/lib/vitrine-playback";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { Press } from "@/components/press";
 
@@ -152,22 +158,35 @@ function MediaSlide({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const asVideo = forceVideo || isVideoUrl(url);
+  const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
+
+  useEffect(() => subscribeVitrinePlayback(() => {
+    setSuspended(isVitrinePlaybackSuspended());
+  }), []);
+
+  const shouldPlay = playing && !suspended;
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
-    el.muted = muted;
-    el.volume = 1;
-    if (!playing) {
-      el.pause();
+    if (!shouldPlay) {
+      try {
+        el.pause();
+        el.muted = true;
+        el.volume = 0;
+      } catch {
+        /* ignore */
+      }
       return;
     }
+    el.muted = muted;
+    el.volume = muted ? 0 : 1;
     void el.play().catch(() => {
-      // Autoplay with sound can be blocked — fall back to muted playback.
       el.muted = true;
+      el.volume = 0;
       void el.play().catch(() => undefined);
     });
-  }, [url, asVideo, muted, playing]);
+  }, [url, asVideo, muted, shouldPlay]);
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
   useEffect(() => {
@@ -176,6 +195,8 @@ function MediaSlide({
       if (!el) return;
       try {
         el.pause();
+        el.muted = true;
+        el.volume = 0;
         el.removeAttribute("src");
         el.load();
       } catch {
@@ -191,8 +212,8 @@ function MediaSlide({
         data-vitrine-feed
         src={url}
         className={className ?? "h-full w-full object-cover"}
-        autoPlay={playing}
-        muted={muted}
+        autoPlay={shouldPlay}
+        muted={muted || !shouldPlay}
         loop
         playsInline
         controls={false}
@@ -256,17 +277,14 @@ export function MediaCarousel({
     };
   }, [hasVideo]);
 
-  // Leaving Vitrine / backgrounding: force pause even if React lags on display:none.
+  // Leaving Vitrine / backgrounding: hard-stop audio (does not clear Publish suspend).
   useEffect(() => {
-    if (tabVisible && appActive) return;
-    setUserPaused(false); // clear user pause so it resumes when coming back
-    try {
-      document.querySelectorAll<HTMLVideoElement>("video[data-vitrine-feed]").forEach((v) => {
-        v.pause();
-      });
-    } catch {
-      /* ignore */
+    if (tabVisible && appActive) {
+      resumeVitrinePlayback("tab");
+      return;
     }
+    setUserPaused(false);
+    suspendVitrinePlayback("tab");
   }, [tabVisible, appActive]);
 
   if (urls.length === 0) {

@@ -8,6 +8,10 @@ import { registerOverlay, guardBack } from "@/components/push-screen";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl, type VitrineStory } from "@/lib/vitrine-db";
+import {
+  resumeVitrinePlayback,
+  suspendVitrinePlayback,
+} from "@/lib/vitrine-playback";
 
 const GOLD = "#E8B93B";
 const IMAGE_MS = 5500;
@@ -39,6 +43,12 @@ export function VitrineStoryViewer({
     setIndex(Math.max(0, Math.min(startIndex, stories.length - 1)));
     setProgress(0);
   }, [open, startIndex, stories.length]);
+
+  useEffect(() => {
+    if (open) suspendVitrinePlayback("story");
+    else resumeVitrinePlayback("story");
+    return () => resumeVitrinePlayback("story");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
