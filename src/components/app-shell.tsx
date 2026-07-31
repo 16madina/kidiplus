@@ -10,6 +10,7 @@ import { HomeScreen } from "@/screens/home-screen";
 import { SearchScreen } from "@/screens/search-screen";
 import { LiveScreen } from "@/screens/live-screen";
 import { ActivityScreen } from "@/screens/activity-screen";
+import { requestOpenDm } from "@/components/dm/dm-inbox";
 import { VitrineScreen } from "@/screens/vitrine-screen";
 import { ProfileScreen } from "@/screens/profile-screen";
 import {
@@ -204,14 +205,9 @@ function AppShellInner() {
     setActivityTab(payload.tab === "messages" ? "messages" : "notifs");
     setActivityOpen(true);
     if (payload.thread_id) {
+      const tid = payload.thread_id;
       window.setTimeout(() => {
-        try {
-          window.dispatchEvent(
-            new CustomEvent("kidi:open-dm", { detail: { thread_id: payload.thread_id } }),
-          );
-        } catch {
-          /* ignore */
-        }
+        requestOpenDm(tid);
       }, 80);
     }
     if (payload.order_id) {
