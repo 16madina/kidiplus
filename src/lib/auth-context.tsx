@@ -116,7 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const { data: userData } = await supabase.auth.getUser();
     const sessionEmail = userData?.user?.email ?? "";
-    const next = data ? ({ ...(data as Omit<Profile, "email">), email: sessionEmail } as Profile) : null;
+    // Sensitive flags (moderation / risk / Connect) are column-locked; read
+    // the caller's own values through the security-definer RPC.
+    const { data: flags } = await supabase.rpc("my_profile_flags");
+    const next = data
+      ? ({
+          ...(data as Omit<Profile, "email">),
+          ...((flags ?? {}) as Record<string, unknown>),
+          email: sessionEmail,
+        } as Profile)
+      : null;
+
     setProfile(next);
     if (next?.email && !next.welcome_email_sent) {
       void sendWelcomeEmailOnce({
