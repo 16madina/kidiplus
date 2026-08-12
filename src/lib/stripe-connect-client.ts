@@ -27,12 +27,16 @@ async function bearer(): Promise<string | null> {
 async function post(path: string, body?: unknown): Promise<any> {
   const token = await bearer();
   if (!token) return { error: "unauthorized" };
+  const envHeaders = paymentsEnvHeaders();
+  if (path === "/api/connect/onboard") {
+    console.info("[connect/client] onboarding payments env", envHeaders["X-Payments-Env"]);
+  }
   const res = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      ...paymentsEnvHeaders(),
+      ...envHeaders,
     },
     body: JSON.stringify(body ?? {}),
   });
