@@ -194,12 +194,33 @@ export function WithdrawSheet({
     setBusy(true);
     haptic.medium();
     const r = await requestPayout(amount, method, destination, source);
-    setBusy(false);
     if (r.ok) {
+      // Stripe Connect: settle immediately with an automated Transfer to the
+      // seller's connected account (no manual admin step). The RPC already
+      // debited the balance and enforced the tier caps.
+      if (method === "stripe_connect") {
+        const sent = await sendConnectPayout(r.payoutId);
+        setBusy(false);
+        if (!sent.ok) {
+          haptic.warning();
+          toast.error(
+            t("connect.errors.transfer", {
+              defaultValue:
+                "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter.",
+            }),
+          );
+          setStep("success");
+          setTimeout(onClose, 1800);
+          return;
+        }
+      } else {
+        setBusy(false);
+      }
       haptic.success();
       setStep("success");
       setTimeout(onClose, 1800);
     } else {
+      setBusy(false);
       haptic.warning();
       toast.error(
         r.error === "insufficient_funds"
