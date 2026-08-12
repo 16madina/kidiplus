@@ -64,11 +64,11 @@ export async function fetchConnectStatus(): Promise<ConnectStatusResult> {
 }
 
 /** Create/reuse the Express account and open the Stripe onboarding page. */
-export async function startConnectOnboarding(): Promise<
-  { ok: true; url: string } | { ok: false; error: string; message?: string }
-> {
+export async function startConnectOnboarding(
+  country?: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string; message?: string }> {
   try {
-    const j = await post("/api/connect/onboard");
+    const j = await post("/api/connect/onboard", country ? { country } : {});
     if (!j?.ok || !j.url) return { ok: false, error: j?.error ?? "unknown", message: j?.message };
     const url = String(j.url);
     if (isNative()) {
