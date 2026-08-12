@@ -135,7 +135,10 @@ export const Route = createFileRoute("/api/connect/onboard")({
             ?? "stripe_error";
           if (isConnectNotEnabledError(e)) {
             console.error("[connect/onboard] Connect is not enabled on this Stripe account");
-            return json({ error: "connect_not_enabled", message: msg }, 503, origin);
+            // This is an account capability state, not an application outage.
+            // Keep the API response consumable by the withdrawal sheet instead
+            // of turning a known configuration state into a runtime 503.
+            return json({ ok: false, error: "connect_not_enabled", message: msg }, 200, origin);
           }
           console.error("[connect/onboard] stripe error", msg);
           return json({ error: "stripe_error", message: msg }, 502, origin);
