@@ -22,6 +22,7 @@ import { createStripeClient, getStripeConfig, mapStripeError, envHintFromRequest
 import { toStripeAmountFor } from "@/lib/fees";
 import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 import { isAllowedOrigin } from "@/lib/api-cors";
+import { connectApplicationFee } from "@/lib/stripe-connect.server";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
