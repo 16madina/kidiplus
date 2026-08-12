@@ -486,17 +486,32 @@ export function WithdrawSheet({
                     {disabledReason}
                   </p>
                 )}
-                <Press
-                  onClick={canContinue ? () => setStep("confirm") : undefined}
-                  disabled={!canContinue}
-                  className="w-full rounded-2xl py-3 text-[15px] font-bold"
-                  style={{
-                    backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
-                    color: canContinue ? "#10162B" : "var(--muted-foreground)",
-                  }}
-                >
-                  {t("common.continue")}
-                </Press>
+                {connectNeedsOnboarding ? (
+                  <Press
+                    onClick={busy || connectStatus === "loading" ? undefined : onboardConnect}
+                    disabled={busy || connectStatus === "loading"}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-bold"
+                    style={{ backgroundColor: "#635BFF", color: "white" }}
+                  >
+                    {busy && <Loader2 size={16} className="animate-spin" />}
+                    {t("connect.onboardCta", {
+                      defaultValue: "Configurer mes paiements pour retirer",
+                    })}
+                  </Press>
+                ) : (
+                  <Press
+                    onClick={canContinue ? () => setStep("confirm") : undefined}
+                    disabled={!canContinue}
+                    className="w-full rounded-2xl py-3 text-[15px] font-bold"
+                    style={{
+                      backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
+                      color: canContinue ? "#10162B" : "var(--muted-foreground)",
+                    }}
+                  >
+                    {t("common.continue")}
+                  </Press>
+                )}
+
               </div>
             </motion.div>
           )}
