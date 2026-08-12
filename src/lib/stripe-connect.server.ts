@@ -29,14 +29,43 @@ const CURRENCY_DEFAULT_COUNTRY: Record<string, string> = {
   EUR: "FR",
 };
 
-/** Resolve an ISO-3166 alpha-2 country for the Express account. */
+/**
+ * Resolve an ISO-3166 alpha-2 country for the Express account.
+ * The seller's explicit choice wins, then their profile country, then a
+ * currency-based default.
+ */
 export function resolveConnectCountry(
   profileCountry: unknown,
   currency: string,
+  chosenCountry?: unknown,
 ): string | null {
-  const raw = typeof profileCountry === "string" ? profileCountry.trim().toUpperCase() : "";
-  if (raw.length === 2 && CONNECT_COUNTRIES.has(raw)) return raw;
-  return CURRENCY_DEFAULT_COUNTRY[currency.toUpperCase()] ?? null;
+  const pick = (v: unknown) => {
+    const raw = typeof v === "string" ? v.trim().toUpperCase() : "";
+    return raw.length === 2 && CONNECT_COUNTRIES.has(raw) ? raw : null;
+  };
+  return (
+    pick(chosenCountry) ?? pick(profileCountry) ?? CURRENCY_DEFAULT_COUNTRY[currency.toUpperCase()] ?? null
+  );
+}
+
+/**
+ * True when Stripe refuses a requested capability for this country (typical
+ * for `card_payments` on cross-border payout-only accounts). Callers retry
+ * with `transfers` only.
+ */
+export function isCapabilityUnsupportedError(e: unknown): boolean {
+  const err = e as { raw?: { message?: string; param?: string }; message?: string; param?: string };
+  const msg = (err?.raw?.message ?? err?.message ?? "").toLowerCase();
+  const param = (err?.raw?.param ?? err?.param ?? "").toLowerCase();
+  if (param.includes("card_payments")) return true;
+  return (
+    msg.includes("card_payments") ||
+    (msg.includes("capabilit") &&
+      (msg.includes("not available") ||
+        msg.includes("unsupported") ||
+        msg.includes("cannot be requested") ||
+        msg.includes("is not supported")))
+  );
 }
 
 export type ConnectStatus = "none" | "pending" | "active" | "restricted";
