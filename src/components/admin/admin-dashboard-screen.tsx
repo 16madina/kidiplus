@@ -40,6 +40,8 @@ import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 import { OrderItemImage } from "@/components/orders/order-item-image";
 import { PayoutRiskBadge } from "./payout-risk-badge";
+import { PaymentsModeBadge } from "./payments-mode-badge";
+
 
 
 
