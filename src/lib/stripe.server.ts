@@ -86,14 +86,15 @@ export function legacyMatchesEnv(env: StripeEnv): boolean {
 
 
 
-export function getStripeConfig(hint?: StripeEnv | null): {
+export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts): {
   ok: boolean;
   env: StripeEnv;
   publishableKey: string;
   webhookSecret: string;
   reason?: string;
 } {
-  const env = pickEnv(hint);
+  const managedOnly = !!opts?.managedOnly;
+  const env = pickEnv(hint, opts);
 
   const gatewayKey =
     env === "live"
@@ -104,16 +105,17 @@ export function getStripeConfig(hint?: StripeEnv | null): {
       ? process.env.PAYMENTS_LIVE_WEBHOOK_SECRET
       : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET;
 
-  const legacySecret = process.env.STRIPE_SECRET_KEY;
-  const legacyWebhook = process.env.STRIPE_WEBHOOK_SECRET;
+  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacyWebhook = managedOnly ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
   const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
   // In forced test mode never hand a pk_live_ key to the browser: the client
-  // falls back to its own bundled pk_test_ token instead.
+  // falls back to its own bundled pk_test_ token instead. Managed-only flows
+  // are never served by the BYOK key, so this clamp does not apply to them.
   const publishableKey =
-    forcedTestMode() && rawPublishable.startsWith("pk_live_")
+    !managedOnly && forcedTestMode() && rawPublishable.startsWith("pk_live_")
       ? (process.env.STRIPE_PUBLISHABLE_KEY ?? "").startsWith("pk_test_")
         ? process.env.STRIPE_PUBLISHABLE_KEY!
         : ""
@@ -124,9 +126,11 @@ export function getStripeConfig(hint?: StripeEnv | null): {
   // An explicit mode is a strict boundary: sandbox requests require the
   // sandbox gateway and live requests require the live gateway. In particular,
   // never let a legacy sk_live_* key satisfy a sandbox request.
-  const haveApi = hint === "live" || hint === "sandbox"
-    ? !!(gatewayKey || legacyMatchesEnv(env))
-    : !!(gatewayKey || legacySecret);
+  const haveApi = managedOnly
+    ? !!gatewayKey
+    : hint === "live" || hint === "sandbox"
+      ? !!(gatewayKey || legacyMatchesEnv(env))
+      : !!(gatewayKey || legacySecret);
   if (!haveApi) {
     return {
       ok: false,
@@ -139,6 +143,7 @@ export function getStripeConfig(hint?: StripeEnv | null): {
 
   return { ok: true, env, publishableKey, webhookSecret };
 }
+
 
 
 // Build a Stripe SDK client. When using the managed gateway key we route
