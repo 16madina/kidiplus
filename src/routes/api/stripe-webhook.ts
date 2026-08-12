@@ -91,8 +91,14 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 .select("id");
               const res = orderId ? await q.eq("id", orderId) : await q;
               const updated = (res.data ?? []) as Array<{ id: string }>;
-              for (const row of updated) {
-                await admin.rpc("credit_seller_earning", { _order_id: row.id });
+              // Destination charge: Stripe already transferred the seller's
+              // share to their connected account, so skip the wallet escrow
+              // credit to avoid paying the seller twice.
+              const paidViaConnect = intent.metadata?.connectTransfer === "1";
+              if (!paidViaConnect) {
+                for (const row of updated) {
+                  await admin.rpc("credit_seller_earning", { _order_id: row.id });
+                }
               }
               // Double-pay guard: order already paid (e.g. wallet) but this
               // card PI still succeeded → auto-refund the card capture.
