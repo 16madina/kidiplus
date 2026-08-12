@@ -830,6 +830,17 @@ function StripeInlineForm({
   const [ready, setReady] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Safety net: if Stripe's PaymentElement never calls onReady (bad network,
+  // blocked js.stripe.com, or a client-secret/publishable-key account
+  // mismatch), the loading overlay would spin forever with no feedback.
+  const [mountTimedOut, setMountTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (ready) return;
+    const id = window.setTimeout(() => setMountTimedOut(true), 12000);
+    return () => window.clearTimeout(id);
+  }, [ready]);
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
