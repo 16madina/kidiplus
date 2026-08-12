@@ -50,6 +50,7 @@ import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/pay
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiConnectLoginLinkRouteImport } from './routes/api/connect.login-link'
 import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
 import { Route as ApiConnectPayoutRouteImport } from './routes/api/connect.payout'
 import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
@@ -300,6 +301,11 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
 } as any)
+const ApiConnectLoginLinkRoute = ApiConnectLoginLinkRouteImport.update({
+  id: '/api/connect/login-link',
+  path: '/api/connect/login-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiConnectOnboardRoute = ApiConnectOnboardRouteImport.update({
   id: '/api/connect/onboard',
   path: '/api/connect/onboard',
@@ -549,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/login-link': typeof ApiConnectLoginLinkRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
@@ -632,6 +639,7 @@ export interface FileRoutesByTo {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/login-link': typeof ApiConnectLoginLinkRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
@@ -716,6 +724,7 @@ export interface FileRoutesById {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/login-link': typeof ApiConnectLoginLinkRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
@@ -801,6 +810,7 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/login-link'
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/login-link'
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
@@ -967,6 +978,7 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/login-link'
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
@@ -1049,6 +1061,7 @@ export interface RootRouteChildren {
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminPaymentsModeRoute: typeof ApiAdminPaymentsModeRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
+  ApiConnectLoginLinkRoute: typeof ApiConnectLoginLinkRoute
   ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
   ApiConnectPayoutRoute: typeof ApiConnectPayoutRoute
   ApiConnectStatusRoute: typeof ApiConnectStatusRoute
@@ -1376,6 +1389,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/checkout/confirm'
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
+    }
+    '/api/connect/login-link': {
+      id: '/api/connect/login-link'
+      path: '/api/connect/login-link'
+      fullPath: '/api/connect/login-link'
+      preLoaderRoute: typeof ApiConnectLoginLinkRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/connect/onboard': {
       id: '/api/connect/onboard'
@@ -1741,6 +1761,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminPaymentsModeRoute: ApiAdminPaymentsModeRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
+  ApiConnectLoginLinkRoute: ApiConnectLoginLinkRoute,
   ApiConnectOnboardRoute: ApiConnectOnboardRoute,
   ApiConnectPayoutRoute: ApiConnectPayoutRoute,
   ApiConnectStatusRoute: ApiConnectStatusRoute,
