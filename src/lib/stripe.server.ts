@@ -18,7 +18,29 @@ export type StripeEnv = "sandbox" | "live";
 
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
+/** Mode of the BYOK STRIPE_SECRET_KEY, if any. */
+export function byokEnv(): StripeEnv | null {
+  const k = (process.env.STRIPE_SECRET_KEY ?? "").trim();
+  if (!k) return null;
+  if (k.startsWith("sk_test_") || k.startsWith("rk_test_")) return "sandbox";
+  if (k.startsWith("sk_live_") || k.startsWith("rk_live_")) return "live";
+  return null;
+}
+
+/**
+ * When the ONLY BYOK secret key available is a TEST key, the whole app must
+ * run in Stripe test mode — including the production build. Otherwise Connect
+ * account links / connected accounts would be created live and reject test
+ * bank accounts. As soon as a real sk_live_ key is provided, this returns
+ * false and normal env resolution applies.
+ */
+export function forcedTestMode(): boolean {
+  return byokEnv() === "sandbox";
+}
+
 function pickEnv(hint?: StripeEnv | null): StripeEnv {
+  // A test-only BYOK key pins every Stripe operation to sandbox.
+  if (forcedTestMode()) return "sandbox";
   // Explicit hint from the client (x-payments-env header) is authoritative —
   // this is the only reliable signal at Worker runtime, since VITE_* env
   // vars are NOT injected into `process.env` on Cloudflare Workers, so any
@@ -34,6 +56,8 @@ function pickEnv(hint?: StripeEnv | null): StripeEnv {
 }
 
 export function envHintFromRequest(request: Request): StripeEnv | null {
+  // Ignore a "live" hint from the client while a test-only BYOK key is set.
+  if (forcedTestMode()) return "sandbox";
   const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
   if (h === "live" || h === "sandbox") return h;
   return null;
@@ -41,12 +65,9 @@ export function envHintFromRequest(request: Request): StripeEnv | null {
 
 /** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
 export function legacyMatchesEnv(env: StripeEnv): boolean {
-  const k = (process.env.STRIPE_SECRET_KEY ?? "").trim();
-  if (!k) return false;
-  const isTest = k.startsWith("sk_test_") || k.startsWith("rk_test_");
-  const isLive = k.startsWith("sk_live_") || k.startsWith("rk_live_");
-  return env === "sandbox" ? isTest : isLive;
+  return byokEnv() !== null && byokEnv() === env;
 }
+
 
 export function getStripeConfig(hint?: StripeEnv | null): {
   ok: boolean;
@@ -68,10 +89,19 @@ export function getStripeConfig(hint?: StripeEnv | null): {
 
   const legacySecret = process.env.STRIPE_SECRET_KEY;
   const legacyWebhook = process.env.STRIPE_WEBHOOK_SECRET;
-  const publishableKey =
+  const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
+  // In forced test mode never hand a pk_live_ key to the browser: the client
+  // falls back to its own bundled pk_test_ token instead.
+  const publishableKey =
+    forcedTestMode() && rawPublishable.startsWith("pk_live_")
+      ? (process.env.STRIPE_PUBLISHABLE_KEY ?? "").startsWith("pk_test_")
+        ? process.env.STRIPE_PUBLISHABLE_KEY!
+        : ""
+      : rawPublishable;
+
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
   // An explicit mode is a strict boundary: sandbox requests require the
