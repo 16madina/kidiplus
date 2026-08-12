@@ -38,9 +38,22 @@ export function forcedTestMode(): boolean {
   return byokEnv() === "sandbox";
 }
 
-function pickEnv(hint?: StripeEnv | null): StripeEnv {
-  // A test-only BYOK key pins every Stripe operation to sandbox.
-  if (forcedTestMode()) return "sandbox";
+/**
+ * Options for callers that must bypass the legacy BYOK key entirely.
+ *
+ * `managedOnly` exists because the BYOK STRIPE_SECRET_KEY may belong to a
+ * DIFFERENT Stripe account than the managed gateway (it is provisioned for
+ * Connect testing). Any flow whose client-side confirmation uses the managed
+ * publishable token (VITE_PAYMENTS_CLIENT_TOKEN) MUST create/retrieve its
+ * PaymentIntents on the managed account, otherwise Stripe.js cannot resolve
+ * the client secret and the PaymentElement never mounts.
+ */
+export type StripeClientOpts = { managedOnly?: boolean };
+
+function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
+  // A test-only BYOK key pins every Stripe operation to sandbox — but only
+  // for flows that may actually use that key.
+  if (!opts?.managedOnly && forcedTestMode()) return "sandbox";
   // Explicit hint from the client (x-payments-env header) is authoritative —
   // this is the only reliable signal at Worker runtime, since VITE_* env
   // vars are NOT injected into `process.env` on Cloudflare Workers, so any
@@ -55,18 +68,22 @@ function pickEnv(hint?: StripeEnv | null): StripeEnv {
   return "sandbox";
 }
 
-export function envHintFromRequest(request: Request): StripeEnv | null {
+export function envHintFromRequest(request: Request, opts?: StripeClientOpts): StripeEnv | null {
+  const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
+  const hinted = h === "live" || h === "sandbox" ? (h as StripeEnv) : null;
+  // Managed-only flows always trust the browser: it is about to confirm with
+  // the publishable key of that exact env.
+  if (opts?.managedOnly) return hinted;
   // Ignore a "live" hint from the client while a test-only BYOK key is set.
   if (forcedTestMode()) return "sandbox";
-  const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
-  if (h === "live" || h === "sandbox") return h;
-  return null;
+  return hinted;
 }
 
 /** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
 export function legacyMatchesEnv(env: StripeEnv): boolean {
   return byokEnv() !== null && byokEnv() === env;
 }
+
 
 
 export function getStripeConfig(hint?: StripeEnv | null): {
