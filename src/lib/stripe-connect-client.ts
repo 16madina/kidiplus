@@ -97,3 +97,23 @@ export async function sendConnectPayout(
     return { ok: false, error: "network_error", message: (e as Error).message };
   }
 }
+
+/** One-time Stripe Express dashboard link (only when the account is active). */
+export async function openExpressDashboard(): Promise<
+  { ok: true; url: string } | { ok: false; error: string }
+> {
+  try {
+    const j = await post("/api/connect/login-link");
+    if (!j?.ok || !j.url) return { ok: false, error: j?.error ?? "unknown" };
+    const url = String(j.url);
+    if (isNative()) {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url, presentationStyle: "popover" });
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
