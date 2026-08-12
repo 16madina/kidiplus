@@ -11,7 +11,14 @@
 
 import { normalizeCurrency, roundForCurrency, isZeroDecimal, type Currency } from "@/lib/money";
 
-export const PLATFORM_FEE_PERCENT = 5;
+/**
+ * SINGLE SOURCE OF TRUTH for the KiDi+ platform commission.
+ * Used for display (Mes gains, sale detail, seller net) AND for the Stripe
+ * Connect `application_fee_amount` on destination charges. Mirrored in SQL by
+ * `public.platform_fee_rate()` — update both together.
+ */
+export const PLATFORM_FEE_PERCENT = 10;
+export const PLATFORM_FEE_RATE = PLATFORM_FEE_PERCENT / 100;
 
 /**
  * Virtual-gift platform cut (percent of the gift price kept by KiDi+).
