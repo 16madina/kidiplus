@@ -112,16 +112,31 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           >
             {t("wallet.toEarningsLink")}
           </button>
-          <Press
-            onClick={() => setTopupOpen(true)}
-            className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"
-            style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
-          >
-            <span className="flex items-center justify-center gap-1.5">
-              <Plus size={16} />
-              {t("wallet.topupCta")}
-            </span>
-          </Press>
+          <div className="mt-4 flex gap-2">
+            <Press
+              onClick={() => setTopupOpen(true)}
+              className="flex-1 rounded-2xl py-3 text-[15px] font-bold"
+              style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <Plus size={16} />
+                {t("wallet.topupCta")}
+              </span>
+            </Press>
+            <Press
+              onClick={() => setWithdrawOpen(true)}
+              className="flex-1 rounded-2xl py-3 text-[15px] font-bold text-white"
+              style={{ border: "1px solid rgba(255,255,255,0.35)" }}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <ArrowUpRight size={16} />
+                {t("wallet.withdrawCta")}
+              </span>
+            </Press>
+          </div>
+          <p className="mt-2 text-[11px] leading-snug text-white/70">
+            {t("wallet.withdrawHint")}
+          </p>
         </motion.div>
 
         {/* History */}
