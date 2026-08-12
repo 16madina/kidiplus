@@ -190,6 +190,43 @@ export function SellerPaymentsAccountScreen({
           </ol>
         </div>
 
+        {/* Country picker — required before the Express account is created */}
+        {status === "none" && (
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: NAVY_INSET, border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <label
+              htmlFor="connect-country"
+              className="mb-1 block text-[13px] font-semibold text-white/85"
+            >
+              {t("connect.countryLabel", { defaultValue: "Pays de ton compte vendeur" })}
+            </label>
+            <p className="mb-3 text-[12px] leading-relaxed text-white/60">
+              {t("connect.countryHint")}
+            </p>
+            <div
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
+            >
+              <CountryFlag code={country} className="h-4 w-6 shrink-0 rounded-[2px]" />
+              <select
+                id="connect-country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                disabled={busy || loading}
+                className="w-full bg-transparent text-[15px] font-semibold text-white outline-none"
+              >
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code} style={{ color: "#10162B" }}>
+                    {isFr ? c.fr : c.en}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         {status !== "active" && (
           <Press
