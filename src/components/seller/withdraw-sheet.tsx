@@ -103,6 +103,22 @@ export function WithdrawSheet({
   const [paypalEmail, setPaypalEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // --- Stripe Connect (Western sellers only) -------------------------------
+  const connectEligible = CONNECT_CURRENCIES.has(normalizeCurrency(currency));
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | "loading">("loading");
+  const refreshConnect = useCallback(async () => {
+    if (!connectEligible) return;
+    const r = await fetchConnectStatus();
+    setConnectStatus(r.ok ? r.status : "none");
+  }, [connectEligible]);
+
+  useEffect(() => {
+    if (open && connectEligible) {
+      setConnectStatus("loading");
+      void refreshConnect();
+    }
+  }, [open, connectEligible, refreshConnect]);
+
   useEffect(() => {
     if (open) {
       setStep("form");
@@ -117,6 +133,7 @@ export function WithdrawSheet({
   }, [open, available, defaultMethod]);
 
   const destination = useMemo<Record<string, string>>(() => {
+    if (method === "stripe_connect") return {};
     if (method === "bank_transfer") {
       const d: Record<string, string> = { iban: iban.trim(), holder: holder.trim() };
       return d;
@@ -132,13 +149,16 @@ export function WithdrawSheet({
   const emailTrimmed = paypalEmail.trim();
   const emailValid = EMAIL_RE.test(emailTrimmed) && emailTrimmed.length <= 254;
   const destinationValid =
-    method === "bank_transfer"
-      ? iban.trim().length >= 6 && holder.trim().length >= 2
-      : method === "paypal"
-        ? emailValid
-        : phone.trim().length >= 6;
+    method === "stripe_connect"
+      ? true
+      : method === "bank_transfer"
+        ? iban.trim().length >= 6 && holder.trim().length >= 2
+        : method === "paypal"
+          ? emailValid
+          : phone.trim().length >= 6;
   const belowMin = amount < min;
   const aboveAvailable = amount > available;
+  const connectNeedsOnboarding = method === "stripe_connect" && connectStatus !== "active";
   const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
   const invalidEmail = method === "paypal" && emailTrimmed.length > 0 && !emailValid;
   const disabledReason = belowMin
@@ -150,6 +170,25 @@ export function WithdrawSheet({
         : !destinationValid
           ? t("payout.errors.missingDestination")
           : null;
+
+  const onboardConnect = async () => {
+    setBusy(true);
+    const r = await startConnectOnboarding();
+    setBusy(false);
+    if (!r.ok) {
+      haptic.warning();
+      toast.error(
+        r.error === "connect_currency_unsupported" || r.error === "connect_country_unsupported"
+          ? t("connect.errors.unsupported", {
+              defaultValue: "Stripe n'est pas disponible pour ton pays / ta devise.",
+            })
+          : t("connect.errors.onboard", {
+              defaultValue: "Impossible d'ouvrir la configuration Stripe.",
+            }),
+      );
+    }
+  };
+
 
   const submit = async () => {
     setBusy(true);
