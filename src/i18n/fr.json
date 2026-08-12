@@ -7,8 +7,8 @@
       "suspended": "Compte suspendu — paiements impossibles.",
       "verificationRequired": "Retrait réservé aux comptes certifiés.",
       "sellerGiftLimit": "Ce vendeur a atteint sa limite de cadeaux du jour.",
-     "payoutDailyLimit": "Limite journalière atteinte : {{used}} déjà retiré aujourd'hui sur {{cap}} autorisés.",
-     "payoutWeeklyLimit": "Limite hebdomadaire atteinte : {{used}} déjà retiré ces 7 derniers jours sur {{cap}} autorisés."
+      "payoutDailyLimit": "Limite journalière atteinte : {{used}} déjà retiré aujourd'hui sur {{cap}} autorisés.",
+      "payoutWeeklyLimit": "Limite hebdomadaire atteinte : {{used}} déjà retiré ces 7 derniers jours sur {{cap}} autorisés."
     },
     "payoutNeedsVerify": "Pour retirer tes gains, ton compte doit être certifié (badge vérifié). Demande la certification depuis ton profil vendeur.",
     "payoutLimitsHint": "Plafonds retrait : {{day}} / jour · {{week}} / 7 jours. Certifie ton compte (badge) ou complète le KYC pour augmenter ces limites."
@@ -1102,7 +1102,10 @@
     "price": "Prix",
     "net": "Net",
     "shippingHint": "Gère tes expéditions dans « Mes commandes ».",
-    "moneyState": { "released": "Libéré", "pending": "En attente" },
+    "moneyState": {
+      "released": "Libéré",
+      "pending": "En attente"
+    },
     "tabs": {
       "sales": "Ventes",
       "payouts": "Retraits"
@@ -1110,7 +1113,10 @@
   },
   "myOrders": {
     "title": "Mes commandes",
-    "tabs": { "sales": "Mes ventes", "purchases": "Mes achats" },
+    "tabs": {
+      "sales": "Mes ventes",
+      "purchases": "Mes achats"
+    },
     "salesHint": "Articles que des acheteurs t’ont commandés — à livrer une fois payés.",
     "purchasesHint": "Articles que tu as commandés chez d’autres vendeurs.",
     "emptySales": "Aucune vente pour le moment.",
@@ -1142,7 +1148,8 @@
       "wave": "Wave",
       "orange_money": "Orange Money",
       "paypal": "PayPal",
-      "bank_transfer": "Virement bancaire"
+      "bank_transfer": "Virement bancaire",
+      "stripe_connect": "Retirer vers ma banque (Stripe)"
     },
     "status": {
       "requested": "Demandé",
@@ -1810,5 +1817,19 @@
     "pickVariant": "Choisis ta variante",
     "confirmVariant": "Continuer",
     "pickRequired": "Choisis une couleur / taille"
+  },
+  "connect": {
+    "checking": "Vérification de ton compte…",
+    "setupHint": "Configure tes paiements une seule fois pour recevoir tes gains directement sur ta banque.",
+    "activeHint": "Compte vérifié ✅ — le virement part automatiquement vers ta banque (1 à 3 jours ouvrés).",
+    "pendingHint": "Configuration à terminer : Stripe a besoin de quelques informations avant de te virer l'argent.",
+    "restrictedHint": "Stripe a suspendu les virements sur ton compte. Complète les informations demandées.",
+    "onboardCta": "Configurer mes paiements pour retirer",
+    "errors": {
+      "onboard": "Impossible d'ouvrir la configuration Stripe.",
+      "unsupported": "Stripe n'est pas disponible pour ton pays / ta devise.",
+      "notReady": "Ton compte de paiement Stripe n'est pas encore actif.",
+      "transfer": "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter."
+    }
   }
 }
