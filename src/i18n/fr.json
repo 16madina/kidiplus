@@ -1091,11 +1091,14 @@
       "topup": "Rechargement",
       "purchase": "Achat",
       "refund": "Remboursement",
-      "adjustment": "Ajustement"
+      "adjustment": "Ajustement",
+      "withdrawal": "Retrait"
     },
     "currencyMismatch": "Portefeuille en {{currency}}",
     "explainer": "Solde pour acheter et enchérir dans l'app. Non retirable vers ta banque.",
-    "toEarningsLink": "Tu veux retirer tes ventes ? → Mes gains"
+    "toEarningsLink": "Tu veux retirer tes ventes ? → Mes gains",
+    "withdrawCta": "Retirer",
+    "withdrawHint": "Retire ton solde de portefeuille vers ta banque, PayPal ou mobile money."
   },
   "gains": {
     "title": "Mes gains",

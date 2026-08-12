@@ -1091,11 +1091,14 @@
       "topup": "Top-up",
       "purchase": "Purchase",
       "refund": "Refund",
-      "adjustment": "Adjustment"
+      "adjustment": "Adjustment",
+      "withdrawal": "Withdrawal"
     },
     "currencyMismatch": "Wallet in {{currency}}",
     "explainer": "Balance for buying and bidding in the app. Not withdrawable to your bank.",
-    "toEarningsLink": "Want to withdraw your sales? → My earnings"
+    "toEarningsLink": "Want to withdraw your sales? → My earnings",
+    "withdrawCta": "Withdraw",
+    "withdrawHint": "Withdraw your wallet balance to your bank, PayPal or mobile money."
   },
   "gains": {
     "title": "My earnings",
