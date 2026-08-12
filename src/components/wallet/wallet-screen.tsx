@@ -17,6 +17,7 @@ import { Press } from "@/components/press";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { TopUpSheet } from "./topup-sheet";
+import { WithdrawSheet } from "@/components/seller/withdraw-sheet";
 import type { WalletTxRow } from "@/lib/wallet-db";
 import { confirmWalletTopup, readPendingTopup, clearPendingTopup } from "@/lib/payment-confirm";
 import { clearPendingPaypalOrder } from "@/lib/paypal-topup-client";
@@ -25,6 +26,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
   const { t, i18n } = useTranslation();
   const { balance, currency, transactions, refresh } = useWallet();
   const [topupOpen, setTopupOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   // Recovery: Stripe pending confirm + PayPal deep-link result.
   useEffect(() => {
@@ -168,6 +170,16 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
       </div>
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <WithdrawSheet
+        open={withdrawOpen}
+        onClose={() => {
+          setWithdrawOpen(false);
+          void refresh();
+        }}
+        available={balance}
+        currency={currency}
+        source="wallet"
+      />
     </PushScreen>
   );
 }
@@ -191,7 +203,9 @@ function TxRow({
         ? t("wallet.tx.purchase")
         : tx.type === "refund"
           ? t("wallet.tx.refund")
-          : t("wallet.tx.adjustment");
+          : tx.type === "withdrawal"
+            ? t("wallet.tx.withdrawal", { defaultValue: "Retrait" })
+            : t("wallet.tx.adjustment");
   const date = new Date(tx.created_at).toLocaleString(locale, {
     day: "numeric",
     month: "short",
