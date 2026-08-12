@@ -61,7 +61,9 @@ export const Route = createFileRoute("/api/connect/onboard")({
           // XOF & co → manual payout flow, untouched.
           return json({ error: "connect_currency_unsupported", currency }, 400, origin);
         }
-        const country = resolveConnectCountry(p.country, currency);
+        // The seller picks their country in the UI before onboarding.
+        const body = (await request.json().catch(() => ({}))) as { country?: unknown };
+        const country = resolveConnectCountry(p.country, currency, body?.country);
         if (!country) return json({ error: "connect_country_unsupported" }, 400, origin);
 
         const stripe = stripeForEnv(envHint);
