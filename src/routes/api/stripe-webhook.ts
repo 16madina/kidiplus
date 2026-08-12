@@ -163,7 +163,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           } else if (event.type === "checkout.session.completed") {
             // Checkout-hosted purchases (destination charges) — confirm the
             // order. Delayed methods stay pending until they settle.
-            const session = event.data.object as Stripe.CheckoutSession;
+            const session = event.data.object as Stripe.Checkout.Session;
             const orderId = session.metadata?.orderId;
             if (orderId && session.payment_status !== "unpaid") {
               const paidViaConnect = session.metadata?.connectTransfer === "1";
