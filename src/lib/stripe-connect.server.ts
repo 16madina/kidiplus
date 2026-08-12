@@ -72,3 +72,15 @@ export function buildDestinationChargeParams(opts: {
     application_fee_amount: Math.max(0, Math.round(opts.applicationFeeMinor)),
   };
 }
+
+/**
+ * True when Stripe replies that the account isn't a Connect platform — i.e.
+ * Connect is not enabled on the Stripe account behind the current key/mode.
+ * This is a dashboard configuration issue, not a runtime failure, so callers
+ * should degrade gracefully instead of returning a 502.
+ */
+export function isConnectNotEnabledError(e: unknown): boolean {
+  const err = e as { raw?: { message?: string }; message?: string };
+  const msg = (err?.raw?.message ?? err?.message ?? "").toLowerCase();
+  return msg.includes("only stripe connect platforms");
+}
