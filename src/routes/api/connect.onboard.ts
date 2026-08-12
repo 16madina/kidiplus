@@ -12,6 +12,7 @@ import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
 import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
 import {
   CONNECT_CURRENCIES,
+  isCapabilityUnsupportedError,
   isConnectNotEnabledError,
   resolveConnectCountry,
   statusFromAccount,
