@@ -1849,6 +1849,8 @@
       "one": "Crée ton compte vendeur sécurisé Stripe.",
       "two": "Vérifie ton identité et ajoute ton compte bancaire.",
       "three": "Reçois tes ventes automatiquement — KiDi+ garde 10 % de commission."
-    }
+    },
+    "countryLabel": "Pays de ton compte vendeur",
+    "countryHint": "Choisis le pays de ta banque / de ton entreprise. Il ne pourra plus être modifié après la création du compte Stripe."
   }
 }

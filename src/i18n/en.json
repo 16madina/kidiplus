@@ -1849,6 +1849,8 @@
       "one": "Create your secure Stripe seller account.",
       "two": "Verify your identity and add your bank account.",
       "three": "Get paid automatically — KiDi+ keeps a 10% commission."
-    }
+    },
+    "countryLabel": "Your seller account country",
+    "countryHint": "Pick the country of your bank / business. It can't be changed once the Stripe account is created."
   }
 }
