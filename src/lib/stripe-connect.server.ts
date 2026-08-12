@@ -15,6 +15,7 @@
 
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { CONNECT_COUNTRY_CODES } from "@/lib/connect-countries";
+import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 
 /** Currencies eligible for Stripe Connect payouts (XOF/Africa excluded). */
 export const CONNECT_CURRENCIES = new Set(["EUR", "CAD", "USD", "GBP"]);
