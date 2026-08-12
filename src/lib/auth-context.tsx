@@ -73,7 +73,7 @@ const GUEST_STORAGE_KEY = "kidi:guestMode";
  * and fail, leaving profile=null (Live tab infinite spinner, profile updates broken).
  */
 export const PROFILE_SAFE_SELECT =
-  "id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_reason, frozen_at, frozen_by, risk_restricted, kyc_verified";
+  "id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_at";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
