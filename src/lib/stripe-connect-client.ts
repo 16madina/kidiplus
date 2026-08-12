@@ -14,6 +14,7 @@ export type ConnectStatusResult =
       currency: string;
       chargesEnabled: boolean;
       payoutsEnabled: boolean;
+       connectUnavailable?: boolean;
       disabledReason?: string | null;
     }
   | { ok: false; error: string; message?: string };
@@ -50,6 +51,7 @@ export async function fetchConnectStatus(): Promise<ConnectStatusResult> {
       currency: String(j.currency ?? "EUR"),
       chargesEnabled: Boolean(j.chargesEnabled),
       payoutsEnabled: Boolean(j.payoutsEnabled),
+      connectUnavailable: Boolean(j.connectUnavailable),
       disabledReason: j.disabledReason ?? null,
     };
   } catch (e) {

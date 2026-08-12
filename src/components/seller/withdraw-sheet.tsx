@@ -106,15 +106,18 @@ export function WithdrawSheet({
   // --- Stripe Connect (Western sellers only) -------------------------------
   const connectEligible = CONNECT_CURRENCIES.has(normalizeCurrency(currency));
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | "loading">("loading");
+  const [connectUnavailable, setConnectUnavailable] = useState(false);
   const refreshConnect = useCallback(async () => {
     if (!connectEligible) return;
     const r = await fetchConnectStatus();
     setConnectStatus(r.ok ? r.status : "none");
+    setConnectUnavailable(r.ok && r.connectUnavailable === true);
   }, [connectEligible]);
 
   useEffect(() => {
     if (open && connectEligible) {
       setConnectStatus("loading");
+      setConnectUnavailable(false);
       void refreshConnect();
     }
   }, [open, connectEligible, refreshConnect]);
@@ -411,6 +414,11 @@ export function WithdrawSheet({
                 <div className="mt-3 rounded-2xl border border-border p-3 text-[12px] leading-snug text-muted-foreground">
                   {connectStatus === "loading"
                     ? t("connect.checking", { defaultValue: "Vérification de ton compte…" })
+                    : connectUnavailable
+                      ? t("connect.errors.notEnabled", {
+                          defaultValue:
+                            "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard.",
+                        })
                     : connectStatus === "active"
                       ? t("connect.activeHint", {
                           defaultValue:
@@ -494,10 +502,13 @@ export function WithdrawSheet({
                 )}
                 {connectNeedsOnboarding ? (
                   <Press
-                    onClick={busy || connectStatus === "loading" ? undefined : onboardConnect}
-                    disabled={busy || connectStatus === "loading"}
+                    onClick={busy || connectStatus === "loading" || connectUnavailable ? undefined : onboardConnect}
+                    disabled={busy || connectStatus === "loading" || connectUnavailable}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-bold"
-                    style={{ backgroundColor: "#635BFF", color: "white" }}
+                    style={{
+                      backgroundColor: connectUnavailable ? "var(--muted)" : "#635BFF",
+                      color: connectUnavailable ? "var(--muted-foreground)" : "white",
+                    }}
                   >
                     {busy && <Loader2 size={16} className="animate-spin" />}
                     {t("connect.onboardCta", {
