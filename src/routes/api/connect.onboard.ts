@@ -61,6 +61,33 @@ export const Route = createFileRoute("/api/connect/onboard")({
         let accountId = typeof p.stripe_connect_id === "string" ? p.stripe_connect_id : "";
 
         try {
+          // Connected account IDs are mode-specific. After switching from live
+          // to sandbox, a stored live acct_* does not exist for the sandbox
+          // platform. Discard only that resource-missing ID so a test Express
+          // account is created below; do not mask other Stripe failures.
+          if (accountId) {
+            try {
+              await stripe.accounts.retrieve(accountId);
+            } catch (error) {
+              const stripeError = error as { code?: string; raw?: { code?: string }; message?: string };
+              const code = stripeError.raw?.code ?? stripeError.code;
+              const isMissing = code === "resource_missing"
+                || stripeError.message?.toLowerCase().includes("no such account") === true;
+              if (!isMissing) throw error;
+              accountId = "";
+              await admin
+                .from("profiles")
+                .update({
+                  stripe_connect_id: null,
+                  connect_status: "none",
+                  connect_charges_enabled: false,
+                  connect_payouts_enabled: false,
+                  connect_updated_at: new Date().toISOString(),
+                })
+                .eq("id", userId);
+            }
+          }
+
           if (!accountId) {
             const account = await stripe.accounts.create({
               type: "express",
