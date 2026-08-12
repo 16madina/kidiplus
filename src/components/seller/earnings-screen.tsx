@@ -241,6 +241,12 @@ function SalesEarningsList({
     <ul className="space-y-2">
       {paid.map((o) => {
         const buyer = buyers[o.buyer_id];
+        // Show the commission rate actually applied to THIS order (legacy rows
+        // may predate the 10% rate); default to the current shared constant.
+        const amt = Number(o.amount) || 0;
+        const feePct = amt > 0
+          ? Math.round((Number(o.platform_fee) / amt) * 100)
+          : PLATFORM_FEE_PERCENT;
         const released =
           o.fulfillment_status === "delivered" ||
           o.refund_status === "refunded_wallet" ||
