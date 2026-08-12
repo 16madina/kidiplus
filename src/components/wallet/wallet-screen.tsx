@@ -96,6 +96,22 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           <p className="mt-1 text-[36px] font-bold tabular-nums">
             {formatMoney(balance, currency)}
           </p>
+          <p className="mt-2 text-[12px] leading-snug text-white/80">
+            {t("wallet.explainer")}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("kidi:open-section", { detail: "earnings" }));
+              }, 250);
+            }}
+            className="mt-1 text-[12px] font-semibold underline underline-offset-2"
+            style={{ color: "#c8a24a" }}
+          >
+            {t("wallet.toEarningsLink")}
+          </button>
           <Press
             onClick={() => setTopupOpen(true)}
             className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"

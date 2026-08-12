@@ -562,6 +562,7 @@ function ProfileScreenAuthed() {
             {
               icon: <WalletIcon size={16} />,
               label: t("profile.quick.wallet"),
+              subtitle: t("profile.quick.walletHint"),
               tint: "oklch(0.68 0.14 75)",
               trailing: walletCaption,
               onClick: () => { haptic.light(); setWalletOpen(true); },
@@ -570,6 +571,7 @@ function ProfileScreenAuthed() {
               ? [{
                   icon: <TrendingUp size={16} />,
                   label: t("profile.quick.earnings"),
+                  subtitle: t("profile.quick.earningsHint"),
                   tint: "oklch(0.6 0.17 155)",
                   onClick: () => { haptic.light(); setSalesOpen(true); },
                 }]
@@ -787,6 +789,7 @@ type MenuItem = {
   onClick?: () => void;
   danger?: boolean;
   trailing?: string;
+  subtitle?: string;
   toggle?: { checked: boolean; onChange: (v: boolean) => void };
 };
 
@@ -814,12 +817,19 @@ function MenuGroup({ items, index }: { items: MenuItem[]; index: number }) {
             <Press onClick={it.onClick} className="!block w-full !min-h-11 p-0 text-left">
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <MenuIcon icon={it.icon} tint={it.tint} />
-                <span
-                  className="flex-1 text-[15px] font-medium"
-                  style={{ color: it.danger ? "oklch(0.6 0.24 27)" : "var(--foreground)" }}
-                >
-                  {it.label}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-[15px] font-medium"
+                    style={{ color: it.danger ? "oklch(0.6 0.24 27)" : "var(--foreground)" }}
+                  >
+                    {it.label}
+                  </div>
+                  {it.subtitle && (
+                    <div className="text-[12px] leading-snug text-muted-foreground">
+                      {it.subtitle}
+                    </div>
+                  )}
+                </div>
                 {it.trailing && (
                   <span className="text-[13px] text-muted-foreground">{it.trailing}</span>
                 )}
