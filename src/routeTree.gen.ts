@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as CommunityRouteImport } from './routes/community'
+import { Route as ConnectReturnRouteImport } from './routes/connect-return'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as EgressTemplateRouteImport } from './routes/egress-template'
@@ -107,6 +108,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const CommunityRoute = CommunityRouteImport.update({
   id: '/community',
   path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectReturnRoute = ConnectReturnRouteImport.update({
+  id: '/connect-return',
+  path: '/connect-return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -500,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -581,6 +588,7 @@ export interface FileRoutesByTo {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -663,6 +671,7 @@ export interface FileRoutesById {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -746,6 +755,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -908,6 +919,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -990,6 +1002,7 @@ export interface RootRouteChildren {
   AccountDeletionRoute: typeof AccountDeletionRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   CommunityRoute: typeof CommunityRoute
+  ConnectReturnRoute: typeof ConnectReturnRoute
   DownloadRoute: typeof DownloadRoute
   EarningsRoute: typeof EarningsRoute
   EgressTemplateRoute: typeof EgressTemplateRoute
@@ -1090,6 +1103,13 @@ declare module '@tanstack/react-router' {
       path: '/community'
       fullPath: '/community'
       preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect-return': {
+      id: '/connect-return'
+      path: '/connect-return'
+      fullPath: '/connect-return'
+      preLoaderRoute: typeof ConnectReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -1665,6 +1685,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountDeletionRoute: AccountDeletionRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   CommunityRoute: CommunityRoute,
+  ConnectReturnRoute: ConnectReturnRoute,
   DownloadRoute: DownloadRoute,
   EarningsRoute: EarningsRoute,
   EgressTemplateRoute: EgressTemplateRoute,

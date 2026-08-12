@@ -25,7 +25,13 @@ export type SellerEarning = {
   created_at: string;
 };
 
-export type PayoutMethod = "wave" | "orange_money" | "bank_transfer" | "paypal";
+export type PayoutMethod =
+  | "wave"
+  | "orange_money"
+  | "bank_transfer"
+  | "paypal"
+  /** Automated Stripe Connect transfer (Western sellers, EUR/CAD/USD/GBP). */
+  | "stripe_connect";
 export type PayoutStatus = "requested" | "processing" | "paid" | "rejected";
 export type PayoutSource = "seller" | "referral";
 
