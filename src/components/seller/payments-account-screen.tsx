@@ -41,12 +41,17 @@ export function SellerPaymentsAccountScreen({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ConnectStatus>("none");
   const [unavailable, setUnavailable] = useState(false);
   const [eligible, setEligible] = useState(true);
+  const [country, setCountry] = useState(DEFAULT_CONNECT_COUNTRY);
+  const isFr = (i18n.language ?? "fr").startsWith("fr");
+  const countries = [...CONNECT_COUNTRY_LIST].sort((a, b) =>
+    (isFr ? a.fr : a.en).localeCompare(isFr ? b.fr : b.en, isFr ? "fr" : "en"),
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
