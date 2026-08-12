@@ -49,6 +49,7 @@ import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-pu
 import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
 import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
+import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
 import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
@@ -291,6 +292,11 @@ const ApiConnectOnboardRoute = ApiConnectOnboardRouteImport.update({
   path: '/api/connect/onboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiConnectStatusRoute = ApiConnectStatusRouteImport.update({
+  id: '/api/connect/status',
+  path: '/api/connect/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
   id: '/api/facebook/disconnect',
   path: '/api/facebook/disconnect',
@@ -524,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -603,6 +610,7 @@ export interface FileRoutesByTo {
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -683,6 +691,7 @@ export interface FileRoutesById {
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -764,6 +773,7 @@ export interface FileRouteTypes {
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/connect/onboard'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/connect/onboard'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -922,6 +933,7 @@ export interface FileRouteTypes {
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
     | '/api/connect/onboard'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -1000,6 +1012,7 @@ export interface RootRouteChildren {
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
+  ApiConnectStatusRoute: typeof ApiConnectStatusRoute
   ApiFacebookDisconnectRoute: typeof ApiFacebookDisconnectRoute
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
@@ -1316,6 +1329,13 @@ declare module '@tanstack/react-router' {
       path: '/api/connect/onboard'
       fullPath: '/api/connect/onboard'
       preLoaderRoute: typeof ApiConnectOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/status': {
+      id: '/api/connect/status'
+      path: '/api/connect/status'
+      fullPath: '/api/connect/status'
+      preLoaderRoute: typeof ApiConnectStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/facebook/disconnect': {
@@ -1660,6 +1680,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiConnectOnboardRoute: ApiConnectOnboardRoute,
+  ApiConnectStatusRoute: ApiConnectStatusRoute,
   ApiFacebookDisconnectRoute: ApiFacebookDisconnectRoute,
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
