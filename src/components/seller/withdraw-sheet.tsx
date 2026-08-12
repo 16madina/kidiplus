@@ -182,10 +182,16 @@ export function WithdrawSheet({
           ? t("connect.errors.unsupported", {
               defaultValue: "Stripe n'est pas disponible pour ton pays / ta devise.",
             })
-          : t("connect.errors.onboard", {
-              defaultValue: "Impossible d'ouvrir la configuration Stripe.",
-            }),
+          : r.error === "connect_not_enabled"
+            ? t("connect.errors.notEnabled", {
+                defaultValue:
+                  "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard.",
+              })
+            : t("connect.errors.onboard", {
+                defaultValue: "Impossible d'ouvrir la configuration Stripe.",
+              }),
       );
+
     }
   };
 
