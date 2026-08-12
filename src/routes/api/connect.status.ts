@@ -79,7 +79,31 @@ export const Route = createFileRoute("/api/connect/status")({
             origin,
           );
         } catch (e) {
-          const msg = (e as Error).message ?? "stripe_error";
+          const stripeError = e as { code?: string; raw?: { code?: string }; message?: string };
+          const msg = stripeError.message ?? "stripe_error";
+          const code = stripeError.raw?.code ?? stripeError.code;
+          const isMissing = code === "resource_missing"
+            || msg.toLowerCase().includes("no such account");
+          if (isMissing) {
+            // A Connect account belongs to exactly one Stripe mode. Reset a
+            // stale live ID when the app is now using sandbox (and vice versa)
+            // so the next onboarding request creates an account in that mode.
+            await admin
+              .from("profiles")
+              .update({
+                stripe_connect_id: null,
+                connect_status: "none",
+                connect_charges_enabled: false,
+                connect_payouts_enabled: false,
+                connect_updated_at: new Date().toISOString(),
+              })
+              .eq("id", userId);
+            return json(
+              { ok: true, status: "none", eligible, currency, chargesEnabled: false, payoutsEnabled: false },
+              200,
+              origin,
+            );
+          }
           console.error("[connect/status] stripe error", msg);
           return json({ error: "stripe_error", message: msg }, 502, origin);
         }

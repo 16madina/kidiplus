@@ -8,9 +8,9 @@
 //   PAYMENTS_SANDBOX_WEBHOOK_SECRET / _LIVE_...    -> webhook signing secret
 //   VITE_PAYMENTS_CLIENT_TOKEN                     -> pk_test_ / pk_live_ (client)
 //
-// We ALSO honour classic BYOK env vars (STRIPE_SECRET_KEY,
-// STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET) so nothing breaks if the
-// project is later switched to a user-owned Stripe account.
+// Legacy BYOK variables are only considered when no explicit payment mode was
+// supplied. A client-selected sandbox request must never fall back to a live
+// STRIPE_SECRET_KEY.
 
 import Stripe from "stripe";
 
@@ -65,7 +65,12 @@ export function getStripeConfig(hint?: StripeEnv | null): {
     "";
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
-  const haveApi = !!(gatewayKey || legacySecret);
+  // An explicit mode is a strict boundary: sandbox requests require the
+  // sandbox gateway and live requests require the live gateway. In particular,
+  // never let a legacy sk_live_* key satisfy a sandbox request.
+  const haveApi = hint === "live" || hint === "sandbox"
+    ? !!gatewayKey
+    : !!(gatewayKey || legacySecret);
   if (!haveApi) {
     return {
       ok: false,
@@ -116,6 +121,10 @@ export function createStripeClient(hint?: StripeEnv | null): Stripe {
         });
       }),
     });
+  }
+
+  if (hint === "live" || hint === "sandbox") {
+    throw new Error(`STRIPE_${hint.toUpperCase()}_API_KEY is not configured`);
   }
 
   return new Stripe(legacySecret ?? "", opts);
