@@ -1829,7 +1829,8 @@
       "onboard": "Couldn't open the Stripe setup.",
       "unsupported": "Stripe isn't available for your country / currency.",
       "notReady": "Your Stripe payout account isn't active yet.",
-      "transfer": "Withdrawal recorded, but the Stripe transfer failed. Our team will process it."
+      "transfer": "Withdrawal recorded, but the Stripe transfer failed. Our team will process it.",
+      "notEnabled": "Stripe payouts aren't enabled on the platform yet. Please try again later."
     }
   }
 }
