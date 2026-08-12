@@ -39,6 +39,15 @@ export function envHintFromRequest(request: Request): StripeEnv | null {
   return null;
 }
 
+/** True when a legacy BYOK sk_*/rk_* key belongs to the requested mode. */
+export function legacyMatchesEnv(env: StripeEnv): boolean {
+  const k = (process.env.STRIPE_SECRET_KEY ?? "").trim();
+  if (!k) return false;
+  const isTest = k.startsWith("sk_test_") || k.startsWith("rk_test_");
+  const isLive = k.startsWith("sk_live_") || k.startsWith("rk_live_");
+  return env === "sandbox" ? isTest : isLive;
+}
+
 export function getStripeConfig(hint?: StripeEnv | null): {
   ok: boolean;
   env: StripeEnv;
@@ -69,7 +78,7 @@ export function getStripeConfig(hint?: StripeEnv | null): {
   // sandbox gateway and live requests require the live gateway. In particular,
   // never let a legacy sk_live_* key satisfy a sandbox request.
   const haveApi = hint === "live" || hint === "sandbox"
-    ? !!gatewayKey
+    ? !!(gatewayKey || legacyMatchesEnv(env))
     : !!(gatewayKey || legacySecret);
   if (!haveApi) {
     return {
@@ -100,6 +109,12 @@ export function createStripeClient(hint?: StripeEnv | null): Stripe {
   const legacySecret = process.env.STRIPE_SECRET_KEY;
 
   const opts = { apiVersion: "2026-06-24.dahlia" as const };
+
+  // A BYOK key that matches the requested mode wins: it targets the user's own
+  // Stripe account (where Connect is enabled) instead of the managed gateway.
+  if (legacySecret && legacyMatchesEnv(env)) {
+    return new Stripe(legacySecret, opts);
+  }
 
   if (gatewayKey) {
     const lovableApiKey = process.env.LOVABLE_API_KEY ?? "";
