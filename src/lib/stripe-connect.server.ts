@@ -14,15 +14,13 @@
 // kept ready if/when a fresh 1:1 card charge should be split at capture.
 
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
+import { CONNECT_COUNTRY_CODES } from "@/lib/connect-countries";
 
 /** Currencies eligible for Stripe Connect payouts (XOF/Africa excluded). */
 export const CONNECT_CURRENCIES = new Set(["EUR", "CAD", "USD", "GBP"]);
 
-/** Countries we allow an Express account to be created in. */
-export const CONNECT_COUNTRIES = new Set([
-  "CA", "US", "GB", "FR", "BE", "DE", "ES", "IT", "PT", "NL", "LU", "IE",
-  "CH", "AT", "SE", "NO", "DK", "FI", "PL",
-]);
+/** Countries we allow an Express account to be created in (Stripe Connect Express). */
+export const CONNECT_COUNTRIES = CONNECT_COUNTRY_CODES;
 
 const CURRENCY_DEFAULT_COUNTRY: Record<string, string> = {
   CAD: "CA",
