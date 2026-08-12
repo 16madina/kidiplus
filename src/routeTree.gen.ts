@@ -46,6 +46,7 @@ import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
+import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/payments-mode'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
@@ -277,6 +278,11 @@ const SellOnboardingRoute = SellOnboardingRouteImport.update({
 const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
   id: '/api/account/delete',
   path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPaymentsModeRoute = ApiAdminPaymentsModeRouteImport.update({
+  id: '/api/admin/payments-mode',
+  path: '/api/admin/payments-mode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminTestPushRoute = ApiAdminTestPushRouteImport.update({
@@ -539,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/live/$id': typeof LiveIdRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -621,6 +628,7 @@ export interface FileRoutesByTo {
   '/live/$id': typeof LiveIdRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -704,6 +712,7 @@ export interface FileRoutesById {
   '/live/$id': typeof LiveIdRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -788,6 +797,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/sell/onboarding'
     | '/api/account/delete'
+    | '/api/admin/payments-mode'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -870,6 +880,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/sell/onboarding'
     | '/api/account/delete'
+    | '/api/admin/payments-mode'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -952,6 +963,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/sell/onboarding'
     | '/api/account/delete'
+    | '/api/admin/payments-mode'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -1035,6 +1047,7 @@ export interface RootRouteChildren {
   LiveIdRoute: typeof LiveIdRoute
   SellOnboardingRoute: typeof SellOnboardingRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
+  ApiAdminPaymentsModeRoute: typeof ApiAdminPaymentsModeRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
   ApiConnectPayoutRoute: typeof ApiConnectPayoutRoute
@@ -1334,6 +1347,13 @@ declare module '@tanstack/react-router' {
       path: '/api/account/delete'
       fullPath: '/api/account/delete'
       preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/payments-mode': {
+      id: '/api/admin/payments-mode'
+      path: '/api/admin/payments-mode'
+      fullPath: '/api/admin/payments-mode'
+      preLoaderRoute: typeof ApiAdminPaymentsModeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/test-push': {
@@ -1719,6 +1739,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveIdRoute: LiveIdRoute,
   SellOnboardingRoute: SellOnboardingRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
+  ApiAdminPaymentsModeRoute: ApiAdminPaymentsModeRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiConnectOnboardRoute: ApiConnectOnboardRoute,
   ApiConnectPayoutRoute: ApiConnectPayoutRoute,
