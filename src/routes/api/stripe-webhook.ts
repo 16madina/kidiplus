@@ -141,6 +141,50 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 .eq("stripe_payment_intent_id", intent.id)
                 .eq("status", "pending");
             }
+          } else if (event.type === "account.updated") {
+            // Connect Express onboarding progress → mirror into profiles so
+            // the seller UI shows "Vérification en cours" / "Compte actif" /
+            // "Action requise" without polling Stripe.
+            const acc = event.data.object as Stripe.Account;
+            const status = acc.payouts_enabled
+              ? "active"
+              : acc.requirements?.disabled_reason
+                ? "restricted"
+                : "pending";
+            await admin
+              .from("profiles")
+              .update({
+                connect_status: status,
+                connect_charges_enabled: Boolean(acc.charges_enabled),
+                connect_payouts_enabled: Boolean(acc.payouts_enabled),
+                connect_updated_at: new Date().toISOString(),
+              })
+              .eq("stripe_connect_id", acc.id);
+          } else if (event.type === "checkout.session.completed") {
+            // Checkout-hosted purchases (destination charges) — confirm the
+            // order. Delayed methods stay pending until they settle.
+            const session = event.data.object as Stripe.CheckoutSession;
+            const orderId = session.metadata?.orderId;
+            if (orderId && session.payment_status !== "unpaid") {
+              const paidViaConnect = session.metadata?.connectTransfer === "1";
+              const { data: rows } = await admin
+                .from("orders")
+                .update({
+                  status: "paid",
+                  paid_at: new Date().toISOString(),
+                  payment_method: "card",
+                  stripe_payment_intent_id:
+                    typeof session.payment_intent === "string" ? session.payment_intent : null,
+                })
+                .eq("id", orderId)
+                .neq("status", "paid")
+                .select("id");
+              if (!paidViaConnect) {
+                for (const row of (rows ?? []) as Array<{ id: string }>) {
+                  await admin.rpc("credit_seller_earning", { _order_id: row.id });
+                }
+              }
+            }
           }
 
           // Other event types are silently acknowledged.
