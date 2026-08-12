@@ -246,7 +246,12 @@ export function WithdrawSheet({
                       "risk.errors.restricted",
                       "Paiements temporairement bloqués. Contacte le support.",
                     )
-                  : t("payout.errors.generic"),
+                  : r.error === "connect_not_ready"
+                    ? t("connect.errors.notReady", {
+                        defaultValue:
+                          "Ton compte de paiement Stripe n'est pas encore actif.",
+                      })
+                    : t("payout.errors.generic"),
       );
     }
   };
