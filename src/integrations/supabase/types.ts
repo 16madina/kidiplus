@@ -2760,6 +2760,7 @@ export type Database = {
         }
         Returns: Json
       }
+      platform_fee_rate: { Args: never; Returns: number }
       purchase_fixed_price: {
         Args: { _buyer_identity?: string; _product_id: string }
         Returns: Json
