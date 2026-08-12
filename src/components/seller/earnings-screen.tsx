@@ -279,7 +279,7 @@ function SalesEarningsList({
             <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[11px]">
               <BreakdownCell label={t("gains.price")} value={fmt(Number(o.amount), o.currency)} />
               <BreakdownCell
-                label={`KiDi+ −${PLATFORM_FEE_PERCENT}%`}
+                label={`KiDi+ −${feePct}%`}
                 value={`−${fmt(Number(o.platform_fee), o.currency)}`}
                 muted
               />
