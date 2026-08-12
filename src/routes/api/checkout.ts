@@ -22,6 +22,7 @@ import { createStripeClient, getStripeConfig, mapStripeError, envHintFromRequest
 import { toStripeAmountFor } from "@/lib/fees";
 import { isZeroDecimal, normalizeCurrency } from "@/lib/money";
 import { isAllowedOrigin } from "@/lib/api-cors";
+import { connectApplicationFee } from "@/lib/stripe-connect.server";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
@@ -145,6 +146,32 @@ export const Route = createFileRoute("/api/checkout")({
 
         const stripe = createStripeClient(envHint);
 
+        // Marketplace split: when the seller has an ACTIVE Stripe Express
+        // account, the card charge becomes a DESTINATION CHARGE — funds are
+        // transferred to the seller's connected account and KiDi+ keeps a 10%
+        // application fee. The webhook then skips credit_seller_earning so the
+        // seller is never paid twice (Stripe transfer + wallet escrow).
+        let connectDestination = "";
+        {
+          const { data: sellerProfile } = await admin
+            .from("profiles")
+            .select("stripe_connect_id, connect_status, connect_charges_enabled")
+            .eq("id", order.seller_id)
+            .maybeSingle();
+          const sp = (sellerProfile ?? {}) as Record<string, unknown>;
+          if (
+            typeof sp.stripe_connect_id === "string" &&
+            sp.stripe_connect_id.startsWith("acct_") &&
+            sp.connect_status === "active" &&
+            sp.connect_charges_enabled === true
+          ) {
+            connectDestination = sp.stripe_connect_id;
+          }
+        }
+        const applicationFeeMinor = connectDestination
+          ? connectApplicationFee(amountMinor)
+          : 0;
+
         // Reuse an existing intent if we already created one for this order.
         let intent;
         if (order.stripe_payment_intent_id) {
@@ -164,6 +191,12 @@ export const Route = createFileRoute("/api/checkout")({
               amount: amountMinor,
               currency,
               automatic_payment_methods: { enabled: true },
+              ...(connectDestination
+                ? {
+                    transfer_data: { destination: connectDestination },
+                    application_fee_amount: applicationFeeMinor,
+                  }
+                : {}),
               metadata: {
                 orderId: order.id,
                 buyerId: order.buyer_id,
@@ -173,6 +206,9 @@ export const Route = createFileRoute("/api/checkout")({
                 kind: order.kind,
                 platformFee: String(order.platform_fee),
                 processingFee: String(order.processing_fee),
+                connectTransfer: connectDestination ? "1" : "0",
+                connectDestination,
+                applicationFee: String(applicationFeeMinor),
               },
               description: `KiDi+ · ${order.item_name}`,
             });

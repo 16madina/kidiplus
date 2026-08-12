@@ -1830,7 +1830,25 @@
       "unsupported": "Stripe n'est pas disponible pour ton pays / ta devise.",
       "notReady": "Ton compte de paiement Stripe n'est pas encore actif.",
       "transfer": "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter.",
-      "notEnabled": "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard."
+      "notEnabled": "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard.",
+      "dashboard": "Lien Stripe indisponible."
+    },
+    "screenTitle": "Devenir vendeur",
+    "stepsTitle": "Comment ça marche",
+    "resumeCta": "Reprendre la configuration",
+    "dashboardCta": "Ouvrir mon tableau de bord Stripe",
+    "refresh": "Actualiser le statut",
+    "menuLabel": "Paiements vendeur",
+    "state": {
+      "none": "Compte de paiement non configuré",
+      "pending": "Vérification en cours",
+      "active": "Compte vendeur actif",
+      "restricted": "Action requise"
+    },
+    "steps": {
+      "one": "Crée ton compte vendeur sécurisé Stripe.",
+      "two": "Vérifie ton identité et ajoute ton compte bancaire.",
+      "three": "Reçois tes ventes automatiquement — KiDi+ garde 10 % de commission."
     }
   }
 }

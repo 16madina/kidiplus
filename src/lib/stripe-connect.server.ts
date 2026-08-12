@@ -84,3 +84,14 @@ export function isConnectNotEnabledError(e: unknown): boolean {
   const msg = (err?.raw?.message ?? err?.message ?? "").toLowerCase();
   return msg.includes("only stripe connect platforms");
 }
+
+/** Platform commission applied on Connect destination charges. */
+export const CONNECT_APPLICATION_FEE_PERCENT = 10;
+
+/** 10% of the charge amount (minor units), rounded to the nearest cent. */
+export function connectApplicationFee(amountMinor: number): number {
+  return Math.max(
+    0,
+    Math.round((amountMinor * CONNECT_APPLICATION_FEE_PERCENT) / 100),
+  );
+}

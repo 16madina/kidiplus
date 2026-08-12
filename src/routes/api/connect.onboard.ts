@@ -105,6 +105,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
               default_currency: currency.toLowerCase(),
               capabilities: {
                 transfers: { requested: true },
+                card_payments: { requested: true },
               },
               business_type: "individual",
               metadata: { kidiplus_user_id: userId },

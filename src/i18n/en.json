@@ -1830,7 +1830,25 @@
       "unsupported": "Stripe isn't available for your country / currency.",
       "notReady": "Your Stripe payout account isn't active yet.",
       "transfer": "Withdrawal recorded, but the Stripe transfer failed. Our team will process it.",
-      "notEnabled": "Stripe payouts aren't enabled on the platform yet. Please try again later."
+      "notEnabled": "Stripe payouts aren't enabled on the platform yet. Please try again later.",
+      "dashboard": "Stripe link unavailable."
+    },
+    "screenTitle": "Become a seller",
+    "stepsTitle": "How it works",
+    "resumeCta": "Resume setup",
+    "dashboardCta": "Open my Stripe dashboard",
+    "refresh": "Refresh status",
+    "menuLabel": "Seller payouts",
+    "state": {
+      "none": "Payout account not set up",
+      "pending": "Verification in progress",
+      "active": "Seller account active",
+      "restricted": "Action required"
+    },
+    "steps": {
+      "one": "Create your secure Stripe seller account.",
+      "two": "Verify your identity and add your bank account.",
+      "three": "Get paid automatically — KiDi+ keeps a 10% commission."
     }
   }
 }
