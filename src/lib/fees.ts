@@ -97,7 +97,7 @@ export type FeeBreakdown = {
 
 /**
  * Compute the full fee breakdown for an order.
- * Buyer total = amount + delivery. Platform commission is 5% of `amount`
+ * Buyer total = amount + delivery. Platform commission is PLATFORM_FEE_PERCENT of `amount`
  * (item only — delivery pays no commission and passes through to the seller
  * in full). Seller net = (amount − commission) + delivery.
  */
