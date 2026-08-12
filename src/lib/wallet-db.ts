@@ -17,7 +17,14 @@ export type WalletRow = {
   updated_at: string;
 };
 
-export type WalletTxType = "topup" | "purchase" | "refund" | "adjustment";
+export type WalletTxType =
+  | "topup"
+  | "purchase"
+  | "refund"
+  | "adjustment"
+  | "gift"
+  /** Wallet withdrawal to bank / PayPal / mobile money (via `request_payout`). */
+  | "withdrawal";
 export type WalletTxStatus = "pending" | "completed" | "failed";
 
 export type WalletTxRow = {

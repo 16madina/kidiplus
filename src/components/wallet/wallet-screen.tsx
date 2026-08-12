@@ -17,6 +17,7 @@ import { Press } from "@/components/press";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { TopUpSheet } from "./topup-sheet";
+import { WithdrawSheet } from "@/components/seller/withdraw-sheet";
 import type { WalletTxRow } from "@/lib/wallet-db";
 import { confirmWalletTopup, readPendingTopup, clearPendingTopup } from "@/lib/payment-confirm";
 import { clearPendingPaypalOrder } from "@/lib/paypal-topup-client";
@@ -25,6 +26,7 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
   const { t, i18n } = useTranslation();
   const { balance, currency, transactions, refresh } = useWallet();
   const [topupOpen, setTopupOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   // Recovery: Stripe pending confirm + PayPal deep-link result.
   useEffect(() => {
@@ -112,16 +114,31 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
           >
             {t("wallet.toEarningsLink")}
           </button>
-          <Press
-            onClick={() => setTopupOpen(true)}
-            className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"
-            style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
-          >
-            <span className="flex items-center justify-center gap-1.5">
-              <Plus size={16} />
-              {t("wallet.topupCta")}
-            </span>
-          </Press>
+          <div className="mt-4 flex gap-2">
+            <Press
+              onClick={() => setTopupOpen(true)}
+              className="flex-1 rounded-2xl py-3 text-[15px] font-bold"
+              style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <Plus size={16} />
+                {t("wallet.topupCta")}
+              </span>
+            </Press>
+            <Press
+              onClick={() => setWithdrawOpen(true)}
+              className="flex-1 rounded-2xl py-3 text-[15px] font-bold text-white"
+              style={{ border: "1px solid rgba(255,255,255,0.35)" }}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                <ArrowUpRight size={16} />
+                {t("wallet.withdrawCta")}
+              </span>
+            </Press>
+          </div>
+          <p className="mt-2 text-[11px] leading-snug text-white/70">
+            {t("wallet.withdrawHint")}
+          </p>
         </motion.div>
 
         {/* History */}
@@ -153,6 +170,16 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
       </div>
 
       <TopUpSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <WithdrawSheet
+        open={withdrawOpen}
+        onClose={() => {
+          setWithdrawOpen(false);
+          void refresh();
+        }}
+        available={balance}
+        currency={currency}
+        source="wallet"
+      />
     </PushScreen>
   );
 }
@@ -176,7 +203,9 @@ function TxRow({
         ? t("wallet.tx.purchase")
         : tx.type === "refund"
           ? t("wallet.tx.refund")
-          : t("wallet.tx.adjustment");
+          : tx.type === "withdrawal"
+            ? t("wallet.tx.withdrawal", { defaultValue: "Retrait" })
+            : t("wallet.tx.adjustment");
   const date = new Date(tx.created_at).toLocaleString(locale, {
     day: "numeric",
     month: "short",
