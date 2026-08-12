@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  Banknote,
   ChevronRight,
   MapPin,
   Bell,
@@ -52,6 +53,7 @@ import { EditProfileScreen } from "@/components/auth/edit-profile-screen";
 import { SellerEarningsScreen } from "@/components/seller/earnings-screen";
 import { OrdersScreen } from "@/screens/orders-screen";
 import { SellerDeliverySettingsScreen } from "@/components/seller/delivery-settings-screen";
+import { SellerPaymentsAccountScreen } from "@/components/seller/payments-account-screen";
 import { AdminPayoutsScreen } from "@/components/admin/admin-dashboard-screen";
 import { WalletScreen } from "@/components/wallet/wallet-screen";
 import { LegalScreen } from "@/components/legal/legal-screen";
@@ -118,6 +120,7 @@ function ProfileScreenAuthed() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [addressesOpen, setAddressesOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [payAccountOpen, setPayAccountOpen] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -534,6 +537,12 @@ function ProfileScreenAuthed() {
                 { icon: <Store size={16} />, label: t("profile.myShop", { defaultValue: "Ma boutique" }), tint: "oklch(0.6 0.2 30)", onClick: () => setShopOpen(true) },
                 { icon: <Truck size={16} />, label: t("delivery.title"), tint: "oklch(0.55 0.13 200)", onClick: () => setDeliveryOpen(true) },
                 {
+                  icon: <Banknote size={16} />,
+                  label: t("connect.menuLabel", { defaultValue: "Paiements vendeur" }),
+                  tint: "oklch(0.6 0.17 155)",
+                  onClick: () => { haptic.light(); setPayAccountOpen(true); },
+                },
+                {
                   icon: <BadgeCheck size={16} />,
                   label: t("verify.menuLabel", "Certification"),
                   tint: "oklch(0.68 0.16 80)",
@@ -670,6 +679,7 @@ function ProfileScreenAuthed() {
       <WalletScreen open={walletOpen} onClose={() => setWalletOpen(false)} />
       <AddressBookScreen open={addressesOpen} onClose={() => setAddressesOpen(false)} />
       <SellerDeliverySettingsScreen open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
+      <SellerPaymentsAccountScreen open={payAccountOpen} onClose={() => setPayAccountOpen(false)} />
       <BlockedUsersScreen open={blockedOpen} onClose={() => setBlockedOpen(false)} />
       <LanguageSheet open={languageOpen} onClose={() => setLanguageOpen(false)} />
       <CurrencySheet open={currencyOpen} onClose={() => setCurrencyOpen(false)} />
