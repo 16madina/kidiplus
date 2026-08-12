@@ -109,7 +109,9 @@ export const Route = createFileRoute("/api/connect/onboard")({
               country,
               email: typeof p.email === "string" ? p.email : undefined,
               default_currency: currency.toLowerCase(),
-              business_type: "individual" as const,
+              // No business_type: Stripe's hosted onboarding asks the seller
+              // whether they are an individual or a company and collects the
+              // matching fields.
               metadata: { kidiplus_user_id: userId },
             };
             let account;
