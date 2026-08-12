@@ -657,7 +657,9 @@
       "wallet": "Portefeuille",
       "earnings": "Mes gains",
       "becomeSeller": "Devenir vendeur",
-      "orders": "Mes commandes"
+      "orders": "Mes commandes",
+      "walletHint": "Dépenser dans l'app",
+      "earningsHint": "Tes ventes, à retirer"
     },
     "menu": {
       "wallet": "Mon portefeuille",
@@ -1091,7 +1093,9 @@
       "refund": "Remboursement",
       "adjustment": "Ajustement"
     },
-    "currencyMismatch": "Portefeuille en {{currency}}"
+    "currencyMismatch": "Portefeuille en {{currency}}",
+    "explainer": "Solde pour acheter et enchérir dans l'app. Non retirable vers ta banque.",
+    "toEarningsLink": "Tu veux retirer tes ventes ? → Mes gains"
   },
   "gains": {
     "title": "Mes gains",
@@ -1099,6 +1103,7 @@
     "pending": "En attente de livraison",
     "escrowExplainer": "Les gains sont libérés à la confirmation de livraison (auto après 7 jours).",
     "withdraw": "Retirer mes gains",
+    "explainer": "Revenus de tes ventes — retirables vers ta banque.",
     "price": "Prix",
     "net": "Net",
     "shippingHint": "Gère tes expéditions dans « Mes commandes ».",

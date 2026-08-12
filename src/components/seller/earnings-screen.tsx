@@ -118,6 +118,9 @@ export function SellerEarningsScreen({ open, onClose }: { open: boolean; onClose
           <p className="mt-1 text-[34px] font-bold leading-none tabular-nums">
             {fmt(available)}
           </p>
+          <p className="mt-2 text-[13px] leading-snug text-white/85">
+            {t("gains.explainer")}
+          </p>
           <Press
             onClick={() => available > 0 && setWithdrawOpen(true)}
             className="mt-4 w-full rounded-2xl py-3 text-[15px] font-bold"
