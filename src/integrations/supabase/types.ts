@@ -2741,6 +2741,7 @@ export type Database = {
         Returns: number
       }
       my_moderation_state: { Args: never; Returns: Json }
+      my_profile_flags: { Args: never; Returns: Json }
       my_promo_code_request: { Args: never; Returns: Json }
       my_promo_codes: { Args: never; Returns: Json }
       my_referral_earnings: { Args: { _limit?: number }; Returns: Json }
