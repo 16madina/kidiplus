@@ -1,9 +1,16 @@
 // WithdrawSheet — seller requests a payout from their available balance.
-// Steps: form → confirm → success. Method: Wave / Orange Money / PayPal / Bank.
+// Steps: form → confirm → success.
+//
+// Two payout worlds coexist:
+//  - XOF / Africa: manual Wave / Orange Money / PayPal / bank (unchanged).
+//  - EUR / CAD / USD / GBP: automated Stripe Connect transfer. The seller is
+//    only asked to onboard Stripe Express AT WITHDRAWAL TIME (never at
+//    signup); once active, the payout row is settled by a Stripe Transfer and
+//    Stripe pays their bank. Wallet + escrow accounting is untouched.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Building2 } from "lucide-react";
+import { Check, Loader2, Building2, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -12,6 +19,12 @@ import { haptic } from "@/lib/haptics";
 import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
+import {
+  fetchConnectStatus,
+  sendConnectPayout,
+  startConnectOnboarding,
+  type ConnectStatus,
+} from "@/lib/stripe-connect-client";
 import { useAuth } from "@/lib/auth-context";
 import {
   payoutDailyCap,
@@ -26,14 +39,17 @@ const PAYPAL_BLUE_LIGHT = "#0070BA";
 // Basic RFC-ish email regex — good enough for input validation.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Currencies eligible for the automated Stripe Connect payout. */
+const CONNECT_CURRENCIES = new Set(["EUR", "CAD", "USD", "GBP"]);
+
 /** Method choices (and default) depend on the seller's wallet currency:
  *  - XOF: mobile money first (Wave, Orange Money), then PayPal, then Virement.
- *  - EUR / CAD: PayPal first, then Virement. Mobile-money options are hidden
- *    to reduce noise (irrelevant for European / Canadian sellers). */
+ *  - EUR / CAD / USD / GBP: Stripe (bank, automated) first, then PayPal and
+ *    Virement. Mobile-money options are hidden (irrelevant for these sellers). */
 function methodsForCurrency(currency: string): PayoutMethod[] {
   const cur = normalizeCurrency(currency);
   if (cur === "XOF") return ["wave", "orange_money", "paypal", "bank_transfer"];
-  return ["paypal", "bank_transfer"];
+  return ["stripe_connect", "paypal", "bank_transfer"];
 }
 
 /** PayPal-brand square with a white italic "P". */
@@ -87,6 +103,22 @@ export function WithdrawSheet({
   const [paypalEmail, setPaypalEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // --- Stripe Connect (Western sellers only) -------------------------------
+  const connectEligible = CONNECT_CURRENCIES.has(normalizeCurrency(currency));
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | "loading">("loading");
+  const refreshConnect = useCallback(async () => {
+    if (!connectEligible) return;
+    const r = await fetchConnectStatus();
+    setConnectStatus(r.ok ? r.status : "none");
+  }, [connectEligible]);
+
+  useEffect(() => {
+    if (open && connectEligible) {
+      setConnectStatus("loading");
+      void refreshConnect();
+    }
+  }, [open, connectEligible, refreshConnect]);
+
   useEffect(() => {
     if (open) {
       setStep("form");
@@ -101,6 +133,7 @@ export function WithdrawSheet({
   }, [open, available, defaultMethod]);
 
   const destination = useMemo<Record<string, string>>(() => {
+    if (method === "stripe_connect") return {};
     if (method === "bank_transfer") {
       const d: Record<string, string> = { iban: iban.trim(), holder: holder.trim() };
       return d;
@@ -116,13 +149,16 @@ export function WithdrawSheet({
   const emailTrimmed = paypalEmail.trim();
   const emailValid = EMAIL_RE.test(emailTrimmed) && emailTrimmed.length <= 254;
   const destinationValid =
-    method === "bank_transfer"
-      ? iban.trim().length >= 6 && holder.trim().length >= 2
-      : method === "paypal"
-        ? emailValid
-        : phone.trim().length >= 6;
+    method === "stripe_connect"
+      ? true
+      : method === "bank_transfer"
+        ? iban.trim().length >= 6 && holder.trim().length >= 2
+        : method === "paypal"
+          ? emailValid
+          : phone.trim().length >= 6;
   const belowMin = amount < min;
   const aboveAvailable = amount > available;
+  const connectNeedsOnboarding = method === "stripe_connect" && connectStatus !== "active";
   const canContinue = !belowMin && !aboveAvailable && amount > 0 && destinationValid;
   const invalidEmail = method === "paypal" && emailTrimmed.length > 0 && !emailValid;
   const disabledReason = belowMin
@@ -135,16 +171,56 @@ export function WithdrawSheet({
           ? t("payout.errors.missingDestination")
           : null;
 
+  const onboardConnect = async () => {
+    setBusy(true);
+    const r = await startConnectOnboarding();
+    setBusy(false);
+    if (!r.ok) {
+      haptic.warning();
+      toast.error(
+        r.error === "connect_currency_unsupported" || r.error === "connect_country_unsupported"
+          ? t("connect.errors.unsupported", {
+              defaultValue: "Stripe n'est pas disponible pour ton pays / ta devise.",
+            })
+          : t("connect.errors.onboard", {
+              defaultValue: "Impossible d'ouvrir la configuration Stripe.",
+            }),
+      );
+    }
+  };
+
+
   const submit = async () => {
     setBusy(true);
     haptic.medium();
     const r = await requestPayout(amount, method, destination, source);
-    setBusy(false);
     if (r.ok) {
+      // Stripe Connect: settle immediately with an automated Transfer to the
+      // seller's connected account (no manual admin step). The RPC already
+      // debited the balance and enforced the tier caps.
+      if (method === "stripe_connect") {
+        const sent = await sendConnectPayout(r.payoutId);
+        setBusy(false);
+        if (!sent.ok) {
+          haptic.warning();
+          toast.error(
+            t("connect.errors.transfer", {
+              defaultValue:
+                "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter.",
+            }),
+          );
+          setStep("success");
+          setTimeout(onClose, 1800);
+          return;
+        }
+      } else {
+        setBusy(false);
+      }
       haptic.success();
       setStep("success");
       setTimeout(onClose, 1800);
     } else {
+      setBusy(false);
       haptic.warning();
       toast.error(
         r.error === "insufficient_funds"
@@ -170,7 +246,12 @@ export function WithdrawSheet({
                       "risk.errors.restricted",
                       "Paiements temporairement bloqués. Contacte le support.",
                     )
-                  : t("payout.errors.generic"),
+                  : r.error === "connect_not_ready"
+                    ? t("connect.errors.notReady", {
+                        defaultValue:
+                          "Ton compte de paiement Stripe n'est pas encore actif.",
+                      })
+                    : t("payout.errors.generic"),
       );
     }
   };
@@ -293,6 +374,11 @@ export function WithdrawSheet({
               </p>
               <div className="flex flex-col gap-2">
                 {availableMethods.map((m) => {
+                  if (m === "stripe_connect") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color="#635BFF" label={t("payout.method.stripe_connect", { defaultValue: "Retirer vers ma banque (Stripe)" })}
+                      icon={<Landmark size={18} color="white" />} />
+                  );
                   if (m === "wave") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
                       color="transparent" label="Wave"
@@ -315,7 +401,32 @@ export function WithdrawSheet({
                 })}
               </div>
 
-              {method === "bank_transfer" ? (
+              {method === "stripe_connect" ? (
+                <div className="mt-3 rounded-2xl border border-border p-3 text-[12px] leading-snug text-muted-foreground">
+                  {connectStatus === "loading"
+                    ? t("connect.checking", { defaultValue: "Vérification de ton compte…" })
+                    : connectStatus === "active"
+                      ? t("connect.activeHint", {
+                          defaultValue:
+                            "Compte vérifié ✅ — le virement part automatiquement vers ta banque (1 à 3 jours ouvrés).",
+                        })
+                      : connectStatus === "pending"
+                        ? t("connect.pendingHint", {
+                            defaultValue:
+                              "Configuration à terminer : Stripe a besoin de quelques informations avant de te virer l'argent.",
+                          })
+                        : connectStatus === "restricted"
+                          ? t("connect.restrictedHint", {
+                              defaultValue:
+                                "Stripe a suspendu les virements sur ton compte. Complète les informations demandées.",
+                            })
+                          : t("connect.setupHint", {
+                              defaultValue:
+                                "Configure tes paiements une seule fois pour recevoir tes gains directement sur ta banque.",
+                            })}
+                </div>
+              ) : method === "bank_transfer" ? (
+
                 <>
                   <input
                     placeholder="IBAN"
@@ -375,17 +486,32 @@ export function WithdrawSheet({
                     {disabledReason}
                   </p>
                 )}
-                <Press
-                  onClick={canContinue ? () => setStep("confirm") : undefined}
-                  disabled={!canContinue}
-                  className="w-full rounded-2xl py-3 text-[15px] font-bold"
-                  style={{
-                    backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
-                    color: canContinue ? "#10162B" : "var(--muted-foreground)",
-                  }}
-                >
-                  {t("common.continue")}
-                </Press>
+                {connectNeedsOnboarding ? (
+                  <Press
+                    onClick={busy || connectStatus === "loading" ? undefined : onboardConnect}
+                    disabled={busy || connectStatus === "loading"}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-bold"
+                    style={{ backgroundColor: "#635BFF", color: "white" }}
+                  >
+                    {busy && <Loader2 size={16} className="animate-spin" />}
+                    {t("connect.onboardCta", {
+                      defaultValue: "Configurer mes paiements pour retirer",
+                    })}
+                  </Press>
+                ) : (
+                  <Press
+                    onClick={canContinue ? () => setStep("confirm") : undefined}
+                    disabled={!canContinue}
+                    className="w-full rounded-2xl py-3 text-[15px] font-bold"
+                    style={{
+                      backgroundColor: canContinue ? "#c8a24a" : "var(--muted)",
+                      color: canContinue ? "#10162B" : "var(--muted-foreground)",
+                    }}
+                  >
+                    {t("common.continue")}
+                  </Press>
+                )}
+
               </div>
             </motion.div>
           )}

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as CommunityRouteImport } from './routes/community'
+import { Route as ConnectReturnRouteImport } from './routes/connect-return'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as EgressTemplateRouteImport } from './routes/egress-template'
@@ -48,6 +49,9 @@ import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delet
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
 import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
 import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
+import { Route as ApiConnectPayoutRouteImport } from './routes/api/connect.payout'
+import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
 import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
@@ -104,6 +108,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const CommunityRoute = CommunityRouteImport.update({
   id: '/community',
   path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectReturnRoute = ConnectReturnRouteImport.update({
+  id: '/connect-return',
+  path: '/connect-return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -284,6 +293,21 @@ const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
   getParentRoute: () => ApiCheckoutRoute,
+} as any)
+const ApiConnectOnboardRoute = ApiConnectOnboardRouteImport.update({
+  id: '/api/connect/onboard',
+  path: '/api/connect/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectPayoutRoute = ApiConnectPayoutRouteImport.update({
+  id: '/api/connect/payout',
+  path: '/api/connect/payout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectStatusRoute = ApiConnectStatusRouteImport.update({
+  id: '/api/connect/status',
+  path: '/api/connect/status',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
   id: '/api/facebook/disconnect',
@@ -482,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -517,6 +542,9 @@ export interface FileRoutesByFullPath {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/payout': typeof ApiConnectPayoutRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -560,6 +588,7 @@ export interface FileRoutesByTo {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -595,6 +624,9 @@ export interface FileRoutesByTo {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/payout': typeof ApiConnectPayoutRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -639,6 +671,7 @@ export interface FileRoutesById {
   '/account-deletion': typeof AccountDeletionRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/community': typeof CommunityRoute
+  '/connect-return': typeof ConnectReturnRoute
   '/download': typeof DownloadRoute
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
@@ -674,6 +707,9 @@ export interface FileRoutesById {
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
+  '/api/connect/onboard': typeof ApiConnectOnboardRoute
+  '/api/connect/payout': typeof ApiConnectPayoutRoute
+  '/api/connect/status': typeof ApiConnectStatusRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -719,6 +755,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -754,6 +791,9 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/onboard'
+    | '/api/connect/payout'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -797,6 +837,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -832,6 +873,9 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/onboard'
+    | '/api/connect/payout'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -875,6 +919,7 @@ export interface FileRouteTypes {
     | '/account-deletion'
     | '/auth-callback'
     | '/community'
+    | '/connect-return'
     | '/download'
     | '/earnings'
     | '/egress-template'
@@ -910,6 +955,9 @@ export interface FileRouteTypes {
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
+    | '/api/connect/onboard'
+    | '/api/connect/payout'
+    | '/api/connect/status'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -954,6 +1002,7 @@ export interface RootRouteChildren {
   AccountDeletionRoute: typeof AccountDeletionRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   CommunityRoute: typeof CommunityRoute
+  ConnectReturnRoute: typeof ConnectReturnRoute
   DownloadRoute: typeof DownloadRoute
   EarningsRoute: typeof EarningsRoute
   EgressTemplateRoute: typeof EgressTemplateRoute
@@ -987,6 +1036,9 @@ export interface RootRouteChildren {
   SellOnboardingRoute: typeof SellOnboardingRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
+  ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
+  ApiConnectPayoutRoute: typeof ApiConnectPayoutRoute
+  ApiConnectStatusRoute: typeof ApiConnectStatusRoute
   ApiFacebookDisconnectRoute: typeof ApiFacebookDisconnectRoute
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
@@ -1051,6 +1103,13 @@ declare module '@tanstack/react-router' {
       path: '/community'
       fullPath: '/community'
       preLoaderRoute: typeof CommunityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect-return': {
+      id: '/connect-return'
+      path: '/connect-return'
+      fullPath: '/connect-return'
+      preLoaderRoute: typeof ConnectReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -1297,6 +1356,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/checkout/confirm'
       preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
       parentRoute: typeof ApiCheckoutRoute
+    }
+    '/api/connect/onboard': {
+      id: '/api/connect/onboard'
+      path: '/api/connect/onboard'
+      fullPath: '/api/connect/onboard'
+      preLoaderRoute: typeof ApiConnectOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/payout': {
+      id: '/api/connect/payout'
+      path: '/api/connect/payout'
+      fullPath: '/api/connect/payout'
+      preLoaderRoute: typeof ApiConnectPayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/status': {
+      id: '/api/connect/status'
+      path: '/api/connect/status'
+      fullPath: '/api/connect/status'
+      preLoaderRoute: typeof ApiConnectStatusRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/facebook/disconnect': {
       id: '/api/facebook/disconnect'
@@ -1605,6 +1685,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountDeletionRoute: AccountDeletionRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   CommunityRoute: CommunityRoute,
+  ConnectReturnRoute: ConnectReturnRoute,
   DownloadRoute: DownloadRoute,
   EarningsRoute: EarningsRoute,
   EgressTemplateRoute: EgressTemplateRoute,
@@ -1639,6 +1720,9 @@ const rootRouteChildren: RootRouteChildren = {
   SellOnboardingRoute: SellOnboardingRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
+  ApiConnectOnboardRoute: ApiConnectOnboardRoute,
+  ApiConnectPayoutRoute: ApiConnectPayoutRoute,
+  ApiConnectStatusRoute: ApiConnectStatusRoute,
   ApiFacebookDisconnectRoute: ApiFacebookDisconnectRoute,
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
