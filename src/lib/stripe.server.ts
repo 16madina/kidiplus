@@ -39,7 +39,7 @@ export function envHintFromRequest(request: Request): StripeEnv | null {
   return null;
 }
 
-/** True when a legacy BYOK sk_*/rk_* key belongs to the requested mode. */
+/** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
 export function legacyMatchesEnv(env: StripeEnv): boolean {
   const k = (process.env.STRIPE_SECRET_KEY ?? "").trim();
   if (!k) return false;
