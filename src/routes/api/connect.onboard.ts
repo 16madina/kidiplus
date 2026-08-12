@@ -31,6 +31,11 @@ export const Route = createFileRoute("/api/connect/onboard")({
 
         const envHint = envHintFromRequest(request);
         const cfg = getStripeConfig(envHint);
+        console.info("[connect/onboard] payments mode resolution", {
+          receivedHeader: request.headers.get("x-payments-env") ?? "missing",
+          envHint: envHint ?? "missing",
+          selectedGateway: cfg.env,
+        });
         if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         const auth = await authenticate(request);
@@ -75,6 +80,9 @@ export const Route = createFileRoute("/api/connect/onboard")({
               const isMissing = code === "resource_missing"
                 || stripeError.message?.toLowerCase().includes("no such account") === true;
               if (!isMissing) throw error;
+              console.info("[connect/onboard] resetting account from the other Stripe mode", {
+                selectedGateway: cfg.env,
+              });
               accountId = "";
               await admin
                 .from("profiles")
