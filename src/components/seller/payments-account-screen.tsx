@@ -18,7 +18,12 @@ import {
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
+import { CountryFlag } from "@/components/country-flag";
 import { haptic } from "@/lib/haptics";
+import {
+  CONNECT_COUNTRY_LIST,
+  DEFAULT_CONNECT_COUNTRY,
+} from "@/lib/connect-countries";
 import {
   fetchConnectStatus,
   openExpressDashboard,
