@@ -87,8 +87,12 @@ export const Route = createFileRoute("/api/connect/status")({
           const stripeError = e as { code?: string; raw?: { code?: string }; message?: string };
           const msg = stripeError.message ?? "stripe_error";
           const code = stripeError.raw?.code ?? stripeError.code;
+          const lower = msg.toLowerCase();
           const isMissing = code === "resource_missing"
-            || msg.toLowerCase().includes("no such account");
+            || lower.includes("no such account")
+            // Account was created with a different Stripe key/mode: the current
+            // key can't access it, so treat it as stale and re-onboard.
+            || lower.includes("does not have access to account");
           if (isMissing) {
             // A Connect account belongs to exactly one Stripe mode. Reset a
             // stale live ID when the app is now using sandbox (and vice versa)

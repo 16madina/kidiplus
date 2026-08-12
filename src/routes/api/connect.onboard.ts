@@ -77,8 +77,11 @@ export const Route = createFileRoute("/api/connect/onboard")({
             } catch (error) {
               const stripeError = error as { code?: string; raw?: { code?: string }; message?: string };
               const code = stripeError.raw?.code ?? stripeError.code;
+              const lower = (stripeError.message ?? "").toLowerCase();
               const isMissing = code === "resource_missing"
-                || stripeError.message?.toLowerCase().includes("no such account") === true;
+                || lower.includes("no such account")
+                // Created with a different Stripe key/mode -> stale, re-onboard.
+                || lower.includes("does not have access to account");
               if (!isMissing) throw error;
               console.info("[connect/onboard] resetting account from the other Stripe mode", {
                 selectedGateway: cfg.env,
