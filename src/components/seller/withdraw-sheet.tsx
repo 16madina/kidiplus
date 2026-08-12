@@ -1,9 +1,16 @@
 // WithdrawSheet — seller requests a payout from their available balance.
-// Steps: form → confirm → success. Method: Wave / Orange Money / PayPal / Bank.
+// Steps: form → confirm → success.
+//
+// Two payout worlds coexist:
+//  - XOF / Africa: manual Wave / Orange Money / PayPal / bank (unchanged).
+//  - EUR / CAD / USD / GBP: automated Stripe Connect transfer. The seller is
+//    only asked to onboard Stripe Express AT WITHDRAWAL TIME (never at
+//    signup); once active, the payout row is settled by a Stripe Transfer and
+//    Stripe pays their bank. Wallet + escrow accounting is untouched.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Building2 } from "lucide-react";
+import { Check, Loader2, Building2, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -12,6 +19,12 @@ import { haptic } from "@/lib/haptics";
 import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
 import { payoutMinimumFor } from "@/lib/fees";
 import { requestPayout, type PayoutMethod, type PayoutSource } from "@/lib/earnings-db";
+import {
+  fetchConnectStatus,
+  sendConnectPayout,
+  startConnectOnboarding,
+  type ConnectStatus,
+} from "@/lib/stripe-connect-client";
 import { useAuth } from "@/lib/auth-context";
 import {
   payoutDailyCap,
@@ -26,14 +39,17 @@ const PAYPAL_BLUE_LIGHT = "#0070BA";
 // Basic RFC-ish email regex — good enough for input validation.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Currencies eligible for the automated Stripe Connect payout. */
+const CONNECT_CURRENCIES = new Set(["EUR", "CAD", "USD", "GBP"]);
+
 /** Method choices (and default) depend on the seller's wallet currency:
  *  - XOF: mobile money first (Wave, Orange Money), then PayPal, then Virement.
- *  - EUR / CAD: PayPal first, then Virement. Mobile-money options are hidden
- *    to reduce noise (irrelevant for European / Canadian sellers). */
+ *  - EUR / CAD / USD / GBP: Stripe (bank, automated) first, then PayPal and
+ *    Virement. Mobile-money options are hidden (irrelevant for these sellers). */
 function methodsForCurrency(currency: string): PayoutMethod[] {
   const cur = normalizeCurrency(currency);
   if (cur === "XOF") return ["wave", "orange_money", "paypal", "bank_transfer"];
-  return ["paypal", "bank_transfer"];
+  return ["stripe_connect", "paypal", "bank_transfer"];
 }
 
 /** PayPal-brand square with a white italic "P". */
