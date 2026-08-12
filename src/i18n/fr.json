@@ -1829,7 +1829,8 @@
       "onboard": "Impossible d'ouvrir la configuration Stripe.",
       "unsupported": "Stripe n'est pas disponible pour ton pays / ta devise.",
       "notReady": "Ton compte de paiement Stripe n'est pas encore actif.",
-      "transfer": "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter."
+      "transfer": "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter.",
+      "notEnabled": "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard."
     }
   }
 }
