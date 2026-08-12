@@ -89,10 +89,19 @@ export function getStripeConfig(hint?: StripeEnv | null): {
 
   const legacySecret = process.env.STRIPE_SECRET_KEY;
   const legacyWebhook = process.env.STRIPE_WEBHOOK_SECRET;
-  const publishableKey =
+  const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
+  // In forced test mode never hand a pk_live_ key to the browser: the client
+  // falls back to its own bundled pk_test_ token instead.
+  const publishableKey =
+    forcedTestMode() && rawPublishable.startsWith("pk_live_")
+      ? (process.env.STRIPE_PUBLISHABLE_KEY ?? "").startsWith("pk_test_")
+        ? process.env.STRIPE_PUBLISHABLE_KEY!
+        : ""
+      : rawPublishable;
+
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
   // An explicit mode is a strict boundary: sandbox requests require the
