@@ -12,6 +12,7 @@ import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
 import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
 import {
   CONNECT_CURRENCIES,
+  isCapabilityUnsupportedError,
   isConnectNotEnabledError,
   resolveConnectCountry,
   statusFromAccount,
@@ -60,7 +61,9 @@ export const Route = createFileRoute("/api/connect/onboard")({
           // XOF & co → manual payout flow, untouched.
           return json({ error: "connect_currency_unsupported", currency }, 400, origin);
         }
-        const country = resolveConnectCountry(p.country, currency);
+        // The seller picks their country in the UI before onboarding.
+        const body = (await request.json().catch(() => ({}))) as { country?: unknown };
+        const country = resolveConnectCountry(p.country, currency, body?.country);
         if (!country) return json({ error: "connect_country_unsupported" }, 400, origin);
 
         const stripe = stripeForEnv(envHint);
@@ -101,27 +104,47 @@ export const Route = createFileRoute("/api/connect/onboard")({
           }
 
           if (!accountId) {
-            const account = await stripe.accounts.create({
-              type: "express",
+            const base = {
+              type: "express" as const,
               country,
               email: typeof p.email === "string" ? p.email : undefined,
               default_currency: currency.toLowerCase(),
-              capabilities: {
-                transfers: { requested: true },
-                card_payments: { requested: true },
-              },
-              business_type: "individual",
+              business_type: "individual" as const,
               metadata: { kidiplus_user_id: userId },
-            });
+            };
+            let account;
+            try {
+              account = await stripe.accounts.create({
+                ...base,
+                capabilities: {
+                  transfers: { requested: true },
+                  card_payments: { requested: true },
+                },
+              });
+            } catch (capErr) {
+              // Cross-border payout-only countries can't request card_payments:
+              // retry with transfers only.
+              if (!isCapabilityUnsupportedError(capErr)) throw capErr;
+              console.info("[connect/onboard] card_payments unsupported, retrying transfers-only", {
+                country,
+              });
+              account = await stripe.accounts.create({
+                ...base,
+                capabilities: { transfers: { requested: true } },
+              });
+            }
             accountId = account.id;
             await admin
               .from("profiles")
               .update({
                 stripe_connect_id: accountId,
                 connect_status: "pending",
+                country,
                 connect_updated_at: new Date().toISOString(),
               })
               .eq("id", userId);
+          } else if (typeof body?.country === "string" && p.country !== country) {
+            await admin.from("profiles").update({ country }).eq("id", userId);
           }
 
           const appOrigin = publicAppOrigin(request);

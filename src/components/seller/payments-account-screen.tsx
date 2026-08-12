@@ -18,7 +18,12 @@ import {
 } from "lucide-react";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
+import { CountryFlag } from "@/components/country-flag";
 import { haptic } from "@/lib/haptics";
+import {
+  CONNECT_COUNTRY_LIST,
+  DEFAULT_CONNECT_COUNTRY,
+} from "@/lib/connect-countries";
 import {
   fetchConnectStatus,
   openExpressDashboard,
@@ -36,12 +41,17 @@ export function SellerPaymentsAccountScreen({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ConnectStatus>("none");
   const [unavailable, setUnavailable] = useState(false);
   const [eligible, setEligible] = useState(true);
+  const [country, setCountry] = useState(DEFAULT_CONNECT_COUNTRY);
+  const isFr = (i18n.language ?? "fr").startsWith("fr");
+  const countries = [...CONNECT_COUNTRY_LIST].sort((a, b) =>
+    (isFr ? a.fr : a.en).localeCompare(isFr ? b.fr : b.en, isFr ? "fr" : "en"),
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -61,7 +71,7 @@ export function SellerPaymentsAccountScreen({
   const onboard = async () => {
     haptic.medium();
     setBusy(true);
-    const r = await startConnectOnboarding();
+    const r = await startConnectOnboarding(country);
     setBusy(false);
     if (!r.ok) {
       haptic.warning();
@@ -179,6 +189,43 @@ export function SellerPaymentsAccountScreen({
             ))}
           </ol>
         </div>
+
+        {/* Country picker — required before the Express account is created */}
+        {status === "none" && (
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: NAVY_INSET, border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <label
+              htmlFor="connect-country"
+              className="mb-1 block text-[13px] font-semibold text-white/85"
+            >
+              {t("connect.countryLabel", { defaultValue: "Pays de ton compte vendeur" })}
+            </label>
+            <p className="mb-3 text-[12px] leading-relaxed text-white/60">
+              {t("connect.countryHint")}
+            </p>
+            <div
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
+            >
+              <CountryFlag code={country} className="h-4 w-6 shrink-0 rounded-[2px]" />
+              <select
+                id="connect-country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                disabled={busy || loading}
+                className="w-full bg-transparent text-[15px] font-semibold text-white outline-none"
+              >
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code} style={{ color: "#10162B" }}>
+                    {isFr ? c.fr : c.en}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         {status !== "active" && (
