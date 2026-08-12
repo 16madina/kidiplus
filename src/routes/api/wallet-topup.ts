@@ -51,8 +51,12 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const envHint = envHintFromRequest(request);
-        const stripeCfg = getStripeConfig(envHint);
+        // Wallet top-ups are confirmed in the browser with the MANAGED publishable
+        // token, so they must never be routed to the BYOK STRIPE_SECRET_KEY account
+        // (a separate Connect-testing account). managedOnly pins them to the gateway.
+        const MANAGED = { managedOnly: true } as const;
+        const envHint = envHintFromRequest(request, MANAGED);
+        const stripeCfg = getStripeConfig(envHint, MANAGED);
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -130,7 +134,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
 
         const amountMinor = toStripeMinor(amount, currency);
 
-        const stripe = createStripeClient(envHint);
+        const stripe = createStripeClient(envHint, MANAGED);
         let intent;
         try {
           intent = await stripe.paymentIntents.create({

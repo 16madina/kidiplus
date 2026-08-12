@@ -38,9 +38,22 @@ export function forcedTestMode(): boolean {
   return byokEnv() === "sandbox";
 }
 
-function pickEnv(hint?: StripeEnv | null): StripeEnv {
-  // A test-only BYOK key pins every Stripe operation to sandbox.
-  if (forcedTestMode()) return "sandbox";
+/**
+ * Options for callers that must bypass the legacy BYOK key entirely.
+ *
+ * `managedOnly` exists because the BYOK STRIPE_SECRET_KEY may belong to a
+ * DIFFERENT Stripe account than the managed gateway (it is provisioned for
+ * Connect testing). Any flow whose client-side confirmation uses the managed
+ * publishable token (VITE_PAYMENTS_CLIENT_TOKEN) MUST create/retrieve its
+ * PaymentIntents on the managed account, otherwise Stripe.js cannot resolve
+ * the client secret and the PaymentElement never mounts.
+ */
+export type StripeClientOpts = { managedOnly?: boolean };
+
+function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
+  // A test-only BYOK key pins every Stripe operation to sandbox — but only
+  // for flows that may actually use that key.
+  if (!opts?.managedOnly && forcedTestMode()) return "sandbox";
   // Explicit hint from the client (x-payments-env header) is authoritative —
   // this is the only reliable signal at Worker runtime, since VITE_* env
   // vars are NOT injected into `process.env` on Cloudflare Workers, so any
@@ -55,12 +68,15 @@ function pickEnv(hint?: StripeEnv | null): StripeEnv {
   return "sandbox";
 }
 
-export function envHintFromRequest(request: Request): StripeEnv | null {
+export function envHintFromRequest(request: Request, opts?: StripeClientOpts): StripeEnv | null {
+  const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
+  const hinted = h === "live" || h === "sandbox" ? (h as StripeEnv) : null;
+  // Managed-only flows always trust the browser: it is about to confirm with
+  // the publishable key of that exact env.
+  if (opts?.managedOnly) return hinted;
   // Ignore a "live" hint from the client while a test-only BYOK key is set.
   if (forcedTestMode()) return "sandbox";
-  const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
-  if (h === "live" || h === "sandbox") return h;
-  return null;
+  return hinted;
 }
 
 /** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
@@ -69,14 +85,16 @@ export function legacyMatchesEnv(env: StripeEnv): boolean {
 }
 
 
-export function getStripeConfig(hint?: StripeEnv | null): {
+
+export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts): {
   ok: boolean;
   env: StripeEnv;
   publishableKey: string;
   webhookSecret: string;
   reason?: string;
 } {
-  const env = pickEnv(hint);
+  const managedOnly = !!opts?.managedOnly;
+  const env = pickEnv(hint, opts);
 
   const gatewayKey =
     env === "live"
@@ -87,16 +105,17 @@ export function getStripeConfig(hint?: StripeEnv | null): {
       ? process.env.PAYMENTS_LIVE_WEBHOOK_SECRET
       : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET;
 
-  const legacySecret = process.env.STRIPE_SECRET_KEY;
-  const legacyWebhook = process.env.STRIPE_WEBHOOK_SECRET;
+  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacyWebhook = managedOnly ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
   const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
     "";
   // In forced test mode never hand a pk_live_ key to the browser: the client
-  // falls back to its own bundled pk_test_ token instead.
+  // falls back to its own bundled pk_test_ token instead. Managed-only flows
+  // are never served by the BYOK key, so this clamp does not apply to them.
   const publishableKey =
-    forcedTestMode() && rawPublishable.startsWith("pk_live_")
+    !managedOnly && forcedTestMode() && rawPublishable.startsWith("pk_live_")
       ? (process.env.STRIPE_PUBLISHABLE_KEY ?? "").startsWith("pk_test_")
         ? process.env.STRIPE_PUBLISHABLE_KEY!
         : ""
@@ -107,9 +126,11 @@ export function getStripeConfig(hint?: StripeEnv | null): {
   // An explicit mode is a strict boundary: sandbox requests require the
   // sandbox gateway and live requests require the live gateway. In particular,
   // never let a legacy sk_live_* key satisfy a sandbox request.
-  const haveApi = hint === "live" || hint === "sandbox"
-    ? !!(gatewayKey || legacyMatchesEnv(env))
-    : !!(gatewayKey || legacySecret);
+  const haveApi = managedOnly
+    ? !!gatewayKey
+    : hint === "live" || hint === "sandbox"
+      ? !!(gatewayKey || legacyMatchesEnv(env))
+      : !!(gatewayKey || legacySecret);
   if (!haveApi) {
     return {
       ok: false,
@@ -124,19 +145,21 @@ export function getStripeConfig(hint?: StripeEnv | null): {
 }
 
 
+
 // Build a Stripe SDK client. When using the managed gateway key we route
 // every api.stripe.com request through the Lovable connector-gateway, which
 // attaches the real Stripe secret key. When a legacy STRIPE_SECRET_KEY is
 // present we use it directly (BYOK mode).
-export function createStripeClient(hint?: StripeEnv | null): Stripe {
-  const cfg = getStripeConfig(hint);
+export function createStripeClient(hint?: StripeEnv | null, opts_?: StripeClientOpts): Stripe {
+  const managedOnly = !!opts_?.managedOnly;
+  const cfg = getStripeConfig(hint, opts_);
   const env = cfg.env;
 
   const gatewayKey =
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
       : process.env.STRIPE_SANDBOX_API_KEY;
-  const legacySecret = process.env.STRIPE_SECRET_KEY;
+  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
 
   const opts = { apiVersion: "2026-06-24.dahlia" as const };
 
@@ -145,6 +168,7 @@ export function createStripeClient(hint?: StripeEnv | null): Stripe {
   if (legacySecret && legacyMatchesEnv(env)) {
     return new Stripe(legacySecret, opts);
   }
+
 
   if (gatewayKey) {
     const lovableApiKey = process.env.LOVABLE_API_KEY ?? "";
