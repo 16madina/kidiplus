@@ -150,15 +150,16 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
 // every api.stripe.com request through the Lovable connector-gateway, which
 // attaches the real Stripe secret key. When a legacy STRIPE_SECRET_KEY is
 // present we use it directly (BYOK mode).
-export function createStripeClient(hint?: StripeEnv | null): Stripe {
-  const cfg = getStripeConfig(hint);
+export function createStripeClient(hint?: StripeEnv | null, opts_?: StripeClientOpts): Stripe {
+  const managedOnly = !!opts_?.managedOnly;
+  const cfg = getStripeConfig(hint, opts_);
   const env = cfg.env;
 
   const gatewayKey =
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
       : process.env.STRIPE_SANDBOX_API_KEY;
-  const legacySecret = process.env.STRIPE_SECRET_KEY;
+  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
 
   const opts = { apiVersion: "2026-06-24.dahlia" as const };
 
@@ -167,6 +168,7 @@ export function createStripeClient(hint?: StripeEnv | null): Stripe {
   if (legacySecret && legacyMatchesEnv(env)) {
     return new Stripe(legacySecret, opts);
   }
+
 
   if (gatewayKey) {
     const lovableApiKey = process.env.LOVABLE_API_KEY ?? "";
