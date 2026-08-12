@@ -875,13 +875,30 @@ function StripeInlineForm({
     <form onSubmit={submit} className="mt-5 flex flex-1 flex-col gap-3">
       <div className="relative rounded-2xl border border-border bg-background p-3">
         {!ready && (
-          <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-background">
-            <div className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
-              <Loader2 className="animate-spin" size={16} />
-              Chargement du formulaire carte…
-            </div>
+          <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-background p-3">
+            {mountTimedOut ? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <AlertCircle className="text-destructive" size={20} />
+                <p className="text-[13px] font-semibold text-destructive">
+                  {t("pay.errors.formTimeout")}
+                </p>
+                <Press
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-xl bg-secondary px-4 py-2 text-[13px] font-bold text-secondary-foreground"
+                >
+                  {t("pay.errors.retry")}
+                </Press>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+                <Loader2 className="animate-spin" size={16} />
+                {t("pay.loadingCardForm")}
+              </div>
+            )}
           </div>
         )}
+
         <PaymentElement
           options={{ layout: "tabs" }}
           onReady={() => setReady(true)}
