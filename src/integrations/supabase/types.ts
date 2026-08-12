@@ -1167,6 +1167,8 @@ export type Database = {
           seller_id: string
           source: string
           status: string
+          stripe_error: string | null
+          stripe_transfer_id: string | null
         }
         Insert: {
           admin_note?: string | null
@@ -1188,6 +1190,8 @@ export type Database = {
           seller_id: string
           source?: string
           status?: string
+          stripe_error?: string | null
+          stripe_transfer_id?: string | null
         }
         Update: {
           admin_note?: string | null
@@ -1209,6 +1213,8 @@ export type Database = {
           seller_id?: string
           source?: string
           status?: string
+          stripe_error?: string | null
+          stripe_transfer_id?: string | null
         }
         Relationships: [
           {
@@ -1226,6 +1232,10 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          connect_charges_enabled: boolean
+          connect_payouts_enabled: boolean
+          connect_status: string
+          connect_updated_at: string | null
           country: string | null
           created_at: string
           currency: string
@@ -1249,6 +1259,7 @@ export type Database = {
           rating_avg: number
           rating_count: number
           risk_restricted: boolean
+          stripe_connect_id: string | null
           terms_accepted_at: string | null
           terms_version: string | null
           welcome_email_sent: boolean
@@ -1258,6 +1269,10 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connect_charges_enabled?: boolean
+          connect_payouts_enabled?: boolean
+          connect_status?: string
+          connect_updated_at?: string | null
           country?: string | null
           created_at?: string
           currency?: string
@@ -1281,6 +1296,7 @@ export type Database = {
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
+          stripe_connect_id?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1290,6 +1306,10 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          connect_charges_enabled?: boolean
+          connect_payouts_enabled?: boolean
+          connect_status?: string
+          connect_updated_at?: string | null
           country?: string | null
           created_at?: string
           currency?: string
@@ -1313,6 +1333,7 @@ export type Database = {
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
+          stripe_connect_id?: string | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
