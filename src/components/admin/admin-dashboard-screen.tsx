@@ -40,6 +40,8 @@ import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
 import { OrderItemImage } from "@/components/orders/order-item-image";
 import { PayoutRiskBadge } from "./payout-risk-badge";
+import { PaymentsModeBadge } from "./payments-mode-badge";
+
 
 
 
@@ -57,7 +59,9 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
         <p className="p-8 text-center text-[13px] text-muted-foreground">{t("admin.onlyAdmins")}</p>
       ) : (
         <>
+          <PaymentsModeBadge />
           <TabBar tab={tab} onTab={setTab} />
+
           <div className="px-4 py-4 pb-24">
             {tab === "overview" && open && <OverviewTab onGoTab={setTab} />}
             {tab === "users" && open && <UsersTab />}
