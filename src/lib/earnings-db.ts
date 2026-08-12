@@ -33,7 +33,8 @@ export type PayoutMethod =
   /** Automated Stripe Connect transfer (Western sellers, EUR/CAD/USD/GBP). */
   | "stripe_connect";
 export type PayoutStatus = "requested" | "processing" | "paid" | "rejected";
-export type PayoutSource = "seller" | "referral";
+/** `wallet` = withdrawal of the buyer wallet balance (debits `wallets`). */
+export type PayoutSource = "seller" | "referral" | "wallet";
 
 export type PayoutRow = {
   id: string;
