@@ -1017,12 +1017,15 @@
       "orderNotPending": "This order is no longer awaiting payment.",
       "orderExpired": "The payment deadline has passed.",
       "orderNotFound": "Order not found.",
-      "forbidden": "You can't pay for this order."
+      "forbidden": "You can't pay for this order.",
+      "formTimeout": "The payment form failed to load. Check your connection and try again.",
+      "retry": "Try again"
     },
     "toasts": {
       "confirmed": "Payment confirmed 🎉"
     },
-    "autoPaid": "Paid automatically with your balance ✅"
+    "autoPaid": "Paid automatically with your balance ✅",
+    "loadingCardForm": "Loading card form…"
   },
   "orders": {
     "empty": "No orders yet.",

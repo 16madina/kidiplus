@@ -1017,12 +1017,15 @@
       "orderNotPending": "Cette commande n'est plus en attente de paiement.",
       "orderExpired": "Le délai de paiement est dépassé.",
       "orderNotFound": "Commande introuvable.",
-      "forbidden": "Tu ne peux pas payer cette commande."
+      "forbidden": "Tu ne peux pas payer cette commande.",
+      "formTimeout": "Le formulaire de paiement n'a pas pu se charger. Vérifiez votre connexion et réessayez.",
+      "retry": "Réessayer"
     },
     "toasts": {
       "confirmed": "Paiement confirmé 🎉"
     },
-    "autoPaid": "Payé automatiquement avec ton solde ✅"
+    "autoPaid": "Payé automatiquement avec ton solde ✅",
+    "loadingCardForm": "Chargement du formulaire carte…"
   },
   "orders": {
     "empty": "Aucune commande pour le moment.",
