@@ -132,6 +132,10 @@ export const Route = createFileRoute("/api/connect/onboard")({
           const msg = (e as { raw?: { message?: string }; message?: string }).raw?.message
             ?? (e as Error).message
             ?? "stripe_error";
+          if (isConnectNotEnabledError(e)) {
+            console.error("[connect/onboard] Connect is not enabled on this Stripe account");
+            return json({ error: "connect_not_enabled", message: msg }, 503, origin);
+          }
           console.error("[connect/onboard] stripe error", msg);
           return json({ error: "stripe_error", message: msg }, 502, origin);
         }

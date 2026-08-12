@@ -6,7 +6,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { isAllowedOrigin } from "@/lib/api-cors";
 import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
 import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
-import { CONNECT_CURRENCIES, statusFromAccount, stripeForEnv } from "@/lib/stripe-connect.server";
+import {
+  CONNECT_CURRENCIES,
+  isConnectNotEnabledError,
+  statusFromAccount,
+  stripeForEnv,
+} from "@/lib/stripe-connect.server";
 
 export const Route = createFileRoute("/api/connect/status")({
   server: {
@@ -100,6 +105,23 @@ export const Route = createFileRoute("/api/connect/status")({
               .eq("id", userId);
             return json(
               { ok: true, status: "none", eligible, currency, chargesEnabled: false, payoutsEnabled: false },
+              200,
+              origin,
+            );
+          }
+          if (isConnectNotEnabledError(e)) {
+            // Connect isn't enabled on this Stripe account/mode: report a
+            // usable state instead of a 502 so the withdraw UI still renders.
+            return json(
+              {
+                ok: true,
+                status: "none",
+                eligible,
+                currency,
+                chargesEnabled: false,
+                payoutsEnabled: false,
+                connectUnavailable: true,
+              },
               200,
               origin,
             );
