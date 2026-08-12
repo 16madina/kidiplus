@@ -374,6 +374,11 @@ export function WithdrawSheet({
               </p>
               <div className="flex flex-col gap-2">
                 {availableMethods.map((m) => {
+                  if (m === "stripe_connect") return (
+                    <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
+                      color="#635BFF" label={t("payout.method.stripe_connect", { defaultValue: "Retirer vers ma banque (Stripe)" })}
+                      icon={<Landmark size={18} color="white" />} />
+                  );
                   if (m === "wave") return (
                     <MethodPick key={m} active={method === m} onClick={() => setMethod(m)}
                       color="transparent" label="Wave"
@@ -396,7 +401,32 @@ export function WithdrawSheet({
                 })}
               </div>
 
-              {method === "bank_transfer" ? (
+              {method === "stripe_connect" ? (
+                <div className="mt-3 rounded-2xl border border-border p-3 text-[12px] leading-snug text-muted-foreground">
+                  {connectStatus === "loading"
+                    ? t("connect.checking", { defaultValue: "Vérification de ton compte…" })
+                    : connectStatus === "active"
+                      ? t("connect.activeHint", {
+                          defaultValue:
+                            "Compte vérifié ✅ — le virement part automatiquement vers ta banque (1 à 3 jours ouvrés).",
+                        })
+                      : connectStatus === "pending"
+                        ? t("connect.pendingHint", {
+                            defaultValue:
+                              "Configuration à terminer : Stripe a besoin de quelques informations avant de te virer l'argent.",
+                          })
+                        : connectStatus === "restricted"
+                          ? t("connect.restrictedHint", {
+                              defaultValue:
+                                "Stripe a suspendu les virements sur ton compte. Complète les informations demandées.",
+                            })
+                          : t("connect.setupHint", {
+                              defaultValue:
+                                "Configure tes paiements une seule fois pour recevoir tes gains directement sur ta banque.",
+                            })}
+                </div>
+              ) : method === "bank_transfer" ? (
+
                 <>
                   <input
                     placeholder="IBAN"
