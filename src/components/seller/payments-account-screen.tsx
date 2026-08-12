@@ -71,7 +71,7 @@ export function SellerPaymentsAccountScreen({
   const onboard = async () => {
     haptic.medium();
     setBusy(true);
-    const r = await startConnectOnboarding();
+    const r = await startConnectOnboarding(country);
     setBusy(false);
     if (!r.ok) {
       haptic.warning();
