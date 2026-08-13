@@ -19,7 +19,10 @@ export const Route = createFileRoute("/api/stripe-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const stripeCfg = getStripeConfig();
+        // Managed gateway only: resolve the webhook secret against the managed
+        // account, never the stray BYOK STRIPE_WEBHOOK_SECRET.
+        const MANAGED = { managedOnly: true } as const;
+        const stripeCfg = getStripeConfig(null, MANAGED);
         const STRIPE_WEBHOOK_SECRET = stripeCfg.webhookSecret;
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,7 +34,7 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           return new Response("backend_not_configured", { status: 500 });
         }
 
-        const stripe = createStripeClient();
+        const stripe = createStripeClient(null, MANAGED);
         const signature = request.headers.get("stripe-signature") ?? "";
         const rawBody = await request.text();
 

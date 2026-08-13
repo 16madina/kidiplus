@@ -13,7 +13,7 @@
 // the seller twice. See buildDestinationChargeParams() below for the helper
 // kept ready if/when a fresh 1:1 card charge should be split at capture.
 
-import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
+import { createStripeClient, type StripeClientOpts, type StripeEnv } from "@/lib/stripe.server";
 import { CONNECT_COUNTRY_CODES } from "@/lib/connect-countries";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 
@@ -82,8 +82,13 @@ export function statusFromAccount(acc: {
   return "pending";
 }
 
-export function stripeForEnv(hint: StripeEnv | null) {
-  return createStripeClient(hint);
+/**
+ * Connect accounts are mode-scoped, so they must live on the same Stripe
+ * account as checkout charges: always the managed gateway. `managedOnly`
+ * bypasses the legacy BYOK key / forcedTestMode() override.
+ */
+export function stripeForEnv(hint: StripeEnv | null, opts: StripeClientOpts = { managedOnly: true }) {
+  return createStripeClient(hint, opts);
 }
 
 /**

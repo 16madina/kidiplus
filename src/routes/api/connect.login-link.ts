@@ -22,8 +22,8 @@ export const Route = createFileRoute("/api/connect/login-link")({
         if (!auth.ok) return json({ error: auth.error }, auth.status, origin);
         const { userId, admin } = auth.ctx;
 
-        const envHint = envHintFromRequest(request);
-        const cfg = getStripeConfig(envHint);
+        const envHint = envHintFromRequest(request, { managedOnly: true });
+        const cfg = getStripeConfig(envHint, { managedOnly: true });
         if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         const { data: profile } = await admin
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/connect/login-link")({
         if (!accountId) return json({ error: "no_connect_account" }, 400, origin);
 
         try {
-          const stripe = stripeForEnv(envHint);
+          const stripe = stripeForEnv(envHint, { managedOnly: true });
           const link = await stripe.accounts.createLoginLink(accountId);
           return json({ ok: true, url: link.url }, 200, origin);
         } catch (e) {

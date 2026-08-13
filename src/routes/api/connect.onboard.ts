@@ -30,8 +30,8 @@ export const Route = createFileRoute("/api/connect/onboard")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const envHint = envHintFromRequest(request);
-        const cfg = getStripeConfig(envHint);
+        const envHint = envHintFromRequest(request, { managedOnly: true });
+        const cfg = getStripeConfig(envHint, { managedOnly: true });
         console.info("[connect/onboard] payments mode resolution", {
           receivedHeader: request.headers.get("x-payments-env") ?? "missing",
           envHint: envHint ?? "missing",
@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
         const country = resolveConnectCountry(p.country, currency, body?.country);
         if (!country) return json({ error: "connect_country_unsupported" }, 400, origin);
 
-        const stripe = stripeForEnv(envHint);
+        const stripe = stripeForEnv(envHint, { managedOnly: true });
         let accountId = typeof p.stripe_connect_id === "string" ? p.stripe_connect_id : "";
 
         try {

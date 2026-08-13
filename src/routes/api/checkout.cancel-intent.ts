@@ -48,8 +48,11 @@ export const Route = createFileRoute("/api/checkout/cancel-intent")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const envHint = envHintFromRequest(request);
-        const stripeCfg = getStripeConfig(envHint);
+        // Pin to the managed gateway (same account as the browser's publishable
+        // token). The stray BYOK STRIPE_SECRET_KEY must never override the env.
+        const MANAGED = { managedOnly: true } as const;
+        const envHint = envHintFromRequest(request, MANAGED);
+        const stripeCfg = getStripeConfig(envHint, MANAGED);
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -93,7 +96,7 @@ export const Route = createFileRoute("/api/checkout/cancel-intent")({
 
         // Only cancel when the order is already paid (wallet) or still pending
         // but the client explicitly abandons card checkout.
-        const stripe = createStripeClient(envHint);
+        const stripe = createStripeClient(envHint, MANAGED);
         try {
           const intent = await stripe.paymentIntents.retrieve(piId);
           if (CANCELABLE.has(intent.status)) {

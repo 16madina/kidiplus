@@ -24,8 +24,8 @@ export const Route = createFileRoute("/api/connect/payout")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const envHint = envHintFromRequest(request);
-        const cfg = getStripeConfig(envHint);
+        const envHint = envHintFromRequest(request, { managedOnly: true });
+        const cfg = getStripeConfig(envHint, { managedOnly: true });
         if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         const auth = await authenticate(request);
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/api/connect/payout")({
         }
 
         try {
-          const stripe = stripeForEnv(envHint);
+          const stripe = stripeForEnv(envHint, { managedOnly: true });
           const transfer = await stripe.transfers.create(
             {
               amount: amountMinor,
