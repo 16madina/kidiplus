@@ -44,16 +44,21 @@ export const Route = createFileRoute("/api/admin/payments-mode")({
         const paypalMode =
           (process.env.PAYPAL_MODE ?? "sandbox").trim().toLowerCase() === "live" ? "live" : "sandbox";
 
-        // Effective mode: a legacy sk_* key wins (used directly by the SDK),
-        // otherwise the gateway env selected by the client publishable key.
-        const effective: "test" | "live" =
-          legacySecretKind === "live"
+        // Effective mode: PAYMENTS_MODE (single source of truth) wins, then a
+        // legacy sk_* key (used directly by the SDK), otherwise the gateway env.
+        const pinned = forcedPaymentsEnv();
+        const effective: "test" | "live" = pinned
+          ? pinned === "live"
+            ? "live"
+            : "test"
+          : legacySecretKind === "live"
             ? "live"
             : legacySecretKind === "test"
               ? "test"
               : cfg.env === "live"
                 ? "live"
                 : "test";
+
 
         return Response.json(
           {
