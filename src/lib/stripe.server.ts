@@ -18,6 +18,26 @@ export type StripeEnv = "sandbox" | "live";
 
 const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 
+// Managed SANDBOX publishable token (same Stripe account as
+// STRIPE_SANDBOX_API_KEY — it is the value Lovable injects as
+// VITE_PAYMENTS_CLIENT_TOKEN in .env.development).
+//
+// A publishable key is PUBLIC by design (it ships in every browser bundle),
+// so keeping it here is not a secret leak. It exists because deployed builds
+// only bake in the pk_live_ token: when an admin explicitly asks for a
+// sandbox wallet top-up (X-Payments-Env: sandbox on a managed-only flow) the
+// server must hand back a pk_test_ token from the SAME account the
+// PaymentIntent was created on, otherwise Stripe.js cannot resolve the
+// client secret ("No such payment_intent").
+const MANAGED_SANDBOX_PUBLISHABLE_KEY =
+  "pk_test_51TpirRPyczv2Aj3VhOa9l3nPZeChZHglpkH8sYGPabcV7iIwx9hnSwndiaA5L0NeNFMtATC8uE9Xv7th3K16ooEF00jY9h264C";
+
+function managedSandboxPublishableKey(): string {
+  return (
+    process.env.STRIPE_SANDBOX_PUBLISHABLE_KEY?.trim() || MANAGED_SANDBOX_PUBLISHABLE_KEY
+  );
+}
+
 /** Mode of the BYOK STRIPE_SECRET_KEY, if any. */
 export function byokEnv(): StripeEnv | null {
   const k = (process.env.STRIPE_SECRET_KEY ?? "").trim();
