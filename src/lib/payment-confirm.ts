@@ -4,6 +4,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { paymentsEnvHeaders } from "@/lib/stripe-publishable";
+import { walletPaymentsEnvHeaders } from "@/lib/force-stripe-test";
 
 
 const TOPUP_KEY = "kidi:pendingTopupPI";
@@ -43,6 +44,7 @@ async function bearer(): Promise<string | null> {
 async function postWithRetry(
   url: string,
   paymentIntentId: string,
+  envHeaders: Record<string, string> = paymentsEnvHeaders(),
 ): Promise<{ ok: boolean; body: any; status: number }> {
   const token = await bearer();
   if (!token) return { ok: false, body: { error: "not_signed_in" }, status: 401 };
@@ -51,7 +53,7 @@ async function postWithRetry(
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...paymentsEnvHeaders() },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...envHeaders },
         body: JSON.stringify({ paymentIntentId }),
       });
       const body = await res.json().catch(() => ({}));
@@ -69,7 +71,7 @@ async function postWithRetry(
 
 export type ConfirmTopupResult = { ok: true; balance: number; duplicate: boolean } | { ok: false; error: string };
 export async function confirmWalletTopup(pi: string): Promise<ConfirmTopupResult> {
-  const r = await postWithRetry("/api/wallet-topup/confirm", pi);
+  const r = await postWithRetry("/api/wallet-topup/confirm", pi, walletPaymentsEnvHeaders());
   if (r.ok) return { ok: true, balance: Number(r.body.balance ?? 0), duplicate: !!r.body.duplicate };
   return { ok: false, error: String(r.body?.error ?? `http_${r.status}`) };
 }

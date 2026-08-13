@@ -36,7 +36,8 @@ import {
   readPendingTopup,
   paymentIntentIdFromClientSecret,
 } from "@/lib/payment-confirm";
-import { resolvePublishableKey, paymentsEnvHeaders } from "@/lib/stripe-publishable";
+import { resolvePublishableKey } from "@/lib/stripe-publishable";
+import { walletPaymentsEnvHeaders } from "@/lib/force-stripe-test";
 import { mapPayErrorToI18n } from "@/lib/pay-errors";
 import { BrandBadge, type BrandKey } from "@/components/brand/brand-badge";
 import {
@@ -348,7 +349,7 @@ export function TopUpSheet({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          ...paymentsEnvHeaders(),
+          ...walletPaymentsEnvHeaders(),
         },
         body: JSON.stringify({ amount: chosenAmount }),
       });
