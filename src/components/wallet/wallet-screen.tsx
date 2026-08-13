@@ -17,6 +17,7 @@ import { Press } from "@/components/press";
 import { useWallet } from "@/lib/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { TopUpSheet } from "./topup-sheet";
+import { ForceStripeTestToggle } from "./force-test-toggle";
 import { WithdrawSheet } from "@/components/seller/withdraw-sheet";
 import type { WalletTxRow } from "@/lib/wallet-db";
 import { confirmWalletTopup, readPendingTopup, clearPendingTopup } from "@/lib/payment-confirm";
@@ -140,6 +141,9 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
             {t("wallet.withdrawHint")}
           </p>
         </motion.div>
+
+        {/* Admin-only: force Stripe sandbox for card top-ups on this device */}
+        <ForceStripeTestToggle />
 
         {/* History */}
         <div>
