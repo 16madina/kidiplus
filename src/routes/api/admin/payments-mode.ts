@@ -6,7 +6,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
+import { envHintFromRequest, forcedPaymentsEnv, getStripeConfig } from "@/lib/stripe.server";
 
 type KeyKind = "test" | "live" | "missing" | "unknown";
 
