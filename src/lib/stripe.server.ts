@@ -89,6 +89,9 @@ export function forcedPaymentsEnv(): StripeEnv | null {
 export type StripeClientOpts = { managedOnly?: boolean };
 
 function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
+  // Global override wins over everything (see forcedPaymentsEnv).
+  const forced = forcedPaymentsEnv();
+  if (forced) return forced;
   // A test-only BYOK key pins every Stripe operation to sandbox — but only
   // for flows that may actually use that key.
   if (!opts?.managedOnly && forcedTestMode()) return "sandbox";
@@ -107,6 +110,8 @@ function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
 }
 
 export function envHintFromRequest(request: Request, opts?: StripeClientOpts): StripeEnv | null {
+  const forced = forcedPaymentsEnv();
+  if (forced) return forced;
   const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
   const hinted = h === "live" || h === "sandbox" ? (h as StripeEnv) : null;
   // Managed-only flows always trust the browser: it is about to confirm with
@@ -116,6 +121,7 @@ export function envHintFromRequest(request: Request, opts?: StripeClientOpts): S
   if (forcedTestMode()) return "sandbox";
   return hinted;
 }
+
 
 /** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
 export function legacyMatchesEnv(env: StripeEnv): boolean {
