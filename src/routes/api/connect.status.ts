@@ -51,12 +51,12 @@ export const Route = createFileRoute("/api/connect/status")({
           );
         }
 
-        const envHint = envHintFromRequest(request);
-        const cfg = getStripeConfig(envHint);
+        const envHint = envHintFromRequest(request, { managedOnly: true });
+        const cfg = getStripeConfig(envHint, { managedOnly: true });
         if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         try {
-          const stripe = stripeForEnv(envHint);
+          const stripe = stripeForEnv(envHint, { managedOnly: true });
           const acc = await stripe.accounts.retrieve(accountId);
           const status = statusFromAccount(acc as never);
           await admin

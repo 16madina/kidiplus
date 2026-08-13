@@ -60,8 +60,11 @@ export const Route = createFileRoute("/api/checkout")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        const envHint = envHintFromRequest(request);
-        const stripeCfg = getStripeConfig(envHint);
+        // Pin to the managed gateway (same account as the browser's publishable
+        // token). The stray BYOK STRIPE_SECRET_KEY must never override the env.
+        const MANAGED = { managedOnly: true } as const;
+        const envHint = envHintFromRequest(request, MANAGED);
+        const stripeCfg = getStripeConfig(envHint, MANAGED);
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -144,7 +147,7 @@ export const Route = createFileRoute("/api/checkout")({
         }
         // The `currency` const is already prepared above (lowercase).
 
-        const stripe = createStripeClient(envHint);
+        const stripe = createStripeClient(envHint, MANAGED);
 
         // Marketplace split: when the seller has an ACTIVE Stripe Express
         // account, the card charge becomes a DESTINATION CHARGE — funds are
