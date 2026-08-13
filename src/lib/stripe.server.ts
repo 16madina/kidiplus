@@ -149,8 +149,12 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
       ? process.env.PAYMENTS_LIVE_WEBHOOK_SECRET
       : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET;
 
-  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
-  const legacyWebhook = managedOnly ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
+  // When PAYMENTS_MODE pins the mode, the managed gateway is the ONE account
+  // every pathway must use — the BYOK key (possibly a different account) is
+  // ignored so top-ups, checkout and Connect can never diverge.
+  const pinned = forcedPaymentsEnv() !== null;
+  const legacySecret = managedOnly || pinned ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacyWebhook = managedOnly || pinned ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
   const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
@@ -165,12 +169,13 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
         : ""
       : rawPublishable;
 
-  // Managed-only sandbox request (admin "force test mode" wallet top-up):
-  // the browser bundle only has the pk_live_ token, so return the managed
-  // sandbox publishable key that matches STRIPE_SANDBOX_API_KEY.
-  if (managedOnly && env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
+  // Sandbox request: the deployed browser bundle only has the pk_live_ token,
+  // so return the managed sandbox publishable key that matches
+  // STRIPE_SANDBOX_API_KEY (the client prefers the server-provided key).
+  if (env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
     publishableKey = managedSandboxPublishableKey();
   }
+
 
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
