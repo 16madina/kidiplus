@@ -59,6 +59,24 @@ export function forcedTestMode(): boolean {
 }
 
 /**
+ * SINGLE SOURCE OF TRUTH for the Stripe mode.
+ *
+ * `PAYMENTS_MODE` ("test" | "sandbox" | "live" | "production") is a
+ * server-side secret. When set, it overrides EVERY other signal (the browser
+ * `X-Payments-Env` hint, the bundled pk_ token, the BYOK key prefix), so all
+ * pathways — wallet top-up, checkout, Connect onboarding/status/payout,
+ * webhooks — can never diverge into a half-live / half-test state.
+ * When unset, the previous per-request resolution applies unchanged.
+ */
+export function forcedPaymentsEnv(): StripeEnv | null {
+  const m = (process.env.PAYMENTS_MODE ?? "").trim().toLowerCase();
+  if (m === "test" || m === "sandbox") return "sandbox";
+  if (m === "live" || m === "production") return "live";
+  return null;
+}
+
+
+/**
  * Options for callers that must bypass the legacy BYOK key entirely.
  *
  * `managedOnly` exists because the BYOK STRIPE_SECRET_KEY may belong to a
