@@ -215,7 +215,9 @@ export function createStripeClient(hint?: StripeEnv | null, opts_?: StripeClient
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
       : process.env.STRIPE_SANDBOX_API_KEY;
-  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacySecret =
+    managedOnly || forcedPaymentsEnv() !== null ? undefined : process.env.STRIPE_SECRET_KEY;
+
 
   const opts = { apiVersion: "2026-06-24.dahlia" as const };
 
