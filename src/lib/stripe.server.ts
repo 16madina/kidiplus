@@ -59,6 +59,24 @@ export function forcedTestMode(): boolean {
 }
 
 /**
+ * SINGLE SOURCE OF TRUTH for the Stripe mode.
+ *
+ * `PAYMENTS_MODE` ("test" | "sandbox" | "live" | "production") is a
+ * server-side secret. When set, it overrides EVERY other signal (the browser
+ * `X-Payments-Env` hint, the bundled pk_ token, the BYOK key prefix), so all
+ * pathways — wallet top-up, checkout, Connect onboarding/status/payout,
+ * webhooks — can never diverge into a half-live / half-test state.
+ * When unset, the previous per-request resolution applies unchanged.
+ */
+export function forcedPaymentsEnv(): StripeEnv | null {
+  const m = (process.env.PAYMENTS_MODE ?? "").trim().toLowerCase();
+  if (m === "test" || m === "sandbox") return "sandbox";
+  if (m === "live" || m === "production") return "live";
+  return null;
+}
+
+
+/**
  * Options for callers that must bypass the legacy BYOK key entirely.
  *
  * `managedOnly` exists because the BYOK STRIPE_SECRET_KEY may belong to a
@@ -71,6 +89,9 @@ export function forcedTestMode(): boolean {
 export type StripeClientOpts = { managedOnly?: boolean };
 
 function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
+  // Global override wins over everything (see forcedPaymentsEnv).
+  const forced = forcedPaymentsEnv();
+  if (forced) return forced;
   // A test-only BYOK key pins every Stripe operation to sandbox — but only
   // for flows that may actually use that key.
   if (!opts?.managedOnly && forcedTestMode()) return "sandbox";
@@ -89,6 +110,8 @@ function pickEnv(hint?: StripeEnv | null, opts?: StripeClientOpts): StripeEnv {
 }
 
 export function envHintFromRequest(request: Request, opts?: StripeClientOpts): StripeEnv | null {
+  const forced = forcedPaymentsEnv();
+  if (forced) return forced;
   const h = request.headers.get("x-payments-env")?.toLowerCase().trim();
   const hinted = h === "live" || h === "sandbox" ? (h as StripeEnv) : null;
   // Managed-only flows always trust the browser: it is about to confirm with
@@ -98,6 +121,7 @@ export function envHintFromRequest(request: Request, opts?: StripeClientOpts): S
   if (forcedTestMode()) return "sandbox";
   return hinted;
 }
+
 
 /** True when a legacy BYOK sk_ or rk_ key belongs to the requested mode. */
 export function legacyMatchesEnv(env: StripeEnv): boolean {
@@ -125,8 +149,12 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
       ? process.env.PAYMENTS_LIVE_WEBHOOK_SECRET
       : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET;
 
-  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
-  const legacyWebhook = managedOnly ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
+  // When PAYMENTS_MODE pins the mode, the managed gateway is the ONE account
+  // every pathway must use — the BYOK key (possibly a different account) is
+  // ignored so top-ups, checkout and Connect can never diverge.
+  const pinned = forcedPaymentsEnv() !== null;
+  const legacySecret = managedOnly || pinned ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacyWebhook = managedOnly || pinned ? undefined : process.env.STRIPE_WEBHOOK_SECRET;
   const rawPublishable =
     process.env.VITE_PAYMENTS_CLIENT_TOKEN ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
@@ -141,12 +169,13 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
         : ""
       : rawPublishable;
 
-  // Managed-only sandbox request (admin "force test mode" wallet top-up):
-  // the browser bundle only has the pk_live_ token, so return the managed
-  // sandbox publishable key that matches STRIPE_SANDBOX_API_KEY.
-  if (managedOnly && env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
+  // Sandbox request: the deployed browser bundle only has the pk_live_ token,
+  // so return the managed sandbox publishable key that matches
+  // STRIPE_SANDBOX_API_KEY (the client prefers the server-provided key).
+  if (env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
     publishableKey = managedSandboxPublishableKey();
   }
+
 
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
@@ -186,7 +215,9 @@ export function createStripeClient(hint?: StripeEnv | null, opts_?: StripeClient
     env === "live"
       ? process.env.STRIPE_LIVE_API_KEY
       : process.env.STRIPE_SANDBOX_API_KEY;
-  const legacySecret = managedOnly ? undefined : process.env.STRIPE_SECRET_KEY;
+  const legacySecret =
+    managedOnly || forcedPaymentsEnv() !== null ? undefined : process.env.STRIPE_SECRET_KEY;
+
 
   const opts = { apiVersion: "2026-06-24.dahlia" as const };
 
