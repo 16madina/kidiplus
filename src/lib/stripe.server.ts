@@ -134,12 +134,19 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
   // In forced test mode never hand a pk_live_ key to the browser: the client
   // falls back to its own bundled pk_test_ token instead. Managed-only flows
   // are never served by the BYOK key, so this clamp does not apply to them.
-  const publishableKey =
+  let publishableKey =
     !managedOnly && forcedTestMode() && rawPublishable.startsWith("pk_live_")
       ? (process.env.STRIPE_PUBLISHABLE_KEY ?? "").startsWith("pk_test_")
         ? process.env.STRIPE_PUBLISHABLE_KEY!
         : ""
       : rawPublishable;
+
+  // Managed-only sandbox request (admin "force test mode" wallet top-up):
+  // the browser bundle only has the pk_live_ token, so return the managed
+  // sandbox publishable key that matches STRIPE_SANDBOX_API_KEY.
+  if (managedOnly && env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
+    publishableKey = managedSandboxPublishableKey();
+  }
 
   const webhookSecret = legacyWebhook ?? managedWebhook ?? "";
 
