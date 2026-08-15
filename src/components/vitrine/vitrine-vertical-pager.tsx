@@ -168,6 +168,7 @@ export function VitrineVerticalPager({
 
 function MediaSlide({
   url,
+  poster,
   className: _className,
   forceVideo,
   muted,
@@ -176,6 +177,8 @@ function MediaSlide({
   volume = 1,
 }: {
   url: string;
+  /** Vignette légère affichée instantanément (vidéos). */
+  poster?: string | null;
   className?: string;
   forceVideo?: boolean;
   muted: boolean;
@@ -260,18 +263,44 @@ function MediaSlide({
   if (asVideo) {
     return (
       <div className="relative h-full w-full">
-        <Fit916>
+        <Fit916
+          backdrop={
+            poster ? (
+              <img
+                src={poster}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+                draggable={false}
+                decoding="async"
+                loading="lazy"
+              />
+            ) : null
+          }
+        >
+          {!eager && poster && (
+            <img
+              src={poster}
+              alt=""
+              aria-hidden
+              className={mediaClass}
+              draggable={false}
+              decoding="async"
+              loading="lazy"
+            />
+          )}
           {eager && (
             <video
               ref={videoRef}
               data-vitrine-feed
               src={url}
+              poster={poster ?? undefined}
               className={mediaClass}
               autoPlay={shouldPlay}
               muted={muted || !shouldPlay || volume <= 0.001}
               loop
               playsInline
-              preload="auto"
+              preload={shouldPlay ? "auto" : "metadata"}
               controls={false}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
@@ -307,7 +336,7 @@ function MediaSlide({
             className={mediaClass}
             draggable={false}
             decoding="async"
-            loading="eager"
+            loading={eager ? "eager" : "lazy"}
             onLoad={() => setStatus("ready")}
             onError={() => setStatus("error")}
             style={{ pointerEvents: "none", touchAction: "none" }}
@@ -323,12 +352,14 @@ function MediaSlide({
 /** Horizontal photo/video carousel — only for multi-media posts; isolated from tab swipes. */
 export function MediaCarousel({
   urls,
+  poster,
   className,
   forceVideo,
   active = true,
   music,
 }: {
   urls: string[];
+  poster?: string | null;
   className?: string;
   /** Musique ajoutée à la publication (jouée en boucle). */
   music?: VitrineMusic | null;
@@ -390,6 +421,7 @@ export function MediaCarousel({
     urls.length === 1 ? (
       <MediaSlide
         url={urls[0]!}
+        poster={poster}
         className={className}
         forceVideo={forceVideo}
         muted={muted}
@@ -420,6 +452,7 @@ export function MediaCarousel({
             <div key={u} className="h-full w-full shrink-0 snap-center">
               <MediaSlide
                 url={u}
+                poster={idx === 0 ? poster : null}
                 className="h-full w-full object-cover"
                 forceVideo={forceVideo}
                 muted={muted}

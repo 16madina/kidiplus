@@ -13,6 +13,7 @@ import {
   createVitrineStory,
   isVideoUrl,
   uploadVitrineMediaDetailed,
+  uploadVitrinePoster,
 } from "@/lib/vitrine-db";
 
 const GOLD = "#E8B93B";
@@ -55,6 +56,7 @@ export function CreateVitrineContentSheet({
   const [previews, setPreviews] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
@@ -186,20 +188,33 @@ export function CreateVitrineContentSheet({
   const publish = async () => {
     if (!files.length || busy) return;
     setBusy(true);
+    setProgress(0);
     haptic.medium();
     try {
       const urls: string[] = [];
+      const total = files.length;
+      let done = 0;
       for (const f of files) {
-        const up = await uploadVitrineMediaDetailed(f);
+        const up = await uploadVitrineMediaDetailed(f, (frac) =>
+          setProgress((done + frac) / total),
+        );
         if (!up.ok) {
           toast.error(uploadErrorMessage(up.error));
           return;
         }
+        done += 1;
+        setProgress(done / total);
         urls.push(up.url);
       }
 
+      const first = files[0];
+      const posterUrl =
+        first && (kind === "video" || first.type.startsWith("video/"))
+          ? await uploadVitrinePoster(first)
+          : null;
+
       if (kind === "story") {
-        const story = await createVitrineStory(urls[0]!);
+        const story = await createVitrineStory(urls[0]!, null, posterUrl);
         if (!story) {
           toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
           return;
@@ -223,6 +238,7 @@ export function CreateVitrineContentSheet({
         mediaUrls: urls,
         mediaType,
         caption,
+        posterUrl,
       });
       if (!post) {
         toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
@@ -374,7 +390,10 @@ export function CreateVitrineContentSheet({
           style={{ background: GOLD }}
         >
           {busy ? <Loader2 size={18} className="animate-spin" /> : null}
-          {t("vitrine.publish", { defaultValue: "Publier" })}
+          {busy && progress > 0 && progress < 1
+            ? `${Math.round(progress * 100)}%`
+            : t("vitrine.publish", { defaultValue: "Publier" })}
+
         </Press>
       </div>
     </PushScreen>

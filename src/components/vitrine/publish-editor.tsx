@@ -58,6 +58,7 @@ export function PublishEditor({
   onBack,
   onConfirm,
   busy,
+  progress,
 }: {
   file: File;
   previewUrl: string;
@@ -67,6 +68,8 @@ export function PublishEditor({
   onBack: () => void;
   onConfirm: (file: File, music: VitrineMusic | null) => void;
   busy?: boolean;
+  /** Progression d'envoi (0→1) affichée sur le bouton Publier. */
+  progress?: number;
 }) {
   const { t } = useTranslation();
   const asVideo = isVideoFile(file);
@@ -899,7 +902,9 @@ export function PublishEditor({
           style={{ background: GOLD }}
         >
           {working ? <Loader2 size={18} className="animate-spin" /> : null}
-          {t("vitrine.publish", { defaultValue: "Publier" })}
+          {busy && typeof progress === "number" && progress > 0 && progress < 1
+            ? `${Math.round(progress * 100)}%`
+            : t("vitrine.publish", { defaultValue: "Publier" })}
         </Press>
       </div>
 

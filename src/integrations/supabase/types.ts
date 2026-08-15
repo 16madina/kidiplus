@@ -2263,6 +2263,7 @@ export type Database = {
           music_url: string | null
           music_volume: number
           original_volume: number
+          poster_url: string | null
           product_id: string | null
           updated_at: string
           user_id: string
@@ -2283,6 +2284,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           product_id?: string | null
           updated_at?: string
           user_id: string
@@ -2303,6 +2305,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           product_id?: string | null
           updated_at?: string
           user_id?: string
@@ -2336,6 +2339,7 @@ export type Database = {
           music_url: string | null
           music_volume: number
           original_volume: number
+          poster_url: string | null
           user_id: string
         }
         Insert: {
@@ -2349,6 +2353,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           user_id: string
         }
         Update: {
@@ -2362,6 +2367,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           user_id?: string
         }
         Relationships: [
