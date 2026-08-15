@@ -591,11 +591,54 @@ export type VitrineUploadResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
+export type UploadProgress = (fraction: number) => void;
+
+const SUPABASE_STORAGE_ORIGIN = CURRENT_STORAGE_HOST;
+
+/** PUT direct vers l'URL signée avec progression réelle (XHR). */
+function putWithProgress(
+  signedPath: string,
+  file: File,
+  contentType: string,
+  onProgress?: UploadProgress,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return new Promise((resolve) => {
+    try {
+      const clean = signedPath.startsWith("http")
+        ? signedPath
+        : `${SUPABASE_STORAGE_ORIGIN}/storage/v1${signedPath.startsWith("/") ? "" : "/"}${signedPath}`;
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", clean, true);
+      xhr.setRequestHeader("Content-Type", contentType);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress?.(1);
+          resolve({ ok: true });
+        } else {
+          resolve({ ok: false, error: `http_${xhr.status}` });
+        }
+      };
+      xhr.onerror = () => resolve({ ok: false, error: "network_error" });
+      xhr.send(file);
+    } catch (e) {
+      resolve({ ok: false, error: e instanceof Error ? e.message : "upload_failed" });
+    }
+  });
+}
+
 /** Upload an image/video into the public vitrine-media bucket. */
-export async function uploadVitrineMedia(file: File): Promise<string | null> {
-  const r = await uploadVitrineMediaDetailed(file);
+export async function uploadVitrineMedia(
+  file: File,
+  onProgress?: UploadProgress,
+): Promise<string | null> {
+  const r = await uploadVitrineMediaDetailed(file, onProgress);
   return r.ok ? r.url : null;
 }
+
 
 async function requestSignedUpload(file: File, contentType: string, ext: string) {
   const { data: sess } = await supabase.auth.getSession();
