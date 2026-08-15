@@ -1818,57 +1818,6 @@ export type Database = {
           },
         ]
       }
-      seller_milestone_rewards: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: string
-          id: string
-          metadata: Json
-          order_id: string | null
-          reward_key: string
-          seen_at: string | null
-          seller_id: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          currency: string
-          id?: string
-          metadata?: Json
-          order_id?: string | null
-          reward_key: string
-          seen_at?: string | null
-          seller_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          metadata?: Json
-          order_id?: string | null
-          reward_key?: string
-          seen_at?: string | null
-          seller_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "seller_milestone_rewards_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "seller_milestone_rewards_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       seller_earnings: {
         Row: {
           amount: number
