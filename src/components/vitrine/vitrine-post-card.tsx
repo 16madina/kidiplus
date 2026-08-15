@@ -192,6 +192,7 @@ export function VitrinePostCard({
         className="absolute inset-0 h-full w-full object-cover"
         forceVideo={post.media_type === "video"}
         active={active}
+        music={post.music ?? null}
       />
 
       {post.user_id && (

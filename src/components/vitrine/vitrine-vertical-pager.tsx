@@ -5,6 +5,7 @@ import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
+import type { VitrineMusic } from "@/lib/vitrine-music";
 import { getVitrineSoundOn, unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
@@ -172,11 +173,14 @@ function MediaSlide({
   muted,
   playing,
   eager = true,
+  volume = 1,
 }: {
   url: string;
   className?: string;
   forceVideo?: boolean;
   muted: boolean;
+  /** Volume du son d'origine (0 quand une musique le remplace). */
+  volume?: number;
   /** When false, video is paused (left tab / app background / user tap). */
   playing: boolean;
   /** Attach src / start buffering. Off-screen slides stay cheap. */
@@ -211,14 +215,14 @@ function MediaSlide({
       }
       return;
     }
-    el.muted = muted;
-    el.volume = muted ? 0 : 1;
+    el.muted = muted || volume <= 0.001;
+    el.volume = muted ? 0 : volume;
     void el.play().catch(() => {
       el.muted = true;
       el.volume = 0;
       void el.play().catch(() => undefined);
     });
-  }, [url, asVideo, muted, shouldPlay]);
+  }, [url, asVideo, muted, shouldPlay, volume]);
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
   useEffect(() => {
@@ -264,7 +268,7 @@ function MediaSlide({
               src={url}
               className={mediaClass}
               autoPlay={shouldPlay}
-              muted={muted || !shouldPlay}
+              muted={muted || !shouldPlay || volume <= 0.001}
               loop
               playsInline
               preload="auto"
@@ -322,9 +326,12 @@ export function MediaCarousel({
   className,
   forceVideo,
   active = true,
+  music,
 }: {
   urls: string[];
   className?: string;
+  /** Musique ajoutée à la publication (jouée en boucle). */
+  music?: VitrineMusic | null;
   /** When post.media_type is video, treat slides as video even if extension is odd. */
   forceVideo?: boolean;
   /** False for off-screen / prefetched neighbour cards. */
@@ -339,6 +346,7 @@ export function MediaCarousel({
   const [muted] = useVitrineSound();
   const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
   const playing = active && tabVisible && appActive && !userPaused;
+  const originalVolume = music ? music.originalVolume : 1;
 
   // Reset pause when the slide set changes (new post).
   useEffect(() => {
@@ -386,6 +394,7 @@ export function MediaCarousel({
         forceVideo={forceVideo}
         muted={muted}
         playing={playing}
+        volume={originalVolume}
         eager
       />
     ) : (
@@ -414,6 +423,7 @@ export function MediaCarousel({
                 className="h-full w-full object-cover"
                 forceVideo={forceVideo}
                 muted={muted}
+                volume={originalVolume}
                 playing={playing && idx === i}
                 eager={active && Math.abs(idx - i) <= 1}
               />
@@ -437,6 +447,9 @@ export function MediaCarousel({
   return (
     <div className="relative h-full w-full">
       {body}
+      {music?.url && (
+        <MusicTrack music={music} playing={playing && !muted} />
+      )}
       {hasVideo && showPauseHint && (
         <div className="pointer-events-none absolute inset-0 z-[20] grid place-items-center">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white">
@@ -453,4 +466,50 @@ export function MediaCarousel({
       )}
     </div>
   );
+}
+
+/** Piste musicale d'une publication — jouée en boucle avec le média. */
+export function MusicTrack({
+  music,
+  playing,
+}: {
+  music: VitrineMusic;
+  playing: boolean;
+}) {
+  const ref = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.volume = Math.min(1, Math.max(0, music.volume));
+    if (!playing) {
+      try {
+        el.pause();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (el.currentTime < music.startSec - 0.5) {
+      try {
+        el.currentTime = music.startSec;
+      } catch {
+        /* ignore */
+      }
+    }
+    void el.play().catch(() => undefined);
+  }, [playing, music.volume, music.startSec, music.url]);
+
+  useEffect(() => {
+    const el = ref.current;
+    return () => {
+      try {
+        el?.pause();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  return <audio ref={ref} src={music.url} loop preload="none" />;
 }
