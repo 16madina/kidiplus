@@ -301,7 +301,7 @@ export function CreateVitrineContentSheet({
         ) : (
           <Press
             onClick={() => inputRef.current?.click()}
-            className="relative flex aspect-[9/14] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
+            className="relative flex aspect-[9/16] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
           >
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <div className="flex gap-3">
