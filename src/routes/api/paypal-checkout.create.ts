@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/paypal-checkout/create")({
         const cfg = getPaypalConfig();
         if (!cfg.ok) return json({ error: "paypal_not_configured" }, 503, origin);
 
-        let body: { orderId?: unknown; native?: unknown };
+        let body: { orderId?: unknown; native?: unknown; returnOrigin?: unknown };
         try {
           body = await request.json();
         } catch {
@@ -134,10 +134,22 @@ export const Route = createFileRoute("/api/paypal-checkout/create")({
           ? `order:${userId}:${kidiOrderId}:xof:${amount}`
           : `order:${userId}:${kidiOrderId}`;
 
-        const pubOrigin = publicAppOrigin(request);
+        let pubOrigin = publicAppOrigin(request);
+        if (!nativeFlag) {
+          const wanted = typeof body.returnOrigin === "string" ? body.returnOrigin.trim() : "";
+          if (wanted && isAllowedOrigin(wanted)) {
+            try {
+              const u = new URL(wanted);
+              if (u.protocol === "https:") pubOrigin = u.origin;
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        const roQs = `ro=${encodeURIComponent(pubOrigin)}`;
         const nativeQs = nativeFlag ? "?native=1" : "";
-        const returnUrl = `${pubOrigin}/api/paypal-checkout/return${nativeQs}`;
-        const cancelUrl = `${pubOrigin}/api/paypal-checkout/return?cancelled=1${nativeFlag ? "&native=1" : ""}`;
+        const returnUrl = `${pubOrigin}/api/paypal-checkout/return?${roQs}${nativeFlag ? "&native=1" : ""}`;
+        const cancelUrl = `${pubOrigin}/api/paypal-checkout/return?cancelled=1&${roQs}${nativeFlag ? "&native=1" : ""}`;
 
         const wireValue = Number(wireAmount.toFixed(2));
         if (!(wireValue >= 0.01)) {
