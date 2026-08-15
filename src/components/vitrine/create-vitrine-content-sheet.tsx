@@ -55,6 +55,7 @@ export function CreateVitrineContentSheet({
   const [previews, setPreviews] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
