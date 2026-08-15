@@ -353,6 +353,14 @@ export function frenchAuthError(err: unknown): string {
   if (m.includes("weak password")) return T("auth.errors.passwordWeak");
   if (m.includes("rate limit")) return T("auth.errors.rateLimit");
   if (m.includes("unable to validate email")) return T("auth.errors.invalidEmail");
-  if (m.includes("network")) return T("auth.errors.network");
+  if (
+    m.includes("network") ||
+    m.includes("failed to fetch") ||
+    m.includes("fetch failed") ||
+    m.includes("networkerror") ||
+    m.includes("load failed")
+  ) {
+    return T("auth.errors.network");
+  }
   return raw;
 }

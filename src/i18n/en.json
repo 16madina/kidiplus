@@ -925,7 +925,7 @@
       "passwordWeak": "Password too weak. Use at least 8 characters mixing letters, numbers and symbols.",
       "rateLimit": "Too many attempts. Try again in a moment.",
       "invalidEmail": "Invalid email address.",
-      "network": "Unstable connection. Try again.",
+      "network": "Could not reach the server. Check your connection, then try again.",
       "generic": "Something went wrong."
     },
     "social": {

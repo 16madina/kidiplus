@@ -925,7 +925,7 @@
       "passwordWeak": "Mot de passe trop faible. Utilise au moins 8 caractères mêlant lettres, chiffres et symboles.",
       "rateLimit": "Trop de tentatives. Réessaie dans un instant.",
       "invalidEmail": "Adresse email invalide.",
-      "network": "Connexion internet instable. Réessaie.",
+      "network": "Impossible de joindre le serveur. Vérifie ta connexion, puis réessaie.",
       "generic": "Une erreur est survenue."
     },
     "social": {

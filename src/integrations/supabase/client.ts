@@ -29,13 +29,27 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 const FALLBACK_SUPABASE_URL = "https://djwuvxpmvrwfjwjamjno.supabase.co";
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqd3V2eHBtdnJ3Zmp3amFtam5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTg4NTYsImV4cCI6MjEwMTkzNDg1Nn0.fCIOzg7Sp8K7UE_Tev-jkKjeUtLWYuvy4H_TERqEsG4";
 
-function createSupabaseClient() {
-  const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY =
+/** Old Lovable Cloud project — Auth no longer responds (Failed to fetch). */
+const RETIRED_SUPABASE_HOST = "rpersnzjidxtlekbbdtp";
+
+function pickSupabaseUrl(): string {
+  const raw = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  if (!raw || raw.includes(RETIRED_SUPABASE_HOST)) return FALLBACK_SUPABASE_URL;
+  return raw;
+}
+
+function pickPublishableKey(url: string): string {
+  const raw =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_PUBLISHABLE_KEY ||
-    FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+    "";
+  if (!raw || url === FALLBACK_SUPABASE_URL) return FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+  return raw;
+}
+
+function createSupabaseClient() {
+  const SUPABASE_URL = pickSupabaseUrl();
+  const SUPABASE_PUBLISHABLE_KEY = pickPublishableKey(SUPABASE_URL);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
