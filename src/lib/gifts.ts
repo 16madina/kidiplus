@@ -30,6 +30,14 @@ export type GiftDef = {
 
 export const GIFT_CATALOG: GiftDef[] = [
   {
+    key: "kidi",
+    emoji: "🎁",
+    imageSrc: "/kidi-plus-logo.png",
+    nameKey: "gifts.name.kidi",
+    tier: 3,
+    prices: { XOF: 5000, EUR: 10, CAD: 15, USD: 10, GBP: 10 },
+  },
+  {
     key: "rose",
     emoji: "🌹",
     nameKey: "gifts.name.rose",
@@ -70,14 +78,6 @@ export const GIFT_CATALOG: GiftDef[] = [
     nameKey: "gifts.name.lion",
     tier: 3,
     prices: { XOF: 5000, EUR: 15, CAD: 22, USD: 15, GBP: 15 },
-  },
-  {
-    key: "kidi",
-    emoji: "🎁",
-    imageSrc: "/kidi-plus-logo.png",
-    nameKey: "gifts.name.kidi",
-    tier: 3,
-    prices: { XOF: 5000, EUR: 10, CAD: 15, USD: 10, GBP: 10 },
   },
 ];
 
