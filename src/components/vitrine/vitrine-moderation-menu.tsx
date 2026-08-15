@@ -147,30 +147,53 @@ export function VitrineModerationMenu({
                 </Press>
               </div>
               <p className="mb-2 px-1 text-[12px] text-muted-foreground">
-                {t("report.subtitle")}
+                {isMine
+                  ? t("vitrine.delete.subtitle", {
+                      defaultValue: "Gère ta publication",
+                    })
+                  : t("report.subtitle")}
               </p>
-              <Press
-                onClick={() => {
-                  setOpen(false);
-                  setReportOpen(true);
-                }}
-                className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
-              >
-                <Flag size={20} />
-                {t("report.action")}
-              </Press>
-              <Press
-                onClick={() => void onBlock()}
-                disabled={blocking}
-                className="mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
-              >
-                {blocking ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Ban size={20} />
-                )}
-                {t("block.action")}
-              </Press>
+              {!isMine && (
+                <>
+                  <Press
+                    onClick={() => {
+                      setOpen(false);
+                      setReportOpen(true);
+                    }}
+                    className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
+                  >
+                    <Flag size={20} />
+                    {t("report.action")}
+                  </Press>
+                  <Press
+                    onClick={() => void onBlock()}
+                    disabled={blocking}
+                    className="mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
+                  >
+                    {blocking ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Ban size={20} />
+                    )}
+                    {t("block.action")}
+                  </Press>
+                </>
+              )}
+              {isMine && onDeleted && (
+                <Press
+                  onClick={() => void onDelete()}
+                  disabled={deleting}
+                  className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
+                >
+                  {deleting ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={20} />
+                  )}
+                  {t("vitrine.delete.action", { defaultValue: "Supprimer" })}
+                </Press>
+              )}
+
             </motion.div>
           </motion.div>
         )}
