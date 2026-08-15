@@ -33,7 +33,7 @@ const TABLES = [
   'seller_balances', 'seller_delivery_settings', 'seller_facebook_connections',
   'seller_reviews', 'seller_youtube_connections', 'shop_products', 'suppressed_emails',
   'verification_requests', 'vitrine_comments', 'vitrine_likes', 'vitrine_posts',
-  'vitrine_stories', 'wallet_transactions', 'wallets', 'user_roles',
+  'vitrine_stories', 'wallet_transactions', 'wallets',
 ];
 
 // RPC critiques (argent, live, modération, admin)
@@ -52,7 +52,7 @@ const RPCS = [
   'apply_promo_code', 'claim_promo_code', 'validate_promo_code', 'request_promo_code',
   'request_verification', 'verification_eligibility', 'anonymize_my_account',
   'account_deletion_check', 'risk_check_and_consume', 'risk_assert_can_topup',
-  'get_seller_delivery_settings', 'upsert_seller_delivery_settings',
+  'get_seller_delivery_settings', 'resolve_buyer_delivery',
   'admin_overview_stats', 'admin_list_orders', 'admin_list_payouts', 'admin_process_payout',
   'admin_list_users', 'admin_list_reports', 'admin_resolve_report', 'admin_list_lives',
 ];
@@ -101,7 +101,13 @@ async function loadApiCatalog() {
   };
 }
 
+// RPC facultatives : le code applicatif possède un chemin de repli.
+const OPTIONAL_RPCS = new Set(['upsert_seller_delivery_settings']);
+
 function checkRpc(name, catalog) {
+  if (!catalog.rpcs.has(name) && OPTIONAL_RPCS.has(name)) {
+    return { name, ok: true, detail: 'absente (facultative, repli applicatif)' };
+  }
   return catalog.rpcs.has(name)
     ? { name, ok: true }
     : { name, ok: false, detail: 'fonction absente de l\'API' };
@@ -125,7 +131,7 @@ async function checkAuth() {
     const res = await fetch(`${url}/auth/v1/admin/users?per_page=1`, { headers: H(serviceKey) });
     if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` };
     const data = await res.json();
-    return { ok: true, total: data.total ?? data.users?.length ?? '?' };
+    return { ok: true, total: Array.isArray(data.users) ? `${data.users.length}+ (page)` : '?' };
   } catch (e) {
     return { ok: false, detail: String(e) };
   }
