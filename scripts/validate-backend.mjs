@@ -78,28 +78,30 @@ async function checkTable(name) {
   }
 }
 
-async function checkRpc(name) {
-  try {
-    // Appel volontairement sans arguments : PGRST202 = fonction introuvable.
-    const res = await fetch(`${url}/rest/v1/rpc/${name}`, {
-      method: 'POST',
-      headers: { ...H(serviceKey), 'Content-Type': 'application/json' },
-      body: '{}',
-    });
-    if (res.ok) return { name, ok: true, note: 'exécutée sans argument' };
-    const body = await res.text();
-    let code = '';
-    try { code = JSON.parse(body).code || ''; } catch { /* ignore */ }
-    if (code === 'PGRST202' || /Could not find the function/i.test(body)) {
-      return { name, ok: false, detail: 'fonction absente ou signature différente' };
-    }
-    // Toute autre erreur (arguments manquants, permission, exception métier)
-    // prouve que la fonction existe.
-    return { name, ok: true, note: `présente (${res.status})` };
-  } catch (e) {
-    return { name, ok: false, detail: String(e) };
-  }
+/**
+ * Le catalogue OpenAPI de PostgREST liste toutes les fonctions exposées.
+ * C'est la seule méthode fiable : un POST sans argument renvoie PGRST202
+ * aussi bien pour une fonction absente que pour une signature différente.
+ */
+async function loadApiCatalog() {
+  const res = await fetch(`${url}/rest/v1/`, {
+    headers: { ...H(serviceKey), Accept: 'application/openapi+json' },
+  });
+  if (!res.ok) throw new Error(`Catalogue OpenAPI indisponible (HTTP ${res.status})`);
+  const spec = await res.json();
+  const paths = Object.keys(spec.paths || {});
+  return {
+    rpcs: new Set(paths.filter((p) => p.startsWith('/rpc/')).map((p) => p.slice(5))),
+    tables: new Set(paths.filter((p) => p !== '/' && !p.startsWith('/rpc/')).map((p) => p.slice(1))),
+  };
 }
+
+function checkRpc(name, catalog) {
+  return catalog.rpcs.has(name)
+    ? { name, ok: true }
+    : { name, ok: false, detail: 'fonction absente de l\'API' };
+}
+
 
 async function checkBuckets() {
   try {
