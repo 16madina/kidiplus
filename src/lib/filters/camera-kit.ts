@@ -40,8 +40,16 @@ export function snapApiToken(): string {
 
 export function isSnapProductionToken(): boolean {
   const t = snapApiToken();
-  return t.includes("~PRODUCTION~");
+  const payload = t.split(".")[1];
+  if (!payload) return false;
+  try {
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return json.includes("~PRODUCTION~");
+  } catch {
+    return false;
+  }
 }
+
 
 /** Lens Group displayed in the Filters carousel — KiDi+ Web "test 1" group.
  * Add/remove lenses on my-lenses.snapchat.com ; they appear in-app without
