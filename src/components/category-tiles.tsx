@@ -51,6 +51,20 @@ export function CategoryTiles({
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const [avatar, setAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const url = await resolveAvatarUrl(profile?.avatar_url);
+      if (!cancelled) setAvatar(url);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.avatar_url]);
+
 
   return (
     <div
