@@ -100,7 +100,7 @@ export function CategoryTiles({
                     }}
                   />
                   <div
-                    className="absolute grid place-items-center rounded-full"
+                    className="absolute grid place-items-center overflow-hidden rounded-full"
                     style={{
                       left: "50%",
                       top: "40%",
@@ -111,9 +111,19 @@ export function CategoryTiles({
                       border: "1.5px solid var(--primary)",
                     }}
                   >
-                    <User size={22} strokeWidth={2} color="var(--primary)" />
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt=""
+                        draggable={false}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <User size={22} strokeWidth={2} color="var(--primary)" />
+                    )}
                   </div>
                 </>
+
               ) : meta.image ? (
                 <TileImage src={meta.image} />
               ) : null}
