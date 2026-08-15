@@ -33,6 +33,11 @@ import { useAppActive } from "@/lib/app-state";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { EASE_IOS } from "@/lib/motion";
 import { useBlockedIds } from "@/lib/moderation-db";
+import {
+  isBrokenMedia,
+  isPostMediaBroken,
+  subscribeBrokenMedia,
+} from "@/lib/vitrine-broken-media";
 
 type Cat = "forYou" | "live" | "soon";
 
