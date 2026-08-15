@@ -10,17 +10,22 @@ import {
 import {
   clampPosterTransform,
   DEFAULT_POSTER_TRANSFORM,
+  type BackgroundMode,
   type PosterMode,
   type PosterTransform,
 } from "@/lib/filters/live-effects-compositor";
 
 export type LiveEffectsState = {
   backgroundUrl: string | null;
+  backgroundMode: BackgroundMode;
+  backgroundUnavailable: boolean;
   posterUrl: string | null;
   posterMode: PosterMode;
   posterTransform: PosterTransform;
   hasEffects: boolean;
   setBackgroundFile: (file: File | null) => void;
+  setBackgroundBlur: (on: boolean) => void;
+  markBackgroundUnavailable: () => void;
   setPosterFile: (file: File | null, mode: PosterMode) => void;
   setPosterTransform: (t: PosterTransform) => void;
   clearBackground: () => void;
@@ -42,6 +47,8 @@ function revoke(url: string | null) {
 
 export function LiveEffectsProvider({ children }: { children: ReactNode }) {
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("none");
+  const [backgroundUnavailable, setBackgroundUnavailable] = useState(false);
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [posterMode, setPosterMode] = useState<PosterMode>("off");
   const [posterTransform, setPosterTransformState] = useState<PosterTransform>(
@@ -55,11 +62,30 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
     if (!file) {
       bgRef.current = null;
       setBackgroundUrl(null);
+      setBackgroundMode((m) => (m === "image" ? "none" : m));
       return;
     }
     const url = URL.createObjectURL(file);
     bgRef.current = url;
     setBackgroundUrl(url);
+    setBackgroundMode("image");
+  }, []);
+
+  const setBackgroundBlur = useCallback((on: boolean) => {
+    setBackgroundMode(on ? "blur" : "none");
+    if (on) {
+      revoke(bgRef.current);
+      bgRef.current = null;
+      setBackgroundUrl(null);
+    }
+  }, []);
+
+  const markBackgroundUnavailable = useCallback(() => {
+    setBackgroundUnavailable(true);
+    setBackgroundMode("none");
+    revoke(bgRef.current);
+    bgRef.current = null;
+    setBackgroundUrl(null);
   }, []);
 
   const setPosterFile = useCallback((file: File | null, mode: PosterMode) => {
@@ -83,7 +109,10 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
     setPosterTransformState(clampPosterTransform(t));
   }, []);
 
-  const clearBackground = useCallback(() => setBackgroundFile(null), [setBackgroundFile]);
+  const clearBackground = useCallback(() => {
+    setBackgroundFile(null);
+    setBackgroundMode("none");
+  }, [setBackgroundFile]);
   const clearPoster = useCallback(() => setPosterFile(null, "off"), [setPosterFile]);
   const clearAll = useCallback(() => {
     clearBackground();
@@ -93,11 +122,16 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<LiveEffectsState>(
     () => ({
       backgroundUrl,
+      backgroundMode,
+      backgroundUnavailable,
       posterUrl,
       posterMode,
       posterTransform,
-      hasEffects: !!backgroundUrl || (!!posterUrl && posterMode !== "off"),
+      hasEffects:
+        backgroundMode !== "none" || (!!posterUrl && posterMode !== "off"),
       setBackgroundFile,
+      setBackgroundBlur,
+      markBackgroundUnavailable,
       setPosterFile,
       setPosterTransform,
       clearBackground,
@@ -106,6 +140,10 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
     }),
     [
       backgroundUrl,
+      backgroundMode,
+      backgroundUnavailable,
+      setBackgroundBlur,
+      markBackgroundUnavailable,
       posterUrl,
       posterMode,
       posterTransform,
@@ -123,11 +161,15 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
 
 const EMPTY: LiveEffectsState = {
   backgroundUrl: null,
+  backgroundMode: "none",
+  backgroundUnavailable: false,
   posterUrl: null,
   posterMode: "off",
   posterTransform: DEFAULT_POSTER_TRANSFORM.cover,
   hasEffects: false,
   setBackgroundFile: () => {},
+  setBackgroundBlur: () => {},
+  markBackgroundUnavailable: () => {},
   setPosterFile: () => {},
   setPosterTransform: () => {},
   clearBackground: () => {},
