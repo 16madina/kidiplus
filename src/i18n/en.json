@@ -419,6 +419,13 @@
       "configMissing": "Configuration required: camera permissions missing from build",
       "retry": "Retry"
     },
+    "effects": {
+      "title": "Background & poster",
+      "greenScreen": "Green screen",
+      "posterFace": "Poster",
+      "posterSide": "Beside",
+      "posterHint": "Drag to move · Pinch to zoom"
+    },
     "setup": {
       "titlePlaceholder": "Live title…",
       "descriptionPlaceholder": "Describe your live (optional)",

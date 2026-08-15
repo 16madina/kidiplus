@@ -12,6 +12,10 @@ import {
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
+import { LiveEffectsPreview } from "@/components/broadcast/live-effects-preview";
+import { PosterGestureLayer } from "@/components/broadcast/poster-gesture-layer";
+import { useLiveEffects } from "@/lib/filters/live-effects-context";
+import { LiveEffectsVideoProcessor } from "@/lib/filters/live-effects-processor";
 import type { Lens } from "@/lib/filters/lenses-catalog";
 import {
   Room,
@@ -130,8 +134,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
     const appActive = useAppActive();
     const { activeLens } = useFilter();
+    const effects = useLiveEffects();
     const activeLensRef = useRef<Lens>(activeLens);
     activeLensRef.current = activeLens;
+    const effectsRef = useRef(effects);
+    effectsRef.current = effects;
 
     // Clé du dernier pipeline appliqué (lens + facing) — évite de
     // stopper/recréer le processeur quand rien n'a changé : chaque
@@ -145,11 +152,37 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // l'état actuel du processeur.
     const applyHostPipeline = async (track: LocalVideoTrack, facing: CameraFacing) => {
       const lens = activeLensRef.current;
-      const wantSnap = lens.isSnapLens === true && isCameraKitSupported();
-      lastPipelineKeyRef.current = `${wantSnap ? lens.lensId : "none"}:${facing}`;
+      const fx = effectsRef.current;
+      const wantEffects = fx.hasEffects;
+      const wantSnap = !wantEffects && lens.isSnapLens === true && isCameraKitSupported();
+      lastPipelineKeyRef.current = wantEffects
+        ? `fx:${fx.backgroundUrl ?? ""}:${fx.posterUrl ?? ""}:${fx.posterMode}:${facing}`
+        : `${wantSnap ? lens.lensId : "none"}:${facing}`;
       try {
         const current = track.getProcessor();
         const isCameraKit = current instanceof CameraKitVideoProcessor;
+        const isEffects = current instanceof LiveEffectsVideoProcessor;
+
+        if (wantEffects) {
+          const cfg = {
+            backgroundUrl: fx.backgroundUrl,
+            posterUrl: fx.posterUrl,
+            posterMode: fx.posterMode,
+            posterX: fx.posterTransform.x,
+            posterY: fx.posterTransform.y,
+            posterScale: fx.posterTransform.scale,
+            mirror: facing === "user",
+          };
+          if (isEffects) {
+            await (current as LiveEffectsVideoProcessor).setConfig(cfg);
+            return;
+          }
+          if (current) {
+            try { await track.stopProcessor(); } catch { /* none */ }
+          }
+          await track.setProcessor(new LiveEffectsVideoProcessor(cfg), true);
+          return;
+        }
 
         if (wantSnap) {
           if (isCameraKit) {
@@ -171,10 +204,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           return;
         }
 
-        // Pas de lens AR souhaitée.
+        // Pas de lens AR / effets souhaités.
         if (facing === "user") {
-          // Miroir déjà en place (et pas de Camera Kit) : rien à faire.
-          if (current && !isCameraKit) return;
+          if (isEffects || isCameraKit) {
+            try { await track.stopProcessor(); } catch { /* none */ }
+          } else if (current) {
+            return;
+          }
           await syncFrontCameraMirror(track, facing);
           return;
         }
@@ -720,12 +756,39 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       const track = localVideoTrackRef.current;
       if (!track || state !== "granted" || !enabled) return;
       const facing = lastAppliedFacingRef.current ?? facingRef.current;
-      const wantSnap = activeLens.isSnapLens === true && isCameraKitSupported();
-      const key = `${wantSnap ? activeLens.lensId : "none"}:${facing}`;
+      const wantEffects = effects.hasEffects;
+      const wantSnap = !wantEffects && activeLens.isSnapLens === true && isCameraKitSupported();
+      const key = wantEffects
+        ? `fx:${effects.backgroundUrl ?? ""}:${effects.posterUrl ?? ""}:${effects.posterMode}:${facing}`
+        : `${wantSnap ? activeLens.lensId : "none"}:${facing}`;
       if (key === lastPipelineKeyRef.current) return;
       void applyHostPipeline(track, facing);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeLens.lensId, activeLens.isSnapLens, livekit, state, enabled]);
+    }, [
+      activeLens.lensId,
+      activeLens.isSnapLens,
+      effects.hasEffects,
+      effects.backgroundUrl,
+      effects.posterUrl,
+      effects.posterMode,
+      livekit,
+      state,
+      enabled,
+    ]);
+
+    // Drag / pinch must not rebuild the LiveKit processor (that would blink).
+    useEffect(() => {
+      if (!livekit) return;
+      const track = localVideoTrackRef.current;
+      const current = track?.getProcessor();
+      if (current instanceof LiveEffectsVideoProcessor) {
+        current.setTransform(
+          effects.posterTransform.x,
+          effects.posterTransform.y,
+          effects.posterTransform.scale,
+        );
+      }
+    }, [effects.posterTransform, livekit]);
 
     const showVideo =
       roomShouldRun &&
@@ -747,19 +810,25 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         )}
         <VideoWithFilter
           videoRef={videoRef}
-          mirrored={mirrored}
+          // Effects canvas is already composed (camera selfie-flipped,
+          // images not). Never CSS-flip that result or viewers/host diverge.
+          mirrored={mirrored && !effects.hasEffects}
           showVideo={showVideo}
         />
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,
             le filtre passe par le TrackProcessor — pas besoin d'overlay. */}
-        {!livekit && showVideo && (
+        {!livekit && showVideo && !effects.hasEffects && (
           <CameraKitPreview
             stream={previewStream}
             lens={activeLens}
             mirrored={mirrored}
           />
         )}
+        {!livekit && showVideo && (
+          <LiveEffectsPreview stream={previewStream} mirrored={mirrored} />
+        )}
+        {showVideo && <PosterGestureLayer />}
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center">
             <div

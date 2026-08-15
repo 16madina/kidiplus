@@ -541,7 +541,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                   </div>
                 )}
               </Press>
-              <div className="flex max-w-[5.5rem] flex-col items-stretch gap-1">
+              <div className="flex items-center gap-1">
                 <Press
                   onClick={() => {
                     haptic.selection();

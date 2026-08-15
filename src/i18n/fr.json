@@ -419,6 +419,13 @@
       "configMissing": "Configuration requise : permissions caméra manquantes dans le build",
       "retry": "Réessayer"
     },
+    "effects": {
+      "title": "Fond & poster",
+      "greenScreen": "Fond vert",
+      "posterFace": "Poster",
+      "posterSide": "À côté",
+      "posterHint": "Glisse pour déplacer · Pince pour zoomer"
+    },
     "setup": {
       "titlePlaceholder": "Titre du live…",
       "descriptionPlaceholder": "Décris ton live (optionnel)",

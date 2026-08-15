@@ -5,13 +5,16 @@
 // caméra locale (via le FilterContext). Un bouton croix ferme le carrousel ;
 // le filtre reste actif tant que le host ne repasse pas sur "Aucun".
 
-import { useEffect } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Loader2 } from "lucide-react";
+import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { useFilter } from "@/lib/filters/filter-context";
+import { useLiveEffects } from "@/lib/filters/live-effects-context";
+import type { PosterMode } from "@/lib/filters/live-effects-compositor";
 import type { Lens } from "@/lib/filters/lenses-catalog";
 
 const GOLD = "oklch(0.85 0.18 90)";
@@ -26,6 +29,7 @@ export type FiltersCarouselProps = {
 };
 
 export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarouselProps) {
+  const { t } = useTranslation();
   const {
     lenses,
     activeLens,
@@ -34,6 +38,10 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
     lensesLoading,
     lensesError,
   } = useFilter();
+  const effects = useLiveEffects();
+  const bgInputRef = useRef<HTMLInputElement>(null);
+  const posterInputRef = useRef<HTMLInputElement>(null);
+  const posterModeRef = useRef<PosterMode>("cover");
 
   // Charge les vraies lenses Snap (AR) à la première ouverture du carrousel.
   useEffect(() => {
@@ -109,6 +117,75 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
             </Press>
           </div>
 
+          <p className="mb-1 px-1 text-[11px] font-semibold text-white/70">
+            {t("broadcast.effects.title", "Fond & poster")}
+          </p>
+          <div className="mb-2 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            <EffectTile
+              label={t("broadcast.effects.greenScreen", "Fond vert")}
+              active={!!effects.backgroundUrl}
+              thumb={effects.backgroundUrl}
+              icon={<ImagePlus size={18} />}
+              onClick={() => {
+                haptic.selection();
+                if (effects.backgroundUrl) effects.clearBackground();
+                else bgInputRef.current?.click();
+              }}
+            />
+            <EffectTile
+              label={t("broadcast.effects.posterFace", "Poster")}
+              active={!!effects.posterUrl && effects.posterMode === "cover"}
+              thumb={effects.posterMode === "cover" ? effects.posterUrl : null}
+              icon={<UserRound size={18} />}
+              onClick={() => {
+                haptic.selection();
+                if (effects.posterUrl && effects.posterMode === "cover") {
+                  effects.clearPoster();
+                  return;
+                }
+                posterModeRef.current = "cover";
+                posterInputRef.current?.click();
+              }}
+            />
+            <EffectTile
+              label={t("broadcast.effects.posterSide", "À côté")}
+              active={!!effects.posterUrl && effects.posterMode === "side"}
+              thumb={effects.posterMode === "side" ? effects.posterUrl : null}
+              icon={<PanelsTopLeft size={18} />}
+              onClick={() => {
+                haptic.selection();
+                if (effects.posterUrl && effects.posterMode === "side") {
+                  effects.clearPoster();
+                  return;
+                }
+                posterModeRef.current = "side";
+                posterInputRef.current?.click();
+              }}
+            />
+          </div>
+          <input
+            ref={bgInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) effects.setBackgroundFile(f);
+            }}
+          />
+          <input
+            ref={posterInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) effects.setPosterFile(f, posterModeRef.current);
+            }}
+          />
+
           <div
             className="flex gap-2 overflow-x-auto pb-1"
             style={{ scrollbarWidth: "none" }}
@@ -139,6 +216,74 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function EffectTile({
+  label,
+  active,
+  thumb,
+  icon,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  thumb: string | null;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Press
+      onClick={onClick}
+      aria-label={label}
+      className="!min-h-16 h-16 w-16 shrink-0 rounded-2xl grid place-items-center relative"
+      style={{
+        background: active ? "oklch(0.85 0.18 90 / 0.18)" : "rgba(0,0,0,0.55)",
+        border: `2px solid ${active ? GOLD : "rgba(255,255,255,0.14)"}`,
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
+      {thumb && (
+        <img
+          src={thumb}
+          alt=""
+          className="absolute inset-0 h-full w-full rounded-2xl object-cover"
+          draggable={false}
+        />
+      )}
+      <div
+        className="relative flex flex-col items-center gap-0.5"
+        style={
+          thumb
+            ? {
+                position: "absolute",
+                inset: 0,
+                justifyContent: "flex-end",
+                paddingBottom: 3,
+                background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 50%)",
+                borderRadius: 14,
+              }
+            : undefined
+        }
+      >
+        {!thumb && <span className="text-white">{icon}</span>}
+        <span
+          className="max-w-[60px] truncate text-[9px] font-semibold leading-tight"
+          style={{ color: active ? GOLD : "white" }}
+        >
+          {label}
+        </span>
+      </div>
+      {active && (
+        <div
+          className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full grid place-items-center"
+          style={{ background: GOLD, color: "#10162B" }}
+        >
+          <Check size={10} strokeWidth={3} />
+        </div>
+      )}
+    </Press>
   );
 }
 

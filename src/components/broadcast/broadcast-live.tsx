@@ -23,6 +23,7 @@ import {
   stopTiktokRestream,
 } from "@/lib/tiktok-restream";
 import { useFilter } from "@/lib/filters/filter-context";
+import { useLiveEffects } from "@/lib/filters/live-effects-context";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
   muteLiveChatUser,
@@ -120,6 +121,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { activeLens } = useFilter();
+  const liveEffects = useLiveEffects();
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
   const { user } = useAuth();
@@ -1649,7 +1651,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         canFlip={!isRtmp && canFlip && cameraOn}
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
-        filtersActive={!isRtmp && activeLens.lensId !== "none"}
+        filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
         onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
         onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
         onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
