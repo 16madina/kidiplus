@@ -236,26 +236,35 @@ export class LiveEffectsCompositor {
     const wantBg = this.backgroundMode !== "none" && !this.disabled;
     const hasPoster = !!this.poster && this.posterMode !== "off";
 
-    ctx.save();
-    if (this.mirror) {
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-    }
+    // Replacement images stay unmirrored (text/logos readable); only the
+    // live camera (selfie) is flipped. Blurred backgrounds come from the
+    // camera itself so they follow the same mirror as the person.
+    const mirrorScope = (fn: () => void) => {
+      ctx.save();
+      if (this.mirror) {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+      }
+      fn();
+      ctx.restore();
+    };
 
     if (wantBg) {
-      const now = performance.now();
-      this.trackFps(now);
+      this.trackFps(performance.now());
       const ok = await this.updateMask(video);
       if (ok) {
-        this.drawBackgroundLayer(ctx, video, w, h);
-        this.drawPerson(ctx, video, w, h);
+        if (this.backgroundMode === "image" && this.background) {
+          drawCover(ctx, this.background, w, h);
+        } else {
+          mirrorScope(() => this.drawBackgroundLayer(ctx, video, w, h));
+        }
+        mirrorScope(() => this.drawPerson(ctx, video, w, h));
       } else {
-        ctx.drawImage(video, 0, 0, w, h);
+        mirrorScope(() => ctx.drawImage(video, 0, 0, w, h));
       }
     } else {
-      ctx.drawImage(video, 0, 0, w, h);
+      mirrorScope(() => ctx.drawImage(video, 0, 0, w, h));
     }
-    ctx.restore();
 
     // Poster: same pixels for host preview and published track (unmirrored).
     if (hasPoster && this.poster) {
