@@ -103,10 +103,16 @@ export function defaultMusicFor(track: { url: string; title?: string; artist?: s
 export async function uploadMusicFile(
   file: File,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  if (!isAudioFile(file)) return { ok: false, error: "bad_mime" };
-  if (file.size > MAX_MUSIC_BYTES) return { ok: false, error: "file_too_large" };
-  const { uploadVitrineMediaDetailed } = await import("@/lib/vitrine-db");
-  return uploadVitrineMediaDetailed(file);
+  try {
+    if (!isAudioFile(file)) return { ok: false, error: "bad_mime" };
+    if (!file.size) return { ok: false, error: "empty_file" };
+    if (file.size > MAX_MUSIC_BYTES) return { ok: false, error: "file_too_large" };
+    const { uploadVitrineMediaDetailed } = await import("@/lib/vitrine-db");
+    return await uploadVitrineMediaDetailed(file);
+  } catch (e) {
+    console.warn("[vitrine-music] import failed", e);
+    return { ok: false, error: e instanceof Error ? e.message : "upload_failed" };
+  }
 }
 
 /** Lit les colonnes musique d'une ligne Supabase (posts / stories). */
