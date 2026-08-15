@@ -147,7 +147,6 @@ export const Route = createFileRoute("/api/paypal-checkout/create")({
           }
         }
         const roQs = `ro=${encodeURIComponent(pubOrigin)}`;
-        const nativeQs = nativeFlag ? "?native=1" : "";
         const returnUrl = `${pubOrigin}/api/paypal-checkout/return?${roQs}${nativeFlag ? "&native=1" : ""}`;
         const cancelUrl = `${pubOrigin}/api/paypal-checkout/return?cancelled=1&${roQs}${nativeFlag ? "&native=1" : ""}`;
 
