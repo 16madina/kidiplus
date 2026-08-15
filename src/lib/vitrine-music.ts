@@ -8,7 +8,6 @@ import softGlow from "@/assets/music/soft-glow.mp3.asset.json";
 import marketDay from "@/assets/music/market-day.mp3.asset.json";
 import slowMotion from "@/assets/music/slow-motion.mp3.asset.json";
 import runway from "@/assets/music/runway.mp3.asset.json";
-import { uploadVitrineMediaDetailed } from "@/lib/vitrine-db";
 
 export type VitrineMusic = {
   url: string;
@@ -98,6 +97,7 @@ export async function uploadMusicFile(
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   if (!isAudioFile(file)) return { ok: false, error: "bad_mime" };
   if (file.size > MAX_MUSIC_BYTES) return { ok: false, error: "file_too_large" };
+  const { uploadVitrineMediaDetailed } = await import("@/lib/vitrine-db");
   return uploadVitrineMediaDetailed(file);
 }
 
