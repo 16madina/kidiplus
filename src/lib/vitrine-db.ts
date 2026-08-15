@@ -590,7 +590,13 @@ function guessVitrineContentType(file: File): string {
     wav: "audio/wav",
     ogg: "audio/ogg",
     oga: "audio/ogg",
+    opus: "audio/ogg",
+    weba: "audio/webm",
     flac: "audio/flac",
+    aiff: "audio/aiff",
+    aif: "audio/aiff",
+    caf: "audio/x-caf",
+    amr: "audio/amr",
   };
   return map[ext] || "application/octet-stream";
 }
