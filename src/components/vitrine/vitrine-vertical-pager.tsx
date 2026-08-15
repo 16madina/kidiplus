@@ -315,8 +315,10 @@ function MediaSlide({
               playsInline
               preload={shouldPlay ? "auto" : "metadata"}
               controls={false}
+              onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
+              onPlaying={() => setStatus("ready")}
               onError={() => setStatus("error")}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
