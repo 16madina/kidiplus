@@ -237,7 +237,8 @@ export function CreateVitrineContentSheet({
   };
 
   const multi = kind === "carousel";
-  const canPublish = files.length > 0 && (kind !== "carousel" || files.length >= 2);
+  const canPublish =
+    files.length > 0 && !optimizing && (kind !== "carousel" || files.length >= 2);
 
   return (
     <PushScreen
@@ -263,7 +264,7 @@ export function CreateVitrineContentSheet({
           multiple={multi}
           className="hidden"
           onChange={(e) => {
-            onPick(e.target.files);
+            void onPick(e.target.files);
             e.target.value = "";
           }}
         />
@@ -340,6 +341,13 @@ export function CreateVitrineContentSheet({
               )}
             </div>
           </Press>
+        )}
+
+        {optimizing && (
+          <p className="mt-2 flex items-center justify-center gap-2 text-center text-[12px] text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            {t("publish.optimizing", { defaultValue: "Optimisation du média (9:16)…" })}
+          </p>
         )}
 
         {kind === "carousel" && files.length === 1 && (
