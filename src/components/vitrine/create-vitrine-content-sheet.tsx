@@ -3,6 +3,7 @@ import { ImagePlus, Loader2, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
+import { MediaPreview916 } from "@/components/vitrine/media-preview-916";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import type { PublishKind } from "@/lib/publish";
