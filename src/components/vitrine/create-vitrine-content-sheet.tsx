@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
 import { MediaPreview916 } from "@/components/vitrine/media-preview-916";
 import { Press } from "@/components/press";
+import { optimizeMediaFor916 } from "@/lib/media-optimize";
 import { haptic } from "@/lib/haptics";
 import type { PublishKind } from "@/lib/publish";
 import {
