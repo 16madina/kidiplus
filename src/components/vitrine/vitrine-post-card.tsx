@@ -38,6 +38,7 @@ export function VitrinePostCard({
   post,
   onUpdated,
   onBlocked,
+  onDeleted,
   autoOpenComments = false,
   highlightCommentId = null,
   onCommentsAutoOpened,
@@ -46,11 +47,14 @@ export function VitrinePostCard({
   onUpdated?: (p: VitrinePost) => void;
   /** After block: parent should drop this author from the feed. */
   onBlocked?: () => void;
+  /** After the owner deletes this post: parent should drop it from the feed. */
+  onDeleted?: () => void;
   /** Deep-link from Activity / push: open comments once after landing on this post. */
   autoOpenComments?: boolean;
   highlightCommentId?: string | null;
   onCommentsAutoOpened?: () => void;
 }) {
+
   const { t } = useTranslation();
   const { user, guestMode } = useAuth();
   const { openAuth } = useAuthPrompt();
@@ -260,6 +264,7 @@ export function VitrinePostCard({
               contentId: post.id,
             }}
             onBlocked={onBlocked}
+            onDeleted={onDeleted}
             buttonClassName="!min-h-0 grid h-10 w-10 place-items-center !bg-transparent p-0 text-white drop-shadow-md"
           />
         )}

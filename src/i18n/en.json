@@ -740,7 +740,13 @@
     "published": "Post is live",
     "uploadFail": "Upload failed. Try again.",
     "publishFail": "Could not publish.",
-    "badMedia": "Pick a photo or video."
+    "badMedia": "Pick a photo or video.",
+    "delete": {
+      "action": "Delete",
+      "subtitle": "Manage your post",
+      "done": "Post deleted",
+      "failed": "Could not delete"
+    }
   },
   "publish": {
     "title": "Publish",

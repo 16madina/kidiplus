@@ -1,7 +1,7 @@
 // Report / block menu for Vitrine UGC (posts + stories) — Apple/Google guideline 1.2.
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Ban, Flag, Loader2, MoreVertical, X } from "lucide-react";
+import { Ban, Flag, Loader2, MoreVertical, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -28,12 +28,15 @@ export type VitrineModerationTarget = {
 export function VitrineModerationMenu({
   target,
   onBlocked,
+  onDeleted,
   onOpenChange,
   buttonClassName,
   sheetZIndex = 110,
 }: {
   target: VitrineModerationTarget | null;
   onBlocked?: () => void;
+  /** Owner deleted their own post/story. */
+  onDeleted?: () => void;
   /** Pause story progress while the sheet is open. */
   onOpenChange?: (open: boolean) => void;
   buttonClassName?: string;
@@ -45,12 +48,14 @@ export function VitrineModerationMenu({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!target?.userId) return null;
-  // Demo / own content: no report/block.
-  if (target.userId.startsWith("demo-") || (user && target.userId === user.id)) {
-    return null;
-  }
+  const isDemo = target.userId.startsWith("demo-");
+  const isMine = !!user && target.userId === user.id;
+  // Demo content, or my own content without a delete handler: nothing to show.
+  if (isDemo || (isMine && !onDeleted)) return null;
+
 
   const setOpen = (open: boolean) => {
     setActionsOpen(open);
@@ -92,7 +97,30 @@ export function VitrineModerationMenu({
     }
   };
 
+  const onDelete = async () => {
+    if (deleting || !onDeleted) return;
+    setDeleting(true);
+    haptic.medium();
+    const { deleteVitrinePost } = await import("@/lib/vitrine-db");
+    const ok =
+      target.contentKind === "post"
+        ? await deleteVitrinePost(target.contentId)
+        : false;
+    setDeleting(false);
+    if (ok) {
+      setOpen(false);
+      haptic.success();
+      toast.success(
+        t("vitrine.delete.done", { defaultValue: "Publication supprimée" }),
+      );
+      onDeleted();
+    } else {
+      toast.error(t("vitrine.delete.failed", { defaultValue: "Suppression impossible" }));
+    }
+  };
+
   const note = `Vitrine ${target.contentKind}: ${target.contentId}`;
+
 
   return (
     <>
@@ -142,30 +170,53 @@ export function VitrineModerationMenu({
                 </Press>
               </div>
               <p className="mb-2 px-1 text-[12px] text-muted-foreground">
-                {t("report.subtitle")}
+                {isMine
+                  ? t("vitrine.delete.subtitle", {
+                      defaultValue: "Gère ta publication",
+                    })
+                  : t("report.subtitle")}
               </p>
-              <Press
-                onClick={() => {
-                  setOpen(false);
-                  setReportOpen(true);
-                }}
-                className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
-              >
-                <Flag size={20} />
-                {t("report.action")}
-              </Press>
-              <Press
-                onClick={() => void onBlock()}
-                disabled={blocking}
-                className="mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
-              >
-                {blocking ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Ban size={20} />
-                )}
-                {t("block.action")}
-              </Press>
+              {!isMine && (
+                <>
+                  <Press
+                    onClick={() => {
+                      setOpen(false);
+                      setReportOpen(true);
+                    }}
+                    className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold"
+                  >
+                    <Flag size={20} />
+                    {t("report.action")}
+                  </Press>
+                  <Press
+                    onClick={() => void onBlock()}
+                    disabled={blocking}
+                    className="mt-1 flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
+                  >
+                    {blocking ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Ban size={20} />
+                    )}
+                    {t("block.action")}
+                  </Press>
+                </>
+              )}
+              {isMine && onDeleted && (
+                <Press
+                  onClick={() => void onDelete()}
+                  disabled={deleting}
+                  className="flex !min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-500"
+                >
+                  {deleting ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={20} />
+                  )}
+                  {t("vitrine.delete.action", { defaultValue: "Supprimer" })}
+                </Press>
+              )}
+
             </motion.div>
           </motion.div>
         )}

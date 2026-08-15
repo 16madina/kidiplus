@@ -291,6 +291,11 @@ export function VitrineScreen() {
                   // Advance past this post; blockedIds filter removes the author.
                   setPostIndex((idx) => Math.min(idx, Math.max(0, postsVisible.length - 2)));
                 }}
+                onDeleted={() => {
+                  setPosts((prev) => prev.filter((x) => x.id !== post.id));
+                  setPostIndex((idx) => Math.max(0, Math.min(idx, postsVisible.length - 2)));
+                }}
+
                 onUpdated={(p) =>
                   setPosts((prev) => prev.map((x) => (x.id === p.id ? p : x)))
                 }

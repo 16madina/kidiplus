@@ -202,17 +202,48 @@ type AnySb = {
 
 const sb = supabase as unknown as AnySb;
 
-function normalizeMediaUrls(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.filter((u) => typeof u === "string") as string[];
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter((u) => typeof u === "string");
-    } catch { /* ignore */ }
-    return [raw];
+/** Legacy media were uploaded to a previous Supabase project host. */
+const LEGACY_STORAGE_HOSTS = ["https://rpersnzjidxtlekbbdtp.supabase.co"];
+const CURRENT_STORAGE_HOST = "https://djwuvxpmvrwfjwjamjno.supabase.co";
+
+export function rewriteStorageHost(url: string): string {
+  let out = url;
+  for (const host of LEGACY_STORAGE_HOSTS) {
+    if (out.startsWith(host)) out = CURRENT_STORAGE_HOST + out.slice(host.length);
   }
-  return [];
+  return out;
 }
+
+function normalizeMediaUrls(raw: unknown): string[] {
+  const list = (() => {
+    if (Array.isArray(raw)) return raw.filter((u) => typeof u === "string") as string[];
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter((u) => typeof u === "string") as string[];
+      } catch { /* ignore */ }
+      return [raw];
+    }
+    return [] as string[];
+  })();
+  return list.map(rewriteStorageHost);
+}
+
+/** Delete one of my own Vitrine posts (RLS: owner only). */
+export async function deleteVitrinePost(postId: string): Promise<boolean> {
+  if (!postId || postId.startsWith("demo-")) return false;
+  try {
+    const { error } = await sb.from("vitrine_posts").delete().eq("id", postId);
+    if (error) {
+      console.warn("[vitrine] delete post failed", error.message);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 
 export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
   try {
@@ -385,7 +416,7 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
         return {
           id: r.id,
           user_id: r.user_id,
-          media_url: r.media_url,
+          media_url: rewriteStorageHost(r.media_url),
           expires_at: r.expires_at,
           created_at: r.created_at,
           unread: true,
