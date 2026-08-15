@@ -244,11 +244,11 @@ function MediaSlide({
       </div>
     ) : null;
 
-  // 9:16 frame: media is fitted (never cropped/overflowing), letterbox filled
-  // with a blurred copy so it reads full-bleed like TikTok.
+  // Cadre 9:16 standard : le média remplit le cadre (cover) et un fond flou
+  // comble les bandes éventuelles — rendu identique iOS / Android.
   const fitClass = className?.includes("object-")
-    ? className
-    : `${className ?? "h-full w-full"} object-contain`;
+    ? className.replace("object-contain", "object-cover")
+    : `${className ?? "h-full w-full"} object-cover`;
 
   if (asVideo) {
     return (
@@ -260,7 +260,7 @@ function MediaSlide({
                 ref={videoRef}
                 data-vitrine-feed
                 src={url}
-                className={fitClass.replace("object-cover", "object-contain")}
+                className={fitClass}
                 autoPlay={shouldPlay}
                 muted={muted || !shouldPlay}
                 loop
@@ -297,7 +297,7 @@ function MediaSlide({
             <img
               src={url}
               alt=""
-              className={fitClass.replace("object-cover", "object-contain")}
+              className={fitClass}
               draggable={false}
               decoding="async"
               loading="eager"
