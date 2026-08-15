@@ -279,25 +279,16 @@ export function CreateVitrineContentSheet({
             )}
           </div>
         ) : previews[0] ? (
-          <div className="relative aspect-[9/14] w-full overflow-hidden rounded-2xl border border-border bg-black">
-            {kind === "video" || (files[0] && isVideoFile(files[0])) ? (
-              <video
-                key={previews[0]}
-                src={previews[0]}
-                className="absolute inset-0 h-full w-full object-cover"
-                playsInline
-                controls
-                autoPlay
-                muted
-                preload="auto"
-              />
-            ) : (
-              <img
-                src={previews[0]}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
+          <div className="relative">
+            <p className="mb-2 text-center text-[12px] font-medium text-muted-foreground">
+              {t("publish.previewHint", {
+                defaultValue: "Aperçu 9:16 — rendu identique à la Vitrine",
+              })}
+            </p>
+            <MediaPreview916
+              src={previews[0]}
+              isVideo={kind === "video" || (!!files[0] && isVideoFile(files[0]!))}
+            />
             <Press
               onClick={() => inputRef.current?.click()}
               className="absolute bottom-3 right-3 z-10 !min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B]"
