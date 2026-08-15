@@ -740,7 +740,13 @@
     "published": "Publication en ligne",
     "uploadFail": "Échec de l'envoi. Réessaie.",
     "publishFail": "Impossible de publier.",
-    "badMedia": "Choisis une photo ou une vidéo."
+    "badMedia": "Choisis une photo ou une vidéo.",
+    "delete": {
+      "action": "Supprimer",
+      "subtitle": "Gère ta publication",
+      "done": "Publication supprimée",
+      "failed": "Suppression impossible"
+    }
   },
   "publish": {
     "title": "Publier",
