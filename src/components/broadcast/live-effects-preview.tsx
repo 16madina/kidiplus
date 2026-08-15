@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useLiveEffects } from "@/lib/filters/live-effects-context";
 import {
   LiveEffectsCompositor,
@@ -12,8 +14,16 @@ export function LiveEffectsPreview({
   stream: MediaStream | null;
   mirrored: boolean;
 }) {
-  const { backgroundUrl, posterUrl, posterMode, posterTransform, hasEffects } =
-    useLiveEffects();
+  const {
+    backgroundUrl,
+    backgroundMode,
+    posterUrl,
+    posterMode,
+    posterTransform,
+    hasEffects,
+    markBackgroundUnavailable,
+  } = useLiveEffects();
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const compRef = useRef(new LiveEffectsCompositor());
@@ -32,6 +42,16 @@ export function LiveEffectsPreview({
 
     const comp = compRef.current;
     comp.mirror = mirrored;
+    comp.onUnavailable = () => {
+      toast.error(
+        t(
+          "broadcast.effects.unavailable",
+          "Arrière-plan indisponible sur cet appareil",
+        ),
+        { id: "bg-unavailable" },
+      );
+      markBackgroundUnavailable();
+    };
     void comp.warmup();
 
     let raf = 0;
@@ -59,6 +79,7 @@ export function LiveEffectsPreview({
       }
       videoRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasEffects, stream, mirrored]);
 
   useEffect(() => {
@@ -68,6 +89,11 @@ export function LiveEffectsPreview({
     void (async () => {
       try {
         comp.background = backgroundUrl ? await loadImageFromUrl(backgroundUrl) : null;
+        comp.backgroundMode = comp.background
+          ? backgroundMode
+          : backgroundMode === "image"
+            ? "blur"
+            : backgroundMode;
       } catch {
         if (!cancelled) comp.background = null;
       }
@@ -87,7 +113,7 @@ export function LiveEffectsPreview({
     return () => {
       cancelled = true;
     };
-  }, [backgroundUrl, posterUrl, posterMode, mirrored]);
+  }, [backgroundUrl, backgroundMode, posterUrl, posterMode, mirrored]);
 
   if (!hasEffects) return null;
 

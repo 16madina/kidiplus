@@ -2,17 +2,20 @@ import type { Track, TrackProcessor, VideoProcessorOptions } from "livekit-clien
 import {
   LiveEffectsCompositor,
   loadImageFromUrl,
+  type BackgroundMode,
   type PosterMode,
 } from "@/lib/filters/live-effects-compositor";
 
 export type LiveEffectsConfig = {
   backgroundUrl: string | null;
+  backgroundMode: BackgroundMode;
   posterUrl: string | null;
   posterMode: PosterMode;
   posterX?: number;
   posterY?: number;
   posterScale?: number;
   mirror: boolean;
+  onUnavailable?: () => void;
 };
 
 export class LiveEffectsVideoProcessor
@@ -31,6 +34,7 @@ export class LiveEffectsVideoProcessor
   constructor(config: LiveEffectsConfig) {
     this.config = config;
     this.compositor.mirror = config.mirror;
+    this.compositor.onUnavailable = () => config.onUnavailable?.();
   }
 
   async init(opts: VideoProcessorOptions): Promise<void> {
@@ -67,6 +71,7 @@ export class LiveEffectsVideoProcessor
   async setConfig(config: LiveEffectsConfig): Promise<void> {
     this.config = config;
     this.compositor.mirror = config.mirror;
+    this.compositor.onUnavailable = () => config.onUnavailable?.();
     await this.syncImages();
   }
 
@@ -85,6 +90,11 @@ export class LiveEffectsVideoProcessor
     } catch {
       this.compositor.poster = null;
     }
+    this.compositor.backgroundMode = this.compositor.background
+      ? this.config.backgroundMode
+      : this.config.backgroundMode === "image"
+        ? "blur"
+        : this.config.backgroundMode;
     this.compositor.posterMode = this.config.posterMode;
     this.compositor.posterX = this.config.posterX ?? 0.5;
     this.compositor.posterY = this.config.posterY ?? 0.4;
