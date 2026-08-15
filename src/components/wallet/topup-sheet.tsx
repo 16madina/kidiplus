@@ -28,6 +28,7 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
+import { redirectExternal } from "@/lib/external-redirect";
 import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal, convertMoney } from "@/lib/money";
 import {
   confirmWalletTopup,
