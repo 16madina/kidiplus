@@ -15,7 +15,8 @@
     "native:sync": "npm run native:prepare && npx cap sync",
     "native:android": "npm run native:sync && npx cap open android",
     "native:ios": "npm run native:sync && npx cap open ios",
-    "validate:backend": "node scripts/validate-backend.mjs"
+    "validate:backend": "node scripts/validate-backend.mjs",
+    "compare:backends": "node scripts/compare-backends.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1095.0",
