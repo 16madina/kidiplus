@@ -857,11 +857,12 @@
       "volume": "Volume musique",
       "original": "Son d'origine",
       "startAt": "Départ de la musique",
-      "needAudio": "Choisis un fichier audio.",
+      "needAudio": "Format audio non pris en charge.",
       "tooLarge": "Audio trop lourd (max 15 Mo).",
-      "uploadFail": "Import audio impossible.",
+      "uploadFail": "Import audio impossible. Réessaie.",
       "rightsHint": "Utilise uniquement de la musique dont tu détiens les droits.",
-      "hint": "La musique est jouée avec ta publication dans la Vitrine."
+      "hint": "La musique est jouée avec ta publication dans la Vitrine.",
+      "needAuth": "Reconnecte-toi pour importer une musique."
     }
   },
   "dm": {
