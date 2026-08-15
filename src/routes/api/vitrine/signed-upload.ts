@@ -8,27 +8,6 @@ import { isAllowedOrigin } from "@/lib/api-cors";
 
 const BUCKET = "vitrine-media";
 const MAX_BYTES = 100 * 1024 * 1024;
-const ALLOWED_MIME = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "video/x-m4v",
-  "video/3gpp",
-  "video/3gpp2",
-  "audio/mpeg",
-  "audio/mp4",
-  "audio/aac",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/ogg",
-  "audio/flac",
-];
 
 
 function cors(origin: string | null): HeadersInit {
@@ -125,7 +104,7 @@ async function ensureVitrineBucket(admin: {
     const { error: createErr } = await admin.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: MAX_BYTES,
-      allowedMimeTypes: ALLOWED_MIME,
+      allowedMimeTypes: null,
     });
     // Race: another request may have created it.
     if (createErr && !/already exists|duplicate/i.test(createErr.message)) {
