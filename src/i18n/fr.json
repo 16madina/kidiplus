@@ -801,7 +801,8 @@
       "trimUnsupported": "Impossible de couper ici. Choisis une vidéo de 1 min max dans ta galerie.",
       "durationFail": "Impossible de lire la durée de la vidéo.",
       "aspectOriginal": "Original",
-      "aspectFree": "Libre"
+      "aspectFree": "Libre",
+      "sound": "Son"
     },
     "sellersOnly": "Réservé aux vendeurs. Active ton espace vendeur pour publier.",
     "needVideo": "Choisis une vidéo.",
@@ -842,7 +843,24 @@
       "carousel": "Carrousel"
     },
     "previewHint": "Aperçu 9:16 — rendu identique à la Vitrine",
-    "optimizing": "Optimisation du média (9:16)…"
+    "optimizing": "Optimisation du média (9:16)…",
+    "music": {
+      "title": "Ajouter une musique",
+      "add": "Ajouter une musique",
+      "selected": "Musique ajoutée",
+      "library": "Bibliothèque KiDi+",
+      "import": "Importer depuis mon téléphone",
+      "myPhone": "Mon téléphone",
+      "remove": "Retirer la musique",
+      "volume": "Volume musique",
+      "original": "Son d'origine",
+      "startAt": "Départ de la musique",
+      "needAudio": "Choisis un fichier audio.",
+      "tooLarge": "Audio trop lourd (max 15 Mo).",
+      "uploadFail": "Import audio impossible.",
+      "rightsHint": "Utilise uniquement de la musique dont tu détiens les droits.",
+      "hint": "La musique est jouée avec ta publication dans la Vitrine."
+    }
   },
   "dm": {
     "title": "Message",

@@ -27,6 +27,7 @@ import {
   isVideoFile,
 } from "@/lib/publish-media-edit";
 import { PublishEditor } from "@/components/vitrine/publish-editor";
+import type { VitrineMusic } from "@/lib/vitrine-music";
 
 const GOLD = "#E8B93B";
 const MODES = ["story", "photo", "video"] as const;
@@ -379,7 +380,7 @@ export function PublishCameraScreen({
     }
   };
 
-  const publish = async (uploadFile: File) => {
+  const publish = async (uploadFile: File, music?: VitrineMusic | null) => {
     if (!uploadFile || busy) return;
     setBusy(true);
     haptic.medium();
@@ -390,7 +391,7 @@ export function PublishCameraScreen({
         return;
       }
       if (mode === "story") {
-        const story = await createVitrineStory(up.url);
+        const story = await createVitrineStory(up.url, music);
         if (!story) {
           toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
           return;
@@ -405,6 +406,7 @@ export function PublishCameraScreen({
           mediaUrls: [up.url],
           mediaType,
           caption: mode === "photo" || mode === "video" ? caption : undefined,
+          music,
         });
         if (!post) {
           toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
@@ -632,8 +634,8 @@ export function PublishCameraScreen({
                 setCaption("");
                 setPhase("camera");
               }}
-              onConfirm={(edited) => {
-                void publish(edited);
+              onConfirm={(edited, music) => {
+                void publish(edited, music);
               }}
             />
           ) : null}
