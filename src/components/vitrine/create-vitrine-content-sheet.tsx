@@ -390,7 +390,10 @@ export function CreateVitrineContentSheet({
           style={{ background: GOLD }}
         >
           {busy ? <Loader2 size={18} className="animate-spin" /> : null}
-          {t("vitrine.publish", { defaultValue: "Publier" })}
+          {busy && progress > 0 && progress < 1
+            ? `${Math.round(progress * 100)}%`
+            : t("vitrine.publish", { defaultValue: "Publier" })}
+
         </Press>
       </div>
     </PushScreen>
