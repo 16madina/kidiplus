@@ -21,7 +21,15 @@ const ALLOWED_MIME = [
   "video/x-m4v",
   "video/3gpp",
   "video/3gpp2",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/aac",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/ogg",
+  "audio/flac",
 ];
+
 
 function cors(origin: string | null): HeadersInit {
   const h: Record<string, string> = {
