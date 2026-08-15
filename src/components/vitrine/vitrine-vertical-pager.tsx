@@ -334,6 +334,10 @@ function MediaSlide({
       >
         {eager && (
           <img
+            ref={(el) => {
+              // Cached images can finish before React binds onLoad.
+              if (el?.complete && el.naturalWidth > 0) setStatus("ready");
+            }}
             src={url}
             alt=""
             className={mediaClass}
