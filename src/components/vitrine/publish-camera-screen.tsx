@@ -19,6 +19,7 @@ import {
   createVitrineStory,
   isVideoUrl,
   uploadVitrineMediaDetailed,
+  uploadVitrinePoster,
 } from "@/lib/vitrine-db";
 import {
   MAX_PUBLISH_VIDEO_SEC,
@@ -383,15 +384,20 @@ export function PublishCameraScreen({
   const publish = async (uploadFile: File, music?: VitrineMusic | null) => {
     if (!uploadFile || busy) return;
     setBusy(true);
+    setProgress(0);
     haptic.medium();
     try {
-      const up = await uploadVitrineMediaDetailed(uploadFile);
+      const isVid = mode === "video" || isVideoFile(uploadFile);
+      const [up, posterUrl] = await Promise.all([
+        uploadVitrineMediaDetailed(uploadFile, (f) => setProgress(f)),
+        isVid ? uploadVitrinePoster(uploadFile) : Promise.resolve(null),
+      ]);
       if (!up.ok) {
         toast.error(uploadErrorMessage(up.error));
         return;
       }
       if (mode === "story") {
-        const story = await createVitrineStory(up.url, music);
+        const story = await createVitrineStory(up.url, music, posterUrl);
         if (!story) {
           toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
           return;
@@ -407,6 +413,7 @@ export function PublishCameraScreen({
           mediaType,
           caption: mode === "photo" || mode === "video" ? caption : undefined,
           music,
+          posterUrl,
         });
         if (!post) {
           toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));

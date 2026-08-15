@@ -638,6 +638,21 @@ function putWithProgress(
   });
 }
 
+/**
+ * Génère et envoie la vignette d'une vidéo. Renvoie null si impossible
+ * (la publication continue quand même).
+ */
+export async function uploadVitrinePoster(videoFile: File): Promise<string | null> {
+  try {
+    const { generateVideoPoster } = await import("@/lib/media-optimize");
+    const poster = await generateVideoPoster(videoFile);
+    if (!poster) return null;
+    return await uploadVitrineMedia(poster);
+  } catch {
+    return null;
+  }
+}
+
 /** Upload an image/video into the public vitrine-media bucket. */
 export async function uploadVitrineMedia(
   file: File,
