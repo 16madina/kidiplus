@@ -57,7 +57,12 @@ const RPCS = [
   'admin_list_users', 'admin_list_reports', 'admin_resolve_report', 'admin_list_lives',
 ];
 
-const BUCKETS = ['avatars', 'shop', 'vitrine', 'payout', 'live-replays'];
+const BUCKETS = [
+  'avatars', 'live-covers', 'live-products', 'live-replays',
+  'shop-products', 'vitrine-media', 'payout-proofs',
+  'demo-videos', 'demo-covers',
+];
+
 
 const results = { tables: [], rpcs: [], buckets: [], auth: null, cron: null, errors: [] };
 
