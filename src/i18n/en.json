@@ -1025,7 +1025,18 @@
       "confirmed": "Payment confirmed 🎉"
     },
     "autoPaid": "Paid automatically with your balance ✅",
-    "loadingCardForm": "Loading card form…"
+    "loadingCardForm": "Loading card form…",
+    "paypal": {
+      "step1": "Preparing secure payment",
+      "step1Hint": "Creating your PayPal order…",
+      "step2": "Opening PayPal",
+      "step2Hint": "You're being redirected to PayPal's secure page.",
+      "step2HintTab": "PayPal can't be displayed inside the preview, so it opens in a new tab.",
+      "step3": "Confirming payment",
+      "step3Hint": "Finish the payment on PayPal, then come back here — we confirm automatically.",
+      "reopen": "Reopen the PayPal page",
+      "externalNote": "PayPal opens outside the preview (new window)."
+    }
   },
   "orders": {
     "empty": "No orders yet.",
