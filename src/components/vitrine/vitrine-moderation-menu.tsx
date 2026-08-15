@@ -97,7 +97,30 @@ export function VitrineModerationMenu({
     }
   };
 
+  const onDelete = async () => {
+    if (deleting || !onDeleted) return;
+    setDeleting(true);
+    haptic.medium();
+    const { deleteVitrinePost } = await import("@/lib/vitrine-db");
+    const ok =
+      target.contentKind === "post"
+        ? await deleteVitrinePost(target.contentId)
+        : false;
+    setDeleting(false);
+    if (ok) {
+      setOpen(false);
+      haptic.success();
+      toast.success(
+        t("vitrine.delete.done", { defaultValue: "Publication supprimée" }),
+      );
+      onDeleted();
+    } else {
+      toast.error(t("vitrine.delete.failed", { defaultValue: "Suppression impossible" }));
+    }
+  };
+
   const note = `Vitrine ${target.contentKind}: ${target.contentId}`;
+
 
   return (
     <>
