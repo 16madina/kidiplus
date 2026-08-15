@@ -84,7 +84,7 @@ export function CreateVitrineContentSheet({
   const isImageFile = (f: File) =>
     f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name);
 
-  const onPick = (list: FileList | null) => {
+  const onPick = async (list: FileList | null) => {
     if (!list?.length) return;
     const next: File[] = [];
     for (let i = 0; i < list.length; i++) {
@@ -108,6 +108,22 @@ export function CreateVitrineContentSheet({
       if (next.length >= 10) break;
     }
     if (!next.length) return;
+
+    // Recadrage 9:16 + compression avant upload (rendu et poids identiques
+    // sur iOS et Android).
+    setOptimizing(true);
+    let optimized: File[] = next;
+    try {
+      optimized = [];
+      for (const f of next) {
+        optimized.push(await optimizeMediaFor916(f));
+      }
+    } catch {
+      optimized = next;
+    } finally {
+      setOptimizing(false);
+    }
+
     previews.forEach((u) => {
       try {
         URL.revokeObjectURL(u);
@@ -115,7 +131,7 @@ export function CreateVitrineContentSheet({
         /* ignore */
       }
     });
-    const merged = kind === "carousel" ? [...files, ...next].slice(0, 10) : next;
+    const merged = kind === "carousel" ? [...files, ...optimized].slice(0, 10) : optimized;
     setFiles(merged);
     setPreviews(merged.map((f) => URL.createObjectURL(f)));
   };
