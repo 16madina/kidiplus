@@ -902,7 +902,17 @@ export function PublishEditor({
           {t("vitrine.publish", { defaultValue: "Publier" })}
         </Press>
       </div>
+
+      {music?.url && <audio ref={musicAudioRef} src={music.url} loop preload="auto" />}
+
+      <MusicPickerSheet
+        open={musicPickerOpen}
+        current={music}
+        onClose={() => setMusicPickerOpen(false)}
+        onPick={(m) => setMusic(m)}
+      />
     </div>
+
   );
 }
 
