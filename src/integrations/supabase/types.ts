@@ -2257,6 +2257,12 @@ export type Database = {
           live_id: string | null
           media_type: string
           media_urls: Json
+          music_artist: string | null
+          music_start_sec: number
+          music_title: string | null
+          music_url: string | null
+          music_volume: number
+          original_volume: number
           product_id: string | null
           updated_at: string
           user_id: string
@@ -2271,6 +2277,12 @@ export type Database = {
           live_id?: string | null
           media_type?: string
           media_urls?: Json
+          music_artist?: string | null
+          music_start_sec?: number
+          music_title?: string | null
+          music_url?: string | null
+          music_volume?: number
+          original_volume?: number
           product_id?: string | null
           updated_at?: string
           user_id: string
@@ -2285,6 +2297,12 @@ export type Database = {
           live_id?: string | null
           media_type?: string
           media_urls?: Json
+          music_artist?: string | null
+          music_start_sec?: number
+          music_title?: string | null
+          music_url?: string | null
+          music_volume?: number
+          original_volume?: number
           product_id?: string | null
           updated_at?: string
           user_id?: string
@@ -2312,6 +2330,12 @@ export type Database = {
           expires_at: string
           id: string
           media_url: string
+          music_artist: string | null
+          music_start_sec: number
+          music_title: string | null
+          music_url: string | null
+          music_volume: number
+          original_volume: number
           user_id: string
         }
         Insert: {
@@ -2319,6 +2343,12 @@ export type Database = {
           expires_at?: string
           id?: string
           media_url: string
+          music_artist?: string | null
+          music_start_sec?: number
+          music_title?: string | null
+          music_url?: string | null
+          music_volume?: number
+          original_volume?: number
           user_id: string
         }
         Update: {
@@ -2326,6 +2356,12 @@ export type Database = {
           expires_at?: string
           id?: string
           media_url?: string
+          music_artist?: string | null
+          music_start_sec?: number
+          music_title?: string | null
+          music_url?: string | null
+          music_volume?: number
+          original_volume?: number
           user_id?: string
         }
         Relationships: [

@@ -4,6 +4,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { parseSupabaseStorageUrl } from "@/lib/storage-path";
+import {
+  MUSIC_COLUMNS,
+  musicFromRow,
+  musicToRow,
+  type VitrineMusic,
+} from "@/lib/vitrine-music";
 import vitrine1 from "@/assets/vitrine/vitrine-1.jpg";
 import vitrine2 from "@/assets/vitrine/vitrine-2.jpg";
 import vitrine2b from "@/assets/vitrine/vitrine-2b.jpg";
@@ -36,6 +42,8 @@ export type VitrinePost = {
   } | null;
   /** Resolved live status for CTA when live_id is set. */
   live_status?: "live" | "scheduled" | "ended" | null;
+  /** Musique ajoutée à la publication (bibliothèque ou import). */
+  music?: VitrineMusic | null;
 };
 
 export type VitrineStory = {
@@ -45,6 +53,7 @@ export type VitrineStory = {
   expires_at: string;
   created_at: string;
   unread?: boolean;
+  music?: VitrineMusic | null;
   seller?: {
     display_name: string | null;
     handle: string | null;
@@ -250,7 +259,7 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
       .select(
         `
         id, user_id, media_type, media_urls, caption, product_id, live_id,
-        like_count, comment_count, created_at, active,
+        like_count, comment_count, created_at, active, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
         `,
       )
@@ -303,6 +312,7 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
           comment_count: Number(r.comment_count ?? 0),
           created_at: r.created_at,
           liked_by_me: likedIds.has(r.id),
+          music: musicFromRow(r),
           seller: r.seller ?? null,
           live_status: r.live_id ? (liveStatus.get(r.live_id) ?? null) : null,
         } satisfies VitrinePost;
@@ -324,7 +334,7 @@ export async function fetchVitrinePostById(postId: string): Promise<VitrinePost 
       .select(
         `
         id, user_id, media_type, media_urls, caption, product_id, live_id,
-        like_count, comment_count, created_at, active,
+        like_count, comment_count, created_at, active, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
         `,
       )
@@ -384,7 +394,7 @@ export async function fetchVitrinePostsByUser(
     const { data, error } = await sb
       .from("vitrine_posts")
       .select(
-        "id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, active",
+        `id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, active, ${MUSIC_COLUMNS}`,
       )
       .eq("user_id", userId)
       .eq("active", true)
@@ -434,7 +444,7 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       .from("vitrine_stories")
       .select(
         `
-        id, user_id, media_url, expires_at, created_at,
+        id, user_id, media_url, expires_at, created_at, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_stories_user_id_fkey(display_name, handle, avatar_url)
         `,
       )
@@ -566,6 +576,13 @@ function guessVitrineContentType(file: File): string {
     webm: "video/webm",
     "3gp": "video/3gpp",
     "3gpp": "video/3gpp",
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    oga: "audio/ogg",
+    flac: "audio/flac",
   };
   return map[ext] || "application/octet-stream";
 }
@@ -639,6 +656,8 @@ export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUpl
     else if (contentType === "image/png") ext = "png";
     else if (contentType === "image/webp") ext = "webp";
     else if (contentType.startsWith("image/")) ext = "jpg";
+    else if (contentType === "audio/mpeg") ext = "mp3";
+    else if (contentType.startsWith("audio/")) ext = "m4a";
     else ext = "bin";
   }
 
@@ -679,7 +698,10 @@ export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUpl
   return { ok: true, url: data.publicUrl };
 }
 
-export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory | null> {
+export async function createVitrineStory(
+  mediaUrl: string,
+  music?: VitrineMusic | null,
+): Promise<VitrineStory | null> {
   const uid = (await sb.auth.getUser()).data.user?.id;
   if (!uid || !mediaUrl) return null;
   try {
@@ -689,8 +711,9 @@ export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory
         user_id: uid,
         media_url: mediaUrl,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        ...musicToRow(music),
       })
-      .select("id, user_id, media_url, expires_at, created_at")
+      .select(`id, user_id, media_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
       .maybeSingle();
     if (error) {
       console.warn("[vitrine] create story failed", error.message);
@@ -723,6 +746,7 @@ export async function createVitrineStory(mediaUrl: string): Promise<VitrineStory
       expires_at: data.expires_at,
       created_at: data.created_at,
       unread: true,
+      music: musicFromRow(data),
       seller,
     };
   } catch (e) {
@@ -737,6 +761,7 @@ export async function createVitrinePost(input: {
   caption?: string;
   productId?: string | null;
   liveId?: string | null;
+  music?: VitrineMusic | null;
 }): Promise<VitrinePost | null> {
   const uid = (await sb.auth.getUser()).data.user?.id;
   // Live announcements may ship with cover URL only, or caption + live_id.
@@ -755,9 +780,10 @@ export async function createVitrinePost(input: {
         product_id: input.productId ?? null,
         live_id: input.liveId ?? null,
         active: true,
+        ...musicToRow(input.music),
       })
       .select(
-        "id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at",
+        `id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
       )
       .maybeSingle();
     if (error) {
@@ -796,6 +822,7 @@ export async function createVitrinePost(input: {
       comment_count: Number(data.comment_count ?? 0),
       created_at: data.created_at,
       liked_by_me: false,
+      music: musicFromRow(data),
       seller,
       live_status: null,
     };
