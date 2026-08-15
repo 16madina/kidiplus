@@ -36,7 +36,8 @@
       "diamond": "Diamant",
       "crown": "Couronne",
       "rocket": "Fusée",
-      "lion": "Lion"
+      "lion": "Lion",
+      "kidi": "Cadeau KD+"
     },
     "err": {
       "insufficient": "Solde insuffisant — recharge ton portefeuille",
@@ -46,6 +47,11 @@
       "sanctioned": "Compte suspendu",
       "auth": "Connecte-toi pour envoyer un cadeau",
       "unknown": "Envoi impossible"
+    },
+    "firstSale": {
+      "title": "Félicitations, première vente !",
+      "subtitle": "KiDi+ t'offre la commission de 10%",
+      "amount": "{{amount}} ajoutés à tes gains"
     }
   },
   "shop": {
