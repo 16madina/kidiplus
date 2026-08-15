@@ -104,40 +104,34 @@ export function CategoryTiles({
               className="relative h-full w-full"
             >
               {isPourToi ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, oklch(0.25 0.07 265) 0%, oklch(0.15 0.05 265) 100%)",
-                    }}
-                  />
-                  <div
-                    className="absolute grid place-items-center overflow-hidden rounded-full"
-                    style={{
-                      left: "50%",
-                      top: "40%",
-                      transform: "translate(-50%, -50%)",
-                      height: 44,
-                      width: 44,
-                      backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
-                      border: "1.5px solid var(--primary)",
-                    }}
-                  >
-                    {avatar ? (
-                      <img
-                        src={avatar}
-                        alt=""
-                        draggable={false}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
+                avatar ? (
+                  <TileImage src={avatar} />
+                ) : (
+                  <>
+                    <span
+                      aria-hidden
+                      className="absolute inset-0"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, oklch(0.25 0.07 265) 0%, oklch(0.15 0.05 265) 100%)",
+                      }}
+                    />
+                    <div
+                      className="absolute grid place-items-center overflow-hidden rounded-full"
+                      style={{
+                        left: "50%",
+                        top: "40%",
+                        transform: "translate(-50%, -50%)",
+                        height: 44,
+                        width: 44,
+                        backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
+                        border: "1.5px solid var(--primary)",
+                      }}
+                    >
                       <User size={22} strokeWidth={2} color="var(--primary)" />
-                    )}
-                  </div>
-                </>
-
+                    </div>
+                  </>
+                )
               ) : meta.image ? (
                 <TileImage src={meta.image} />
               ) : null}
