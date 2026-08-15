@@ -170,11 +170,13 @@ export function VitrineStoryViewer({
                   key={story.id}
                   ref={videoRef}
                   src={story.media_url}
+                  poster={story.poster_url ?? undefined}
                   className="absolute inset-0 h-full w-full object-cover"
                   playsInline
                   autoPlay
                   muted={muted}
-                  preload="auto"
+                  preload="metadata"
+
                   onLoadedData={() => setMediaStatus("ready")}
                   onCanPlay={() => setMediaStatus("ready")}
                   onError={() => setMediaStatus("error")}
