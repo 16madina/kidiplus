@@ -640,7 +640,12 @@ export async function uploadVitrineMedia(
 }
 
 
-async function requestSignedUpload(file: File, contentType: string, ext: string) {
+async function requestSignedUpload(
+  file: File,
+  contentType: string,
+  ext: string,
+  onProgress?: UploadProgress,
+) {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token;
   if (!token) return null;
@@ -669,9 +674,17 @@ async function requestSignedUpload(file: File, contentType: string, ext: string)
     path?: string;
     token?: string;
     publicUrl?: string;
+    signedUrl?: string;
   };
   if (!j.path || !j.token || !j.publicUrl) {
     return { error: "signed_url_failed" } as const;
+  }
+
+  // Chemin rapide avec progression réelle.
+  if (j.signedUrl) {
+    const put = await putWithProgress(j.signedUrl, file, contentType, onProgress);
+    if (put.ok) return { url: j.publicUrl } as const;
+    console.warn("[vitrine] direct PUT failed, fallback SDK", put.error);
   }
 
   const { error: upErr } = await supabase.storage
@@ -681,11 +694,16 @@ async function requestSignedUpload(file: File, contentType: string, ext: string)
     console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
     return { error: upErr.message } as const;
   }
+  onProgress?.(1);
   return { url: j.publicUrl } as const;
 }
 
 /** Same as uploadVitrineMedia but returns a readable error for toasts. */
-export async function uploadVitrineMediaDetailed(file: File): Promise<VitrineUploadResult> {
+export async function uploadVitrineMediaDetailed(
+  file: File,
+  onProgress?: UploadProgress,
+): Promise<VitrineUploadResult> {
+
   const uid = (await sb.auth.getUser()).data.user?.id;
   if (!uid) return { ok: false, error: "not_authenticated" };
   if (file.size <= 0) return { ok: false, error: "empty_file" };
