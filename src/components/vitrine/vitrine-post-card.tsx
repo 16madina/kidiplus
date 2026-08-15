@@ -189,6 +189,8 @@ export function VitrinePostCard({
     <div className="relative h-full w-full bg-black">
       <MediaCarousel
         urls={post.media_urls}
+        poster={post.poster_url ?? null}
+
         className="absolute inset-0 h-full w-full object-cover"
         forceVideo={post.media_type === "video"}
         active={active}
