@@ -1,6 +1,5 @@
-// Shared "sound on/off" preference for the Vitrine feed.
-// Videos must start muted (browser autoplay policy), but once the user
-// taps the speaker, every following video keeps the sound on.
+// Vitrine sound: TikTok-style. No in-feed mute button — volume is the phone's.
+// Browsers may start muted; the first swipe/tap unlocks sound for the session.
 
 import { useEffect, useState } from "react";
 
@@ -27,19 +26,39 @@ export function setVitrineSoundOn(on: boolean) {
   } catch {
     /* ignore */
   }
-  window.dispatchEvent(new CustomEvent(EVT));
+  try {
+    window.dispatchEvent(new CustomEvent(EVT));
+  } catch {
+    /* ignore */
+  }
 }
 
-/** Returns [muted, toggle]. */
-export function useVitrineSound(): [boolean, () => void] {
+/** First swipe / tap on the feed — enable sound like TikTok. */
+export function unlockVitrineSound() {
+  if (soundOn) return;
+  setVitrineSoundOn(true);
+}
+
+export function tryUnlockVitrineSoundFromGesture() {
+  try {
+    const ua = navigator.userActivation;
+    if (ua?.hasBeenActive || ua?.isActive) unlockVitrineSound();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Returns [muted]. */
+export function useVitrineSound(): [boolean] {
   const [on, setOn] = useState(false);
 
   useEffect(() => {
+    tryUnlockVitrineSoundFromGesture();
     setOn(getVitrineSoundOn());
     const h = () => setOn(getVitrineSoundOn());
     window.addEventListener(EVT, h);
     return () => window.removeEventListener(EVT, h);
   }, []);
 
-  return [!on, () => setVitrineSoundOn(!getVitrineSoundOn())];
+  return [!on];
 }

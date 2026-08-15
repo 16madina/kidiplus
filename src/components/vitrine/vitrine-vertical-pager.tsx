@@ -1,11 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Loader2, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Loader2, Pause, Play } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
-import { useVitrineSound } from "@/lib/vitrine-sound";
+import { getVitrineSoundOn, unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,7 +15,6 @@ import {
   resumeVitrinePlayback,
 } from "@/lib/vitrine-playback";
 import { TabVisibilityContext } from "@/components/app-shell";
-import { Press } from "@/components/press";
 
 export const VITRINE_TOGGLE_PAUSE_EVENT = "kidi:vitrine-toggle-pause";
 
@@ -60,6 +59,11 @@ export function VitrineVerticalPager({
         onTap={(e) => {
           const t = e.target as HTMLElement | null;
           if (t?.closest?.("button, a, textarea, input, [data-no-pause]")) return;
+          // First tap only unlocks sound (TikTok). Later taps pause / resume.
+          if (!getVitrineSoundOn()) {
+            unlockVitrineSound();
+            return;
+          }
           try {
             window.dispatchEvent(new CustomEvent(VITRINE_TOGGLE_PAUSE_EVENT));
           } catch {
@@ -78,6 +82,7 @@ export function VitrineVerticalPager({
           }
         }}
         onDragEnd={(_, info) => {
+          unlockVitrineSound();
           const absY = Math.abs(info.offset.y);
           const absX = Math.abs(info.offset.x);
           const h = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -331,7 +336,7 @@ export function MediaCarousel({
   const hintTimer = useRef<number | null>(null);
   const tabVisible = useContext(TabVisibilityContext);
   const appActive = useAppActive();
-  const [muted, toggleMuted] = useVitrineSound();
+  const [muted] = useVitrineSound();
   const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
   const playing = active && tabVisible && appActive && !userPaused;
 
@@ -445,22 +450,6 @@ export function MediaCarousel({
             <Play size={26} fill="white" />
           </span>
         </div>
-      )}
-      {hasVideo && (
-        <Press
-          data-no-pause
-          aria-label={muted ? "Unmute" : "Mute"}
-          onClick={(e) => {
-            e.stopPropagation();
-            haptic.light();
-            toggleMuted();
-          }}
-          className="pointer-events-auto absolute left-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] z-[35] h-10 w-10 rounded-full bg-black/45 text-white"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-        </Press>
       )}
     </div>
   );
