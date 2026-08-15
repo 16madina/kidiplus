@@ -416,7 +416,7 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
         return {
           id: r.id,
           user_id: r.user_id,
-          media_url: r.media_url,
+          media_url: rewriteStorageHost(r.media_url),
           expires_at: r.expires_at,
           created_at: r.created_at,
           unread: true,
