@@ -773,6 +773,15 @@ export function PaymentSheet({
                         />
                       </button>
                     )}
+                    {paypalSupported && !isNative() && isFramed() && (
+                      <p className="flex items-center gap-1.5 px-1 pt-1 text-[11px] text-muted-foreground">
+                        <ExternalLink size={12} />
+                        {t("pay.paypal.externalNote", {
+                          defaultValue: "PayPal s'ouvre en dehors de l'aperçu (nouvelle fenêtre).",
+                        })}
+                      </p>
+                    )}
+
 
                   </div>
                 </div>
