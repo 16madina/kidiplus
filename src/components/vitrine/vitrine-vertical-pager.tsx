@@ -7,7 +7,7 @@ import { isVideoUrl } from "@/lib/vitrine-db";
 import { reportBrokenMedia } from "@/lib/vitrine-broken-media";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
 import type { VitrineMusic } from "@/lib/vitrine-music";
-import { getVitrineSoundOn, unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
+import { unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
 import {

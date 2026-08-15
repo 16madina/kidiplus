@@ -53,6 +53,12 @@ export function VitrineScreen() {
   const [storiesOpen, setStoriesOpen] = useState(true);
 
   const [posts, setPosts] = useState<VitrinePost[]>([]);
+  // Incrémenté quand un média du feed échoue à charger (404) → on le retire.
+  const [brokenTick, setBrokenTick] = useState(0);
+  useEffect(
+    () => subscribeBrokenMedia(() => setBrokenTick((n) => n + 1)),
+    [],
+  );
   const [stories, setStories] = useState<VitrineStory[]>([]);
   const [lives, setLives] = useState<LiveStream[]>([]);
   const [soon, setSoon] = useState<ScheduledLiveWithSeller[]>([]);
@@ -198,16 +204,21 @@ export function VitrineScreen() {
   const postsVisible = useMemo(
     () =>
       posts.filter(
-        (p) => !p.user_id || p.user_id.startsWith("demo-") || !blockedIds.has(p.user_id),
+        (p) =>
+          (!p.user_id || p.user_id.startsWith("demo-") || !blockedIds.has(p.user_id)) &&
+          !isPostMediaBroken(p.media_urls),
       ),
-    [posts, blockedIds],
+    // brokenTick force le recalcul quand un média 404 est détecté.
+    [posts, blockedIds, brokenTick],
   );
   const storiesVisible = useMemo(
     () =>
       stories.filter(
-        (s) => !s.user_id || s.user_id.startsWith("demo-") || !blockedIds.has(s.user_id),
+        (s) =>
+          (!s.user_id || s.user_id.startsWith("demo-") || !blockedIds.has(s.user_id)) &&
+          !isBrokenMedia(s.media_url),
       ),
-    [stories, blockedIds],
+    [stories, blockedIds, brokenTick],
   );
   const soonVisible = useMemo(
     () => soon.filter((s) => !s.seller_id || !blockedIds.has(s.seller_id)),
