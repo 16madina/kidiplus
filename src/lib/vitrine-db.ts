@@ -724,7 +724,7 @@ export async function uploadVitrineMediaDetailed(
 
   // Preferred path: server-minted signed URL (works even if storage RLS
   // migrations were never applied on Lovable).
-  const signed = await requestSignedUpload(file, contentType, ext);
+  const signed = await requestSignedUpload(file, contentType, ext, onProgress);
   if (signed && "url" in signed && signed.url) {
     return { ok: true, url: signed.url };
   }
