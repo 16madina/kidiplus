@@ -1025,7 +1025,18 @@
       "confirmed": "Paiement confirmé 🎉"
     },
     "autoPaid": "Payé automatiquement avec ton solde ✅",
-    "loadingCardForm": "Chargement du formulaire carte…"
+    "loadingCardForm": "Chargement du formulaire carte…",
+    "paypal": {
+      "step1": "Préparation du paiement sécurisé",
+      "step1Hint": "Création de la commande PayPal…",
+      "step2": "Ouverture de PayPal",
+      "step2Hint": "Tu es redirigé(e) vers la page sécurisée PayPal.",
+      "step2HintTab": "PayPal ne peut pas s'afficher dans l'aperçu : la page s'ouvre dans un nouvel onglet.",
+      "step3": "Confirmation du paiement",
+      "step3Hint": "Termine le paiement sur PayPal, puis reviens ici — on confirme tout seul.",
+      "reopen": "Rouvrir la page PayPal",
+      "externalNote": "PayPal s'ouvre en dehors de l'aperçu (nouvelle fenêtre)."
+    }
   },
   "orders": {
     "empty": "Aucune commande pour le moment.",
