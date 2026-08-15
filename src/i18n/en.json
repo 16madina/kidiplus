@@ -794,7 +794,8 @@
       "trimUnsupported": "Can’t trim on this device. Pick a video of 1 min max from your gallery.",
       "durationFail": "Couldn’t read the video duration.",
       "aspectOriginal": "Original",
-      "aspectFree": "Free"
+      "aspectFree": "Free",
+      "sound": "Sound"
     },
     "sellersOnly": "Sellers only. Activate your seller space to publish.",
     "needVideo": "Pick a video.",
@@ -835,7 +836,24 @@
       "carousel": "Carousel"
     },
     "previewHint": "9:16 preview — exactly how it appears in Vitrine",
-    "optimizing": "Optimizing media (9:16)…"
+    "optimizing": "Optimizing media (9:16)…",
+    "music": {
+      "title": "Add music",
+      "add": "Add music",
+      "selected": "Music added",
+      "library": "KiDi+ library",
+      "import": "Import from my phone",
+      "myPhone": "My phone",
+      "remove": "Remove music",
+      "volume": "Music volume",
+      "original": "Original sound",
+      "startAt": "Music start",
+      "needAudio": "Pick an audio file.",
+      "tooLarge": "Audio too large (max 15 MB).",
+      "uploadFail": "Audio import failed.",
+      "rightsHint": "Only use music you have the rights to.",
+      "hint": "The music plays along with your post in Vitrine."
+    }
   },
   "dm": {
     "title": "Message",

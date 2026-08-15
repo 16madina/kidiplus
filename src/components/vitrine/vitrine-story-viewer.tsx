@@ -13,6 +13,7 @@ import {
   suspendVitrinePlayback,
 } from "@/lib/vitrine-playback";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
+import { MusicTrack } from "@/components/vitrine/vitrine-vertical-pager";
 import { VitrineModerationMenu } from "./vitrine-moderation-menu";
 
 const GOLD = "#E8B93B";
@@ -95,7 +96,9 @@ export function VitrineStoryViewer({
       el.pause();
       return;
     }
-    el.muted = muted;
+    const original = story?.music ? story.music.originalVolume : 1;
+    el.volume = muted ? 0 : original;
+    el.muted = muted || original <= 0.001;
     void el.play().catch(() => {
       el.muted = true;
       setMuted(true);
@@ -195,6 +198,9 @@ export function VitrineStoryViewer({
                 />
               )}
             </Fit916>
+            {story?.music?.url && (
+              <MusicTrack music={story.music} playing={!muted && !menuOpen} />
+            )}
             {mediaStatus === "loading" && (
               <div className="absolute inset-0 grid place-items-center">
                 <Loader2 className="animate-spin text-white/70" size={28} />
