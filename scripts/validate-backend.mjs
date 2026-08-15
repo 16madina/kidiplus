@@ -142,8 +142,10 @@ async function checkAnonReadable() {
 }
 
 const run = async () => {
+  const catalog = await loadApiCatalog();
   results.tables = await Promise.all(TABLES.map(checkTable));
-  results.rpcs = await Promise.all(RPCS.map(checkRpc));
+  results.rpcs = RPCS.map((n) => checkRpc(n, catalog));
+
   results.buckets = await checkBuckets();
   results.auth = await checkAuth();
   results.anon = await checkAnonReadable();
