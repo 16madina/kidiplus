@@ -1,7 +1,7 @@
 // Report / block menu for Vitrine UGC (posts + stories) — Apple/Google guideline 1.2.
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Ban, Flag, Loader2, MoreVertical, X } from "lucide-react";
+import { Ban, Flag, Loader2, MoreVertical, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
