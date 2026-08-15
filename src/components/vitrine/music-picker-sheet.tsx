@@ -11,8 +11,10 @@ import { haptic } from "@/lib/haptics";
 import {
   MUSIC_LIBRARY,
   defaultMusicFor,
+  AUDIO_ACCEPT,
   isAudioFile,
   uploadMusicFile,
+  MAX_MUSIC_BYTES,
   type VitrineMusic,
 } from "@/lib/vitrine-music";
 
@@ -87,14 +89,29 @@ export function MusicPickerSheet({
       toast.error(t("publish.music.needAudio", { defaultValue: "Choisis un fichier audio." }));
       return;
     }
+    if (f.size > MAX_MUSIC_BYTES) {
+      toast.error(t("publish.music.tooLarge", { defaultValue: "Audio trop lourd (max 15 Mo)." }));
+      return;
+    }
     setUploading(true);
     try {
       const res = await uploadMusicFile(f);
       if (!res.ok) {
+        // La fiche musique reste ouverte : on informe seulement.
         toast.error(
           res.error === "file_too_large"
             ? t("publish.music.tooLarge", { defaultValue: "Audio trop lourd (max 15 Mo)." })
-            : t("publish.music.uploadFail", { defaultValue: "Import audio impossible." }),
+            : res.error === "bad_mime"
+              ? t("publish.music.needAudio", {
+                  defaultValue: "Format audio non pris en charge.",
+                })
+              : res.error === "not_authenticated"
+                ? t("publish.music.needAuth", {
+                    defaultValue: "Reconnecte-toi pour importer une musique.",
+                  })
+                : t("publish.music.uploadFail", {
+                    defaultValue: "Import audio impossible. Réessaie.",
+                  }),
         );
         return;
       }
@@ -107,6 +124,11 @@ export function MusicPickerSheet({
         }),
       );
       onClose();
+    } catch (err) {
+      console.error("[music-picker] import crashed", err);
+      toast.error(
+        t("publish.music.uploadFail", { defaultValue: "Import audio impossible. Réessaie." }),
+      );
     } finally {
       setUploading(false);
     }
@@ -157,11 +179,18 @@ export function MusicPickerSheet({
               <input
                 ref={fileRef}
                 type="file"
-                accept="audio/*"
+                accept={AUDIO_ACCEPT}
                 className="hidden"
                 onChange={(e) => {
-                  void onImport(e.target.files);
-                  e.currentTarget.value = "";
+                  const input = e.currentTarget;
+                  const files = input.files;
+                  void onImport(files).finally(() => {
+                    try {
+                      input.value = "";
+                    } catch {
+                      /* ignore */
+                    }
+                  });
                 }}
               />
               <p className="mt-1 text-center text-[11px] text-white/45">

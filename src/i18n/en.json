@@ -857,11 +857,12 @@
       "volume": "Music volume",
       "original": "Original sound",
       "startAt": "Music start",
-      "needAudio": "Pick an audio file.",
-      "tooLarge": "Audio too large (max 15 MB).",
-      "uploadFail": "Audio import failed.",
+      "needAudio": "Unsupported audio format.",
+      "tooLarge": "Audio too large (15 MB max).",
+      "uploadFail": "Could not import audio. Try again.",
       "rightsHint": "Only use music you have the rights to.",
-      "hint": "The music plays along with your post in Vitrine."
+      "hint": "The music plays along with your post in Vitrine.",
+      "needAuth": "Sign in again to import music."
     }
   },
   "dm": {
