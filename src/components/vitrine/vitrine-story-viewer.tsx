@@ -146,39 +146,53 @@ export function VitrineStoryViewer({
           transition={{ duration: 0.2, ease: EASE_IOS }}
           className="fixed inset-0 z-[96] bg-black"
         >
-          <div className="absolute inset-0 bg-black">
-            {video ? (
-              <video
-                key={story.id}
-                ref={videoRef}
-                src={story.media_url}
-                className="h-full w-full object-contain"
-                playsInline
-                autoPlay
-                muted={muted}
-                preload="auto"
-                onLoadedData={() => setMediaStatus("ready")}
-                onCanPlay={() => setMediaStatus("ready")}
-                onError={() => setMediaStatus("error")}
-                onTimeUpdate={() => {
-                  const el = videoRef.current;
-                  if (!el || !el.duration) return;
-                  setProgress(el.currentTime / el.duration);
-                }}
-                onEnded={goNext}
-              />
-            ) : (
+          <div className="absolute inset-0 overflow-hidden bg-black">
+            {!video && (
               <img
-                key={story.id}
                 src={story.media_url}
                 alt=""
-                className="h-full w-full object-contain"
+                aria-hidden
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
                 draggable={false}
                 decoding="async"
-                onLoad={() => setMediaStatus("ready")}
-                onError={() => setMediaStatus("error")}
               />
             )}
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
+                {video ? (
+                  <video
+                    key={story.id}
+                    ref={videoRef}
+                    src={story.media_url}
+                    className="h-full w-full object-cover"
+                    playsInline
+                    autoPlay
+                    muted={muted}
+                    preload="auto"
+                    onLoadedData={() => setMediaStatus("ready")}
+                    onCanPlay={() => setMediaStatus("ready")}
+                    onError={() => setMediaStatus("error")}
+                    onTimeUpdate={() => {
+                      const el = videoRef.current;
+                      if (!el || !el.duration) return;
+                      setProgress(el.currentTime / el.duration);
+                    }}
+                    onEnded={goNext}
+                  />
+                ) : (
+                  <img
+                    key={story.id}
+                    src={story.media_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                    decoding="async"
+                    onLoad={() => setMediaStatus("ready")}
+                    onError={() => setMediaStatus("error")}
+                  />
+                )}
+              </div>
+            </div>
             {mediaStatus === "loading" && (
               <div className="absolute inset-0 grid place-items-center">
                 <Loader2 className="animate-spin text-white/70" size={28} />

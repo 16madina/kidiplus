@@ -833,7 +833,9 @@
       "video": "Nouvelle vidéo",
       "photo": "Nouvelle photo",
       "carousel": "Carrousel"
-    }
+    },
+    "previewHint": "Aperçu 9:16 — rendu identique à la Vitrine",
+    "optimizing": "Optimisation du média (9:16)…"
   },
   "dm": {
     "title": "Message",

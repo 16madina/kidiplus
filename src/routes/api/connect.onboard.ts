@@ -87,7 +87,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
                 || lower.includes("does not have access to account");
               if (!isMissing) throw error;
               console.info("[connect/onboard] resetting account from the other Stripe mode", {
-                selectedGateway: cfg.env,
+                selectedGateway: connect.hint,
               });
               accountId = "";
               await admin

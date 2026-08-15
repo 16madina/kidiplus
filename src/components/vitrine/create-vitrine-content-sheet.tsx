@@ -3,7 +3,9 @@ import { ImagePlus, Loader2, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
+import { MediaPreview916 } from "@/components/vitrine/media-preview-916";
 import { Press } from "@/components/press";
+import { optimizeMediaFor916 } from "@/lib/media-optimize";
 import { haptic } from "@/lib/haptics";
 import type { PublishKind } from "@/lib/publish";
 import {
@@ -53,6 +55,7 @@ export function CreateVitrineContentSheet({
   const [previews, setPreviews] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +86,7 @@ export function CreateVitrineContentSheet({
   const isImageFile = (f: File) =>
     f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name);
 
-  const onPick = (list: FileList | null) => {
+  const onPick = async (list: FileList | null) => {
     if (!list?.length) return;
     const next: File[] = [];
     for (let i = 0; i < list.length; i++) {
@@ -107,6 +110,22 @@ export function CreateVitrineContentSheet({
       if (next.length >= 10) break;
     }
     if (!next.length) return;
+
+    // Recadrage 9:16 + compression avant upload (rendu et poids identiques
+    // sur iOS et Android).
+    setOptimizing(true);
+    let optimized: File[] = next;
+    try {
+      optimized = [];
+      for (const f of next) {
+        optimized.push(await optimizeMediaFor916(f));
+      }
+    } catch {
+      optimized = next;
+    } finally {
+      setOptimizing(false);
+    }
+
     previews.forEach((u) => {
       try {
         URL.revokeObjectURL(u);
@@ -114,7 +133,7 @@ export function CreateVitrineContentSheet({
         /* ignore */
       }
     });
-    const merged = kind === "carousel" ? [...files, ...next].slice(0, 10) : next;
+    const merged = kind === "carousel" ? [...files, ...optimized].slice(0, 10) : optimized;
     setFiles(merged);
     setPreviews(merged.map((f) => URL.createObjectURL(f)));
   };
@@ -218,7 +237,8 @@ export function CreateVitrineContentSheet({
   };
 
   const multi = kind === "carousel";
-  const canPublish = files.length > 0 && (kind !== "carousel" || files.length >= 2);
+  const canPublish =
+    files.length > 0 && !optimizing && (kind !== "carousel" || files.length >= 2);
 
   return (
     <PushScreen
@@ -244,7 +264,7 @@ export function CreateVitrineContentSheet({
           multiple={multi}
           className="hidden"
           onChange={(e) => {
-            onPick(e.target.files);
+            void onPick(e.target.files);
             e.target.value = "";
           }}
         />
@@ -279,25 +299,16 @@ export function CreateVitrineContentSheet({
             )}
           </div>
         ) : previews[0] ? (
-          <div className="relative aspect-[9/14] w-full overflow-hidden rounded-2xl border border-border bg-black">
-            {kind === "video" || (files[0] && isVideoFile(files[0])) ? (
-              <video
-                key={previews[0]}
-                src={previews[0]}
-                className="absolute inset-0 h-full w-full object-cover"
-                playsInline
-                controls
-                autoPlay
-                muted
-                preload="auto"
-              />
-            ) : (
-              <img
-                src={previews[0]}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
+          <div className="relative">
+            <p className="mb-2 text-center text-[12px] font-medium text-muted-foreground">
+              {t("publish.previewHint", {
+                defaultValue: "Aperçu 9:16 — rendu identique à la Vitrine",
+              })}
+            </p>
+            <MediaPreview916
+              src={previews[0]}
+              isVideo={kind === "video" || (!!files[0] && isVideoFile(files[0]!))}
+            />
             <Press
               onClick={() => inputRef.current?.click()}
               className="absolute bottom-3 right-3 z-10 !min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B]"
@@ -309,7 +320,7 @@ export function CreateVitrineContentSheet({
         ) : (
           <Press
             onClick={() => inputRef.current?.click()}
-            className="relative flex aspect-[9/14] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
+            className="relative flex aspect-[9/16] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
           >
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <div className="flex gap-3">
@@ -330,6 +341,13 @@ export function CreateVitrineContentSheet({
               )}
             </div>
           </Press>
+        )}
+
+        {optimizing && (
+          <p className="mt-2 flex items-center justify-center gap-2 text-center text-[12px] text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            {t("publish.optimizing", { defaultValue: "Optimisation du média (9:16)…" })}
+          </p>
         )}
 
         {kind === "carousel" && files.length === 1 && (
