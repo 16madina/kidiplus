@@ -48,8 +48,8 @@ export function tryUnlockVitrineSoundFromGesture() {
   }
 }
 
-/** Returns [muted]. */
-export function useVitrineSound(): [boolean] {
+/** Returns [muted, toggleMuted]. */
+export function useVitrineSound(): [boolean, () => void] {
   const [on, setOn] = useState(false);
 
   useEffect(() => {
@@ -60,5 +60,7 @@ export function useVitrineSound(): [boolean] {
     return () => window.removeEventListener(EVT, h);
   }, []);
 
-  return [!on];
+  const toggle = () => setVitrineSoundOn(!getVitrineSoundOn());
+
+  return [!on, toggle];
 }
