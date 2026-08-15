@@ -3,8 +3,11 @@ import {
   Check,
   Crop,
   Loader2,
+  Music2,
   Scissors,
   Type,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,6 +27,8 @@ import {
   renderEditedImage,
   trimVideoFile,
 } from "@/lib/publish-media-edit";
+import { MusicPickerSheet } from "@/components/vitrine/music-picker-sheet";
+import type { VitrineMusic } from "@/lib/vitrine-music";
 
 const GOLD = "#E8B93B";
 const TEXT_COLORS = ["#FFFFFF", "#E8B93B", "#FF4D6A", "#4D9FFF", "#111111"];
@@ -42,7 +47,7 @@ function editorFrameStyle(preset: AspectPreset): CSSProperties {
   };
 }
 
-type Tool = "none" | "trim" | "crop" | "text";
+type Tool = "none" | "trim" | "crop" | "text" | "sound";
 
 export function PublishEditor({
   file,
@@ -60,7 +65,7 @@ export function PublishEditor({
   caption: string;
   onCaptionChange: (v: string) => void;
   onBack: () => void;
-  onConfirm: (file: File) => void;
+  onConfirm: (file: File, music: VitrineMusic | null) => void;
   busy?: boolean;
 }) {
   const { t } = useTranslation();
@@ -78,6 +83,10 @@ export function PublishEditor({
   const [activeText, setActiveText] = useState(0);
   const [applying, setApplying] = useState(false);
   const [trimProgress, setTrimProgress] = useState(0);
+  const [music, setMusic] = useState<VitrineMusic | null>(null);
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
+  const musicAudioRef = useRef<HTMLAudioElement>(null);
+  const originalVolume = music ? music.originalVolume : 1;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -123,7 +132,8 @@ export function PublishEditor({
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo || applying) return;
-    el.muted = true;
+    el.volume = originalVolume;
+    el.muted = originalVolume <= 0.001;
     el.playsInline = true;
     const loopWindow = () => {
       if (el.currentTime >= trimEnd - 0.08) {
@@ -151,7 +161,26 @@ export function PublishEditor({
       el.removeEventListener("seeked", playMuted);
       el.removeEventListener("loadeddata", playMuted);
     };
-  }, [trimStart, trimEnd, asVideo, applying, previewUrl]);
+  }, [trimStart, trimEnd, asVideo, applying, previewUrl, originalVolume]);
+
+  // Aperçu de la musique pendant l'édition.
+  useEffect(() => {
+    const el = musicAudioRef.current;
+    if (!el) return;
+    if (!music || applying) {
+      el.pause();
+      return;
+    }
+    el.volume = Math.min(1, Math.max(0, music.volume));
+    if (Math.abs(el.currentTime - music.startSec) > 1.5) {
+      try {
+        el.currentTime = music.startSec;
+      } catch {
+        /* ignore */
+      }
+    }
+    void el.play().catch(() => undefined);
+  }, [music, applying]);
 
   const [stageSize, setStageSize] = useState({ w: 390, h: 693 });
 
@@ -218,7 +247,7 @@ export function PublishEditor({
             const trimmed = await trimVideoFile(file, trimStart, maxSec, setTrimProgress, {
               videoEl: videoRef.current,
             });
-            onConfirm(trimmed);
+            onConfirm(trimmed, music);
             return;
           } catch (e) {
             const code = e instanceof Error ? e.message : "";
@@ -243,7 +272,7 @@ export function PublishEditor({
             return;
           }
         }
-        onConfirm(file);
+        onConfirm(file, music);
         return;
       }
 
@@ -251,7 +280,7 @@ export function PublishEditor({
         crop: cropRect,
         texts: texts.filter((x) => x.text.trim()),
       });
-      onConfirm(edited);
+      onConfirm(edited, music);
     } finally {
       setApplying(false);
       setTrimProgress(0);
@@ -495,7 +524,17 @@ export function PublishEditor({
               setTool("trim");
             }}
           />
-        ) : (
+        ) : null}
+        <ToolBtn
+          active={tool === "sound"}
+          icon={music ? <Volume2 size={18} /> : <Music2 size={18} />}
+          label={t("publish.edit.sound", { defaultValue: "Son" })}
+          onClick={() => {
+            haptic.selection();
+            setTool("sound");
+          }}
+        />
+        {!asVideo && (
           <>
             <ToolBtn
               active={tool === "crop"}
@@ -523,6 +562,126 @@ export function PublishEditor({
       </div>
 
       <div className="shrink-0 px-4 pt-2">
+        {tool === "sound" && (
+          <div className="space-y-3">
+            <Press
+              onClick={() => {
+                haptic.selection();
+                setMusicPickerOpen(true);
+              }}
+              className="!min-h-11 flex h-11 w-full items-center justify-center gap-2 rounded-full text-[13px] font-bold text-[#10162B]"
+              style={{ background: GOLD }}
+            >
+              <Music2 size={16} />
+              {music
+                ? music.title ||
+                  t("publish.music.selected", { defaultValue: "Musique ajoutée" })
+                : t("publish.music.add", { defaultValue: "Ajouter une musique" })}
+            </Press>
+
+            {music && (
+              <>
+                <div>
+                  <p className="mb-1 flex items-center justify-between text-[12px] text-white/70">
+                    <span>{t("publish.music.volume", { defaultValue: "Volume musique" })}</span>
+                    <span>{Math.round(music.volume * 100)}%</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={music.volume}
+                    onChange={(e) =>
+                      setMusic((m) => (m ? { ...m, volume: Number(e.target.value) } : m))
+                    }
+                    className="w-full accent-[#E8B93B]"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 flex items-center justify-between text-[12px] text-white/70">
+                    <span>
+                      {t("publish.music.startAt", { defaultValue: "Départ de la musique" })}
+                    </span>
+                    <span>{formatTime(music.startSec)}</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={60}
+                    step={1}
+                    value={music.startSec}
+                    onChange={(e) =>
+                      setMusic((m) => (m ? { ...m, startSec: Number(e.target.value) } : m))
+                    }
+                    className="w-full accent-[#E8B93B]"
+                  />
+                </div>
+              </>
+            )}
+
+            {asVideo && (
+              <div>
+                <p className="mb-1 flex items-center justify-between text-[12px] text-white/70">
+                  <span>{t("publish.music.original", { defaultValue: "Son d'origine" })}</span>
+                  <span>{Math.round(originalVolume * 100)}%</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Press
+                    onClick={() => {
+                      haptic.selection();
+                      setMusic((m) =>
+                        m
+                          ? { ...m, originalVolume: m.originalVolume > 0 ? 0 : 1 }
+                          : {
+                              url: "",
+                              title: null,
+                              artist: null,
+                              startSec: 0,
+                              volume: 0,
+                              originalVolume: 0,
+                            },
+                      );
+                    }}
+                    className="!min-h-9 h-9 w-9 shrink-0 rounded-full bg-white/10"
+                  >
+                    {originalVolume > 0 ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                  </Press>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={originalVolume}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setMusic((m) =>
+                        m
+                          ? { ...m, originalVolume: v }
+                          : {
+                              url: "",
+                              title: null,
+                              artist: null,
+                              startSec: 0,
+                              volume: 0,
+                              originalVolume: v,
+                            },
+                      );
+                    }}
+                    className="w-full accent-[#E8B93B]"
+                  />
+                </div>
+              </div>
+            )}
+
+            <p className="text-center text-[11px] text-white/45">
+              {t("publish.music.hint", {
+                defaultValue:
+                  "La musique est jouée avec ta publication dans la Vitrine.",
+              })}
+            </p>
+          </div>
+        )}
         {asVideo && tool === "trim" && (
           <div>
             <p className="mb-1 text-center text-[12px] text-white/70">
