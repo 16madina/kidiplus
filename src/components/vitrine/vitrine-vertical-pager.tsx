@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Loader2, Pause, Play } from "lucide-react";
+import { Loader2, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
@@ -194,14 +194,27 @@ function MediaSlide({
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Reset status during render when the url changes (an effect would race with
+  // an onLoad already fired for a cached image → spinner stuck forever).
+  const [statusUrl, setStatusUrl] = useState(url);
+  if (statusUrl !== url) {
+    setStatusUrl(url);
+    setStatus("loading");
+  }
 
   useEffect(() => subscribeVitrinePlayback(() => {
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
+  // Safety net: never leave a spinner up forever.
   useEffect(() => {
-    setStatus("loading");
-  }, [url]);
+    if (status !== "loading" || !eager) return;
+    const t = window.setTimeout(
+      () => setStatus((s) => (s === "loading" ? "ready" : s)),
+      8000,
+    );
+    return () => window.clearTimeout(t);
+  }, [status, eager, url]);
 
   const shouldPlay = playing && !suspended && eager;
 
@@ -302,8 +315,10 @@ function MediaSlide({
               playsInline
               preload={shouldPlay ? "auto" : "metadata"}
               controls={false}
+              onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
+              onPlaying={() => setStatus("ready")}
               onError={() => setStatus("error")}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
@@ -331,6 +346,10 @@ function MediaSlide({
       >
         {eager && (
           <img
+            ref={(el) => {
+              // Cached images can finish before React binds onLoad.
+              if (el?.complete && el.naturalWidth > 0) setStatus("ready");
+            }}
             src={url}
             alt=""
             className={mediaClass}
@@ -374,7 +393,7 @@ export function MediaCarousel({
   const hintTimer = useRef<number | null>(null);
   const tabVisible = useContext(TabVisibilityContext);
   const appActive = useAppActive();
-  const [muted] = useVitrineSound();
+  const [muted, toggleMuted] = useVitrineSound();
   const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
   const playing = active && tabVisible && appActive && !userPaused;
   const originalVolume = music ? music.originalVolume : 1;
@@ -482,6 +501,22 @@ export function MediaCarousel({
       {body}
       {music?.url && (
         <MusicTrack music={music} playing={playing && !muted} />
+      )}
+      {hasVideo && (
+        <button
+          type="button"
+          data-no-pause
+          aria-label={muted ? "Activer le son" : "Couper le son"}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            haptic.light();
+            toggleMuted();
+          }}
+          className="absolute right-3 top-3 z-[30] grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm active:scale-95"
+        >
+          {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </button>
       )}
       {hasVideo && showPauseHint && (
         <div className="pointer-events-none absolute inset-0 z-[20] grid place-items-center">
