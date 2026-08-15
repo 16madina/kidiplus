@@ -76,8 +76,16 @@ export const MUSIC_LIBRARY: MusicTrack[] = [
 
 export const MAX_MUSIC_BYTES = 15 * 1024 * 1024;
 
+/** Formats audio courants sur téléphone (Android/iOS) + desktop. */
+export const AUDIO_ACCEPT =
+  "audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.aiff,.caf,.amr,.3gp,.weba";
+
 export function isAudioFile(f: File) {
-  return f.type.startsWith("audio/") || /\.(mp3|m4a|aac|wav|ogg|oga|flac)$/i.test(f.name);
+  return (
+    f.type.startsWith("audio/") ||
+    f.type === "application/ogg" ||
+    /\.(mp3|m4a|mp4a|aac|wav|wave|ogg|oga|opus|flac|aiff|aif|caf|amr|3gp|weba|webm)$/i.test(f.name)
+  );
 }
 
 export function defaultMusicFor(track: { url: string; title?: string; artist?: string }): VitrineMusic {
