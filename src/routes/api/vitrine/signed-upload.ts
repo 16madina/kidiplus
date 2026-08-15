@@ -100,24 +100,22 @@ async function requireUser(
   return { ok: true, userId, origin };
 }
 
+type BucketOpts = {
+  public: boolean;
+  fileSizeLimit: number;
+  allowedMimeTypes: string[] | null;
+};
+
 async function ensureVitrineBucket(admin: {
   storage: {
     listBuckets: () => Promise<{ data: { id: string; name: string }[] | null }>;
     createBucket: (
       id: string,
-      opts: {
-        public: boolean;
-        fileSizeLimit: number;
-        allowedMimeTypes: string[];
-      },
+      opts: BucketOpts,
     ) => Promise<{ error: { message: string } | null }>;
     updateBucket: (
       id: string,
-      opts: {
-        public: boolean;
-        fileSizeLimit: number;
-        allowedMimeTypes: string[];
-      },
+      opts: BucketOpts,
     ) => Promise<{ error: { message: string } | null }>;
   };
 }) {
@@ -134,13 +132,15 @@ async function ensureVitrineBucket(admin: {
       throw createErr;
     }
   } else {
-    // Best-effort: keep mime/size in sync (ignore if API rejects).
+    // Best-effort: keep mime/size in sync. `null` = no mime restriction, so
+    // phone audio formats (m4a/aac/opus/ogg/wav…) are never rejected.
     try {
-      await admin.storage.updateBucket(BUCKET, {
+      const { error } = await admin.storage.updateBucket(BUCKET, {
         public: true,
         fileSizeLimit: MAX_BYTES,
-        allowedMimeTypes: ALLOWED_MIME,
+        allowedMimeTypes: null,
       });
+      if (error) console.warn("[vitrine/signed-upload] updateBucket", error.message);
     } catch {
       /* ignore */
     }
