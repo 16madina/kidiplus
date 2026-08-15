@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ShieldCheck, AlertCircle, Loader2, Wallet } from "lucide-react";
+import { AlertCircle, Check, ExternalLink, Loader2, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
@@ -23,7 +23,7 @@ import {
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
-import { redirectExternal } from "@/lib/external-redirect";
+import { isFramed, redirectExternal } from "@/lib/external-redirect";
 import { PaypalProgress, type PaypalStep } from "@/components/payments/paypal-progress";
 import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
