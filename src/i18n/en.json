@@ -421,10 +421,12 @@
     },
     "effects": {
       "title": "Background & poster",
-      "greenScreen": "Green screen",
+      "greenScreen": "Custom background",
       "posterFace": "Poster",
       "posterSide": "Beside",
-      "posterHint": "Drag to move · Pinch to zoom"
+      "posterHint": "Drag to move · Pinch to zoom",
+      "blur": "Background blur",
+      "unavailable": "Background effect unavailable on this device"
     },
     "setup": {
       "titlePlaceholder": "Live title…",
