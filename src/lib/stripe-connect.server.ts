@@ -13,7 +13,13 @@
 // the seller twice. See buildDestinationChargeParams() below for the helper
 // kept ready if/when a fresh 1:1 card charge should be split at capture.
 
-import { createStripeClient, type StripeClientOpts, type StripeEnv } from "@/lib/stripe.server";
+import {
+  createStripeClient,
+  envHintFromRequest,
+  getStripeConfig,
+  type StripeClientOpts,
+  type StripeEnv,
+} from "@/lib/stripe.server";
 import { CONNECT_COUNTRY_CODES } from "@/lib/connect-countries";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 
@@ -75,18 +81,46 @@ export function statusFromAccount(acc: {
   charges_enabled?: boolean;
   payouts_enabled?: boolean;
   details_submitted?: boolean;
-  requirements?: { disabled_reason?: string | null } | null;
+  requirements?: {
+    disabled_reason?: string | null;
+    currently_due?: string[] | null;
+    past_due?: string[] | null;
+  } | null;
 }): ConnectStatus {
+  const currentlyDue = acc.requirements?.currently_due ?? [];
+  const pastDue = acc.requirements?.past_due ?? [];
   if (acc.payouts_enabled) return "active";
-  if (acc.requirements?.disabled_reason) return "restricted";
+  // Hosted onboarding already submitted and Stripe isn't asking for more
+  // fields. pending_verification must not send the seller back through the
+  // same Review screen in a loop.
+  if (acc.details_submitted && currentlyDue.length === 0 && pastDue.length === 0) {
+    return "active";
+  }
+  if (pastDue.length > 0) return "restricted";
   return "pending";
 }
 
 /**
- * Connect accounts are mode-scoped, so they must live on the same Stripe
- * account as checkout charges: always the managed gateway. `managedOnly`
- * bypasses the legacy BYOK key / forcedTestMode() override.
+ * Connect prefers the managed gateway (same account as card charges). On
+ * local `npx vite` that gateway key is often missing; fall back to
+ * STRIPE_SECRET_KEY so onboarding can still open.
  */
+export function resolveConnectStripe(request: Request): {
+  ok: boolean;
+  hint: StripeEnv | null;
+  env: StripeEnv;
+  opts: StripeClientOpts;
+} {
+  const managedHint = envHintFromRequest(request, { managedOnly: true });
+  const managedCfg = getStripeConfig(managedHint, { managedOnly: true });
+  if (managedCfg.ok) {
+    return { ok: true, hint: managedHint, env: managedCfg.env, opts: { managedOnly: true } };
+  }
+  const hint = envHintFromRequest(request);
+  const cfg = getStripeConfig(hint);
+  return { ok: cfg.ok, hint, env: cfg.env, opts: { managedOnly: false } };
+}
+
 export function stripeForEnv(hint: StripeEnv | null, opts: StripeClientOpts = { managedOnly: true }) {
   return createStripeClient(hint, opts);
 }
@@ -115,7 +149,13 @@ export function buildDestinationChargeParams(opts: {
 export function isConnectNotEnabledError(e: unknown): boolean {
   const err = e as { raw?: { message?: string }; message?: string };
   const msg = (err?.raw?.message ?? err?.message ?? "").toLowerCase();
-  return msg.includes("only stripe connect platforms");
+  return (
+    msg.includes("only stripe connect platforms") ||
+    msg.includes("signed up for connect") ||
+    msg.includes("not a connect platform") ||
+    msg.includes("connect is not enabled") ||
+    msg.includes("responsible for connecting")
+  );
 }
 
 /** Platform commission applied on Connect destination charges.

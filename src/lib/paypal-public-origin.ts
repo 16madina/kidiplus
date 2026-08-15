@@ -46,3 +46,27 @@ export function publicAppOrigin(request: Request): string {
 
   return FALLBACK;
 }
+
+/**
+ * Origin for Stripe Connect Account Link return/refresh URLs.
+ * Unlike PayPal, Stripe accepts http://localhost — and local onboarding
+ * must return to the local app, not kidiplus.com (different backend).
+ */
+export function connectReturnOrigin(request: Request): string {
+  const headerOrigin = request.headers.get("origin");
+  if (headerOrigin) {
+    try {
+      const u = new URL(headerOrigin);
+      if (u.protocol === "http:" || u.protocol === "https:") return u.origin;
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    const fromUrl = new URL(request.url).origin;
+    if (fromUrl.startsWith("http")) return fromUrl;
+  } catch {
+    /* ignore */
+  }
+  return publicAppOrigin(request);
+}

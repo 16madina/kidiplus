@@ -5,10 +5,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAllowedOrigin } from "@/lib/api-cors";
 import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
-import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
 import {
   CONNECT_CURRENCIES,
   isConnectNotEnabledError,
+  resolveConnectStripe,
   statusFromAccount,
   stripeForEnv,
 } from "@/lib/stripe-connect.server";
@@ -51,14 +51,25 @@ export const Route = createFileRoute("/api/connect/status")({
           );
         }
 
-        const envHint = envHintFromRequest(request, { managedOnly: true });
-        const cfg = getStripeConfig(envHint, { managedOnly: true });
-        if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
+        const connect = resolveConnectStripe(request);
+        if (!connect.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         try {
-          const stripe = stripeForEnv(envHint, { managedOnly: true });
+          const stripe = stripeForEnv(connect.hint, connect.opts);
           const acc = await stripe.accounts.retrieve(accountId);
           const status = statusFromAccount(acc as never);
+          const currentlyDue = acc.requirements?.currently_due ?? [];
+          const pastDue = acc.requirements?.past_due ?? [];
+          console.info("[connect/status]", {
+            accountId,
+            status,
+            detailsSubmitted: Boolean(acc.details_submitted),
+            chargesEnabled: Boolean(acc.charges_enabled),
+            payoutsEnabled: Boolean(acc.payouts_enabled),
+            disabledReason: acc.requirements?.disabled_reason ?? null,
+            currentlyDue,
+            pastDue,
+          });
           await admin
             .from("profiles")
             .update({
@@ -76,9 +87,12 @@ export const Route = createFileRoute("/api/connect/status")({
               eligible,
               currency,
               accountId,
+              detailsSubmitted: Boolean(acc.details_submitted),
               chargesEnabled: Boolean(acc.charges_enabled),
               payoutsEnabled: Boolean(acc.payouts_enabled),
               disabledReason: acc.requirements?.disabled_reason ?? null,
+              currentlyDue,
+              pastDue,
             },
             200,
             origin,

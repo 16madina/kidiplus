@@ -11,6 +11,7 @@ import { SignUpScreen } from "./sign-up-screen";
 import { ForgotPasswordScreen } from "./forgot-password-screen";
 import { useAuth } from "@/lib/auth-context";
 import { LegalScreen } from "@/components/legal/legal-screen";
+import { AuthLanguageToggle } from "./auth-language-toggle";
 import badge from "@/assets/kidi-badge-v2.png.asset.json";
 import wordmark from "@/assets/kidi-wordmark.png.asset.json";
 import bg1 from "@/assets/welcome-bgs/auth-bg-1.png.asset.json";
@@ -118,6 +119,12 @@ function Welcome({
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative flex h-full flex-col"
     >
+      <div
+        className="absolute left-0 top-0 z-[60] px-4"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
+      >
+        <AuthLanguageToggle variant="dark" />
+      </div>
       {/* Full-bleed background image */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <img

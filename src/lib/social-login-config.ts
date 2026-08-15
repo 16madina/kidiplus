@@ -1,10 +1,10 @@
 // Social login feature flags.
 //
 // Flip SHOW_APPLE_LOGIN to `true` once the Apple provider is fully
-// configured in Lovable Cloud (Users → Authentication Settings → Sign In
-// Methods → Apple) and you have submitted a client secret JWT. Until
-// then, keep it false to avoid presenting an Apple button that fails
-// with "Unsupported provider" — Apple review reject risk.
+// configured in Supabase Auth (Authentication → Providers → Apple)
+// and you have submitted a client secret JWT. Until then, keep it false
+// to avoid presenting an Apple button that fails with "Unsupported
+// provider" — Apple review reject risk.
 export const SHOW_APPLE_LOGIN = false;
 
 // Custom URL scheme registered by the native app (Info.plist

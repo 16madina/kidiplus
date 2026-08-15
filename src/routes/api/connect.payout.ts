@@ -10,8 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAllowedOrigin } from "@/lib/api-cors";
 import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
-import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
-import { CONNECT_CURRENCIES, stripeForEnv } from "@/lib/stripe-connect.server";
+import { CONNECT_CURRENCIES, resolveConnectStripe, stripeForEnv } from "@/lib/stripe-connect.server";
 import { toStripeAmountFor } from "@/lib/fees";
 
 export const Route = createFileRoute("/api/connect/payout")({
@@ -24,9 +23,8 @@ export const Route = createFileRoute("/api/connect/payout")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const envHint = envHintFromRequest(request, { managedOnly: true });
-        const cfg = getStripeConfig(envHint, { managedOnly: true });
-        if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
+        const connect = resolveConnectStripe(request);
+        if (!connect.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         const auth = await authenticate(request);
         if (!auth.ok) return json({ error: auth.error }, auth.status, origin);
@@ -83,7 +81,7 @@ export const Route = createFileRoute("/api/connect/payout")({
         }
 
         try {
-          const stripe = stripeForEnv(envHint, { managedOnly: true });
+          const stripe = stripeForEnv(connect.hint, connect.opts);
           const transfer = await stripe.transfers.create(
             {
               amount: amountMinor,

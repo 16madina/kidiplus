@@ -279,6 +279,7 @@ export function VitrineScreen() {
               <VitrinePostCard
                 key={post.id}
                 post={post}
+                active={i === Math.min(postIndex, postsVisible.length - 1)}
                 autoOpenComments={openCommentsPostId === post.id}
                 highlightCommentId={
                   openCommentsPostId === post.id ? highlightCommentId : null
@@ -289,6 +290,10 @@ export function VitrineScreen() {
                 }}
                 onBlocked={() => {
                   // Advance past this post; blockedIds filter removes the author.
+                  setPostIndex((idx) => Math.min(idx, Math.max(0, postsVisible.length - 2)));
+                }}
+                onDeleted={() => {
+                  setPosts((prev) => prev.filter((x) => x.id !== post.id));
                   setPostIndex((idx) => Math.min(idx, Math.max(0, postsVisible.length - 2)));
                 }}
                 onUpdated={(p) =>
@@ -442,6 +447,9 @@ export function VitrineScreen() {
               <StoriesRow
                 stories={storiesVisible}
                 tone="dark"
+                onStoryDeleted={(id) =>
+                  setStories((prev) => prev.filter((s) => s.id !== id))
+                }
                 onCreate={() => {
                   if (guestMode || !user) {
                     openAuth();

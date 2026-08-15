@@ -105,6 +105,9 @@
   "sellerProfile": {
     "shopEmpty": "Boutique vide pour le moment.",
     "livesEmpty": "Aucun live pour le moment.",
+    "vitrineEmpty": "Aucune publication dans ta vitrine.",
+    "vitrineEmptyPublic": "Aucune publication pour le moment.",
+    "vitrineHint": "Appuie sur la poubelle pour retirer une vidéo.",
     "availableInLives": "Disponible pendant les lives"
   },
   "moderator": {
@@ -174,6 +177,7 @@
     "no": "Non",
     "ok": "OK",
     "seeAll": "Tout afficher ›",
+    "more": "Plus",
     "showMore": "Voir plus",
     "showLess": "Voir moins",
     "clear": "Effacer",
@@ -740,7 +744,18 @@
     "published": "Publication en ligne",
     "uploadFail": "Échec de l'envoi. Réessaie.",
     "publishFail": "Impossible de publier.",
-    "badMedia": "Choisis une photo ou une vidéo."
+    "badMedia": "Choisis une photo ou une vidéo.",
+    "delete": "Supprimer",
+    "deleteConfirm": "Confirmer la suppression",
+    "deleted": "Publication supprimée",
+    "deleteFail": "Impossible de supprimer.",
+    "deleteOwnHint": "Cette publication disparaîtra de ta vitrine.",
+    "manageTitle": "Gérer",
+    "manageOwnHint": "Supprime cette vidéo ou ouvre ta boutique pour tout gérer.",
+    "manageShop": "Gérer ma boutique",
+    "manageShopFail": "Ajoute un @pseudo pour ouvrir ta boutique.",
+    "mediaUnavailable": "Média indisponible",
+    "mediaLoading": "Chargement…"
   },
   "publish": {
     "title": "Publier",
@@ -869,6 +884,11 @@
       "signIn": "Se connecter",
       "checkEmail": "Vérifie tes emails",
       "checkEmailBody": "On t'a envoyé un lien pour confirmer ton adresse.",
+      "checkEmailHint": "Si rien n'arrive, vérifie les spams ou renvoie le lien. Sans SMTP configuré, le mail peut ne jamais partir — dans ce cas contacte le support.",
+      "resend": "Renvoyer le lien",
+      "resendSending": "Envoi…",
+      "resendWait": "Renvoyer dans {{seconds}}s",
+      "resendSent": "Lien renvoyé. Vérifie ta boîte mail.",
       "terms": "En continuant, tu acceptes nos conditions et notre politique de confidentialité."
     },
     "forgot": {
@@ -953,13 +973,17 @@
     "message": "Message",
     "tabs": {
       "boutique": "Boutique",
+      "vitrine": "Vitrine",
       "lives": "Lives",
       "avis": "Avis"
     },
     "stats": {
       "followers": "Abonnés",
       "sales": "Ventes",
-      "rating": "Note"
+      "rating": "Note",
+      "vitrine": "Vitrine",
+      "products": "Produits",
+      "lives": "Lives"
     },
     "liveNow": "En direct",
     "pushFollow": "Active les notifications pour ne rater aucun live de {{name}} 🔔",
@@ -1003,6 +1027,7 @@
       "title": "Paiement non configuré",
       "body": "Les clés Stripe ne sont pas encore renseignées côté serveur."
     },
+    "cardUnavailableFallback": "La carte n'est pas disponible. Utilise PayPal ou une autre méthode.",
     "errors": {
       "title": "Paiement impossible",
       "generic": "Une erreur est survenue. Réessaie.",
@@ -1165,7 +1190,7 @@
     "status": {
       "requested": "Demandé",
       "processing": "En traitement",
-      "paid": "Payé",
+      "paid": "Déposé",
       "rejected": "Refusé"
     },
     "errors": {

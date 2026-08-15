@@ -18,7 +18,9 @@ export function SignUpScreen({
   onGoSignIn: () => void;
 }) {
   const { t } = useTranslation();
-  const { signUp } = useAuth();
+  const { signUp, resendConfirmationEmail } = useAuth();
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendWait, setResendWait] = useState(0);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -132,9 +134,48 @@ export function SignUpScreen({
             <br />
             <span className="font-semibold text-foreground">{needsConfirm}</span>
           </p>
+          <p className="mt-3 max-w-xs text-[13px] text-muted-foreground">
+            {t("auth.signUp.checkEmailHint")}
+          </p>
+          {error && (
+            <p className="mt-3 max-w-xs text-[13px] text-destructive">{error}</p>
+          )}
+          <Press
+            disabled={resendBusy || resendWait > 0}
+            onClick={async () => {
+              if (!needsConfirm || resendBusy || resendWait > 0) return;
+              setResendBusy(true);
+              try {
+                await resendConfirmationEmail(needsConfirm);
+                haptic.success();
+                setResendWait(30);
+                const id = window.setInterval(() => {
+                  setResendWait((s) => {
+                    if (s <= 1) {
+                      window.clearInterval(id);
+                      return 0;
+                    }
+                    return s - 1;
+                  });
+                }, 1000);
+              } catch (err) {
+                haptic.error();
+                setError(frenchAuthError(err));
+              } finally {
+                setResendBusy(false);
+              }
+            }}
+            className="!min-h-12 mt-6 h-12 w-full rounded-2xl border border-border text-[15px] font-semibold text-foreground disabled:opacity-60"
+          >
+            {resendBusy
+              ? t("auth.signUp.resendSending")
+              : resendWait > 0
+                ? t("auth.signUp.resendWait", { seconds: resendWait })
+                : t("auth.signUp.resend")}
+          </Press>
           <Press
             onClick={onGoSignIn}
-            className="!min-h-12 mt-8 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
+            className="!min-h-12 mt-3 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
             style={{
               background:
                 "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",

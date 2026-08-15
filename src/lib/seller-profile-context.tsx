@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
-export type SellerProfileTab = "boutique" | "lives" | "avis";
+export type SellerProfileTab = "boutique" | "vitrine" | "lives" | "avis";
 
 type Ctx = {
   activeSeller: string | null;

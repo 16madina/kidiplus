@@ -2,8 +2,7 @@
 // so Google doesn't block us with `disallowed_useragent` inside the Capacitor
 // WebView.
 //
-// Web  : Lovable Cloud managed OAuth broker (`lovable.auth.signInWithOAuth`).
-//        Iframe-safe in the editor preview, full-page redirect in production.
+// Web  : Supabase Auth OAuth (PKCE) with redirect to same-origin /auth-callback.
 // Native: `skipBrowserRedirect: true` to get the provider URL, then open it
 //        in the SYSTEM browser via @capacitor/browser. The provider redirects
 //        to our custom scheme (kidiplus://auth-callback), the deep-link
@@ -11,11 +10,15 @@
 //        `/auth-callback`.
 
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { isNative } from "@/lib/native";
 import { NATIVE_OAUTH_REDIRECT } from "@/lib/social-login-config";
 
 export type OAuthProvider = "google" | "apple";
+
+function webOAuthRedirect(): string {
+  if (typeof window === "undefined") return "https://kidiplus.com/auth-callback";
+  return `${window.location.origin}/auth-callback`;
+}
 
 export async function signInWithProvider(provider: OAuthProvider): Promise<void> {
   if (isNative()) {
@@ -38,13 +41,11 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<void>
     return;
   }
 
-  // Web: managed OAuth broker. `redirect_uri` must be a public same-origin URL.
-  const redirectUri =
-    typeof window !== "undefined" ? window.location.origin : undefined;
-  const result = await lovable.auth.signInWithOAuth(provider, {
-    redirect_uri: redirectUri,
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: webOAuthRedirect(),
+    },
   });
-  if (result.error) throw result.error;
-  // If `result.redirected`, the browser is navigating away. Otherwise the
-  // session is already set and the auth listener will pick it up.
+  if (error) throw error;
 }

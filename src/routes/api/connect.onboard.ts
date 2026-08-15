@@ -9,16 +9,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAllowedOrigin } from "@/lib/api-cors";
 import { authenticate, corsHeaders, json } from "@/lib/connect-api.server";
-import { envHintFromRequest, getStripeConfig } from "@/lib/stripe.server";
 import {
   CONNECT_CURRENCIES,
   isCapabilityUnsupportedError,
   isConnectNotEnabledError,
   resolveConnectCountry,
+  resolveConnectStripe,
   statusFromAccount,
   stripeForEnv,
 } from "@/lib/stripe-connect.server";
-import { publicAppOrigin } from "@/lib/paypal-public-origin";
+import { connectReturnOrigin } from "@/lib/paypal-public-origin";
 
 export const Route = createFileRoute("/api/connect/onboard")({
   server: {
@@ -30,14 +30,14 @@ export const Route = createFileRoute("/api/connect/onboard")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        const envHint = envHintFromRequest(request, { managedOnly: true });
-        const cfg = getStripeConfig(envHint, { managedOnly: true });
+        const connect = resolveConnectStripe(request);
         console.info("[connect/onboard] payments mode resolution", {
           receivedHeader: request.headers.get("x-payments-env") ?? "missing",
-          envHint: envHint ?? "missing",
-          selectedGateway: cfg.env,
+          envHint: connect.hint ?? "missing",
+          selectedGateway: connect.env,
+          managedOnly: connect.opts.managedOnly === true,
         });
-        if (!cfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
+        if (!connect.ok) return json({ error: "stripe_not_configured" }, 503, origin);
 
         const auth = await authenticate(request);
         if (!auth.ok) return json({ error: auth.error }, auth.status, origin);
@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
         const country = resolveConnectCountry(p.country, currency, body?.country);
         if (!country) return json({ error: "connect_country_unsupported" }, 400, origin);
 
-        const stripe = stripeForEnv(envHint, { managedOnly: true });
+        const stripe = stripeForEnv(connect.hint, connect.opts);
         let accountId = typeof p.stripe_connect_id === "string" ? p.stripe_connect_id : "";
 
         try {
@@ -149,7 +149,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
             await admin.from("profiles").update({ country }).eq("id", userId);
           }
 
-          const appOrigin = publicAppOrigin(request);
+          const appOrigin = connectReturnOrigin(request);
           const link = await stripe.accountLinks.create({
             account: accountId,
             refresh_url: `${appOrigin}/connect-return?refresh=1`,

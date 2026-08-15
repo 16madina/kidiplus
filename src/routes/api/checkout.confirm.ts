@@ -8,7 +8,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig, envHintFromRequest } from "@/lib/stripe.server";
+import { createStripeClient, resolveCardStripe } from "@/lib/stripe.server";
 import { isAllowedOrigin } from "@/lib/api-cors";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
@@ -37,15 +37,12 @@ export const Route = createFileRoute("/api/checkout/confirm")({
         const origin = request.headers.get("origin");
         if (origin && !isAllowedOrigin(origin)) return json({ error: "Origin not allowed" }, 403, origin);
 
-        // Pin to the managed gateway (same account as the browser's publishable
-        // token). The stray BYOK STRIPE_SECRET_KEY must never override the env.
-        const MANAGED = { managedOnly: true } as const;
-        const envHint = envHintFromRequest(request, MANAGED);
-        const stripeCfg = getStripeConfig(envHint, MANAGED);
+        const card = resolveCardStripe(request);
+        const stripeCfg = card;
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!stripeCfg.ok) return json({ error: stripeCfg.reason ?? "stripe_not_configured" }, 503, origin);
+        if (!stripeCfg.ok) return json({ error: "stripe_not_configured" }, 503, origin);
         if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
         }
@@ -65,7 +62,7 @@ export const Route = createFileRoute("/api/checkout/confirm")({
         const pi = typeof body.paymentIntentId === "string" ? body.paymentIntentId.trim() : "";
         if (!pi || !pi.startsWith("pi_")) return json({ error: "invalid_payment_intent" }, 400, origin);
 
-        const stripe = createStripeClient(envHint, MANAGED);
+        const stripe = createStripeClient(card.hint, card.opts);
         let intent;
         try {
           intent = await stripe.paymentIntents.retrieve(pi);

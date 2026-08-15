@@ -19,8 +19,29 @@ export async function submitReport(target_type: ReportTargetType, target_id: str
   const { data, error } = await sb.rpc("submit_report", {
     _target_type: target_type, _target_id: target_id, _reason: reason, _note: note ?? null,
   });
-  if (error) return { ok: false, error: error.message };
-  return (data ?? { ok: false, error: "unknown" }) as { ok: boolean; id?: string; error?: string };
+  if (!error && data && (data as { ok?: boolean }).ok) {
+    return data as { ok: boolean; id?: string; error?: string };
+  }
+
+  // Fallback if the RPC is missing or rejected after a dump restore.
+  const uid = (await supabase.auth.getUser()).data.user?.id;
+  if (!uid) return { ok: false, error: error?.message || "unauthorized" };
+  const { data: row, error: ins } = await supabase
+    .from("reports")
+    .insert({
+      reporter_id: uid,
+      target_type,
+      target_id,
+      reason,
+      note: note?.trim() || null,
+    })
+    .select("id")
+    .maybeSingle();
+  if (ins || !row) {
+    console.warn("[report] submit failed", error?.message, ins?.message);
+    return { ok: false, error: ins?.message || error?.message || "unknown" };
+  }
+  return { ok: true, id: row.id };
 }
 
 export async function blockUser(blocked_id: string) {

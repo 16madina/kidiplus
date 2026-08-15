@@ -105,6 +105,9 @@
   "sellerProfile": {
     "shopEmpty": "Shop is empty for now.",
     "livesEmpty": "No lives yet.",
+    "vitrineEmpty": "No posts in your showcase yet.",
+    "vitrineEmptyPublic": "No posts yet.",
+    "vitrineHint": "Tap the trash icon to remove a video.",
     "availableInLives": "Available during lives"
   },
   "moderator": {
@@ -174,6 +177,7 @@
     "no": "No",
     "ok": "OK",
     "seeAll": "See all ›",
+    "more": "More",
     "showMore": "Show more",
     "showLess": "Show less",
     "clear": "Clear",
@@ -740,7 +744,18 @@
     "published": "Post is live",
     "uploadFail": "Upload failed. Try again.",
     "publishFail": "Could not publish.",
-    "badMedia": "Pick a photo or video."
+    "badMedia": "Pick a photo or video.",
+    "delete": "Delete",
+    "deleteConfirm": "Confirm deletion",
+    "deleted": "Post deleted",
+    "deleteFail": "Couldn't delete.",
+    "deleteOwnHint": "This post will be removed from your showcase.",
+    "manageTitle": "Manage",
+    "manageOwnHint": "Delete this video or open your shop to manage everything.",
+    "manageShop": "Manage my shop",
+    "manageShopFail": "Add a @handle to open your shop.",
+    "mediaUnavailable": "Media unavailable",
+    "mediaLoading": "Loading…"
   },
   "publish": {
     "title": "Publish",
@@ -869,6 +884,11 @@
       "signIn": "Sign in",
       "checkEmail": "Check your email",
       "checkEmailBody": "We sent you a link to confirm your address.",
+      "checkEmailHint": "If nothing arrives, check spam or resend the link. Without SMTP configured, the email may never send — contact support in that case.",
+      "resend": "Resend link",
+      "resendSending": "Sending…",
+      "resendWait": "Resend in {{seconds}}s",
+      "resendSent": "Link sent again. Check your inbox.",
       "terms": "By continuing, you agree to our terms and privacy policy."
     },
     "forgot": {
@@ -953,13 +973,17 @@
     "message": "Message",
     "tabs": {
       "boutique": "Shop",
+      "vitrine": "Vitrine",
       "lives": "Lives",
       "avis": "Reviews"
     },
     "stats": {
       "followers": "Followers",
       "sales": "Sales",
-      "rating": "Rating"
+      "rating": "Rating",
+      "vitrine": "Vitrine",
+      "products": "Products",
+      "lives": "Lives"
     },
     "liveNow": "Live",
     "pushFollow": "Turn on notifications so you never miss a live from {{name}} 🔔",
@@ -1003,6 +1027,7 @@
       "title": "Payment not configured",
       "body": "Stripe keys have not been set on the server yet."
     },
+    "cardUnavailableFallback": "Card payments are unavailable. Use PayPal or another method.",
     "errors": {
       "title": "Payment failed",
       "generic": "Something went wrong. Please try again.",
@@ -1165,7 +1190,7 @@
     "status": {
       "requested": "Requested",
       "processing": "Processing",
-      "paid": "Paid",
+      "paid": "Deposited",
       "rejected": "Rejected"
     },
     "errors": {

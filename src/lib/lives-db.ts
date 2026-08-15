@@ -17,6 +17,7 @@ import {
   durableStorageRef,
   parseSupabaseStorageUrl,
   stripBucketPrefix,
+  type StorageBucket,
 } from "@/lib/storage-path";
 
 // -------------------------------------------------------------------------
@@ -49,7 +50,7 @@ const IMAGE_TRANSFORMS: Record<
  *   the full signed object if transforms are unavailable.
  */
 export async function resolveLiveImage(
-  bucket: "live-covers" | "live-products",
+  bucket: StorageBucket,
   value: string | null | undefined,
   size: LiveImageSize = "card",
 ): Promise<string | null> {
@@ -59,18 +60,37 @@ export async function resolveLiveImage(
   // Durably stored paths OR expired Supabase signed URLs → re-sign.
   // External http(s) (Unsplash, etc.) stay as-is.
   let objectPath = value;
-  let objectBucket: "live-covers" | "live-products" = bucket;
+  let objectBucket: StorageBucket = bucket;
   if (/^https?:\/\//i.test(value)) {
     const parsed = parseSupabaseStorageUrl(value);
     if (!parsed) return value;
-    if (parsed.bucket !== "live-covers" && parsed.bucket !== "live-products") {
-      return null;
-    }
     objectBucket = parsed.bucket;
     objectPath = parsed.path;
   }
   objectPath = stripBucketPrefix(objectPath, objectBucket);
 
+  const looksAvatar = /(?:^|\/)avatar[-_]/i.test(objectPath);
+  const tryBuckets: StorageBucket[] = looksAvatar
+    ? ["avatars", "live-covers"]
+    : objectBucket === "live-covers"
+      ? ["live-covers", "live-products", "shop-products", "avatars", "demo-covers"]
+      : objectBucket === "live-products"
+        ? ["live-products", "shop-products", "live-covers"]
+        : [objectBucket];
+
+  for (const b of tryBuckets) {
+    const signed = await signLiveObject(b, objectPath, size);
+    if (signed) return signed;
+  }
+  console.warn("[live-image] signed URL failed", tryBuckets.join("|"), objectPath);
+  return null;
+}
+
+async function signLiveObject(
+  objectBucket: StorageBucket,
+  objectPath: string,
+  size: LiveImageSize,
+): Promise<string | null> {
   const key = `${objectBucket}::${size}::${objectPath}`;
   const cached = signedCache.get(key);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
@@ -92,10 +112,7 @@ export async function resolveLiveImage(
   const { data, error } = await supabase.storage
     .from(objectBucket)
     .createSignedUrl(objectPath, SIGN_TTL_SEC);
-  if (error || !data) {
-    console.warn("[live-image] signed URL failed", objectBucket, objectPath, error?.message);
-    return null;
-  }
+  if (error || !data?.signedUrl) return null;
   signedCache.set(key, {
     url: data.signedUrl,
     expiresAt: Date.now() + SIGN_TTL_SEC * 1000,
@@ -121,7 +138,14 @@ export async function resolveProductDisplayImage(
       const { resolveShopImage } = await import("@/lib/shop-db");
       return resolveShopImage(value, size);
     }
-    if (parsed.bucket === "live-products" || parsed.bucket === "live-covers") {
+    if (parsed.bucket === "avatars") {
+      return resolveAvatarUrl(value);
+    }
+    if (
+      parsed.bucket === "live-products" ||
+      parsed.bucket === "live-covers" ||
+      parsed.bucket === "demo-covers"
+    ) {
       return resolveLiveImage(parsed.bucket, value, size);
     }
     return value;
@@ -1320,7 +1344,7 @@ export async function fetchUpcomingScheduledLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")),
       product_count: r.live_products?.[0]?.count ?? 0,
     })),
   );
@@ -1374,7 +1398,7 @@ export async function fetchSellerLives(
   const resolved = await Promise.all(
     rows.map(async (r) => ({
       ...r,
-      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")) ?? r.cover_url,
+      cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")),
     })),
   );
   // Sort: live first, then scheduled (upcoming), then ended.

@@ -3,6 +3,7 @@
 // When tables are missing or empty, we fall back to demo posts so Pour toi is never blank.
 
 import { supabase } from "@/integrations/supabase/client";
+import { parseSupabaseStorageUrl } from "@/lib/storage-path";
 import vitrine1 from "@/assets/vitrine/vitrine-1.jpg";
 import vitrine2 from "@/assets/vitrine/vitrine-2.jpg";
 import vitrine2b from "@/assets/vitrine/vitrine-2b.jpg";
@@ -214,6 +215,21 @@ function normalizeMediaUrls(raw: unknown): string[] {
   return [];
 }
 
+/** Rewrite stored Supabase URLs onto the current project so old hosts still play. */
+export function resolveVitrinePublicUrl(url: string): string {
+  if (!url || url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  const parsed = parseSupabaseStorageUrl(url);
+  if (!parsed) return url;
+  const { data } = supabase.storage.from(parsed.bucket).getPublicUrl(parsed.path);
+  return data.publicUrl || url;
+}
+
+function mapPostMedia(raw: unknown): string[] {
+  return normalizeMediaUrls(raw).map(resolveVitrinePublicUrl);
+}
+
 export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
   try {
     const { data, error } = await sb
@@ -258,20 +274,15 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
       }
     }
 
-    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
-    return Promise.all(
-      data.map(async (r: any) => {
-        const seller = r.seller
-          ? {
-              ...r.seller,
-              avatar_url: (await resolveAvatarUrl(r.seller.avatar_url)) ?? r.seller.avatar_url,
-            }
-          : null;
+    return data
+      .map((r: any) => {
+        const media_urls = mapPostMedia(r.media_urls);
+        if (media_urls.length === 0 && !r.live_id) return null;
         return {
           id: r.id,
           user_id: r.user_id,
           media_type: (r.media_type ?? "image") as VitrineMediaType,
-          media_urls: normalizeMediaUrls(r.media_urls),
+          media_urls,
           caption: r.caption,
           product_id: r.product_id,
           live_id: r.live_id,
@@ -279,11 +290,11 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
           comment_count: Number(r.comment_count ?? 0),
           created_at: r.created_at,
           liked_by_me: likedIds.has(r.id),
-          seller,
+          seller: r.seller ?? null,
           live_status: r.live_id ? (liveStatus.get(r.live_id) ?? null) : null,
-        };
-      }),
-    );
+        } satisfies VitrinePost;
+      })
+      .filter(Boolean) as VitrinePost[];
   } catch {
     return DEMO_POSTS;
   }
@@ -330,20 +341,11 @@ export async function fetchVitrinePostById(postId: string): Promise<VitrinePost 
       liveStatus = (live?.status as "live" | "scheduled" | "ended" | undefined) ?? null;
     }
 
-    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
-    const seller = data.seller
-      ? {
-          ...data.seller,
-          avatar_url:
-            (await resolveAvatarUrl(data.seller.avatar_url)) ?? data.seller.avatar_url,
-        }
-      : null;
-
     return {
       id: data.id,
       user_id: data.user_id,
       media_type: (data.media_type ?? "image") as VitrineMediaType,
-      media_urls: normalizeMediaUrls(data.media_urls),
+      media_urls: mapPostMedia(data.media_urls),
       caption: data.caption,
       product_id: data.product_id,
       live_id: data.live_id,
@@ -351,11 +353,65 @@ export async function fetchVitrinePostById(postId: string): Promise<VitrinePost 
       comment_count: Number(data.comment_count ?? 0),
       created_at: data.created_at,
       liked_by_me: liked,
-      seller,
+      seller: data.seller ?? null,
       live_status: liveStatus,
     };
   } catch {
     return null;
+  }
+}
+
+/** Posts published by one user — used on the shop Vitrine tab. */
+export async function fetchVitrinePostsByUser(
+  userId: string,
+  limit = 60,
+): Promise<VitrinePost[]> {
+  if (!userId) return [];
+  try {
+    const { data, error } = await sb
+      .from("vitrine_posts")
+      .select(
+        "id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, active",
+      )
+      .eq("user_id", userId)
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return data
+      .map((r: any) => {
+        const media_urls = mapPostMedia(r.media_urls);
+        if (media_urls.length === 0 && !r.live_id) return null;
+        return {
+          id: r.id,
+          user_id: r.user_id,
+          media_type: (r.media_type ?? "image") as VitrineMediaType,
+          media_urls,
+          caption: r.caption,
+          product_id: r.product_id,
+          live_id: r.live_id,
+          like_count: Number(r.like_count ?? 0),
+          comment_count: Number(r.comment_count ?? 0),
+          created_at: r.created_at,
+        } satisfies VitrinePost;
+      })
+      .filter(Boolean) as VitrinePost[];
+  } catch {
+    return [];
+  }
+}
+
+export async function countVitrinePostsByUser(userId: string): Promise<number> {
+  if (!userId) return 0;
+  try {
+    const { count } = await sb
+      .from("vitrine_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("active", true);
+    return count ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -373,26 +429,15 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error || !data || data.length === 0) return DEMO_STORIES;
-    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
-    return Promise.all(
-      data.map(async (r: any) => {
-        const seller = r.seller
-          ? {
-              ...r.seller,
-              avatar_url: (await resolveAvatarUrl(r.seller.avatar_url)) ?? r.seller.avatar_url,
-            }
-          : null;
-        return {
-          id: r.id,
-          user_id: r.user_id,
-          media_url: r.media_url,
-          expires_at: r.expires_at,
-          created_at: r.created_at,
-          unread: true,
-          seller,
-        };
-      }),
-    );
+    return data.map((r: any) => ({
+      id: r.id,
+      user_id: r.user_id,
+      media_url: r.media_url ? resolveVitrinePublicUrl(r.media_url) : r.media_url,
+      expires_at: r.expires_at,
+      created_at: r.created_at,
+      unread: true,
+      seller: r.seller ?? null,
+    }));
   } catch {
     return DEMO_STORIES;
   }
@@ -745,4 +790,34 @@ export async function createVitrinePost(input: {
     console.warn("[vitrine] create post exception", e);
     return null;
   }
+}
+
+export async function deleteVitrinePost(postId: string): Promise<boolean> {
+  if (!postId || postId.startsWith("demo-")) return false;
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid) return false;
+  const { error } = await sb.from("vitrine_posts").delete().eq("id", postId).eq("user_id", uid);
+  if (!error) return true;
+  const { error: soft } = await sb
+    .from("vitrine_posts")
+    .update({ active: false })
+    .eq("id", postId)
+    .eq("user_id", uid);
+  if (soft) {
+    console.warn("[vitrine] delete post failed", error.message, soft.message);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteVitrineStory(storyId: string): Promise<boolean> {
+  if (!storyId || storyId.startsWith("demo-")) return false;
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid) return false;
+  const { error } = await sb.from("vitrine_stories").delete().eq("id", storyId).eq("user_id", uid);
+  if (error) {
+    console.warn("[vitrine] delete story failed", error.message);
+    return false;
+  }
+  return true;
 }

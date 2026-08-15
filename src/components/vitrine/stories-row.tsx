@@ -15,6 +15,7 @@ export function StoriesRow({
   collapsed,
   tone = "light",
   onCreate,
+  onStoryDeleted,
 }: {
   stories: VitrineStory[];
   collapsed?: boolean;
@@ -22,6 +23,7 @@ export function StoriesRow({
   tone?: "light" | "dark";
   /** Create a Vitrine post (photo/video). Falls back to stub toast. */
   onCreate?: () => void;
+  onStoryDeleted?: (storyId: string) => void;
 }) {
   const { t } = useTranslation();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
@@ -118,6 +120,7 @@ export function StoriesRow({
         stories={stories}
         startIndex={viewerIndex ?? 0}
         onClose={() => setViewerIndex(null)}
+        onDeleted={onStoryDeleted}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video, Play, Trash2 } from "lucide-react";
+import { ChevronLeft, Star, BadgeCheck, MoreHorizontal, Flag, Ban, X, Loader2, Package, Radio, CalendarDays, ShoppingBag, Users as UsersIcon, Video, Play, Trash2, Clapperboard } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -42,6 +42,13 @@ import {
   deleteLiveReplay,
   type LiveReplayMeta,
 } from "@/lib/live-replay-client";
+import {
+  countVitrinePostsByUser,
+  deleteVitrinePost,
+  fetchVitrinePostsByUser,
+  isVideoUrl,
+  type VitrinePost,
+} from "@/lib/vitrine-db";
 
 type SellerProfile = {
   id: string;
@@ -78,8 +85,8 @@ async function resolveSellerRef(ref: string): Promise<SellerProfile | null> {
 
 const HEADER_MAX = 260;
 
-type TabKey = "boutique" | "lives" | "avis";
-const TAB_KEYS: TabKey[] = ["boutique", "lives", "avis"];
+type TabKey = "boutique" | "vitrine" | "lives" | "avis";
+const TAB_KEYS: TabKey[] = ["boutique", "vitrine", "lives", "avis"];
 
 export function SellerProfileScreen() {
   const { activeSeller, close } = useSellerProfile();
@@ -88,21 +95,24 @@ export function SellerProfileScreen() {
   const [productsCount, setProductsCount] = useState<number>(0);
   const [activeProductsCount, setActiveProductsCount] = useState<number>(0);
   const [livesCount, setLivesCount] = useState<number>(0);
+  const [vitrineCount, setVitrineCount] = useState<number>(0);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const dragX = useMotionValue(0);
 
   const loadCounts = async (sellerId: string) => {
-    const [sales, products, activeProducts, lives] = await Promise.all([
+    const [sales, products, activeProducts, lives, vitrine] = await Promise.all([
       supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("status", "paid"),
       supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
       supabase.from("shop_products").select("id", { count: "exact", head: true }).eq("seller_id", sellerId).eq("active", true),
       supabase.from("lives").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+      countVitrinePostsByUser(sellerId),
     ]);
     setSalesCount(sales.count ?? 0);
     setProductsCount(products.count ?? 0);
     setActiveProductsCount(activeProducts.count ?? 0);
     setLivesCount(lives.count ?? 0);
+    setVitrineCount(vitrine);
   };
 
   useEffect(() => {
@@ -168,6 +178,7 @@ export function SellerProfileScreen() {
           productsCount={productsCount}
           activeProductsCount={activeProductsCount}
           livesCount={livesCount}
+          vitrineCount={vitrineCount}
           onBack={close}
           dragX={dragX}
         />
@@ -182,8 +193,9 @@ function SellerProfileInner({
   banner,
   salesCount,
   productsCount,
-  activeProductsCount,
+  activeProductsCount: _activeProductsCount,
   livesCount,
+  vitrineCount,
   onBack,
   dragX,
 }: {
@@ -194,6 +206,7 @@ function SellerProfileInner({
   productsCount: number;
   activeProductsCount: number;
   livesCount: number;
+  vitrineCount: number;
   onBack: () => void;
   dragX: ReturnType<typeof useMotionValue<number>>;
 }) {
@@ -415,16 +428,10 @@ function SellerProfileInner({
                 className="grid grid-cols-4 items-center rounded-2xl bg-card px-2 py-3"
                 style={{ boxShadow: "0 12px 30px rgba(20,15,5,0.08)", border: "1px solid rgba(200,162,75,0.18)" }}
               >
-                <StatCol icon={<ShoppingBag size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.products", { defaultValue: "Produits" })} value={String(productsCount)} />
+                <StatCol icon={<ShoppingBag size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.products", { defaultValue: "Produits" })} value={String(productsCount)} onClick={() => setTab("boutique")} />
                 <StatCol icon={<UsersIcon size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.followers")} value={formatCompact(profile.followers_count)} />
-                <StatCol icon={<Video size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.lives", { defaultValue: "Lives" })} value={String(livesCount)} />
-                <div className="flex flex-col items-center gap-0.5 border-l border-border/50 pl-2">
-                  <span className="text-[10px] font-medium text-muted-foreground">{t("seller.stats.shop", { defaultValue: "Boutique" })}</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold" style={{ color: activeProductsCount > 0 ? "#12703B" : "#8A8578" }}>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: activeProductsCount > 0 ? "#1FA05A" : "#B4AC96" }} />
-                    {activeProductsCount > 0 ? t("seller.stats.online", { defaultValue: "EN LIGNE" }) : t("seller.stats.offline", { defaultValue: "HORS LIGNE" })}
-                  </span>
-                </div>
+                <StatCol icon={<Video size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.lives", { defaultValue: "Lives" })} value={String(livesCount)} onClick={() => { if (isOwner) setTab("lives"); }} />
+                <StatCol icon={<Clapperboard size={16} style={{ color: "#C8A24B" }} />} label={t("seller.stats.vitrine", { defaultValue: "Vitrine" })} value={String(vitrineCount)} onClick={() => setTab("vitrine")} />
               </div>
             </div>
 
@@ -537,6 +544,9 @@ function SellerProfileInner({
               transition={{ duration: 0.18, ease: EASE_IOS }}
             >
               {tab === "boutique" && <BoutiqueTab sellerId={profile.id} currency={profile.currency} />}
+              {tab === "vitrine" && (
+                <VitrineTab sellerId={profile.id} isOwner={isOwner} onBack={onBack} />
+              )}
               {tab === "lives" && isOwner && (
                 <LivesTab sellerId={profile.id} onBack={onBack} />
               )}
@@ -614,20 +624,187 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 function Divider() { return <span className="h-6 w-px bg-border" aria-hidden />; }
-function StatCol({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
+function StatCol({
+  icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
       <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
       <span className="text-[15px] font-extrabold tabular-nums">{value}</span>
-    </div>
+    </>
   );
+  if (onClick) {
+    return (
+      <Press onClick={onClick} className="flex flex-col items-center gap-0.5 !bg-transparent p-0">
+        {body}
+      </Press>
+    );
+  }
+  return <div className="flex flex-col items-center gap-0.5">{body}</div>;
 }
 function formatCompact(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(".0", "")}k`;
   return String(n);
+}
+
+/* ============ VITRINE ============ */
+
+function VitrineTab({
+  sellerId,
+  isOwner,
+  onBack,
+}: {
+  sellerId: string;
+  isOwner: boolean;
+  onBack: () => void;
+}) {
+  const { t } = useTranslation();
+  const [posts, setPosts] = useState<VitrinePost[] | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const reload = async () => {
+    const rows = await fetchVitrinePostsByUser(sellerId);
+    setPosts(rows);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    void fetchVitrinePostsByUser(sellerId).then((rows) => {
+      if (alive) setPosts(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sellerId]);
+
+  const openInFeed = (postId: string) => {
+    haptic.light();
+    onBack();
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("kidi:navigate-tab", { detail: "vitrine" }));
+      window.dispatchEvent(
+        new CustomEvent("kidi:open-vitrine-post", { detail: { post_id: postId } }),
+      );
+    }, 80);
+  };
+
+  const onDelete = async (postId: string) => {
+    if (deletingId) return;
+    if (confirmId !== postId) {
+      setConfirmId(postId);
+      haptic.warning();
+      return;
+    }
+    setDeletingId(postId);
+    haptic.medium();
+    const ok = await deleteVitrinePost(postId);
+    setDeletingId(null);
+    setConfirmId(null);
+    if (ok) {
+      haptic.success();
+      toast.success(t("vitrine.deleted"));
+      setPosts((prev) => (prev ?? []).filter((p) => p.id !== postId));
+    } else {
+      toast.error(t("vitrine.deleteFail"));
+    }
+  };
+
+  if (posts === null) {
+    return (
+      <div className="grid place-items-center py-14">
+        <Loader2 className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center py-16 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
+          <Clapperboard className="text-muted-foreground" />
+        </div>
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {t(isOwner ? "sellerProfile.vitrineEmpty" : "sellerProfile.vitrineEmptyPublic")}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {isOwner && (
+        <p className="mb-3 text-[12px] text-muted-foreground">
+          {t("sellerProfile.vitrineHint")}
+        </p>
+      )}
+      <div className="grid grid-cols-3 gap-1.5">
+        {posts.map((post) => {
+          const url = post.media_urls[0] ?? "";
+          const video = post.media_type === "video" || isVideoUrl(url);
+          const busy = deletingId === post.id;
+          const confirm = confirmId === post.id;
+          return (
+            <div key={post.id} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted">
+              <Press
+                onClick={() => openInFeed(post.id)}
+                hapticOnTap={false}
+                className="!absolute inset-0 !block p-0"
+              >
+                {video ? (
+                  <video
+                    src={url}
+                    className="h-full w-full object-cover"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : url ? (
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-muted-foreground">
+                    <Clapperboard size={22} />
+                  </div>
+                )}
+                {video && (
+                  <span className="pointer-events-none absolute bottom-1.5 left-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/50 text-white">
+                    <Play size={12} fill="white" />
+                  </span>
+                )}
+              </Press>
+              {isOwner && (
+                <Press
+                  aria-label={confirm ? t("vitrine.deleteConfirm") : t("vitrine.delete")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onDelete(post.id);
+                  }}
+                  className="absolute right-1.5 top-1.5 z-10 grid h-8 w-8 place-items-center rounded-full text-white"
+                  style={{ background: confirm ? "#DC2626" : "rgba(0,0,0,0.55)" }}
+                >
+                  {busy ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                </Press>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /* ============ BOUTIQUE ============ */

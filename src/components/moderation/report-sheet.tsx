@@ -2,6 +2,7 @@
 // Bottom sheet, used from live viewer / chat / user profile.
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -54,7 +55,9 @@ export function ReportSheet({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -62,6 +65,8 @@ export function ReportSheet({
           style={{ zIndex }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           <motion.div
             className="mx-auto w-full max-w-lg rounded-t-3xl bg-background p-4 pb-safe"
@@ -117,6 +122,7 @@ export function ReportSheet({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

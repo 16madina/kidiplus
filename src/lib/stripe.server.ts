@@ -169,10 +169,18 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
         : ""
       : rawPublishable;
 
+  // BYOK: the publishable key MUST belong to the same Stripe account as
+  // STRIPE_SECRET_KEY. Never fall back to the Lovable managed pk_test_.
+  if (legacySecret) {
+    const byokPk = (process.env.STRIPE_PUBLISHABLE_KEY ?? "").trim();
+    if (env === "sandbox" && byokPk.startsWith("pk_test_")) publishableKey = byokPk;
+    else if (env === "live" && byokPk.startsWith("pk_live_")) publishableKey = byokPk;
+  }
+
   // Sandbox request: the deployed browser bundle only has the pk_live_ token,
   // so return the managed sandbox publishable key that matches
   // STRIPE_SANDBOX_API_KEY (the client prefers the server-provided key).
-  if (env === "sandbox" && !publishableKey.startsWith("pk_test_")) {
+  if (env === "sandbox" && !publishableKey.startsWith("pk_test_") && !legacySecret) {
     publishableKey = managedSandboxPublishableKey();
   }
 
@@ -198,6 +206,40 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
   }
 
   return { ok: true, env, publishableKey, webhookSecret };
+}
+
+/**
+ * Card charges (wallet top-up / checkout): prefer the Lovable gateway, then
+ * fall back to STRIPE_SECRET_KEY + STRIPE_PUBLISHABLE_KEY on local vite.
+ */
+export function resolveCardStripe(request: Request): {
+  ok: boolean;
+  hint: StripeEnv | null;
+  env: StripeEnv;
+  opts: StripeClientOpts;
+  publishableKey: string;
+} {
+  const pkOk = (k: string) => k.startsWith("pk_test_") || k.startsWith("pk_live_");
+  const managedHint = envHintFromRequest(request, { managedOnly: true });
+  const managedCfg = getStripeConfig(managedHint, { managedOnly: true });
+  if (managedCfg.ok && pkOk(managedCfg.publishableKey)) {
+    return {
+      ok: true,
+      hint: managedHint,
+      env: managedCfg.env,
+      opts: { managedOnly: true },
+      publishableKey: managedCfg.publishableKey,
+    };
+  }
+  const hint = envHintFromRequest(request);
+  const cfg = getStripeConfig(hint);
+  return {
+    ok: cfg.ok && pkOk(cfg.publishableKey),
+    hint,
+    env: cfg.env,
+    opts: { managedOnly: false },
+    publishableKey: cfg.publishableKey,
+  };
 }
 
 

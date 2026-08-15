@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { EASE_IOS } from "@/lib/motion";
+import { AuthLanguageToggle } from "./auth-language-toggle";
 
 export function AuthScreenShell({
   title,
@@ -46,6 +47,7 @@ export function AuthScreenShell({
           <span className="h-11 w-11" />
         )}
         <h1 className="ml-auto mr-2 text-[17px] font-semibold">{title}</h1>
+        <AuthLanguageToggle />
       </div>
       <div
         className="flex-1 overflow-y-auto px-6 pb-6"

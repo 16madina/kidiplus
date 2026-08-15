@@ -14,8 +14,11 @@ export type ConnectStatusResult =
       currency: string;
       chargesEnabled: boolean;
       payoutsEnabled: boolean;
-       connectUnavailable?: boolean;
+      detailsSubmitted?: boolean;
+      connectUnavailable?: boolean;
       disabledReason?: string | null;
+      currentlyDue?: string[];
+      pastDue?: string[];
     }
   | { ok: false; error: string; message?: string };
 
@@ -31,16 +34,29 @@ async function post(path: string, body?: unknown): Promise<any> {
   if (path === "/api/connect/onboard") {
     console.info("[connect/client] onboarding payments env", envHeaders["X-Payments-Env"]);
   }
-  const res = await fetch(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...envHeaders,
-    },
-    body: JSON.stringify(body ?? {}),
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...envHeaders,
+      },
+      body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch (e) {
+    const timedOut =
+      (e as { name?: string }).name === "TimeoutError" ||
+      (e as { name?: string }).name === "AbortError";
+    return {
+      error: timedOut ? "timeout" : "network_error",
+      message: (e as Error).message,
+    };
+  }
   const j = await res.json().catch(() => ({}));
+  if (!res.ok && !j?.error) return { error: "http_error", message: `HTTP ${res.status}` };
   return j;
 }
 
@@ -55,8 +71,11 @@ export async function fetchConnectStatus(): Promise<ConnectStatusResult> {
       currency: String(j.currency ?? "EUR"),
       chargesEnabled: Boolean(j.chargesEnabled),
       payoutsEnabled: Boolean(j.payoutsEnabled),
+      detailsSubmitted: Boolean(j.detailsSubmitted),
       connectUnavailable: Boolean(j.connectUnavailable),
       disabledReason: j.disabledReason ?? null,
+      currentlyDue: Array.isArray(j.currentlyDue) ? j.currentlyDue : [],
+      pastDue: Array.isArray(j.pastDue) ? j.pastDue : [],
     };
   } catch (e) {
     return { ok: false, error: "network_error", message: (e as Error).message };

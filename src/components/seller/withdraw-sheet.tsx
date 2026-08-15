@@ -107,6 +107,7 @@ export function WithdrawSheet({
   const connectEligible = CONNECT_CURRENCIES.has(normalizeCurrency(currency));
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | "loading">("loading");
   const [connectUnavailable, setConnectUnavailable] = useState(false);
+  const [onboardError, setOnboardError] = useState<string | null>(null);
   const refreshConnect = useCallback(async () => {
     if (!connectEligible) return;
     const r = await fetchConnectStatus();
@@ -132,6 +133,7 @@ export function WithdrawSheet({
       setHolder("");
       setPaypalEmail("");
       setBusy(false);
+      setOnboardError(null);
     }
   }, [open, available, defaultMethod]);
 
@@ -174,27 +176,52 @@ export function WithdrawSheet({
           ? t("payout.errors.missingDestination")
           : null;
 
+  const onboardErrorMessage = (error?: string) => {
+    if (error === "connect_currency_unsupported" || error === "connect_country_unsupported") {
+      return t("connect.errors.unsupported", {
+        defaultValue: "Stripe n'est pas disponible pour ton pays / ta devise.",
+      });
+    }
+    if (error === "connect_not_enabled") {
+      return t("connect.errors.notEnabled", {
+        defaultValue:
+          "Les virements bancaires Stripe (Connect) ne sont pas activés sur le compte Stripe de KiDi+. La recharge carte peut marcher sans ça — ce n'est pas la même chose.",
+      });
+    }
+    if (error === "stripe_not_configured") {
+      return t("connect.errors.notConfigured", {
+        defaultValue: "Stripe n'est pas configuré sur ce serveur.",
+      });
+    }
+    if (error === "timeout") {
+      return t("connect.errors.timeout", {
+        defaultValue:
+          "Stripe ne répond pas (Connect). Réessaie, ou utilise PayPal / virement en dessous.",
+      });
+    }
+    return t("connect.errors.onboard", {
+      defaultValue: "Impossible d'ouvrir la configuration Stripe.",
+    });
+  };
+
   const onboardConnect = async () => {
     setBusy(true);
-    const r = await startConnectOnboarding();
-    setBusy(false);
-    if (!r.ok) {
+    setOnboardError(null);
+    try {
+      const r = await startConnectOnboarding();
+      if (!r.ok) {
+        haptic.warning();
+        const msg = onboardErrorMessage(r.error);
+        setOnboardError(msg);
+        toast.error(msg);
+      }
+    } catch {
       haptic.warning();
-      toast.error(
-        r.error === "connect_currency_unsupported" || r.error === "connect_country_unsupported"
-          ? t("connect.errors.unsupported", {
-              defaultValue: "Stripe n'est pas disponible pour ton pays / ta devise.",
-            })
-          : r.error === "connect_not_enabled"
-            ? t("connect.errors.notEnabled", {
-                defaultValue:
-                  "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard.",
-              })
-            : t("connect.errors.onboard", {
-                defaultValue: "Impossible d'ouvrir la configuration Stripe.",
-              }),
-      );
-
+      const msg = onboardErrorMessage("timeout");
+      setOnboardError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -412,13 +439,15 @@ export function WithdrawSheet({
 
               {method === "stripe_connect" ? (
                 <div className="mt-3 rounded-2xl border border-border p-3 text-[12px] leading-snug text-muted-foreground">
-                  {connectStatus === "loading"
-                    ? t("connect.checking", { defaultValue: "Vérification de ton compte…" })
-                    : connectUnavailable
-                      ? t("connect.errors.notEnabled", {
-                          defaultValue:
-                            "Les paiements Stripe ne sont pas encore activés sur la plateforme. Réessaie plus tard.",
-                        })
+                  {onboardError
+                    ? <span className="font-semibold" style={{ color: "oklch(0.55 0.2 25)" }}>{onboardError}</span>
+                    : connectStatus === "loading"
+                      ? t("connect.checking", { defaultValue: "Vérification de ton compte…" })
+                      : connectUnavailable
+                        ? t("connect.errors.notEnabled", {
+                            defaultValue:
+                              "Les virements bancaires Stripe (Connect) ne sont pas activés sur le compte Stripe de KiDi+. La recharge carte peut marcher sans ça — ce n'est pas la même chose.",
+                          })
                     : connectStatus === "active"
                       ? t("connect.activeHint", {
                           defaultValue:
@@ -492,6 +521,19 @@ export function WithdrawSheet({
               )}
 
               <div className="mt-auto pt-4">
+                {onboardError && (
+                  <p
+                    className="mb-2 text-center text-[12px] font-semibold"
+                    style={{ color: "oklch(0.55 0.2 25)" }}
+                  >
+                    {onboardError}
+                  </p>
+                )}
+                {busy && !onboardError && (
+                  <p className="mb-2 text-center text-[12px] text-muted-foreground">
+                    {t("connect.opening", { defaultValue: "Ouverture de Stripe…" })}
+                  </p>
+                )}
                 {!canContinue && disabledReason && (
                   <p
                     className="mb-2 text-center text-[12px] font-semibold"

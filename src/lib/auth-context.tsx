@@ -56,6 +56,7 @@ type AuthCtx = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  resendConfirmationEmail: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<Profile>;
@@ -227,6 +228,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const resendConfirmationEmail = useCallback<AuthCtx["resendConfirmationEmail"]>(
+    async (email) => {
+      const redirectTo =
+        typeof window !== "undefined" ? window.location.origin : undefined;
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (error) throw error;
+    },
+    [],
+  );
+
   const updatePassword = useCallback<AuthCtx["updatePassword"]>(async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
@@ -277,6 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       sendPasswordReset,
+      resendConfirmationEmail,
       updatePassword,
       refreshProfile,
       updateProfile,
@@ -293,6 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       sendPasswordReset,
+      resendConfirmationEmail,
       updatePassword,
       refreshProfile,
       updateProfile,

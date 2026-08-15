@@ -26,7 +26,8 @@ export function SignInScreen({
   onForgot: () => void;
 }) {
   const { t } = useTranslation();
-  const { signIn } = useAuth();
+  const { signIn, resendConfirmationEmail } = useAuth();
+  const [resendBusy, setResendBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -156,6 +157,28 @@ export function SignInScreen({
         {error && (
           <div className="rounded-xl bg-[oklch(0.95_0.05_20)] px-3 py-2 text-[13px] font-medium text-[oklch(0.45_0.2_25)]">
             {error}
+            {error === t("auth.errors.emailNotConfirmed") && (
+              <button
+                type="button"
+                disabled={resendBusy || !email.trim()}
+                onClick={async () => {
+                  setResendBusy(true);
+                  try {
+                    await resendConfirmationEmail(email.trim());
+                    haptic.success();
+                    toast.success(t("auth.signUp.resendSent"));
+                  } catch (err) {
+                    haptic.error();
+                    setError(frenchAuthError(err));
+                  } finally {
+                    setResendBusy(false);
+                  }
+                }}
+                className="mt-1 block font-semibold underline underline-offset-2 disabled:opacity-60"
+              >
+                {resendBusy ? t("auth.signUp.resendSending") : t("auth.signUp.resend")}
+              </button>
+            )}
           </div>
         )}
 

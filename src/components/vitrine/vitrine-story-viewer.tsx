@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Volume2, VolumeX, X } from "lucide-react";
+import { Loader2, Volume2, VolumeX, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { registerOverlay, guardBack } from "@/components/push-screen";
@@ -22,17 +22,20 @@ export function VitrineStoryViewer({
   stories,
   startIndex,
   onClose,
+  onDeleted,
 }: {
   open: boolean;
   stories: VitrineStory[];
   startIndex: number;
   onClose: () => void;
+  onDeleted?: (storyId: string) => void;
 }) {
   const { t } = useTranslation();
   const [index, setIndex] = useState(startIndex);
   const [progress, setProgress] = useState(0);
   const [muted, setMuted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mediaStatus, setMediaStatus] = useState<"loading" | "ready" | "error">("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -44,7 +47,12 @@ export function VitrineStoryViewer({
     if (!open) return;
     setIndex(Math.max(0, Math.min(startIndex, stories.length - 1)));
     setProgress(0);
+    setMediaStatus("loading");
   }, [open, startIndex, stories.length]);
+
+  useEffect(() => {
+    setMediaStatus("loading");
+  }, [story?.id]);
 
   useEffect(() => {
     if (open) suspendVitrinePlayback("story");
@@ -138,7 +146,7 @@ export function VitrineStoryViewer({
           transition={{ duration: 0.2, ease: EASE_IOS }}
           className="fixed inset-0 z-[96] bg-black"
         >
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-black">
             {video ? (
               <video
                 key={story.id}
@@ -148,6 +156,10 @@ export function VitrineStoryViewer({
                 playsInline
                 autoPlay
                 muted={muted}
+                preload="auto"
+                onLoadedData={() => setMediaStatus("ready")}
+                onCanPlay={() => setMediaStatus("ready")}
+                onError={() => setMediaStatus("error")}
                 onTimeUpdate={() => {
                   const el = videoRef.current;
                   if (!el || !el.duration) return;
@@ -162,7 +174,22 @@ export function VitrineStoryViewer({
                 alt=""
                 className="h-full w-full object-contain"
                 draggable={false}
+                decoding="async"
+                onLoad={() => setMediaStatus("ready")}
+                onError={() => setMediaStatus("error")}
               />
+            )}
+            {mediaStatus === "loading" && (
+              <div className="absolute inset-0 grid place-items-center">
+                <Loader2 className="animate-spin text-white/70" size={28} />
+              </div>
+            )}
+            {mediaStatus === "error" && (
+              <div className="absolute inset-0 grid place-items-center px-8 text-center">
+                <p className="text-[14px] font-medium text-white/70">
+                  {t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+                </p>
+              </div>
             )}
           </div>
 
@@ -252,6 +279,7 @@ export function VitrineStoryViewer({
                     contentKind: "story",
                     contentId: story.id,
                   }}
+                  buttonClassName="h-9 w-9 rounded-full bg-black/55 text-white"
                   sheetZIndex={120}
                   onOpenChange={setMenuOpen}
                   onBlocked={() => {
@@ -259,6 +287,17 @@ export function VitrineStoryViewer({
                     const nextIdx = stories.findIndex(
                       (s, i) => i > index && s.user_id !== story.user_id,
                     );
+                    if (nextIdx >= 0) {
+                      setProgress(0);
+                      setIndex(nextIdx);
+                    } else {
+                      close();
+                    }
+                  }}
+                  onDeleted={() => {
+                    const id = story.id;
+                    const nextIdx = stories.findIndex((s, i) => i > index);
+                    onDeleted?.(id);
                     if (nextIdx >= 0) {
                       setProgress(0);
                       setIndex(nextIdx);

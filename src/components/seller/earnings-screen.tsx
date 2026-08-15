@@ -347,7 +347,9 @@ function PayoutsList({
     <ul className="space-y-2">
       {payouts.map((p) => {
         const meta = payoutStatusMeta(p.status);
-        const when = new Date(p.requested_at).toLocaleDateString(i18n.language);
+        const when = new Date(
+          p.status === "paid" && p.processed_at ? p.processed_at : p.requested_at,
+        ).toLocaleDateString(i18n.language);
         return (
           <li key={p.id} className="rounded-2xl border border-border p-3">
             <div className="flex items-center justify-between">

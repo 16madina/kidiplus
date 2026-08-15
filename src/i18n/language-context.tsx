@@ -51,12 +51,10 @@ function applyLang(l: Lang) {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Start from storage / device before profile resolves to avoid a flash.
-  const [lang, setLangState] = useState<Lang>(() => {
-    const stored = readStored();
-    if (stored) return stored;
-    return detectDeviceLanguage();
-  });
+  // Stored choice first, else the browser/device language (fr or en).
+  const [lang, setLangState] = useState<Lang>(
+    () => readStored() ?? detectDeviceLanguage(),
+  );
 
   const { profile } = useAuth();
 

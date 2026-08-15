@@ -97,6 +97,7 @@ export function PaymentSheet({
   const [paypalBusy, setPaypalBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [cardSelected, setCardSelected] = useState(false);
+  const [cardUnavailable, setCardUnavailable] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
   const paypalFinishedRef = useRef(false);
   const paypalSupported =
@@ -401,6 +402,7 @@ export function PaymentSheet({
 
     setState({ kind: "idle" });
     setCardSelected(false);
+    setCardUnavailable(false);
     setWalletError(null);
 
     const pending = readPendingOrder(order.id);
@@ -443,7 +445,10 @@ export function PaymentSheet({
 
       const body = (await res.json().catch(() => ({}))) as CheckoutResp;
       if (res.status === 503 || body.error === "stripe_not_configured") {
-        setState({ kind: "not_configured" });
+        setCardUnavailable(true);
+        setCardSelected(false);
+        setState({ kind: "idle" });
+        toast.message(t("pay.cardUnavailableFallback"));
         return;
       }
       const pubKey = resolvePublishableKey(body.publishableKey);
@@ -641,14 +646,15 @@ export function PaymentSheet({
                     />
                     <button
                       type="button"
+                      disabled={cardUnavailable}
                       onClick={() => { void startCardCheckout(); }}
-                      className="w-full text-left"
+                      className="w-full text-left disabled:opacity-50"
                     >
                       <MethodRow
                         active={cardSelected}
                         brand="card"
                         label={t("pay.method.card")}
-                        subtitle={t("pay.method.cardSub")}
+                        subtitle={cardUnavailable ? t("pay.cardUnavailableFallback") : t("pay.method.cardSub")}
                         right={
                           <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
                             <span>VISA</span>

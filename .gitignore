@@ -36,3 +36,14 @@ package-lock.json.local-backup
 *.njsproj
 *.sln
 *.sw?
+# Huge Lovable demo videos mirrored for localhost (not for git)
+public/__l5e/**/*.mov
+public/__l5e/**/demo-video.mp4
+.cutover-keep/
+
+# Local DB dumps / migration artifacts (never commit)
+.env.migration
+migration-data/*.backup
+migration-data/backup-*/
+migration-data/*.saved.sql
+migration-data/storage-report/

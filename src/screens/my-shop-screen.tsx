@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Users as UsersIcon,
   Video,
+  Clapperboard,
   ChevronRight,
   ImagePlus,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import { haptic } from "@/lib/haptics";
 import { resolveAvatarUrl, bustAvatarCache } from "@/lib/avatar-url";
 import { formatProductMetaLine, conditionLabel } from "@/lib/live-product-options";
 import { useSellerProfile } from "@/lib/seller-profile-context";
+import { countVitrinePostsByUser } from "@/lib/vitrine-db";
 
 /* ============================================================
    Design tokens — warm cream / gold / navy palette
@@ -75,6 +77,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [livesCount, setLivesCount] = useState<number>(0);
+  const [vitrineCount, setVitrineCount] = useState<number>(0);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -169,11 +172,17 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     if (!open || !user) return;
     let alive = true;
     void (async () => {
-      const { count } = await supabase
-        .from("lives")
-        .select("id", { count: "exact", head: true })
-        .eq("seller_id", user.id);
-      if (alive) setLivesCount(count ?? 0);
+      const [{ count }, vitrine] = await Promise.all([
+        supabase
+          .from("lives")
+          .select("id", { count: "exact", head: true })
+          .eq("seller_id", user.id),
+        countVitrinePostsByUser(user.id),
+      ]);
+      if (alive) {
+        setLivesCount(count ?? 0);
+        setVitrineCount(vitrine);
+      }
     })();
     return () => { alive = false; };
   }, [open, user?.id]);
@@ -190,9 +199,7 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
     await load();
   };
 
-  const activeCount = items?.filter((i) => i.active).length ?? 0;
   const followers = user?.followers_count ?? 0;
-  const online = activeCount > 0;
 
   const filtered = useMemo(() => {
     if (!items) return null;
@@ -364,16 +371,21 @@ export function MyShopScreen({ open, onClose }: { open: boolean; onClose: () => 
               setTimeout(() => openSellerProfile(handle, "lives"), 80);
             }}
           />
-          <div className="flex flex-col items-center gap-0.5 border-l border-border/50 pl-2">
-            <span className="text-[10px] font-medium text-muted-foreground">Boutique</span>
-            <span className="inline-flex items-center gap-1 text-[13px] font-extrabold" style={{ color: online ? "#12703B" : "#8A8578" }}>
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: online ? "#1FA05A" : "#B4AC96" }}
-              />
-              {online ? "EN LIGNE" : "HORS LIGNE"}
-            </span>
-          </div>
+          <StatCol
+            icon={<Clapperboard size={16} style={{ color: GOLD }} />}
+            label={t("seller.stats.vitrine", { defaultValue: "Vitrine" })}
+            value={String(vitrineCount)}
+            onClick={() => {
+              const handle = user?.handle;
+              if (!handle) {
+                toast.error("Profil incomplet — ajoute un @pseudo");
+                return;
+              }
+              haptic.light();
+              onClose();
+              setTimeout(() => openSellerProfile(handle, "vitrine"), 80);
+            }}
+          />
         </div>
       </div>
 

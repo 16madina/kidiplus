@@ -2,8 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
-import { fetchConnectStatus, type ConnectStatus } from "@/lib/stripe-connect-client";
+import {
+  fetchConnectStatus,
+  startConnectOnboarding,
+  type ConnectStatus,
+  type ConnectStatusResult,
+} from "@/lib/stripe-connect-client";
 import { Press } from "@/components/press";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/connect-return")({
   ssr: false,
@@ -31,26 +37,62 @@ function ConnectReturn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [status, setStatus] = useState<ConnectStatus | "loading" | "error">("loading");
+  const [snapshot, setSnapshot] = useState<Extract<ConnectStatusResult, { ok: true }> | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    let attempts = 0;
+    const apply = (r: ConnectStatusResult) => {
+      if (!r.ok) {
+        setStatus("error");
+        return false;
+      }
+      setSnapshot(r);
+      setStatus(r.status);
+      return r.status === "active";
+    };
+    const tick = async () => {
       const r = await fetchConnectStatus();
       if (!alive) return;
-      setStatus(r.ok ? r.status : "error");
-    })();
+      const done = apply(r);
+      attempts += 1;
+      if (!done && attempts < 6) {
+        window.setTimeout(() => {
+          if (alive) void tick();
+        }, 1500);
+      }
+    };
+    void tick();
     return () => {
       alive = false;
     };
   }, []);
 
+  const resume = async () => {
+    setBusy(true);
+    const r = await startConnectOnboarding();
+    if (!r.ok) {
+      setBusy(false);
+      toast.error(
+        t("connect.errors.onboard", {
+          defaultValue: "Impossible d'ouvrir la configuration Stripe.",
+        }),
+      );
+    }
+  };
+
   const active = status === "active";
+  const needsMore =
+    !active &&
+    ((snapshot?.currentlyDue?.length ?? 0) > 0 || (snapshot?.pastDue?.length ?? 0) > 0);
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
       {status === "loading" ? (
         <>
           <Loader2 className="animate-spin" size={32} />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             {t("connect.checking", { defaultValue: "Vérification de ton compte…" })}
           </p>
         </>
@@ -60,11 +102,18 @@ function ConnectReturn() {
           <h1 className="text-lg font-bold">
             {t("connect.readyTitle", { defaultValue: "Compte de paiement prêt ✅" })}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             {t("connect.readyBody", {
               defaultValue: "Tu peux maintenant retirer tes gains directement sur ta banque.",
             })}
           </p>
+          <Press
+            onClick={() => navigate({ to: "/" })}
+            className="mt-2 rounded-2xl px-5 py-3 text-[15px] font-bold"
+            style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
+          >
+            {t("common.back", { defaultValue: "Retour" })}
+          </Press>
         </>
       ) : (
         <>
@@ -72,21 +121,36 @@ function ConnectReturn() {
           <h1 className="text-lg font-bold">
             {t("connect.pendingTitle", { defaultValue: "Configuration incomplète" })}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("connect.pendingBody", {
-              defaultValue:
-                "Stripe vérifie encore tes informations. Reviens dans quelques minutes ou complète les étapes manquantes.",
-            })}
+          <p className="text-sm text-foreground/70">
+            {needsMore
+              ? t("connect.pendingBody", {
+                  defaultValue:
+                    "Il reste des étapes sur Stripe (identité + banque). Clique ci-dessous pour les terminer.",
+                })
+              : t("connect.verifyingBody", {
+                  defaultValue:
+                    "Tes infos sont envoyées. Stripe vérifie encore — ce n'est pas la peine de recommencer le formulaire.",
+                })}
           </p>
+          {needsMore && (
+            <Press
+              onClick={busy ? undefined : resume}
+              disabled={busy}
+              className="mt-2 flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[15px] font-bold text-white"
+              style={{ backgroundColor: "#635BFF" }}
+            >
+              {busy && <Loader2 size={16} className="animate-spin" />}
+              {t("connect.resumeCta", { defaultValue: "Reprendre la configuration" })}
+            </Press>
+          )}
+          <Press
+            onClick={() => navigate({ to: "/" })}
+            className="rounded-2xl px-5 py-2 text-[14px] font-semibold text-foreground/70"
+          >
+            {t("common.back", { defaultValue: "Retour" })}
+          </Press>
         </>
       )}
-      <Press
-        onClick={() => navigate({ to: "/" })}
-        className="mt-2 rounded-2xl px-5 py-3 text-[15px] font-bold"
-        style={{ backgroundColor: "#c8a24a", color: "#10162B" }}
-      >
-        {t("common.back", { defaultValue: "Retour" })}
-      </Press>
     </div>
   );
 }

@@ -12,7 +12,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { createStripeClient, getStripeConfig, mapStripeError, envHintFromRequest } from "@/lib/stripe.server";
+import { createStripeClient, resolveCardStripe, mapStripeError } from "@/lib/stripe.server";
 import { normalizeCurrency, roundForCurrency, toStripeMinor, topUpLimits } from "@/lib/money";
 import { isAllowedOrigin } from "@/lib/api-cors";
 function corsHeaders(origin: string | null): HeadersInit {
@@ -51,18 +51,14 @@ export const Route = createFileRoute("/api/wallet-topup")({
           return json({ error: "Origin not allowed" }, 403, origin);
         }
 
-        // Wallet top-ups are confirmed in the browser with the MANAGED publishable
-        // token, so they must never be routed to the BYOK STRIPE_SECRET_KEY account
-        // (a separate Connect-testing account). managedOnly pins them to the gateway.
-        const MANAGED = { managedOnly: true } as const;
-        const envHint = envHintFromRequest(request, MANAGED);
-        const stripeCfg = getStripeConfig(envHint, MANAGED);
+        const card = resolveCardStripe(request);
+        const stripeCfg = card;
         const SUPABASE_URL = process.env.SUPABASE_URL;
         const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
         const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!stripeCfg.ok) {
-          return json({ error: stripeCfg.reason ?? "stripe_not_configured" }, 503, origin);
+          return json({ error: "stripe_not_configured" }, 503, origin);
         }
         if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
           return json({ error: "backend_not_configured" }, 500, origin);
@@ -134,7 +130,7 @@ export const Route = createFileRoute("/api/wallet-topup")({
 
         const amountMinor = toStripeMinor(amount, currency);
 
-        const stripe = createStripeClient(envHint, MANAGED);
+        const stripe = createStripeClient(card.hint, card.opts);
         let intent;
         try {
           intent = await stripe.paymentIntents.create({

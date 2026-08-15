@@ -361,7 +361,9 @@ export function TopUpSheet({
         detail?: string;
       };
       if (res.status === 503 || body.error === "stripe_not_configured") {
-        setStep({ kind: "not_configured" });
+        toast.message(t("pay.cardUnavailableFallback"));
+        setSelectedMethod("paypal");
+        setStep({ kind: "amount" });
         return;
       }
       const pubKey = resolvePublishableKey(body.publishableKey);

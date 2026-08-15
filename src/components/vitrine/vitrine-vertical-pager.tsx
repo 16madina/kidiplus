@@ -1,11 +1,12 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Loader2, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
 import { useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
+import { useTranslation } from "react-i18next";
 import {
   isVitrinePlaybackSuspended,
   subscribeVitrinePlayback,
@@ -136,7 +137,23 @@ export function VitrineVerticalPager({
           animate(dragX, 0, { duration: 0.22, ease: EASE_IOS });
         }}
       >
-        {children(index)}
+        {[-1, 0, 1].map((offset) => {
+          const i = index + offset;
+          if (i < 0 || i >= count) return null;
+          return (
+            <div
+              key={i}
+              className="absolute inset-0"
+              style={{
+                transform: `translateY(${offset * 100}%)`,
+                pointerEvents: offset === 0 ? "auto" : "none",
+              }}
+              aria-hidden={offset !== 0}
+            >
+              {children(i)}
+            </div>
+          );
+        })}
       </motion.div>
     </div>
   );
@@ -148,6 +165,7 @@ function MediaSlide({
   forceVideo,
   muted,
   playing,
+  eager = true,
 }: {
   url: string;
   className?: string;
@@ -155,16 +173,24 @@ function MediaSlide({
   muted: boolean;
   /** When false, video is paused (left tab / app background / user tap). */
   playing: boolean;
+  /** Attach src / start buffering. Off-screen slides stay cheap. */
+  eager?: boolean;
 }) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => subscribeVitrinePlayback(() => {
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
-  const shouldPlay = playing && !suspended;
+  useEffect(() => {
+    setStatus("loading");
+  }, [url]);
+
+  const shouldPlay = playing && !suspended && eager;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -205,30 +231,61 @@ function MediaSlide({
     };
   }, []);
 
+  const overlay =
+    status === "error" ? (
+      <div className="absolute inset-0 z-[5] grid place-items-center bg-black px-8 text-center">
+        <p className="text-[14px] font-medium text-white/70">
+          {t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+        </p>
+      </div>
+    ) : status === "loading" && eager ? (
+      <div className="absolute inset-0 z-[5] grid place-items-center bg-black/40">
+        <Loader2 className="animate-spin text-white/70" size={28} />
+      </div>
+    ) : null;
+
   if (asVideo) {
     return (
-      <video
-        ref={videoRef}
-        data-vitrine-feed
-        src={url}
-        className={className ?? "h-full w-full object-cover"}
-        autoPlay={shouldPlay}
-        muted={muted || !shouldPlay}
-        loop
-        playsInline
-        controls={false}
-        style={{ pointerEvents: "none", touchAction: "none" }}
-      />
+      <div className="relative h-full w-full bg-black">
+        {eager && (
+          <video
+            ref={videoRef}
+            data-vitrine-feed
+            src={url}
+            className={className ?? "h-full w-full object-cover"}
+            autoPlay={shouldPlay}
+            muted={muted || !shouldPlay}
+            loop
+            playsInline
+            preload="auto"
+            controls={false}
+            onLoadedData={() => setStatus("ready")}
+            onCanPlay={() => setStatus("ready")}
+            onError={() => setStatus("error")}
+            style={{ pointerEvents: "none", touchAction: "none" }}
+          />
+        )}
+        {overlay}
+      </div>
     );
   }
   return (
-    <img
-      src={url}
-      alt=""
-      className={className ?? "h-full w-full object-cover"}
-      draggable={false}
-      style={{ pointerEvents: "none", touchAction: "none" }}
-    />
+    <div className="relative h-full w-full bg-black">
+      {eager && (
+        <img
+          src={url}
+          alt=""
+          className={className ?? "h-full w-full object-cover"}
+          draggable={false}
+          decoding="async"
+          loading="eager"
+          onLoad={() => setStatus("ready")}
+          onError={() => setStatus("error")}
+          style={{ pointerEvents: "none", touchAction: "none" }}
+        />
+      )}
+      {overlay}
+    </div>
   );
 }
 
@@ -237,11 +294,14 @@ export function MediaCarousel({
   urls,
   className,
   forceVideo,
+  active = true,
 }: {
   urls: string[];
   className?: string;
   /** When post.media_type is video, treat slides as video even if extension is odd. */
   forceVideo?: boolean;
+  /** False for off-screen / prefetched neighbour cards. */
+  active?: boolean;
 }) {
   const [i, setI] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
@@ -251,7 +311,7 @@ export function MediaCarousel({
   const appActive = useAppActive();
   const [muted, toggleMuted] = useVitrineSound();
   const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
-  const playing = tabVisible && appActive && !userPaused;
+  const playing = active && tabVisible && appActive && !userPaused;
 
   // Reset pause when the slide set changes (new post).
   useEffect(() => {
@@ -299,6 +359,7 @@ export function MediaCarousel({
         forceVideo={forceVideo}
         muted={muted}
         playing={playing}
+        eager
       />
     ) : (
       <div
@@ -327,6 +388,7 @@ export function MediaCarousel({
                 forceVideo={forceVideo}
                 muted={muted}
                 playing={playing && idx === i}
+                eager={active && Math.abs(idx - i) <= 1}
               />
             </div>
           ))}

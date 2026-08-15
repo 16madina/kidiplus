@@ -3,7 +3,14 @@
  * Never persist ephemeral signed URLs — always re-sign at display time.
  */
 
-const BUCKETS = ["live-products", "live-covers", "shop-products", "avatars"] as const;
+const BUCKETS = [
+  "live-products",
+  "live-covers",
+  "shop-products",
+  "avatars",
+  "demo-covers",
+  "vitrine-media",
+] as const;
 export type StorageBucket = (typeof BUCKETS)[number];
 
 /**

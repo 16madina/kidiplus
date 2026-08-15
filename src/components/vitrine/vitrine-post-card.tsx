@@ -38,18 +38,24 @@ export function VitrinePostCard({
   post,
   onUpdated,
   onBlocked,
+  onDeleted,
   autoOpenComments = false,
   highlightCommentId = null,
   onCommentsAutoOpened,
+  active = true,
 }: {
   post: VitrinePost;
   onUpdated?: (p: VitrinePost) => void;
   /** After block: parent should drop this author from the feed. */
   onBlocked?: () => void;
+  /** After the owner deletes this post. */
+  onDeleted?: () => void;
   /** Deep-link from Activity / push: open comments once after landing on this post. */
   autoOpenComments?: boolean;
   highlightCommentId?: string | null;
   onCommentsAutoOpened?: () => void;
+  /** False while this card is the off-screen neighbour used for prefetch. */
+  active?: boolean;
 }) {
   const { t } = useTranslation();
   const { user, guestMode } = useAuth();
@@ -68,6 +74,7 @@ export function VitrinePostCard({
   }, [autoOpenComments, post.id]); // onCommentsAutoOpened intentionally omitted (parent inline callback)
   const [reminding, setReminding] = useState(false);
   const [reminded, setReminded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     post.seller?.avatar_url ?? null,
   );
@@ -184,7 +191,40 @@ export function VitrinePostCard({
         urls={post.media_urls}
         className="absolute inset-0 h-full w-full object-cover"
         forceVideo={post.media_type === "video"}
+        active={active}
       />
+
+      {post.user_id && (
+        <div
+          className="pointer-events-auto absolute right-3 z-[36]"
+          style={{ top: "max(4.5rem, calc(env(safe-area-inset-top) + 3.5rem))" }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <VitrineModerationMenu
+            target={{
+              userId: post.user_id,
+              displayName: post.seller?.display_name,
+              handle: post.seller?.handle,
+              avatarUrl: post.seller?.avatar_url ?? avatarUrl,
+              contentKind: "post",
+              contentId: post.id,
+            }}
+            onBlocked={onBlocked}
+            onDeleted={onDeleted}
+            onOpenChange={setMenuOpen}
+            onManage={() => {
+              const handle = post.seller?.handle;
+              if (!handle) {
+                toast.error(t("vitrine.manageShopFail", { defaultValue: "Ajoute un @pseudo pour ouvrir ta boutique." }));
+                return;
+              }
+              openSeller(handle, "vitrine");
+            }}
+            buttonClassName="grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white shadow-md"
+          />
+        </div>
+      )}
 
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-[15]"
@@ -248,21 +288,6 @@ export function VitrinePostCard({
           onClick={onShop}
           aria={t("vitrine.shop")}
         />
-        {/* Report / block — App Store / Play UGC (Guideline 1.2). */}
-        {post.user_id && (
-          <VitrineModerationMenu
-            target={{
-              userId: post.user_id,
-              displayName: post.seller?.display_name,
-              handle: post.seller?.handle,
-              avatarUrl: post.seller?.avatar_url ?? avatarUrl,
-              contentKind: "post",
-              contentId: post.id,
-            }}
-            onBlocked={onBlocked}
-            buttonClassName="!min-h-0 grid h-10 w-10 place-items-center !bg-transparent p-0 text-white drop-shadow-md"
-          />
-        )}
       </div>
 
       <div
@@ -282,21 +307,23 @@ export function VitrinePostCard({
             {post.caption}
           </p>
         )}
-        <Press
-          onClick={() => void runCta()}
-          disabled={reminding}
-          className="mt-3 !min-h-10 flex h-10 items-center justify-center gap-2 rounded-full px-4 text-[14px] font-bold text-[#10162B]"
-          style={{ background: GOLD }}
-        >
-          {post.live_status === "live" ? (
-            <Radio size={16} />
-          ) : post.live_status === "scheduled" ? (
-            <Bell size={16} />
-          ) : (
-            <Store size={16} />
-          )}
-          {ctaLabel}
-        </Press>
+        {!menuOpen && (
+          <Press
+            onClick={() => void runCta()}
+            disabled={reminding}
+            className="mt-2 !min-h-8 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-[#10162B]"
+            style={{ background: GOLD }}
+          >
+            {post.live_status === "live" ? (
+              <Radio size={14} />
+            ) : post.live_status === "scheduled" ? (
+              <Bell size={14} />
+            ) : (
+              <Store size={14} />
+            )}
+            {ctaLabel}
+          </Press>
+        )}
       </div>
 
       <VitrineCommentsSheet
