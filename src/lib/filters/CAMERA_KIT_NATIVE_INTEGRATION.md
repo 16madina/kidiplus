@@ -10,11 +10,10 @@
 > - Lens Group branché : "test 1" (`df287f43-6646-4b01-a711-1a0e632c211a`) —
 >   gérer les lenses sur my-lenses.snapchat.com, elles apparaissent dans l'app
 >   sans changement de code.
-> - Token staging actif (filigrane "Camera Kit Staging"). Après validation
->   Snap ("Submit For Review" sur kit.snapchat.com/manage avec vidéo démo),
->   définir `VITE_SNAP_CAMERA_KIT_API_TOKEN` avec le token production.
-> - Token PRODUCTION (à activer seulement après approbation Snap — jetons
->   clients publics, identiques iOS/Android/Web) :
+> - Token PRODUCTION ACTIF (approuvé par Snap en août 2026) — plus de
+>   filigrane "Camera Kit Staging". Configuré dans `.env` et `.env.production`
+>   via `VITE_SNAP_CAMERA_KIT_API_TOKEN` (jeton client public, identique
+>   iOS/Android/Web) :
 >   `eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4`
 > - Si les lenses ne chargent pas : vérifier sur kit.snapchat.com/manage que
 >   le "Staging Camera Kit Status" de la version Initial Version est Enabled.
