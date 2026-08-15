@@ -194,14 +194,17 @@ function MediaSlide({
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Reset status during render when the url changes (an effect would race with
+  // an onLoad already fired for a cached image → spinner stuck forever).
+  const [statusUrl, setStatusUrl] = useState(url);
+  if (statusUrl !== url) {
+    setStatusUrl(url);
+    setStatus("loading");
+  }
 
   useEffect(() => subscribeVitrinePlayback(() => {
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
-
-  useEffect(() => {
-    setStatus("loading");
-  }, [url]);
 
   const shouldPlay = playing && !suspended && eager;
 
