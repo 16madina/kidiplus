@@ -24,6 +24,7 @@ import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { redirectExternal } from "@/lib/external-redirect";
+import { PaypalProgress, type PaypalStep } from "@/components/payments/paypal-progress";
 import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
 import { useWallet } from "@/lib/wallet-context";
@@ -96,6 +97,9 @@ export function PaymentSheet({
   const [topupOpen, setTopupOpen] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
   const [paypalBusy, setPaypalBusy] = useState(false);
+  const [paypalStep, setPaypalStep] = useState<PaypalStep | null>(null);
+  const [paypalNewTab, setPaypalNewTab] = useState(false);
+  const [paypalApproveUrl, setPaypalApproveUrl] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [cardSelected, setCardSelected] = useState(false);
   const [state, setState] = useState<SheetState>({ kind: "idle" });
@@ -198,6 +202,7 @@ export function PaymentSheet({
   const finishPaypalPaid = useCallback(
     (ord: OrderRow) => {
       paypalFinishedRef.current = true;
+      setPaypalStep(null);
       clearPendingPaypalCheckout();
       haptic.success();
       setPaypalBusy(false);
@@ -254,6 +259,7 @@ export function PaymentSheet({
       if (detail?.status === "cancelled") {
         clearPendingPaypalCheckout();
         setPaypalBusy(false);
+        setPaypalStep(null);
         setState({ kind: "idle" });
         toast.message(mapPaypalCheckoutError("cancelled"));
         return;
@@ -323,18 +329,25 @@ export function PaymentSheet({
     const okVariant = await ensureVariantOnOrder();
     if (!okVariant) return;
     setPaypalBusy(true);
+    setPaypalStep("creating");
+    setPaypalNewTab(false);
+    setPaypalApproveUrl(null);
     haptic.medium();
     const created = await createPaypalCheckout(order.id, { native: isNative() });
     if (!created.ok) {
       setPaypalBusy(false);
+      setPaypalStep(null);
       toast.error(mapPaypalCheckoutError(created.error, created.message));
       return;
     }
     if (!created.approveUrl) {
       setPaypalBusy(false);
+      setPaypalStep(null);
       toast.error(mapPaypalCheckoutError("paypal_create_failed"));
       return;
     }
+    setPaypalApproveUrl(created.approveUrl);
+    setPaypalStep("handoff");
     markPendingPaypalCheckout(created.paypalOrderId, order.id);
     if (isNative()) {
       try {
@@ -345,13 +358,20 @@ export function PaymentSheet({
           windowName: "_blank",
           presentationStyle: "popover",
         });
+        setPaypalStep("waiting");
       } catch {
         setPaypalBusy(false);
+        setPaypalStep(null);
         setState({ kind: "idle" });
         toast.error(mapPaypalCheckoutError("paypal_create_failed"));
       }
     } else {
-      redirectExternal(created.approveUrl);
+      const mode = redirectExternal(created.approveUrl);
+      const newTab = mode === "new-tab";
+      setPaypalNewTab(newTab);
+      // Same-tab / top-frame navigations unload this page anyway; in a new tab
+      // we keep the sheet open and wait for the capture to come back.
+      setPaypalStep("waiting");
     }
   };
 
@@ -759,7 +779,14 @@ export function PaymentSheet({
 
                 {/* Stripe Elements — only after user picks card */}
                 <div className="mt-5 flex-1">
-                  {state.kind === "idle" && (
+                  {paypalStep && (
+                    <PaypalProgress
+                      step={paypalStep}
+                      openedInNewTab={paypalNewTab}
+                      approveUrl={paypalApproveUrl}
+                    />
+                  )}
+                  {!paypalStep && state.kind === "idle" && (
                     <p className="text-center text-[12px] text-muted-foreground">
                       {t("pay.chooseMethod", {
                         defaultValue: "Choisis une méthode de paiement ci-dessus.",
