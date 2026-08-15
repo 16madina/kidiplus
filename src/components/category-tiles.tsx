@@ -1,15 +1,18 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
+import { useAuth } from "@/lib/auth-context";
+import { resolveAvatarUrl } from "@/lib/avatar-url";
 import {
   HOME_CATEGORIES,
   HOME_CATEGORY_LABEL_KEY,
   HOME_CATEGORY_META,
   type HomeCategory,
 } from "@/lib/home-categories";
+
 
 const TILE_W = 104;
 const TILE_H = 116;
@@ -48,6 +51,20 @@ export function CategoryTiles({
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const [avatar, setAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const url = await resolveAvatarUrl(profile?.avatar_url);
+      if (!cancelled) setAvatar(url);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.avatar_url]);
+
 
   return (
     <div
@@ -87,30 +104,34 @@ export function CategoryTiles({
               className="relative h-full w-full"
             >
               {isPourToi ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, oklch(0.25 0.07 265) 0%, oklch(0.15 0.05 265) 100%)",
-                    }}
-                  />
-                  <div
-                    className="absolute grid place-items-center rounded-full"
-                    style={{
-                      left: "50%",
-                      top: "40%",
-                      transform: "translate(-50%, -50%)",
-                      height: 44,
-                      width: 44,
-                      backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
-                      border: "1.5px solid var(--primary)",
-                    }}
-                  >
-                    <User size={22} strokeWidth={2} color="var(--primary)" />
-                  </div>
-                </>
+                avatar ? (
+                  <TileImage src={avatar} />
+                ) : (
+                  <>
+                    <span
+                      aria-hidden
+                      className="absolute inset-0"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, oklch(0.25 0.07 265) 0%, oklch(0.15 0.05 265) 100%)",
+                      }}
+                    />
+                    <div
+                      className="absolute grid place-items-center overflow-hidden rounded-full"
+                      style={{
+                        left: "50%",
+                        top: "40%",
+                        transform: "translate(-50%, -50%)",
+                        height: 44,
+                        width: 44,
+                        backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
+                        border: "1.5px solid var(--primary)",
+                      }}
+                    >
+                      <User size={22} strokeWidth={2} color="var(--primary)" />
+                    </div>
+                  </>
+                )
               ) : meta.image ? (
                 <TileImage src={meta.image} />
               ) : null}

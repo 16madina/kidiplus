@@ -89,7 +89,7 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
           );
         }
 
-        let body: { amount?: unknown; native?: unknown };
+        let body: { amount?: unknown; native?: unknown; returnOrigin?: unknown };
         try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
         const nativeFlag = body.native === true || body.native === 1 || body.native === "1";
         const raw = Number(body.amount);
@@ -138,10 +138,23 @@ export const Route = createFileRoute("/api/paypal-topup/create")({
         // Avoids React flash / loops inside SFSafariViewController.
         // `native=1` tells the return handler to bounce via custom scheme
         // instead of a plain web redirect.
-        const pubOrigin = publicAppOrigin(request);
-        const nativeQs = nativeFlag ? "?native=1" : "";
-        const returnUrl = `${pubOrigin}/api/paypal-topup/return${nativeQs}`;
-        const cancelUrl = `${pubOrigin}/api/paypal-topup/return?cancelled=1${nativeFlag ? "&native=1" : ""}`;
+        // Web flow: return to the caller's own origin (preview, custom domain…)
+        // so the Supabase session stays valid. Native flow keeps the public origin.
+        let pubOrigin = publicAppOrigin(request);
+        if (!nativeFlag) {
+          const wanted = typeof body.returnOrigin === "string" ? body.returnOrigin.trim() : "";
+          if (wanted && isAllowedOrigin(wanted)) {
+            try {
+              const u = new URL(wanted);
+              if (u.protocol === "https:") pubOrigin = u.origin;
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        const roQs = `ro=${encodeURIComponent(pubOrigin)}`;
+        const returnUrl = `${pubOrigin}/api/paypal-topup/return?${roQs}${nativeFlag ? "&native=1" : ""}`;
+        const cancelUrl = `${pubOrigin}/api/paypal-topup/return?cancelled=1&${roQs}${nativeFlag ? "&native=1" : ""}`;
 
         // PayPal rejects tiny / malformed amounts; keep 2-decimal EUR/CAD/USD.
         const wireValue = Number(wireAmount.toFixed(2));

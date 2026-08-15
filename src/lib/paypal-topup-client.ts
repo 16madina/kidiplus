@@ -47,7 +47,13 @@ export async function createPaypalTopup(
     const res = await fetch("/api/paypal-topup/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ amount, native: !!opts?.native }),
+      body: JSON.stringify({
+        amount,
+        native: !!opts?.native,
+        // Come back to the exact origin the user started from, otherwise the
+        // Supabase session (stored per-origin) is missing and the app shows /auth.
+        returnOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
+      }),
     });
     const body = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || !body?.ok) {

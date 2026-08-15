@@ -60,7 +60,12 @@ export async function createPaypalCheckout(
     const res = await fetch("/api/paypal-checkout/create", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ orderId: kidiOrderId, native: !!opts?.native }),
+      body: JSON.stringify({
+        orderId: kidiOrderId,
+        native: !!opts?.native,
+        // Return to the origin the session lives on (avoids landing signed-out).
+        returnOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
+      }),
     });
     const body = (await res.json().catch(() => ({}))) as any;
     if (!res.ok || !body?.ok) {

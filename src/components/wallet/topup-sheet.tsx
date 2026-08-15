@@ -28,6 +28,7 @@ import { Press } from "@/components/press";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/lib/wallet-context";
 import { haptic } from "@/lib/haptics";
+import { redirectExternal } from "@/lib/external-redirect";
 import { formatMoney, topUpPresets, topUpLimits, normalizeCurrency, roundForCurrency, isZeroDecimal, convertMoney } from "@/lib/money";
 import {
   confirmWalletTopup,
@@ -326,7 +327,7 @@ export function TopUpSheet({
         setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
       }
     } else {
-      window.location.assign(created.approveUrl);
+      redirectExternal(created.approveUrl);
     }
   };
 

@@ -11,6 +11,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { finalizePaypalTopupOrder } from "@/lib/paypal-topup-finalize.server";
 import { publicAppOrigin } from "@/lib/paypal-public-origin";
+import { isAllowedOrigin } from "@/lib/api-cors";
 import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
 type DoneTone = "ok" | "warn" | "error";
@@ -92,7 +93,16 @@ export const Route = createFileRoute("/api/paypal-topup/return")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const origin = publicAppOrigin(request);
+        let origin = publicAppOrigin(request);
+        const requestedOrigin = (url.searchParams.get("ro") ?? "").trim();
+        if (requestedOrigin && isAllowedOrigin(requestedOrigin)) {
+          try {
+            const u = new URL(requestedOrigin);
+            if (u.protocol === "https:") origin = u.origin;
+          } catch {
+            /* ignore */
+          }
+        }
         // Vite hashed asset (same-origin https) — CSP blocks data: image URLs.
         const logoUrl = kidiPlusLogo.startsWith("http")
           ? kidiPlusLogo

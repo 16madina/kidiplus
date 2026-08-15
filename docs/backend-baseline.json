@@ -1,0 +1,462 @@
+{
+  "tables": [
+    {
+      "name": "addresses",
+      "ok": true,
+      "count": "8"
+    },
+    {
+      "name": "app_config",
+      "ok": true,
+      "count": "6"
+    },
+    {
+      "name": "device_tokens",
+      "ok": true,
+      "count": "20"
+    },
+    {
+      "name": "email_send_log",
+      "ok": true,
+      "count": "63"
+    },
+    {
+      "name": "email_send_state",
+      "ok": true,
+      "count": "1"
+    },
+    {
+      "name": "email_unsubscribe_tokens",
+      "ok": true,
+      "count": "20"
+    },
+    {
+      "name": "follows",
+      "ok": true,
+      "count": "21"
+    },
+    {
+      "name": "live_bids",
+      "ok": true,
+      "count": "340"
+    },
+    {
+      "name": "live_chat_mutes",
+      "ok": true,
+      "count": "0"
+    },
+    {
+      "name": "live_gifts",
+      "ok": true,
+      "count": "96"
+    },
+    {
+      "name": "live_interactions",
+      "ok": true,
+      "count": "409"
+    },
+    {
+      "name": "live_moderators",
+      "ok": true,
+      "count": "11"
+    },
+    {
+      "name": "live_products",
+      "ok": true,
+      "count": "262"
+    },
+    {
+      "name": "live_reminders",
+      "ok": true,
+      "count": "5"
+    },
+    {
+      "name": "lives",
+      "ok": true,
+      "count": "220"
+    },
+    {
+      "name": "order_events",
+      "ok": true,
+      "count": "69"
+    },
+    {
+      "name": "orders",
+      "ok": true,
+      "count": "33"
+    },
+    {
+      "name": "payouts",
+      "ok": true,
+      "count": "2"
+    },
+    {
+      "name": "profiles",
+      "ok": true,
+      "count": "21"
+    },
+    {
+      "name": "push_debug_logs",
+      "ok": true,
+      "count": "70"
+    },
+    {
+      "name": "referral_balances",
+      "ok": true,
+      "count": "0"
+    },
+    {
+      "name": "seller_balances",
+      "ok": true,
+      "count": "8"
+    },
+    {
+      "name": "seller_delivery_settings",
+      "ok": true,
+      "count": "4"
+    },
+    {
+      "name": "seller_facebook_connections",
+      "ok": true,
+      "count": "1"
+    },
+    {
+      "name": "seller_reviews",
+      "ok": true,
+      "count": "3"
+    },
+    {
+      "name": "seller_youtube_connections",
+      "ok": true,
+      "count": "1"
+    },
+    {
+      "name": "shop_products",
+      "ok": true,
+      "count": "8"
+    },
+    {
+      "name": "suppressed_emails",
+      "ok": true,
+      "count": "1"
+    },
+    {
+      "name": "verification_requests",
+      "ok": true,
+      "count": "0"
+    },
+    {
+      "name": "vitrine_comments",
+      "ok": true,
+      "count": "7"
+    },
+    {
+      "name": "vitrine_likes",
+      "ok": true,
+      "count": "7"
+    },
+    {
+      "name": "vitrine_posts",
+      "ok": true,
+      "count": "12"
+    },
+    {
+      "name": "vitrine_stories",
+      "ok": true,
+      "count": "1"
+    },
+    {
+      "name": "wallet_transactions",
+      "ok": true,
+      "count": "166"
+    },
+    {
+      "name": "wallets",
+      "ok": true,
+      "count": "21"
+    }
+  ],
+  "rpcs": [
+    {
+      "name": "is_admin",
+      "ok": true
+    },
+    {
+      "name": "my_profile_flags",
+      "ok": true
+    },
+    {
+      "name": "my_moderation_state",
+      "ok": true
+    },
+    {
+      "name": "create_live_order",
+      "ok": true
+    },
+    {
+      "name": "purchase_fixed_price",
+      "ok": true
+    },
+    {
+      "name": "pay_order_with_wallet",
+      "ok": true
+    },
+    {
+      "name": "set_order_product_options",
+      "ok": true
+    },
+    {
+      "name": "expire_overdue_orders",
+      "ok": true
+    },
+    {
+      "name": "release_overdue_escrow",
+      "ok": true
+    },
+    {
+      "name": "credit_seller_earning",
+      "ok": true
+    },
+    {
+      "name": "credit_wallet_topup",
+      "ok": true
+    },
+    {
+      "name": "request_payout",
+      "ok": true
+    },
+    {
+      "name": "convert_my_wallet_currency",
+      "ok": true
+    },
+    {
+      "name": "sync_my_wallet_currency",
+      "ok": true
+    },
+    {
+      "name": "send_gift",
+      "ok": true
+    },
+    {
+      "name": "place_live_bid",
+      "ok": true
+    },
+    {
+      "name": "start_auction",
+      "ok": true
+    },
+    {
+      "name": "settle_expired_auctions",
+      "ok": true
+    },
+    {
+      "name": "finalize_auction_winner",
+      "ok": true
+    },
+    {
+      "name": "relaunch_unsold_product",
+      "ok": true
+    },
+    {
+      "name": "expire_abandoned_lives",
+      "ok": true
+    },
+    {
+      "name": "touch_live_host",
+      "ok": true
+    },
+    {
+      "name": "mark_expired_live_replays",
+      "ok": true
+    },
+    {
+      "name": "leave_review",
+      "ok": true
+    },
+    {
+      "name": "block_user",
+      "ok": true
+    },
+    {
+      "name": "unblock_user",
+      "ok": true
+    },
+    {
+      "name": "list_my_blocks",
+      "ok": true
+    },
+    {
+      "name": "submit_report",
+      "ok": true
+    },
+    {
+      "name": "send_dm",
+      "ok": true
+    },
+    {
+      "name": "find_dm_thread",
+      "ok": true
+    },
+    {
+      "name": "list_dm_messages",
+      "ok": true
+    },
+    {
+      "name": "list_my_dm_threads",
+      "ok": true
+    },
+    {
+      "name": "mark_dm_thread_read",
+      "ok": true
+    },
+    {
+      "name": "list_my_notifications",
+      "ok": true
+    },
+    {
+      "name": "mark_notification_read",
+      "ok": true
+    },
+    {
+      "name": "mark_all_notifications_read",
+      "ok": true
+    },
+    {
+      "name": "apply_promo_code",
+      "ok": true
+    },
+    {
+      "name": "claim_promo_code",
+      "ok": true
+    },
+    {
+      "name": "validate_promo_code",
+      "ok": true
+    },
+    {
+      "name": "request_promo_code",
+      "ok": true
+    },
+    {
+      "name": "request_verification",
+      "ok": true
+    },
+    {
+      "name": "verification_eligibility",
+      "ok": true
+    },
+    {
+      "name": "anonymize_my_account",
+      "ok": true
+    },
+    {
+      "name": "account_deletion_check",
+      "ok": true
+    },
+    {
+      "name": "risk_check_and_consume",
+      "ok": true
+    },
+    {
+      "name": "risk_assert_can_topup",
+      "ok": true
+    },
+    {
+      "name": "get_seller_delivery_settings",
+      "ok": true
+    },
+    {
+      "name": "resolve_buyer_delivery",
+      "ok": true
+    },
+    {
+      "name": "admin_overview_stats",
+      "ok": true
+    },
+    {
+      "name": "admin_list_orders",
+      "ok": true
+    },
+    {
+      "name": "admin_list_payouts",
+      "ok": true
+    },
+    {
+      "name": "admin_process_payout",
+      "ok": true
+    },
+    {
+      "name": "admin_list_users",
+      "ok": true
+    },
+    {
+      "name": "admin_list_reports",
+      "ok": true
+    },
+    {
+      "name": "admin_resolve_report",
+      "ok": true
+    },
+    {
+      "name": "admin_list_lives",
+      "ok": true
+    }
+  ],
+  "buckets": [
+    {
+      "name": "avatars",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "live-covers",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "live-products",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "live-replays",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "shop-products",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "vitrine-media",
+      "ok": true,
+      "public": true
+    },
+    {
+      "name": "payout-proofs",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "demo-videos",
+      "ok": true,
+      "public": false
+    },
+    {
+      "name": "demo-covers",
+      "ok": true,
+      "public": false
+    }
+  ],
+  "auth": {
+    "ok": true,
+    "total": "1+ (page)"
+  },
+  "cron": null,
+  "errors": [],
+  "anon": {
+    "ok": true,
+    "status": 200
+  }
+}

@@ -203,6 +203,30 @@ type AnySb = {
 
 const sb = supabase as unknown as AnySb;
 
+/** Legacy media were uploaded to a previous Supabase project host. */
+const LEGACY_STORAGE_HOSTS = ["https://rpersnzjidxtlekbbdtp.supabase.co"];
+const CURRENT_STORAGE_HOST = "https://djwuvxpmvrwfjwjamjno.supabase.co";
+
+export function rewriteStorageHost(url: string): string {
+  let out = url;
+  for (const host of LEGACY_STORAGE_HOSTS) {
+    if (out.startsWith(host)) out = CURRENT_STORAGE_HOST + out.slice(host.length);
+  }
+  return out;
+}
+
+/** Rewrite stored Supabase URLs onto the current project so old hosts still play. */
+export function resolveVitrinePublicUrl(url: string): string {
+  if (!url || url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  const rewritten = rewriteStorageHost(url);
+  const parsed = parseSupabaseStorageUrl(rewritten);
+  if (!parsed) return rewritten;
+  const { data } = supabase.storage.from(parsed.bucket).getPublicUrl(parsed.path);
+  return data.publicUrl || rewritten;
+}
+
 function normalizeMediaUrls(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.filter((u) => typeof u === "string") as string[];
   if (typeof raw === "string") {
@@ -213,17 +237,6 @@ function normalizeMediaUrls(raw: unknown): string[] {
     return [raw];
   }
   return [];
-}
-
-/** Rewrite stored Supabase URLs onto the current project so old hosts still play. */
-export function resolveVitrinePublicUrl(url: string): string {
-  if (!url || url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:")) {
-    return url;
-  }
-  const parsed = parseSupabaseStorageUrl(url);
-  if (!parsed) return url;
-  const { data } = supabase.storage.from(parsed.bucket).getPublicUrl(parsed.path);
-  return data.publicUrl || url;
 }
 
 function mapPostMedia(raw: unknown): string[] {

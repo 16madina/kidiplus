@@ -14,7 +14,9 @@
     "native:assets": "npx @capacitor/assets generate --iconBackgroundColor '#0C1122' --iconBackgroundColorDark '#0C1122' --splashBackgroundColor '#0C1122' --splashBackgroundColorDark '#0C1122'",
     "native:sync": "npm run native:prepare && npx cap sync",
     "native:android": "npm run native:sync && npx cap open android",
-    "native:ios": "npm run native:sync && npx cap open ios"
+    "native:ios": "npm run native:sync && npx cap open ios",
+    "validate:backend": "node scripts/validate-backend.mjs",
+    "compare:backends": "node scripts/compare-backends.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1095.0",
@@ -68,7 +70,7 @@
     "@snap/camera-kit": "^1.18.0",
     "@stripe/react-stripe-js": "^6.7.0",
     "@stripe/stripe-js": "^9.9.0",
-    "@supabase/supabase-js": "^2.110.2",
+    "@supabase/supabase-js": "^2.112.3",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-router": "^1.170.16",
@@ -109,7 +111,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.12.0",
+    "@lovable.dev/vite-tanstack-config": "2.13.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
