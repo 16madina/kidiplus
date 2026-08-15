@@ -28,12 +28,15 @@ export type VitrineModerationTarget = {
 export function VitrineModerationMenu({
   target,
   onBlocked,
+  onDeleted,
   onOpenChange,
   buttonClassName,
   sheetZIndex = 110,
 }: {
   target: VitrineModerationTarget | null;
   onBlocked?: () => void;
+  /** Owner deleted their own post/story. */
+  onDeleted?: () => void;
   /** Pause story progress while the sheet is open. */
   onOpenChange?: (open: boolean) => void;
   buttonClassName?: string;
@@ -45,12 +48,14 @@ export function VitrineModerationMenu({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!target?.userId) return null;
-  // Demo / own content: no report/block.
-  if (target.userId.startsWith("demo-") || (user && target.userId === user.id)) {
-    return null;
-  }
+  const isDemo = target.userId.startsWith("demo-");
+  const isMine = !!user && target.userId === user.id;
+  // Demo content, or my own content without a delete handler: nothing to show.
+  if (isDemo || (isMine && !onDeleted)) return null;
+
 
   const setOpen = (open: boolean) => {
     setActionsOpen(open);
