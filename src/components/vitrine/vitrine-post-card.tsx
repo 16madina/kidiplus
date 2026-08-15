@@ -264,6 +264,7 @@ export function VitrinePostCard({
               contentId: post.id,
             }}
             onBlocked={onBlocked}
+            onDeleted={onDeleted}
             buttonClassName="!min-h-0 grid h-10 w-10 place-items-center !bg-transparent p-0 text-white drop-shadow-md"
           />
         )}
