@@ -3,6 +3,7 @@ import { ImagePlus, Loader2, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PushScreen } from "@/components/push-screen";
+import { MediaPreview916 } from "@/components/vitrine/media-preview-916";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import type { PublishKind } from "@/lib/publish";
@@ -279,25 +280,16 @@ export function CreateVitrineContentSheet({
             )}
           </div>
         ) : previews[0] ? (
-          <div className="relative aspect-[9/14] w-full overflow-hidden rounded-2xl border border-border bg-black">
-            {kind === "video" || (files[0] && isVideoFile(files[0])) ? (
-              <video
-                key={previews[0]}
-                src={previews[0]}
-                className="absolute inset-0 h-full w-full object-cover"
-                playsInline
-                controls
-                autoPlay
-                muted
-                preload="auto"
-              />
-            ) : (
-              <img
-                src={previews[0]}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
+          <div className="relative">
+            <p className="mb-2 text-center text-[12px] font-medium text-muted-foreground">
+              {t("publish.previewHint", {
+                defaultValue: "Aperçu 9:16 — rendu identique à la Vitrine",
+              })}
+            </p>
+            <MediaPreview916
+              src={previews[0]}
+              isVideo={kind === "video" || (!!files[0] && isVideoFile(files[0]!))}
+            />
             <Press
               onClick={() => inputRef.current?.click()}
               className="absolute bottom-3 right-3 z-10 !min-h-9 h-9 rounded-full px-3 text-[12px] font-bold text-[#10162B]"
@@ -309,7 +301,7 @@ export function CreateVitrineContentSheet({
         ) : (
           <Press
             onClick={() => inputRef.current?.click()}
-            className="relative flex aspect-[9/14] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
+            className="relative flex aspect-[9/16] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
           >
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <div className="flex gap-3">

@@ -833,7 +833,8 @@
       "video": "New video",
       "photo": "New photo",
       "carousel": "Carousel"
-    }
+    },
+    "previewHint": "9:16 preview — exactly how it appears in Vitrine"
   },
   "dm": {
     "title": "Message",
