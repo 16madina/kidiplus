@@ -26,6 +26,8 @@ export type VitrinePost = {
   user_id: string | null;
   media_type: VitrineMediaType;
   media_urls: string[];
+  /** Vignette (1re image) pour les vidéos — évite de charger la vidéo au scroll. */
+  poster_url?: string | null;
   caption: string | null;
   product_id: string | null;
   live_id: string | null;
@@ -50,6 +52,7 @@ export type VitrineStory = {
   id: string;
   user_id: string;
   media_url: string;
+  poster_url?: string | null;
   expires_at: string;
   created_at: string;
   unread?: boolean;
@@ -252,21 +255,22 @@ function mapPostMedia(raw: unknown): string[] {
   return normalizeMediaUrls(raw).map(resolveVitrinePublicUrl);
 }
 
-export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
+export async function fetchVitrinePosts(limit = 15, offset = 0): Promise<VitrinePost[]> {
   try {
     const { data, error } = await sb
       .from("vitrine_posts")
       .select(
         `
-        id, user_id, media_type, media_urls, caption, product_id, live_id,
+        id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id,
         like_count, comment_count, created_at, active, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
         `,
       )
       .eq("active", true)
       .order("created_at", { ascending: false })
-      .limit(limit);
-    if (error || !data || data.length === 0) return DEMO_POSTS;
+      .range(offset, offset + limit - 1);
+    if (error || !data) return offset > 0 ? [] : DEMO_POSTS;
+    if (data.length === 0) return offset > 0 ? [] : DEMO_POSTS;
 
     const uid = (await sb.auth.getUser()).data.user?.id ?? null;
     let likedIds = new Set<string>();
@@ -305,6 +309,7 @@ export async function fetchVitrinePosts(limit = 30): Promise<VitrinePost[]> {
           user_id: r.user_id,
           media_type: (r.media_type ?? "image") as VitrineMediaType,
           media_urls,
+          poster_url: r.poster_url ? resolveVitrinePublicUrl(r.poster_url) : null,
           caption: r.caption,
           product_id: r.product_id,
           live_id: r.live_id,
@@ -333,7 +338,7 @@ export async function fetchVitrinePostById(postId: string): Promise<VitrinePost 
       .from("vitrine_posts")
       .select(
         `
-        id, user_id, media_type, media_urls, caption, product_id, live_id,
+        id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id,
         like_count, comment_count, created_at, active, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_posts_user_id_fkey(display_name, handle, avatar_url, is_verified)
         `,
@@ -369,6 +374,7 @@ export async function fetchVitrinePostById(postId: string): Promise<VitrinePost 
       user_id: data.user_id,
       media_type: (data.media_type ?? "image") as VitrineMediaType,
       media_urls: mapPostMedia(data.media_urls),
+      poster_url: data.poster_url ? resolveVitrinePublicUrl(data.poster_url) : null,
       caption: data.caption,
       product_id: data.product_id,
       live_id: data.live_id,
@@ -394,7 +400,7 @@ export async function fetchVitrinePostsByUser(
     const { data, error } = await sb
       .from("vitrine_posts")
       .select(
-        `id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, active, ${MUSIC_COLUMNS}`,
+        `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, active, ${MUSIC_COLUMNS}`,
       )
       .eq("user_id", userId)
       .eq("active", true)
@@ -410,6 +416,7 @@ export async function fetchVitrinePostsByUser(
           user_id: r.user_id,
           media_type: (r.media_type ?? "image") as VitrineMediaType,
           media_urls,
+          poster_url: r.poster_url ? resolveVitrinePublicUrl(r.poster_url) : null,
           caption: r.caption,
           product_id: r.product_id,
           live_id: r.live_id,
@@ -444,7 +451,7 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       .from("vitrine_stories")
       .select(
         `
-        id, user_id, media_url, expires_at, created_at, ${MUSIC_COLUMNS},
+        id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS},
         seller:profiles!vitrine_stories_user_id_fkey(display_name, handle, avatar_url)
         `,
       )
@@ -456,6 +463,7 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       id: r.id,
       user_id: r.user_id,
       media_url: r.media_url ? resolveVitrinePublicUrl(r.media_url) : r.media_url,
+      poster_url: r.poster_url ? resolveVitrinePublicUrl(r.poster_url) : null,
       expires_at: r.expires_at,
       created_at: r.created_at,
       unread: true,
@@ -762,6 +770,7 @@ export async function uploadVitrineMediaDetailed(
 export async function createVitrineStory(
   mediaUrl: string,
   music?: VitrineMusic | null,
+  posterUrl?: string | null,
 ): Promise<VitrineStory | null> {
   const uid = (await sb.auth.getUser()).data.user?.id;
   if (!uid || !mediaUrl) return null;
@@ -771,10 +780,11 @@ export async function createVitrineStory(
       .insert({
         user_id: uid,
         media_url: mediaUrl,
+        poster_url: posterUrl ?? null,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         ...musicToRow(music),
       })
-      .select(`id, user_id, media_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
+      .select(`id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
       .maybeSingle();
     if (error) {
       console.warn("[vitrine] create story failed", error.message);
@@ -804,6 +814,7 @@ export async function createVitrineStory(
       id: data.id,
       user_id: data.user_id,
       media_url: data.media_url,
+      poster_url: data.poster_url ?? null,
       expires_at: data.expires_at,
       created_at: data.created_at,
       unread: true,
@@ -823,6 +834,7 @@ export async function createVitrinePost(input: {
   productId?: string | null;
   liveId?: string | null;
   music?: VitrineMusic | null;
+  posterUrl?: string | null;
 }): Promise<VitrinePost | null> {
   const uid = (await sb.auth.getUser()).data.user?.id;
   // Live announcements may ship with cover URL only, or caption + live_id.
@@ -837,6 +849,7 @@ export async function createVitrinePost(input: {
         user_id: uid,
         media_type: input.mediaType,
         media_urls: input.mediaUrls,
+        poster_url: input.posterUrl ?? null,
         caption: input.caption?.trim() || null,
         product_id: input.productId ?? null,
         live_id: input.liveId ?? null,
@@ -844,7 +857,7 @@ export async function createVitrinePost(input: {
         ...musicToRow(input.music),
       })
       .select(
-        `id, user_id, media_type, media_urls, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
+        `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
       )
       .maybeSingle();
     if (error) {
@@ -876,6 +889,7 @@ export async function createVitrinePost(input: {
       user_id: data.user_id,
       media_type: (data.media_type ?? "image") as VitrineMediaType,
       media_urls: normalizeMediaUrls(data.media_urls),
+      poster_url: data.poster_url ?? null,
       caption: data.caption,
       product_id: data.product_id,
       live_id: data.live_id,
