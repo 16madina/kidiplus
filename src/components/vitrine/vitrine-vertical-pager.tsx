@@ -1,12 +1,13 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Loader2, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Loader2, Pause, Play } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
+import { reportBrokenMedia } from "@/lib/vitrine-broken-media";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
 import type { VitrineMusic } from "@/lib/vitrine-music";
-import { getVitrineSoundOn, unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
+import { unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
 import {
@@ -52,6 +53,7 @@ export function VitrineVerticalPager({
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
+        onPointerDown={() => unlockVitrineSound()}
         drag
         dragDirectionLock
         dragElastic={0.35}
@@ -60,11 +62,8 @@ export function VitrineVerticalPager({
         onTap={(e) => {
           const t = e.target as HTMLElement | null;
           if (t?.closest?.("button, a, textarea, input, [data-no-pause]")) return;
-          // First tap only unlocks sound (TikTok). Later taps pause / resume.
-          if (!getVitrineSoundOn()) {
-            unlockVitrineSound();
-            return;
-          }
+          // TikTok: le tap débloque le son (geste utilisateur) ET met en pause / relance.
+          unlockVitrineSound();
           try {
             window.dispatchEvent(new CustomEvent(VITRINE_TOGGLE_PAUSE_EVENT));
           } catch {
@@ -319,7 +318,10 @@ function MediaSlide({
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
               onPlaying={() => setStatus("ready")}
-              onError={() => setStatus("error")}
+              onError={() => {
+                setStatus("error");
+                reportBrokenMedia(url);
+              }}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
           )}
@@ -357,7 +359,10 @@ function MediaSlide({
             decoding="async"
             loading={eager ? "eager" : "lazy"}
             onLoad={() => setStatus("ready")}
-            onError={() => setStatus("error")}
+            onError={() => {
+              setStatus("error");
+              reportBrokenMedia(url);
+            }}
             style={{ pointerEvents: "none", touchAction: "none" }}
           />
         )}
@@ -393,7 +398,7 @@ export function MediaCarousel({
   const hintTimer = useRef<number | null>(null);
   const tabVisible = useContext(TabVisibilityContext);
   const appActive = useAppActive();
-  const [muted, toggleMuted] = useVitrineSound();
+  const [muted] = useVitrineSound();
   const hasVideo = !!forceVideo || urls.some((u) => isVideoUrl(u));
   const playing = active && tabVisible && appActive && !userPaused;
   const originalVolume = music ? music.originalVolume : 1;
@@ -501,22 +506,6 @@ export function MediaCarousel({
       {body}
       {music?.url && (
         <MusicTrack music={music} playing={playing && !muted} />
-      )}
-      {hasVideo && (
-        <button
-          type="button"
-          data-no-pause
-          aria-label={muted ? "Activer le son" : "Couper le son"}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            haptic.light();
-            toggleMuted();
-          }}
-          className="absolute right-3 top-3 z-[30] grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm active:scale-95"
-        >
-          {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-        </button>
       )}
       {hasVideo && showPauseHint && (
         <div className="pointer-events-none absolute inset-0 z-[20] grid place-items-center">

@@ -922,12 +922,40 @@ export async function createVitrinePost(input: {
   }
 }
 
+/** Chemin objet à partir d'une URL publique du bucket vitrine-media. */
+function storagePathFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/\/storage\/v1\/object\/(?:public|sign)\/vitrine-media\/([^?]+)/);
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
+}
+
+/** Supprime les fichiers du bucket (best-effort : la ligne DB reste la source de vérité). */
+async function removeVitrineFiles(urls: (string | null | undefined)[]) {
+  const paths = urls.map(storagePathFromPublicUrl).filter((p): p is string => !!p);
+  if (paths.length === 0) return;
+  try {
+    await supabase.storage.from("vitrine-media").remove(paths);
+  } catch (e) {
+    console.warn("[vitrine] storage cleanup failed", e);
+  }
+}
+
 export async function deleteVitrinePost(postId: string): Promise<boolean> {
   if (!postId || postId.startsWith("demo-")) return false;
   const uid = (await sb.auth.getUser()).data.user?.id;
   if (!uid) return false;
+  const { data: row } = await sb
+    .from("vitrine_posts")
+    .select("media_urls, poster_url")
+    .eq("id", postId)
+    .eq("user_id", uid)
+    .maybeSingle();
   const { error } = await sb.from("vitrine_posts").delete().eq("id", postId).eq("user_id", uid);
-  if (!error) return true;
+  if (!error) {
+    const urls = Array.isArray(row?.media_urls) ? (row.media_urls as string[]) : [];
+    void removeVitrineFiles([...urls, row?.poster_url]);
+    return true;
+  }
   const { error: soft } = await sb
     .from("vitrine_posts")
     .update({ active: false })
@@ -944,7 +972,14 @@ export async function deleteVitrineStory(storyId: string): Promise<boolean> {
   if (!storyId || storyId.startsWith("demo-")) return false;
   const uid = (await sb.auth.getUser()).data.user?.id;
   if (!uid) return false;
+  const { data: row } = await sb
+    .from("vitrine_stories")
+    .select("media_url, poster_url")
+    .eq("id", storyId)
+    .eq("user_id", uid)
+    .maybeSingle();
   const { error } = await sb.from("vitrine_stories").delete().eq("id", storyId).eq("user_id", uid);
+  if (!error) void removeVitrineFiles([row?.media_url, row?.poster_url]);
   if (error) {
     console.warn("[vitrine] delete story failed", error.message);
     return false;
