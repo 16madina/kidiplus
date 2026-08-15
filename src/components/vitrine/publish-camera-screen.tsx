@@ -86,6 +86,7 @@ export function PublishCameraScreen({
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
@@ -634,6 +635,7 @@ export function PublishCameraScreen({
               caption={caption}
               onCaptionChange={setCaption}
               busy={busy}
+              progress={progress}
               onBack={() => {
                 revokePreview();
                 setFile(null);
