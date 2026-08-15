@@ -68,18 +68,30 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
+/** Décode en respectant l'orientation EXIF (iPhone paysage stocké en portrait, etc.). */
+async function loadOrientedImage(
+  file: File,
+): Promise<{ source: CanvasImageSource; w: number; h: number }> {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    return { source: bmp, w: bmp.width, h: bmp.height };
+  } catch {
+    const img = await loadImage(file);
+    return { source: img, w: img.naturalWidth, h: img.naturalHeight };
+  }
+}
+
 /** Recadre une photo en 9:16 (cover) et la compresse. Renvoie le fichier d'origine en cas d'échec. */
 export async function optimizeImageFor916(file: File): Promise<File> {
   try {
-    const img = await loadImage(file);
-    const canvas = drawCover(img, img.naturalWidth, img.naturalHeight);
+    const { source, w, h } = await loadOrientedImage(file);
+    const canvas = drawCover(source, w, h);
     const { mime, ext } = pickImageMime();
     const blob: Blob | null = await new Promise((resolve) =>
       canvas.toBlob((b) => resolve(b), mime, IMAGE_QUALITY),
     );
     if (!blob || blob.size === 0) return file;
-    // Ne jamais alourdir un fichier déjà plus léger et déjà au bon ratio.
-    const ratio = img.naturalWidth / img.naturalHeight;
+    const ratio = w / h;
     const already916 = Math.abs(ratio - TARGET_W / TARGET_H) < 0.02;
     if (already916 && blob.size >= file.size) return file;
     const base = file.name.replace(/\.[^.]+$/, "") || "photo";

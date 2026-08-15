@@ -4,6 +4,7 @@ import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
+import { Fit916 } from "@/components/vitrine/media-preview-916";
 import { useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
@@ -161,7 +162,7 @@ export function VitrineVerticalPager({
 
 function MediaSlide({
   url,
-  className,
+  className: _className,
   forceVideo,
   muted,
   playing,
@@ -244,70 +245,66 @@ function MediaSlide({
       </div>
     ) : null;
 
-  // Cadre 9:16 standard : le média remplit le cadre (cover) et un fond flou
-  // comble les bandes éventuelles — rendu identique iOS / Android.
-  const fitClass = className?.includes("object-")
-    ? className.replace("object-contain", "object-cover")
-    : `${className ?? "h-full w-full"} object-cover`;
+  const mediaClass =
+    "absolute inset-0 h-full w-full object-cover";
 
   if (asVideo) {
     return (
-      <div className="relative h-full w-full overflow-hidden bg-black">
-        <div className="absolute inset-0 grid place-items-center">
-          <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
-            {eager && (
-              <video
-                ref={videoRef}
-                data-vitrine-feed
-                src={url}
-                className={fitClass}
-                autoPlay={shouldPlay}
-                muted={muted || !shouldPlay}
-                loop
-                playsInline
-                preload="auto"
-                controls={false}
-                onLoadedData={() => setStatus("ready")}
-                onCanPlay={() => setStatus("ready")}
-                onError={() => setStatus("error")}
-                style={{ pointerEvents: "none", touchAction: "none" }}
-              />
-            )}
-          </div>
-        </div>
+      <div className="relative h-full w-full">
+        <Fit916>
+          {eager && (
+            <video
+              ref={videoRef}
+              data-vitrine-feed
+              src={url}
+              className={mediaClass}
+              autoPlay={shouldPlay}
+              muted={muted || !shouldPlay}
+              loop
+              playsInline
+              preload="auto"
+              controls={false}
+              onLoadedData={() => setStatus("ready")}
+              onCanPlay={() => setStatus("ready")}
+              onError={() => setStatus("error")}
+              style={{ pointerEvents: "none", touchAction: "none" }}
+            />
+          )}
+        </Fit916>
         {overlay}
       </div>
     );
   }
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
-      {eager && (
-        <img
-          src={url}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-          draggable={false}
-          decoding="async"
-        />
-      )}
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
-          {eager && (
+    <div className="relative h-full w-full">
+      <Fit916
+        backdrop={
+          eager ? (
             <img
               src={url}
               alt=""
-              className={fitClass}
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
               draggable={false}
               decoding="async"
-              loading="eager"
-              onLoad={() => setStatus("ready")}
-              onError={() => setStatus("error")}
-              style={{ pointerEvents: "none", touchAction: "none" }}
             />
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+      >
+        {eager && (
+          <img
+            src={url}
+            alt=""
+            className={mediaClass}
+            draggable={false}
+            decoding="async"
+            loading="eager"
+            onLoad={() => setStatus("ready")}
+            onError={() => setStatus("error")}
+            style={{ pointerEvents: "none", touchAction: "none" }}
+          />
+        )}
+      </Fit916>
       {overlay}
     </div>
   );

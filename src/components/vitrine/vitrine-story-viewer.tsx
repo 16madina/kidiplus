@@ -12,6 +12,7 @@ import {
   resumeVitrinePlayback,
   suspendVitrinePlayback,
 } from "@/lib/vitrine-playback";
+import { Fit916 } from "@/components/vitrine/media-preview-916";
 import { VitrineModerationMenu } from "./vitrine-moderation-menu";
 
 const GOLD = "#E8B93B";
@@ -147,52 +148,53 @@ export function VitrineStoryViewer({
           className="fixed inset-0 z-[96] bg-black"
         >
           <div className="absolute inset-0 overflow-hidden bg-black">
-            {!video && (
-              <img
-                src={story.media_url}
-                alt=""
-                aria-hidden
-                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-                draggable={false}
-                decoding="async"
-              />
-            )}
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
-                {video ? (
-                  <video
-                    key={story.id}
-                    ref={videoRef}
-                    src={story.media_url}
-                    className="h-full w-full object-cover"
-                    playsInline
-                    autoPlay
-                    muted={muted}
-                    preload="auto"
-                    onLoadedData={() => setMediaStatus("ready")}
-                    onCanPlay={() => setMediaStatus("ready")}
-                    onError={() => setMediaStatus("error")}
-                    onTimeUpdate={() => {
-                      const el = videoRef.current;
-                      if (!el || !el.duration) return;
-                      setProgress(el.currentTime / el.duration);
-                    }}
-                    onEnded={goNext}
-                  />
-                ) : (
+            <Fit916
+              backdrop={
+                !video ? (
                   <img
-                    key={story.id}
                     src={story.media_url}
                     alt=""
-                    className="h-full w-full object-cover"
+                    aria-hidden
+                    className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
                     draggable={false}
                     decoding="async"
-                    onLoad={() => setMediaStatus("ready")}
-                    onError={() => setMediaStatus("error")}
                   />
-                )}
-              </div>
-            </div>
+                ) : null
+              }
+            >
+              {video ? (
+                <video
+                  key={story.id}
+                  ref={videoRef}
+                  src={story.media_url}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  playsInline
+                  autoPlay
+                  muted={muted}
+                  preload="auto"
+                  onLoadedData={() => setMediaStatus("ready")}
+                  onCanPlay={() => setMediaStatus("ready")}
+                  onError={() => setMediaStatus("error")}
+                  onTimeUpdate={() => {
+                    const el = videoRef.current;
+                    if (!el || !el.duration) return;
+                    setProgress(el.currentTime / el.duration);
+                  }}
+                  onEnded={goNext}
+                />
+              ) : (
+                <img
+                  key={story.id}
+                  src={story.media_url}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                  draggable={false}
+                  decoding="async"
+                  onLoad={() => setMediaStatus("ready")}
+                  onError={() => setMediaStatus("error")}
+                />
+              )}
+            </Fit916>
             {mediaStatus === "loading" && (
               <div className="absolute inset-0 grid place-items-center">
                 <Loader2 className="animate-spin text-white/70" size={28} />

@@ -787,11 +787,11 @@
       "addText": "Add text",
       "hint": "Crop, add text, then confirm.",
       "pinchHint": "Pinch to zoom · Drag to move",
-      "trimHint": "Drag the window to pick {{sec}}s (video is {{dur}}s).",
+      "trimHint": "Drag the gold window to pick {{sec}}s (video is {{dur}}s).",
       "trimOk": "Video already ≤ {{sec}}s — you’re good to publish.",
       "trimming": "Trimming…",
       "trimFail": "Trim failed. Try a shorter video.",
-      "trimUnsupported": "Trim the video to 1 min max in your gallery, then try again.",
+      "trimUnsupported": "Can’t trim on this device. Pick a video of 1 min max from your gallery.",
       "durationFail": "Couldn’t read the video duration.",
       "aspectOriginal": "Original",
       "aspectFree": "Free"

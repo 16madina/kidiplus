@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Check,
   Crop,
@@ -18,6 +18,7 @@ import {
   type CropRect,
   type TextSticker,
   aspectRatioValue,
+  canTrimVideoInBrowser,
   getVideoDuration,
   isVideoFile,
   renderEditedImage,
@@ -26,6 +27,20 @@ import {
 
 const GOLD = "#E8B93B";
 const TEXT_COLORS = ["#FFFFFF", "#E8B93B", "#FF4D6A", "#4D9FFF", "#111111"];
+
+function editorFrameStyle(preset: AspectPreset): CSSProperties {
+  const ratio = aspectRatioValue(preset);
+  if (ratio == null) {
+    return { width: "100%", height: "100%" };
+  }
+  return {
+    aspectRatio: `${ratio} / 1`,
+    width: `min(100%, calc(100cqh * ${ratio}))`,
+    height: `min(100%, calc(100cqw / ${ratio}))`,
+    maxWidth: "100%",
+    maxHeight: "100%",
+  };
+}
 
 type Tool = "none" | "trim" | "crop" | "text";
 
@@ -107,23 +122,52 @@ export function PublishEditor({
 
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !asVideo) return;
-    const seek = () => {
-      try {
-        el.currentTime = trimStart;
-      } catch {
-        /* ignore */
+    if (!el || !asVideo || applying) return;
+    el.muted = true;
+    el.playsInline = true;
+    const loopWindow = () => {
+      if (el.currentTime >= trimEnd - 0.08) {
+        try {
+          el.currentTime = trimStart;
+        } catch {
+          /* ignore */
+        }
       }
     };
-    seek();
-  }, [trimStart, asVideo]);
+    const playMuted = () => {
+      void el.play().catch(() => undefined);
+    };
+    el.addEventListener("timeupdate", loopWindow);
+    try {
+      if (Math.abs(el.currentTime - trimStart) > 0.3) el.currentTime = trimStart;
+      else playMuted();
+    } catch {
+      playMuted();
+    }
+    el.addEventListener("seeked", playMuted);
+    el.addEventListener("loadeddata", playMuted);
+    return () => {
+      el.removeEventListener("timeupdate", loopWindow);
+      el.removeEventListener("seeked", playMuted);
+      el.removeEventListener("loadeddata", playMuted);
+    };
+  }, [trimStart, trimEnd, asVideo, applying, previewUrl]);
+
+  const [stageSize, setStageSize] = useState({ w: 390, h: 693 });
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const sync = () => setStageSize({ w: el.clientWidth || 390, h: el.clientHeight || 693 });
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [aspect, asVideo]);
 
   const cropRect: CropRect = useMemo(() => {
-    // Map zoom/pan into a source crop covering the stage aspect.
-    const stage = stageRef.current;
-    const stageW = stage?.clientWidth || 390;
-    const stageH = stage?.clientHeight || 520;
-    const targetRatio = aspectRatioValue(aspect) ?? stageW / stageH;
+    // Map zoom/pan into a source crop covering the visible frame aspect.
+    const targetRatio = aspectRatioValue(aspect) ?? stageSize.w / Math.max(1, stageSize.h);
     const imgRatio = natural.w / natural.h;
 
     // Base cover scale (image fills stage), then user zoom.
@@ -151,7 +195,7 @@ export function PublishEditor({
       w: baseW / natural.w,
       h: baseH / natural.h,
     };
-  }, [aspect, zoom, pan, natural]);
+  }, [aspect, zoom, pan, natural, stageSize]);
 
   const applyAndConfirm = async () => {
     if (applying || busy) return;
@@ -160,18 +204,33 @@ export function PublishEditor({
     try {
       if (asVideo) {
         if (needsTrim) {
+          if (!canTrimVideoInBrowser()) {
+            toast.error(
+              t("publish.edit.trimUnsupported", {
+                defaultValue:
+                  "Impossible de couper ici. Choisis une vidéo de 1 min max dans ta galerie.",
+              }),
+            );
+            return;
+          }
           try {
-            setTrimProgress(0);
-            const trimmed = await trimVideoFile(file, trimStart, maxSec, setTrimProgress);
+            setTrimProgress(0.01);
+            const trimmed = await trimVideoFile(file, trimStart, maxSec, setTrimProgress, {
+              videoEl: videoRef.current,
+            });
             onConfirm(trimmed);
             return;
           } catch (e) {
             const code = e instanceof Error ? e.message : "";
-            if (code === "capture_unsupported" || code === "recorder_unsupported") {
+            if (
+              code === "capture_unsupported" ||
+              code === "recorder_unsupported" ||
+              code === "empty_trim"
+            ) {
               toast.error(
                 t("publish.edit.trimUnsupported", {
                   defaultValue:
-                    "Coupe la vidéo à 1 min max dans ta galerie, puis réessaie.",
+                    "Impossible de couper ici. Choisis une vidéo de 1 min max dans ta galerie.",
                 }),
               );
               return;
@@ -326,10 +385,17 @@ export function PublishEditor({
         </Press>
       </div>
 
-      {/* Stage */}
+      {/* Stage — cadre 9:16. Vidéo : hauteur limitée pour laisser la coupe visible. */}
+      <div
+        className={`relative mx-3 mt-2 overflow-hidden [container-type:size] ${
+          asVideo ? "flex h-[min(38vh,280px)] shrink-0 items-center justify-center" : "min-h-0 flex-1"
+        }`}
+      >
+        <div className={asVideo ? "relative h-full" : "absolute inset-0 flex items-center justify-center"}>
       <div
         ref={stageRef}
-        className="relative mx-3 mt-2 min-h-0 flex-1 touch-none overflow-hidden rounded-2xl bg-neutral-950"
+        className="relative h-full max-h-full touch-none overflow-hidden rounded-2xl bg-neutral-950"
+        style={asVideo ? { aspectRatio: "9 / 16", width: "auto" } : editorFrameStyle(aspect)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -342,14 +408,16 @@ export function PublishEditor({
           <video
             ref={videoRef}
             src={previewUrl}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
             playsInline
-            muted={false}
+            muted
+            autoPlay
+            preload="auto"
             controls={false}
             onClick={() => {
               const el = videoRef.current;
               if (!el) return;
-              if (el.paused) void el.play();
+              if (el.paused) void el.play().catch(() => undefined);
               else el.pause();
             }}
           />
@@ -412,6 +480,8 @@ export function PublishEditor({
           </div>
         )}
       </div>
+        </div>
+      </div>
 
       {/* Tools */}
       <div className="mt-3 flex justify-center gap-2 px-4">
@@ -452,14 +522,14 @@ export function PublishEditor({
         )}
       </div>
 
-      <div className="min-h-[8.5rem] px-4 pt-2">
+      <div className="shrink-0 px-4 pt-2">
         {asVideo && tool === "trim" && (
           <div>
-            <p className="mb-2 text-center text-[12px] text-white/70">
+            <p className="mb-1 text-center text-[12px] text-white/70">
               {needsTrim
                 ? t("publish.edit.trimHint", {
                     defaultValue:
-                      "Glisse la fenêtre pour choisir {{sec}} s (vidéo {{dur}} s).",
+                      "Glisse la fenêtre dorée pour choisir {{sec}} s (vidéo {{dur}} s).",
                     sec: maxSec,
                     dur: Math.round(duration),
                   })
@@ -468,16 +538,24 @@ export function PublishEditor({
                     sec: maxSec,
                   })}
             </p>
-            <p className="mb-2 text-center text-[12px] font-bold" style={{ color: GOLD }}>
+            {needsTrim && !canTrimVideoInBrowser() && (
+              <p className="mb-2 text-center text-[12px] font-semibold text-red-300">
+                {t("publish.edit.trimUnsupported", {
+                  defaultValue:
+                    "Impossible de couper ici. Choisis une vidéo de 1 min max dans ta galerie.",
+                })}
+              </p>
+            )}
+            <p className="mb-2 text-center text-[13px] font-bold" style={{ color: GOLD }}>
               {formatTime(trimStart)} – {formatTime(trimEnd)}
+              {needsTrim ? ` · ${maxSec}s` : ""}
             </p>
-            {/* YouTube-style window over a track */}
             <div
-              className="relative h-14 overflow-hidden rounded-xl"
+              className="relative h-16 overflow-hidden rounded-xl"
               style={{
                 background:
                   "repeating-linear-gradient(90deg, #2a3148 0 10px, #1c2238 10px 20px)",
-                border: "1px solid rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.2)",
               }}
               onPointerDown={(e) => {
                 if (maxTrimStart <= 0) return;
@@ -504,17 +582,24 @@ export function PublishEditor({
               onPointerUp={onPointerUp}
             >
               <div
+                className="absolute inset-y-0 bg-black/55"
+                style={{ left: 0, width: `${trimPctStart}%` }}
+              />
+              <div
+                className="absolute inset-y-0 bg-black/55"
+                style={{ left: `${trimPctStart + trimPctWidth}%`, right: 0 }}
+              />
+              <div
                 className="absolute inset-y-1 rounded-lg"
                 style={{
                   left: `${trimPctStart}%`,
-                  width: `${trimPctWidth}%`,
+                  width: `${Math.max(trimPctWidth, 8)}%`,
                   border: `2px solid ${GOLD}`,
-                  background: "rgba(232,185,59,0.18)",
-                  boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
+                  background: "rgba(232,185,59,0.16)",
                 }}
               >
-                <span className="absolute inset-y-0 left-0 w-1.5 rounded-l bg-[color:var(--g)]" style={{ background: GOLD }} />
-                <span className="absolute inset-y-0 right-0 w-1.5 rounded-r" style={{ background: GOLD }} />
+                <span className="absolute inset-y-0 left-0 w-2 rounded-l" style={{ background: GOLD }} />
+                <span className="absolute inset-y-0 right-0 w-2 rounded-r" style={{ background: GOLD }} />
               </div>
             </div>
           </div>
@@ -650,7 +735,7 @@ export function PublishEditor({
       <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         <Press
           onClick={() => void applyAndConfirm()}
-          disabled={working}
+          disabled={working || (needsTrim && !canTrimVideoInBrowser())}
           className="!min-h-12 flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-bold text-[#10162B] disabled:opacity-40"
           style={{ background: GOLD }}
         >

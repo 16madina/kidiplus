@@ -787,11 +787,11 @@
       "addText": "Ajouter un texte",
       "hint": "Recadre, ajoute du texte, puis valide.",
       "pinchHint": "Pince pour zoomer · Glisse pour déplacer",
-      "trimHint": "Glisse la fenêtre pour choisir {{sec}} s (vidéo {{dur}} s).",
+      "trimHint": "Glisse la fenêtre dorée pour choisir {{sec}} s (vidéo {{dur}} s).",
       "trimOk": "Vidéo déjà ≤ {{sec}} s — tu peux publier.",
       "trimming": "Découpage…",
       "trimFail": "Échec du découpage. Réessaie avec une vidéo plus courte.",
-      "trimUnsupported": "Coupe la vidéo à 1 min max dans ta galerie, puis réessaie.",
+      "trimUnsupported": "Impossible de couper ici. Choisis une vidéo de 1 min max dans ta galerie.",
       "durationFail": "Impossible de lire la durée de la vidéo.",
       "aspectOriginal": "Original",
       "aspectFree": "Libre"
