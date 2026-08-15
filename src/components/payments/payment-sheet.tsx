@@ -23,6 +23,7 @@ import {
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
+import { redirectExternal } from "@/lib/external-redirect";
 import { supabase } from "@/integrations/supabase/client";
 import type { OrderRow } from "@/lib/orders-db";
 import { useWallet } from "@/lib/wallet-context";
@@ -350,7 +351,7 @@ export function PaymentSheet({
         toast.error(mapPaypalCheckoutError("paypal_create_failed"));
       }
     } else {
-      window.location.assign(created.approveUrl);
+      redirectExternal(created.approveUrl);
     }
   };
 
