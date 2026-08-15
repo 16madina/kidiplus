@@ -206,6 +206,16 @@ function MediaSlide({
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
+  // Safety net: never leave a spinner up forever.
+  useEffect(() => {
+    if (status !== "loading" || !eager) return;
+    const t = window.setTimeout(
+      () => setStatus((s) => (s === "loading" ? "ready" : s)),
+      8000,
+    );
+    return () => window.clearTimeout(t);
+  }, [status, eager, url]);
+
   const shouldPlay = playing && !suspended && eager;
 
   useEffect(() => {
