@@ -244,50 +244,75 @@ function MediaSlide({
       </div>
     ) : null;
 
+  // 9:16 frame: media is fitted (never cropped/overflowing), letterbox filled
+  // with a blurred copy so it reads full-bleed like TikTok.
+  const fitClass = className?.includes("object-")
+    ? className
+    : `${className ?? "h-full w-full"} object-contain`;
+
   if (asVideo) {
     return (
-      <div className="relative h-full w-full bg-black">
-        {eager && (
-          <video
-            ref={videoRef}
-            data-vitrine-feed
-            src={url}
-            className={className ?? "h-full w-full object-cover"}
-            autoPlay={shouldPlay}
-            muted={muted || !shouldPlay}
-            loop
-            playsInline
-            preload="auto"
-            controls={false}
-            onLoadedData={() => setStatus("ready")}
-            onCanPlay={() => setStatus("ready")}
-            onError={() => setStatus("error")}
-            style={{ pointerEvents: "none", touchAction: "none" }}
-          />
-        )}
+      <div className="relative h-full w-full overflow-hidden bg-black">
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
+            {eager && (
+              <video
+                ref={videoRef}
+                data-vitrine-feed
+                src={url}
+                className={fitClass.replace("object-cover", "object-contain")}
+                autoPlay={shouldPlay}
+                muted={muted || !shouldPlay}
+                loop
+                playsInline
+                preload="auto"
+                controls={false}
+                onLoadedData={() => setStatus("ready")}
+                onCanPlay={() => setStatus("ready")}
+                onError={() => setStatus("error")}
+                style={{ pointerEvents: "none", touchAction: "none" }}
+              />
+            )}
+          </div>
+        </div>
         {overlay}
       </div>
     );
   }
   return (
-    <div className="relative h-full w-full bg-black">
+    <div className="relative h-full w-full overflow-hidden bg-black">
       {eager && (
         <img
           src={url}
           alt=""
-          className={className ?? "h-full w-full object-cover"}
+          aria-hidden
+          className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
           draggable={false}
           decoding="async"
-          loading="eager"
-          onLoad={() => setStatus("ready")}
-          onError={() => setStatus("error")}
-          style={{ pointerEvents: "none", touchAction: "none" }}
         />
       )}
+      <div className="absolute inset-0 grid place-items-center">
+        <div className="relative aspect-[9/16] h-full max-h-full w-full max-w-full">
+          {eager && (
+            <img
+              src={url}
+              alt=""
+              className={fitClass.replace("object-cover", "object-contain")}
+              draggable={false}
+              decoding="async"
+              loading="eager"
+              onLoad={() => setStatus("ready")}
+              onError={() => setStatus("error")}
+              style={{ pointerEvents: "none", touchAction: "none" }}
+            />
+          )}
+        </div>
+      </div>
       {overlay}
     </div>
   );
 }
+
 
 /** Horizontal photo/video carousel — only for multi-media posts; isolated from tab swipes. */
 export function MediaCarousel({
