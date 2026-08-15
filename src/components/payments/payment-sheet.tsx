@@ -350,7 +350,7 @@ export function PaymentSheet({
         toast.error(mapPaypalCheckoutError("paypal_create_failed"));
       }
     } else {
-      window.location.assign(created.approveUrl);
+      redirectExternal(created.approveUrl);
     }
   };
 

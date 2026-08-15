@@ -326,7 +326,7 @@ export function TopUpSheet({
         setStep({ kind: "error", message: mapPaypalTopupError("paypal_create_failed") });
       }
     } else {
-      window.location.assign(created.approveUrl);
+      redirectExternal(created.approveUrl);
     }
   };
 
