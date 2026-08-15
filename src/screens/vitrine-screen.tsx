@@ -293,7 +293,9 @@ export function VitrineScreen() {
           onIndexChange={(i) => {
             setPostIndex(i);
             if (i > 0) setStoriesOpen(false);
+            if (i >= postsVisible.length - 3) void loadMorePosts();
           }}
+
           onPullReveal={() => setStoriesOpen(true)}
           onSwipeCategory={swipeCategory}
         >
