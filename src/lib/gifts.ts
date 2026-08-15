@@ -8,11 +8,20 @@
 //   3 = full-width banner sweep + big animation + gold glow (Fusée, Lion)
 import { normalizeCurrency, type Currency } from "@/lib/money";
 
-export type GiftKey = "rose" | "heart" | "diamond" | "crown" | "rocket" | "lion";
+export type GiftKey =
+  | "rose"
+  | "heart"
+  | "diamond"
+  | "crown"
+  | "rocket"
+  | "lion"
+  | "kidi";
 
 export type GiftDef = {
   key: GiftKey;
   emoji: string;
+  /** Optional branded artwork shown instead of the emoji in the gift tray. */
+  imageSrc?: string;
   /** i18n key under `gifts.name.<key>` */
   nameKey: string;
   tier: 1 | 2 | 3;
@@ -61,6 +70,14 @@ export const GIFT_CATALOG: GiftDef[] = [
     nameKey: "gifts.name.lion",
     tier: 3,
     prices: { XOF: 5000, EUR: 15, CAD: 22, USD: 15, GBP: 15 },
+  },
+  {
+    key: "kidi",
+    emoji: "🎁",
+    imageSrc: "/kidi-plus-logo.png",
+    nameKey: "gifts.name.kidi",
+    tier: 3,
+    prices: { XOF: 5000, EUR: 10, CAD: 15, USD: 10, GBP: 10 },
   },
 ];
 

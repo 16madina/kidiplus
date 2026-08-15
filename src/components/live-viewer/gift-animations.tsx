@@ -29,9 +29,10 @@ const DURATIONS: Record<GiftKey, number> = {
   crown: 3000,
   rocket: 3000,
   lion: 4000,
+  kidi: 4600,
 };
 
-const isTier3 = (k: string) => k === "rocket" || k === "lion";
+const isTier3 = (k: string) => k === "rocket" || k === "lion" || k === "kidi";
 
 export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   const [active, setActive] = useState<QueueItem[]>([]);
@@ -111,8 +112,65 @@ function GiftAnim({ item, onDone }: { item: QueueItem; onDone: () => void }) {
     case "crown":   return <CrownAnim dur={dur} />;
     case "rocket":  return <RocketAnim dur={dur} />;
     case "lion":    return <LionAnim name={item.senderName} dur={dur} />;
+    case "kidi":    return <KidiGiftAnim name={item.senderName} dur={dur} />;
     default:        return null;
   }
+}
+
+/* ---------- KD+ (tier 3) — bespoke transparent Blender animation ---------- */
+function KidiGiftAnim({ name, dur }: { name: string; dur: number }) {
+  const [videoFailed, setVideoFailed] = useState(false);
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: dur / 1000, times: [0, 0.06, 0.9, 1] }}
+    >
+      <motion.div
+        className="absolute inset-0"
+        animate={{ opacity: [0, 0.42, 0.2, 0] }}
+        transition={{ duration: dur / 1000 }}
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(30,105,255,0.32), rgba(245,181,45,0.18) 42%, transparent 72%)",
+        }}
+      />
+      {videoFailed ? (
+        <motion.img
+          src="/kidi-plus-logo.png"
+          alt=""
+          className="relative w-[68%] max-w-[360px] object-contain drop-shadow-2xl"
+          initial={{ y: 120, scale: 0.4, opacity: 0 }}
+          animate={{ y: [120, 0, -12, 0], scale: [0.4, 1.08, 1, 1], opacity: 1 }}
+          transition={{ duration: 1.4, ease: EASE_IOS }}
+        />
+      ) : (
+        <video
+          src="/gifts/kidiplus-first-sale.webm"
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onError={() => setVideoFailed(true)}
+          className="relative h-full w-full object-contain"
+          style={{ mixBlendMode: "screen" }}
+        />
+      )}
+      <motion.div
+        className="absolute inset-x-4 bottom-[14%] mx-auto max-w-md rounded-full px-5 py-3 text-center text-[14px] font-black text-white"
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: [24, 0, 0, -12], opacity: [0, 1, 1, 0] }}
+        transition={{ duration: dur / 1000, times: [0, 0.18, 0.82, 1], ease: EASE_IOS }}
+        style={{
+          background: "linear-gradient(90deg, rgba(8,35,104,.92), rgba(214,151,25,.94))",
+          boxShadow: "0 0 36px rgba(240,180,44,.45)",
+        }}
+      >
+        {name} a envoyé le cadeau KD+ !
+      </motion.div>
+    </motion.div>
+  );
 }
 
 /* ---------- Rose (tier 1) — gentle petals ---------- */

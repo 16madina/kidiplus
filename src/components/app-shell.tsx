@@ -54,6 +54,7 @@ import { GuestShell } from "@/components/guest-shell";
 import { useInSystemPip } from "@/lib/pip-session";
 import { PushScreen } from "./push-screen";
 import { useTranslation } from "react-i18next";
+import { FirstSaleRewardOverlay } from "@/components/rewards/first-sale-reward-overlay";
 
 
 
@@ -95,6 +96,7 @@ export function AppShell() {
                   <PushDeniedBanner />
                   <NativeUpdateGate />
                   <AuthGate />
+                  <FirstSaleRewardOverlay />
                   <AnimatePresence>
                     {!splashDone && (
                       <SplashScreen onDone={handleSplashDone} />

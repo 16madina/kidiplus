@@ -36,7 +36,8 @@
       "diamond": "Diamond",
       "crown": "Crown",
       "rocket": "Rocket",
-      "lion": "Lion"
+      "lion": "Lion",
+      "kidi": "KD+ Gift"
     },
     "err": {
       "insufficient": "Not enough balance — top up your wallet",
@@ -46,6 +47,11 @@
       "sanctioned": "Account suspended",
       "auth": "Sign in to send a gift",
       "unknown": "Could not send"
+    },
+    "firstSale": {
+      "title": "Congratulations on your first sale!",
+      "subtitle": "KiDi+ is giving you the 10% commission",
+      "amount": "{{amount}} added to your earnings"
     }
   },
   "shop": {
