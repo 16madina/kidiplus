@@ -110,9 +110,10 @@ export function musicFromRow(r: {
   music_volume?: number | string | null;
   original_volume?: number | string | null;
 }): VitrineMusic | null {
-  if (!r?.music_url) return null;
+  const hasOriginal = r?.original_volume != null && Number(r.original_volume) < 1;
+  if (!r?.music_url && !hasOriginal) return null;
   return {
-    url: r.music_url,
+    url: r.music_url ?? "",
     title: r.music_title ?? null,
     artist: r.music_artist ?? null,
     startSec: Number(r.music_start_sec ?? 0) || 0,
@@ -123,7 +124,8 @@ export function musicFromRow(r: {
 
 /** Colonnes musique pour un insert Supabase. */
 export function musicToRow(music?: VitrineMusic | null) {
-  if (!music?.url) return {};
+  if (!music) return {};
+  if (!music.url) return { original_volume: clamp01(music.originalVolume) };
   return {
     music_url: music.url,
     music_title: music.title,
