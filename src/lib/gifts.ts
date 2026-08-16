@@ -4,18 +4,12 @@
 //
 // Tier drives the animation size:
 //   1 = light float-up (Rose, Cœur d'or)
-//   2 = center pop + glow + small confetti (Diamant, Couronne)
+//   2 = center pop + glow + small confetti (Papillon, Étoile, Diamant, Couronne)
 //   3 = full-width banner sweep + big animation + gold glow (Fusée, Lion)
 import { normalizeCurrency, type Currency } from "@/lib/money";
 
 export type GiftKey =
-  | "rose"
-  | "heart"
-  | "diamond"
-  | "crown"
-  | "rocket"
-  | "lion"
-  | "kidi";
+  "rose" | "heart" | "butterfly" | "star" | "diamond" | "crown" | "rocket" | "lion" | "kidi";
 
 export type GiftDef = {
   key: GiftKey;
@@ -40,6 +34,7 @@ export const GIFT_CATALOG: GiftDef[] = [
   {
     key: "rose",
     emoji: "🌹",
+    imageSrc: "/gifts/rose-gift-thumb.webp",
     nameKey: "gifts.name.rose",
     tier: 1,
     prices: { XOF: 100, EUR: 0.5, CAD: 1, USD: 0.5, GBP: 0.5 },
@@ -47,9 +42,26 @@ export const GIFT_CATALOG: GiftDef[] = [
   {
     key: "heart",
     emoji: "💛",
+    imageSrc: "/gifts/heart-gift-thumb.webp",
     nameKey: "gifts.name.heart",
     tier: 1,
     prices: { XOF: 250, EUR: 1, CAD: 1.5, USD: 1, GBP: 1 },
+  },
+  {
+    key: "butterfly",
+    emoji: "🦋",
+    imageSrc: "/gifts/butterfly-gift-thumb.webp",
+    nameKey: "gifts.name.butterfly",
+    tier: 2,
+    prices: { XOF: 500, EUR: 2, CAD: 3, USD: 2, GBP: 2 },
+  },
+  {
+    key: "star",
+    emoji: "⭐",
+    imageSrc: "/gifts/lucky-star-gift-thumb.webp",
+    nameKey: "gifts.name.star",
+    tier: 2,
+    prices: { XOF: 1000, EUR: 4, CAD: 6, USD: 4, GBP: 4 },
   },
   {
     key: "diamond",
