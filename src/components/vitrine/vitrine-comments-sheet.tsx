@@ -109,6 +109,24 @@ export function VitrineCommentsSheet({
     };
   }, [rows]);
 
+  /**
+   * Android keyboards (GBoard & co.) insert emojis through an IME composition.
+   * React skips `onChange` while a composition is active, so the emoji shows up
+   * in the DOM but the React state stays empty → send stays disabled.
+   * Always read the live DOM value as the source of truth.
+   */
+  const syncFromDom = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    setText(el.value.slice(0, 1000));
+  };
+
+  const insertEmoji = (emoji: string) => {
+    haptic.light();
+    setText((prev) => (prev + emoji).slice(0, 1000));
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
   const send = async () => {
     if (guestMode || !user) {
       openAuth();
@@ -118,7 +136,9 @@ export function VitrineCommentsSheet({
       toast(t("vitrine.commentsStub"));
       return;
     }
-    const body = text.trim();
+    // Fall back to the DOM value: an uncommitted IME composition (emoji panel
+    // on Android) may not have reached React state yet.
+    const body = (inputRef.current?.value ?? text).trim();
     if (!body || sending) return;
     setSending(true);
     haptic.light();
@@ -138,6 +158,7 @@ export function VitrineCommentsSheet({
       };
       setRows((prev) => [withAuthor, ...prev]);
       setText("");
+      if (inputRef.current) inputRef.current.value = "";
       onCommentAdded?.();
       listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       toast.success(t("vitrine.commentSent", { defaultValue: "Commentaire publié" }));
@@ -145,6 +166,7 @@ export function VitrineCommentsSheet({
       setSending(false);
     }
   };
+
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={58} zIndex={92}>
