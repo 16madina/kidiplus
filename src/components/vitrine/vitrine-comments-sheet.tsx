@@ -241,11 +241,29 @@ export function VitrineCommentsSheet({
         </div>
 
         <div className="shrink-0 border-t border-border bg-background px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {/* Quick reactions — post a heart / emoji without opening the keyboard. */}
+          <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {QUICK_EMOJIS.map((e) => (
+              <Press
+                key={e}
+                aria-label={e}
+                onClick={() => insertEmoji(e)}
+                className="h-9 w-9 shrink-0 rounded-full bg-muted/60 text-[18px] leading-none"
+              >
+                {e}
+              </Press>
+            ))}
+          </div>
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, 1000))}
+              // IME-safe: emoji panels on Android commit through composition,
+              // which React does not surface via onChange.
+              onInput={syncFromDom}
+              onCompositionEnd={syncFromDom}
+              onBlur={syncFromDom}
               rows={1}
               enterKeyHint="send"
               placeholder={t("vitrine.commentPlaceholder", {
@@ -265,7 +283,7 @@ export function VitrineCommentsSheet({
             <Press
               aria-label={t("vitrine.comment")}
               onClick={() => void send()}
-              disabled={sending || !text.trim()}
+              disabled={sending}
               className="h-11 w-11 shrink-0 rounded-full text-[#10162B] disabled:opacity-40"
               style={{ background: "#E8B93B" }}
             >
@@ -273,6 +291,7 @@ export function VitrineCommentsSheet({
             </Press>
           </div>
         </div>
+
       </div>
     </BottomSheet>
   );
