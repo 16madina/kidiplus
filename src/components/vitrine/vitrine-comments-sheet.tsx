@@ -14,6 +14,9 @@ import {
   type VitrineComment,
 } from "@/lib/vitrine-db";
 
+/** One-tap reactions so viewers can drop a heart without typing. */
+const QUICK_EMOJIS: string[] = ["❤️", "🔥", "😍", "🥰", "👏", "😂", "👍", "🎉"];
+
 export function VitrineCommentsSheet({
   open,
   onClose,
