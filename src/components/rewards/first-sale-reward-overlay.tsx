@@ -112,25 +112,16 @@ export function FirstSaleRewardOverlay() {
           role="dialog"
           aria-modal="true"
           aria-label={t("gifts.firstSale.title")}
-          className="fixed inset-0 z-[400] overflow-hidden"
+          className="pointer-events-none fixed inset-0 z-[400] overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
         >
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 48%, rgba(24,92,224,.42), rgba(8,18,50,.8) 55%, rgba(4,8,24,.94))",
-              backdropFilter: "blur(4px)",
-            }}
-          />
-
           <Press
             onClick={() => void close()}
             aria-label={t("common.close", "Fermer")}
-            className="absolute right-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 h-10 w-10 rounded-full bg-black/35 text-white"
+            className="pointer-events-auto absolute right-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 h-10 w-10 rounded-full bg-black/35 text-white"
           >
             <X size={18} />
           </Press>
@@ -140,7 +131,7 @@ export function FirstSaleRewardOverlay() {
               <motion.img
                 src="/kidi-plus-logo.png"
                 alt=""
-                className="w-[58%] max-w-[260px] object-contain drop-shadow-2xl"
+                className="w-[46%] max-w-[190px] object-contain drop-shadow-2xl"
                 initial={{ y: 140, scale: 0.35, opacity: 0 }}
                 animate={{ y: [140, 0, -10, 0], scale: [0.35, 1.08, 1, 1], opacity: 1 }}
                 transition={{ duration: 1.5, ease: EASE_IOS }}
@@ -148,11 +139,11 @@ export function FirstSaleRewardOverlay() {
             ) : (
               <img
                 key={reward.id}
-                src={`/gifts/kidiplus-first-sale.webp#reward=${encodeURIComponent(reward.id)}`}
+                src={`/gifts/kidiplus-first-sale.png#reward=${encodeURIComponent(reward.id)}`}
                 alt=""
                 draggable={false}
                 onError={() => setImageFailed(true)}
-                className="w-[78%] max-w-[330px] select-none object-contain drop-shadow-2xl"
+                className="w-[50%] max-w-[210px] select-none object-contain drop-shadow-2xl"
               />
             )}
           </div>
