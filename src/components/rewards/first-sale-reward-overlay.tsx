@@ -29,7 +29,7 @@ export function FirstSaleRewardOverlay() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const [reward, setReward] = useState<FirstSaleReward | null>(null);
-  const [videoFailed, setVideoFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const closingRef = useRef(false);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function FirstSaleRewardOverlay() {
           const next = payload.new;
           if (next.reward_key === "first_sale_fee_waiver" && !next.seen_at) {
             setReward(next);
-            setVideoFailed(false);
+            setImageFailed(false);
             haptic.success();
           }
         },
@@ -136,26 +136,23 @@ export function FirstSaleRewardOverlay() {
           </Press>
 
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {videoFailed ? (
+            {imageFailed ? (
               <motion.img
                 src="/kidi-plus-logo.png"
                 alt=""
-                className="w-[72%] max-w-[390px] object-contain drop-shadow-2xl"
+                className="w-[58%] max-w-[260px] object-contain drop-shadow-2xl"
                 initial={{ y: 140, scale: 0.35, opacity: 0 }}
                 animate={{ y: [140, 0, -10, 0], scale: [0.35, 1.08, 1, 1], opacity: 1 }}
                 transition={{ duration: 1.5, ease: EASE_IOS }}
               />
             ) : (
-              <video
+              <img
                 key={reward.id}
-                src="/gifts/kidiplus-first-sale.webm"
-                autoPlay
-                muted
-                playsInline
-                preload="auto"
-                onError={() => setVideoFailed(true)}
-                className="h-full w-full object-contain"
-                style={{ mixBlendMode: "screen" }}
+                src={`/gifts/kidiplus-first-sale.webp#reward=${encodeURIComponent(reward.id)}`}
+                alt=""
+                draggable={false}
+                onError={() => setImageFailed(true)}
+                className="w-[78%] max-w-[330px] select-none object-contain drop-shadow-2xl"
               />
             )}
           </div>

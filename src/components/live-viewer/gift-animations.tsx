@@ -97,11 +97,16 @@ function GiftAnim({ item, onDone }: { item: QueueItem; onDone: () => void }) {
   const g = giftByKey(item.giftKey);
   const key = (g?.key ?? "rose") as GiftKey;
   const dur = DURATIONS[key];
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, dur);
+    // Host screens re-render every second for the live duration counter. Do
+    // not restart this timer on those parent renders, otherwise the first
+    // tier-3 gift never leaves `active` and every later gift stays queued.
+    const t = window.setTimeout(() => onDoneRef.current(), dur);
     return () => clearTimeout(t);
-  }, [dur, onDone]);
+  }, [dur, item.animId]);
 
   switch (key) {
     // Sender name lives in GiftComboFeed (TikTok-style corner), not here —
@@ -112,14 +117,23 @@ function GiftAnim({ item, onDone }: { item: QueueItem; onDone: () => void }) {
     case "crown":   return <CrownAnim dur={dur} />;
     case "rocket":  return <RocketAnim dur={dur} />;
     case "lion":    return <LionAnim name={item.senderName} dur={dur} />;
-    case "kidi":    return <KidiGiftAnim name={item.senderName} dur={dur} />;
+    case "kidi":
+      return <KidiGiftAnim name={item.senderName} dur={dur} animId={item.animId} />;
     default:        return null;
   }
 }
 
 /* ---------- KD+ (tier 3) — bespoke transparent Blender animation ---------- */
-function KidiGiftAnim({ name, dur }: { name: string; dur: number }) {
-  const [videoFailed, setVideoFailed] = useState(false);
+function KidiGiftAnim({
+  name,
+  dur,
+  animId,
+}: {
+  name: string;
+  dur: number;
+  animId: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
   return (
     <motion.div
       className="absolute inset-0 flex items-center justify-center"
@@ -136,25 +150,22 @@ function KidiGiftAnim({ name, dur }: { name: string; dur: number }) {
             "radial-gradient(circle at 50% 50%, rgba(30,105,255,0.32), rgba(245,181,45,0.18) 42%, transparent 72%)",
         }}
       />
-      {videoFailed ? (
+      {imageFailed ? (
         <motion.img
           src="/kidi-plus-logo.png"
           alt=""
-          className="relative w-[68%] max-w-[360px] object-contain drop-shadow-2xl"
+          className="relative w-[58%] max-w-[260px] object-contain drop-shadow-2xl"
           initial={{ y: 120, scale: 0.4, opacity: 0 }}
           animate={{ y: [120, 0, -12, 0], scale: [0.4, 1.08, 1, 1], opacity: 1 }}
           transition={{ duration: 1.4, ease: EASE_IOS }}
         />
       ) : (
-        <video
-          src="/gifts/kidiplus-first-sale.webm"
-          autoPlay
-          muted
-          playsInline
-          preload="auto"
-          onError={() => setVideoFailed(true)}
-          className="relative h-full w-full object-contain"
-          style={{ mixBlendMode: "screen" }}
+        <img
+          src={`/gifts/kidiplus-first-sale.webp#gift=${encodeURIComponent(animId)}`}
+          alt=""
+          draggable={false}
+          onError={() => setImageFailed(true)}
+          className="relative w-[78%] max-w-[330px] select-none object-contain drop-shadow-2xl"
         />
       )}
       <motion.div
