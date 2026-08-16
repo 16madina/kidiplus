@@ -141,31 +141,22 @@ function KidiGiftAnim({
       animate={{ opacity: [0, 1, 1, 0] }}
       transition={{ duration: dur / 1000, times: [0, 0.06, 0.9, 1] }}
     >
-      <motion.div
-        className="absolute inset-0"
-        animate={{ opacity: [0, 0.42, 0.2, 0] }}
-        transition={{ duration: dur / 1000 }}
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(30,105,255,0.32), rgba(245,181,45,0.18) 42%, transparent 72%)",
-        }}
-      />
       {imageFailed ? (
         <motion.img
           src="/kidi-plus-logo.png"
           alt=""
-          className="relative w-[58%] max-w-[260px] object-contain drop-shadow-2xl"
+          className="relative w-[46%] max-w-[190px] object-contain drop-shadow-2xl"
           initial={{ y: 120, scale: 0.4, opacity: 0 }}
           animate={{ y: [120, 0, -12, 0], scale: [0.4, 1.08, 1, 1], opacity: 1 }}
           transition={{ duration: 1.4, ease: EASE_IOS }}
         />
       ) : (
         <img
-          src={`/gifts/kidiplus-first-sale.webp#gift=${encodeURIComponent(animId)}`}
+          src={`/gifts/kidiplus-first-sale.png#gift=${encodeURIComponent(animId)}`}
           alt=""
           draggable={false}
           onError={() => setImageFailed(true)}
-          className="relative w-[78%] max-w-[330px] select-none object-contain drop-shadow-2xl"
+          className="relative w-[50%] max-w-[210px] select-none object-contain drop-shadow-2xl"
         />
       )}
       <motion.div
