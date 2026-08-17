@@ -120,6 +120,7 @@ export function useFilter(): FilterContextValue {
       cssFilter: "none",
       lenses: LENSES,
       loadLenses: () => {},
+      refreshLenses: () => {},
       lensesLoading: false,
       lensesError: null,
     };
