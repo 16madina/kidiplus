@@ -14,6 +14,7 @@ import {
   isVideoUrl,
   uploadVitrineMediaDetailed,
   uploadVitrinePoster,
+  withTimeout,
 } from "@/lib/vitrine-db";
 
 const GOLD = "#E8B93B";
@@ -250,6 +251,9 @@ export function CreateVitrineContentSheet({
       toast.success(t("vitrine.published", { defaultValue: "Publication en ligne" }));
       onDone?.();
       close();
+    } catch (e) {
+      console.warn("[publish] failed", e);
+      toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
     } finally {
       setBusy(false);
     }
