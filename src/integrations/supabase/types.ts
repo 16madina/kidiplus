@@ -141,6 +141,8 @@ export type Database = {
           from_live_id: string
           from_seller_id: string
           id: string
+          rematch: boolean
+          rematch_of_battle_id: string | null
           status: string
           to_live_id: string | null
           to_seller_id: string
@@ -154,6 +156,8 @@ export type Database = {
           from_live_id: string
           from_seller_id: string
           id?: string
+          rematch?: boolean
+          rematch_of_battle_id?: string | null
           status?: string
           to_live_id?: string | null
           to_seller_id: string
@@ -167,6 +171,8 @@ export type Database = {
           from_live_id?: string
           from_seller_id?: string
           id?: string
+          rematch?: boolean
+          rematch_of_battle_id?: string | null
           status?: string
           to_live_id?: string | null
           to_seller_id?: string
@@ -192,6 +198,13 @@ export type Database = {
             columns: ["from_seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_rematch_of_battle_id_fkey"
+            columns: ["rematch_of_battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -322,10 +335,16 @@ export type Database = {
           ended_at: string | null
           ends_at: string | null
           id: string
+          last_sale_at: string | null
+          last_sale_text: string | null
           live_winner_seller_id: string | null
+          rematch_of_battle_id: string | null
           started_at: string | null
           status: string
           sudden_death: boolean
+          sudden_death_at: string | null
+          turn_side: string | null
+          turn_until: string | null
           updated_at: string
           winner_seller_id: string | null
         }
@@ -337,10 +356,16 @@ export type Database = {
           ended_at?: string | null
           ends_at?: string | null
           id?: string
+          last_sale_at?: string | null
+          last_sale_text?: string | null
           live_winner_seller_id?: string | null
+          rematch_of_battle_id?: string | null
           started_at?: string | null
           status?: string
           sudden_death?: boolean
+          sudden_death_at?: string | null
+          turn_side?: string | null
+          turn_until?: string | null
           updated_at?: string
           winner_seller_id?: string | null
         }
@@ -352,10 +377,16 @@ export type Database = {
           ended_at?: string | null
           ends_at?: string | null
           id?: string
+          last_sale_at?: string | null
+          last_sale_text?: string | null
           live_winner_seller_id?: string | null
+          rematch_of_battle_id?: string | null
           started_at?: string | null
           status?: string
           sudden_death?: boolean
+          sudden_death_at?: string | null
+          turn_side?: string | null
+          turn_until?: string | null
           updated_at?: string
           winner_seller_id?: string | null
         }
@@ -365,6 +396,13 @@ export type Database = {
             columns: ["live_winner_seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_sessions_rematch_of_battle_id_fkey"
+            columns: ["rematch_of_battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -2786,6 +2824,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _battle_enter_sudden_death_internal: {
+        Args: { _battle_id: string }
+        Returns: Json
+      }
       _battle_live_has_restream: {
         Args: { _live: Database["public"]["Tables"]["lives"]["Row"] }
         Returns: boolean
@@ -3016,11 +3058,14 @@ export type Database = {
         }
         Returns: Json
       }
+      battle_enter_sudden_death: { Args: { _battle_id: string }; Returns: Json }
+      battle_finalize_confirmed: { Args: { _battle_id: string }; Returns: Json }
       battle_heartbeat: { Args: { _battle_id: string }; Returns: Json }
       battle_invite: {
         Args: {
           _duration_sec?: number
           _from_live_id: string
+          _rematch_of?: string
           _to_seller_id: string
         }
         Returns: Json
