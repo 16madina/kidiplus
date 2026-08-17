@@ -21,7 +21,7 @@ function deriveKind(row: FanoutBody): string {
   if (row.kind === "live_started") return "live";
   if (row.kind === "moderator_promoted") return "live";
   if (row.kind === "new_follower") return "seller";
-  if (row.kind === "vitrine_like" || row.kind === "vitrine_comment") return "vitrine";
+  if (row.kind === "vitrine_like" || row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply") return "vitrine";
   if (/^chat_/.test(row.kind)) return "chat";
   return "notif";
 }
@@ -44,7 +44,7 @@ function buildFcmData(row: FanoutBody): Record<string, string> {
   putIfString("post_id", src.post_id);
   putIfString("comment_id", src.comment_id);
   putIfString("actor_id", src.actor_id);
-  if (row.kind === "vitrine_comment" || src.comment_id) {
+  if (row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply" || src.comment_id) {
     out.open_comments = "1";
   }
   putIfString("notification_id", row.id);
