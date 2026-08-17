@@ -45,7 +45,7 @@ import { PaymentsModeBadge } from "./payments-mode-badge";
 
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk" | "media";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
