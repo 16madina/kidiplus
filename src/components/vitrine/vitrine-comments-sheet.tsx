@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Send, X } from "lucide-react";
+import { Heart, Loader2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -11,6 +11,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import {
   addVitrineComment,
   fetchVitrineComments,
+  toggleVitrineCommentLike,
   type VitrineComment,
 } from "@/lib/vitrine-db";
 
