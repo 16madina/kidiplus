@@ -41,6 +41,7 @@ export function VitrinePostCard({
   onDeleted,
   autoOpenComments = false,
   highlightCommentId = null,
+  highlightParentCommentId = null,
   onCommentsAutoOpened,
   active = true,
 }: {
@@ -53,6 +54,7 @@ export function VitrinePostCard({
   /** Deep-link from Activity / push: open comments once after landing on this post. */
   autoOpenComments?: boolean;
   highlightCommentId?: string | null;
+  highlightParentCommentId?: string | null;
   onCommentsAutoOpened?: () => void;
   /** False while this card is the off-screen neighbour used for prefetch. */
   active?: boolean;
@@ -334,6 +336,7 @@ export function VitrinePostCard({
         onClose={() => setCommentsOpen(false)}
         postId={post.id}
         highlightCommentId={highlightCommentId}
+        highlightParentCommentId={highlightParentCommentId}
         onCommentAdded={() => {
           const next = comments + 1;
           setComments(next);

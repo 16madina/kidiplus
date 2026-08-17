@@ -23,6 +23,7 @@ export function VitrineCommentsSheet({
   onClose,
   postId,
   highlightCommentId = null,
+  highlightParentCommentId = null,
   onCommentAdded,
 }: {
   open: boolean;
@@ -30,6 +31,8 @@ export function VitrineCommentsSheet({
   postId: string;
   /** Scroll/highlight this comment when opening from an Activity deep-link. */
   highlightCommentId?: string | null;
+  /** Parent of a deep-linked reply: expand that thread on open. */
+  highlightParentCommentId?: string | null;
   onCommentAdded?: () => void;
 }) {
   const { t } = useTranslation();
@@ -63,8 +66,9 @@ export function VitrineCommentsSheet({
       const target = highlightCommentId
         ? r.find((c) => c.id === highlightCommentId)
         : null;
-      if (target?.parent_id) {
-        setOpenThreads((prev) => ({ ...prev, [target.parent_id as string]: true }));
+      const parentId = target?.parent_id ?? highlightParentCommentId;
+      if (parentId) {
+        setOpenThreads((prev) => ({ ...prev, [parentId]: true }));
       }
     });
 
@@ -79,7 +83,7 @@ export function VitrineCommentsSheet({
       alive = false;
       window.clearTimeout(tFocus);
     };
-  }, [open, postId, highlightCommentId]);
+  }, [open, postId, highlightCommentId, highlightParentCommentId]);
 
   // Keep composer above the software keyboard (TikTok-style).
   useEffect(() => {
@@ -244,13 +248,9 @@ export function VitrineCommentsSheet({
   useEffect(() => {
     if (!open || !highlightCommentId) return;
     const target = rows.find((r) => r.id === highlightCommentId);
-    if (!target) return;
-    if (target.parent_id) {
-      setOpenThreads((prev) =>
-        prev[target.parent_id as string]
-          ? prev
-          : { ...prev, [target.parent_id as string]: true },
-      );
+    const parentId = target?.parent_id ?? highlightParentCommentId;
+    if (parentId) {
+      setOpenThreads((prev) => (prev[parentId] ? prev : { ...prev, [parentId]: true }));
     }
     let tries = 0;
     const iv = window.setInterval(() => {
@@ -264,7 +264,7 @@ export function VitrineCommentsSheet({
       }
     }, 120);
     return () => window.clearInterval(iv);
-  }, [open, highlightCommentId, rows]);
+  }, [open, highlightCommentId, highlightParentCommentId, rows]);
 
 
   return (
