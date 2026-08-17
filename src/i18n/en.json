@@ -411,7 +411,8 @@
     "hostTokenFailedTitle": "Authentication failed",
     "hostTokenFailedBody": "Couldn't get a video token. Check your connection and try again.",
     "hostConnectServerFailedTitle": "Video server unreachable",
-    "hostConnectServerFailedBody": "The video server isn't responding. Check your connection and try again."
+    "hostConnectServerFailedBody": "The video server isn't responding. Check your connection and try again.",
+    "tapForSound": "Tap for sound"
   },
   "broadcast": {
     "becomeSellerTitle": "Become a seller",
