@@ -120,10 +120,13 @@ export function CreateVitrineContentSheet({
     try {
       optimized = [];
       for (const f of next) {
-        optimized.push(await optimizeMediaFor916(f));
+        // Le recadrage ne doit jamais figer l'écran : au-delà de 60 s on
+        // garde le fichier d'origine.
+        optimized.push(await withTimeout(optimizeMediaFor916(f), 60000, "optimize_timeout"));
       }
     } catch {
       optimized = next;
+
     } finally {
       setOptimizing(false);
     }
