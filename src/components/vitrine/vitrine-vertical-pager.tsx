@@ -234,7 +234,10 @@ function MediaSlide({
 
 
   const shouldPlay = playing && !suspended && eager;
+  const [blocked, setBlocked] = useState(false);
 
+  // Démarrage instantané façon TikTok : on tente la lecture dès que le média a
+  // la moindre donnée, puis on réessaie sur chaque évènement de préparation.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
@@ -248,14 +251,46 @@ function MediaSlide({
       }
       return;
     }
-    el.muted = muted || volume <= 0.001;
-    el.volume = muted ? 0 : volume;
-    void el.play().catch(() => {
-      el.muted = true;
-      el.volume = 0;
-      void el.play().catch(() => undefined);
-    });
+
+    let cancelled = false;
+
+    const attempt = async () => {
+      if (cancelled) return;
+      const v = videoRef.current;
+      if (!v) return;
+      v.muted = muted || volume <= 0.001;
+      v.volume = v.muted ? 0 : volume;
+      try {
+        await v.play();
+        if (!cancelled) setBlocked(false);
+      } catch {
+        // Politique d'autoplay (surtout sur le web) : on retente en muet.
+        try {
+          v.muted = true;
+          v.volume = 0;
+          await v.play();
+          if (!cancelled) setBlocked(false);
+        } catch {
+          if (!cancelled) setBlocked(true);
+        }
+      }
+    };
+
+    void attempt();
+    const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
+    const onReady = () => void attempt();
+    events.forEach((e) => el.addEventListener(e, onReady));
+    const retry = window.setInterval(() => void attempt(), 400);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 3000);
+
+    return () => {
+      cancelled = true;
+      events.forEach((e) => el.removeEventListener(e, onReady));
+      window.clearInterval(retry);
+      window.clearTimeout(stopRetry);
+    };
   }, [url, asVideo, muted, shouldPlay, volume]);
+
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
   useEffect(() => {
