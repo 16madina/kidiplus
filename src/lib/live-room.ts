@@ -517,7 +517,7 @@ export function useLiveRoom(params: {
   useEffect(() => {
     if (!liveId) return;
     const ch = supabase
-      .channel(`live-db:${liveId}`)
+      .channel(`live-db:${liveId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "lives", filter: `id=eq.${liveId}` },
