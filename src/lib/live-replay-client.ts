@@ -37,12 +37,13 @@ export async function startLiveReplay(
       body: JSON.stringify({ liveId }),
     });
     const body = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
       error?: string;
       message?: string;
       egressId?: string;
       already?: boolean;
     };
-    if (!res.ok) {
+    if (!res.ok || body.ok === false) {
       return {
         ok: false,
         error: body.message || body.error || `start failed (${res.status})`,
