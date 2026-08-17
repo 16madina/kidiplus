@@ -4,7 +4,6 @@ import {
   AnimatePresence,
   motion,
   useMotionValue,
-  useTransform,
   animate,
 } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
