@@ -786,7 +786,17 @@ export async function uploadVitrineMediaDetailed(
   if (file.size <= 0) return { ok: false, error: "empty_file" };
   if (file.size > VITRINE_MAX_BYTES) return { ok: false, error: "file_too_large" };
 
+  // Filet de sécurité : un .mov QuickTime/HEVC est converti en MP4/H.264
+  // avant l'envoi, sinon Android ne peut pas le lire.
+  try {
+    const { isQuickTimeFile, transcodeMovToMp4 } = await import("@/lib/video-transcode");
+    if (isQuickTimeFile(file)) file = await transcodeMovToMp4(file);
+  } catch {
+    /* on garde le fichier d'origine */
+  }
+
   const contentType = guessVitrineContentType(file);
+
   let ext = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!ext || ext === "bin") {
     if (contentType.includes("quicktime")) ext = "mov";
