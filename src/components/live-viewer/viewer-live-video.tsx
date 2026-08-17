@@ -407,6 +407,11 @@ export function ViewerLiveVideo({
     return () => {
       cancelled = true;
       clearEndTimer();
+      if (pollRef.current !== null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+
       const r = roomRef.current;
       roomRef.current = null;
       void disconnectRoom(r);
