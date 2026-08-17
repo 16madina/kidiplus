@@ -133,6 +133,36 @@ export function VitrineCommentsSheet({
     inputRef.current?.focus({ preventScroll: true });
   };
 
+  const toggleLike = (c: VitrineComment) => {
+    if (guestMode || !user) {
+      openAuth();
+      return;
+    }
+    const liked = !!c.liked_by_me;
+    haptic.light();
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === c.id
+          ? {
+              ...r,
+              liked_by_me: !liked,
+              like_count: Math.max(0, (r.like_count ?? 0) + (liked ? -1 : 1)),
+            }
+          : r,
+      ),
+    );
+    void toggleVitrineCommentLike(c.id, liked).then((res) => {
+      if (res.ok) return;
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === c.id
+            ? { ...r, liked_by_me: liked, like_count: Math.max(0, (r.like_count ?? 0) + (liked ? 1 : -1)) }
+            : r,
+        ),
+      );
+    });
+  };
+
   const startReply = (c: VitrineComment) => {
     if (guestMode || !user) {
       openAuth();
@@ -260,6 +290,7 @@ export function VitrineCommentsSheet({
                       initial={initial}
                       highlighted={highlighted}
                       onReply={() => startReply(c)}
+                      onLike={() => toggleLike(c)}
                       replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
                     />
                     {replies.length > 0 && (
@@ -290,6 +321,7 @@ export function VitrineCommentsSheet({
                                     .toUpperCase()}
                                   highlighted={highlightCommentId === r.id}
                                   onReply={() => startReply(r)}
+                                  onLike={() => toggleLike(r)}
                                   replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
                                   small
                                 />
