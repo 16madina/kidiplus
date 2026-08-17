@@ -657,6 +657,26 @@ export type UploadProgress = (fraction: number) => void;
 
 const SUPABASE_STORAGE_ORIGIN = CURRENT_STORAGE_HOST;
 
+/**
+ * Garde-fou générique : aucune étape de publication ne doit pouvoir bloquer
+ * le bouton « Publier » indéfiniment.
+ */
+export function withTimeout<T>(p: Promise<T>, ms: number, code: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const to = setTimeout(() => reject(new Error(code)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(to);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(to);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** PUT direct vers l'URL signée avec progression réelle (XHR). */
 function putWithProgress(
   signedPath: string,
@@ -673,24 +693,57 @@ function putWithProgress(
       xhr.open("PUT", clean, true);
       xhr.setRequestHeader("Content-Type", contentType);
       xhr.setRequestHeader("x-upsert", "false");
+      // Plafond dur : au-delà, on rend la main avec une erreur lisible.
+      xhr.timeout = 240000;
+      let settled = false;
+      const finish = (r: { ok: true } | { ok: false; error: string }) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(stallTimer);
+        resolve(r);
+      };
+      // Détection de blocage : aucune progression pendant 60 s → on abandonne.
+      let stallTimer = window.setTimeout(() => {
+        try {
+          xhr.abort();
+        } catch {
+          /* ignore */
+        }
+        finish({ ok: false, error: "upload_stalled" });
+      }, 60000);
+      const bump = () => {
+        window.clearTimeout(stallTimer);
+        stallTimer = window.setTimeout(() => {
+          try {
+            xhr.abort();
+          } catch {
+            /* ignore */
+          }
+          finish({ ok: false, error: "upload_stalled" });
+        }, 60000);
+      };
       xhr.upload.onprogress = (e) => {
+        bump();
         if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           onProgress?.(1);
-          resolve({ ok: true });
+          finish({ ok: true });
         } else {
-          resolve({ ok: false, error: `http_${xhr.status}` });
+          finish({ ok: false, error: `http_${xhr.status}` });
         }
       };
-      xhr.onerror = () => resolve({ ok: false, error: "network_error" });
+      xhr.onerror = () => finish({ ok: false, error: "network_error" });
+      xhr.ontimeout = () => finish({ ok: false, error: "upload_timeout" });
+      xhr.onabort = () => finish({ ok: false, error: "upload_stalled" });
       xhr.send(file);
     } catch (e) {
       resolve({ ok: false, error: e instanceof Error ? e.message : "upload_failed" });
     }
   });
 }
+
 
 /**
  * Génère et envoie la vignette d'une vidéo. Renvoie null si impossible
