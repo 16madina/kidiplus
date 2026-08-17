@@ -15,6 +15,7 @@ import {
 import { fetchPaypalConfig, sendPaypalPayout, checkPaypalPayoutStatus } from "@/lib/paypal-payout-client";
 import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
+import { AdminVideoRepairPanel } from "./admin-video-repair-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
