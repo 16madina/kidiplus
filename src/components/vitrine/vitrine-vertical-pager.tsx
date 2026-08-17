@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Loader2, Pause, Play } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
@@ -190,6 +190,18 @@ function MediaSlide({
 }) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const bindVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node) return;
+    // WebKit checks the muted state at element creation time. Setting both the
+    // property and content attribute prevents its native Play overlay on first
+    // mount while still allowing imperative unmute after a real feed gesture.
+    node.defaultMuted = true;
+    node.muted = true;
+    node.setAttribute("muted", "");
+    node.setAttribute("playsinline", "");
+    node.setAttribute("webkit-playsinline", "");
+  }, []);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
   const [status, setStatus] = useState<
@@ -454,7 +466,7 @@ function MediaSlide({
           {eager && (
             <video
               key={reloadKey}
-              ref={videoRef}
+              ref={bindVideoRef}
               data-vitrine-feed
               src={url}
               poster={poster ?? undefined}

@@ -43,7 +43,6 @@ export function useVitrineSound(): [boolean, () => void] {
   const [on, setOn] = useState(false);
 
   useEffect(() => {
-    tryUnlockVitrineSoundFromGesture();
     setOn(getVitrineSoundOn());
     const h = () => setOn(getVitrineSoundOn());
     window.addEventListener(EVT, h);
