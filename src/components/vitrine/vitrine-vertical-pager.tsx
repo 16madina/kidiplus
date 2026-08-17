@@ -234,7 +234,10 @@ function MediaSlide({
 
 
   const shouldPlay = playing && !suspended && eager;
+  const [blocked, setBlocked] = useState(false);
 
+  // Démarrage instantané façon TikTok : on tente la lecture dès que le média a
+  // la moindre donnée, puis on réessaie sur chaque évènement de préparation.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
@@ -248,14 +251,46 @@ function MediaSlide({
       }
       return;
     }
-    el.muted = muted || volume <= 0.001;
-    el.volume = muted ? 0 : volume;
-    void el.play().catch(() => {
-      el.muted = true;
-      el.volume = 0;
-      void el.play().catch(() => undefined);
-    });
+
+    let cancelled = false;
+
+    const attempt = async () => {
+      if (cancelled) return;
+      const v = videoRef.current;
+      if (!v) return;
+      v.muted = muted || volume <= 0.001;
+      v.volume = v.muted ? 0 : volume;
+      try {
+        await v.play();
+        if (!cancelled) setBlocked(false);
+      } catch {
+        // Politique d'autoplay (surtout sur le web) : on retente en muet.
+        try {
+          v.muted = true;
+          v.volume = 0;
+          await v.play();
+          if (!cancelled) setBlocked(false);
+        } catch {
+          if (!cancelled) setBlocked(true);
+        }
+      }
+    };
+
+    void attempt();
+    const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
+    const onReady = () => void attempt();
+    events.forEach((e) => el.addEventListener(e, onReady));
+    const retry = window.setInterval(() => void attempt(), 400);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 3000);
+
+    return () => {
+      cancelled = true;
+      events.forEach((e) => el.removeEventListener(e, onReady));
+      window.clearInterval(retry);
+      window.clearTimeout(stopRetry);
+    };
   }, [url, asVideo, muted, shouldPlay, volume]);
+
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
   useEffect(() => {
@@ -345,16 +380,19 @@ function MediaSlide({
               src={url}
               poster={poster ?? undefined}
               className={mediaClass}
-              autoPlay={shouldPlay}
+              autoPlay
               muted={muted || !shouldPlay || volume <= 0.001}
               loop
               playsInline
-              preload={shouldPlay ? "auto" : "metadata"}
+              preload="auto"
               controls={false}
               onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
-              onPlaying={() => setStatus("ready")}
+              onPlaying={() => {
+                setStatus("ready");
+                setBlocked(false);
+              }}
               onError={() => {
                 setStatus("error");
                 reportBrokenMedia(url);
@@ -364,7 +402,31 @@ function MediaSlide({
           )}
         </Fit916>
         {overlay}
+        {asVideo && blocked && shouldPlay && status !== "error" && (
+          <button
+            type="button"
+            data-no-pause
+            aria-label="Play"
+            onClick={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              v.muted = muted || volume <= 0.001;
+              v.volume = v.muted ? 0 : volume;
+              void v.play().then(() => setBlocked(false)).catch(() => {
+                v.muted = true;
+                void v.play().then(() => setBlocked(false)).catch(() => undefined);
+              });
+            }}
+            className="absolute inset-0 z-[15] grid place-items-center"
+          >
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white">
+              <Play size={28} fill="white" />
+            </span>
+          </button>
+        )}
       </div>
+
     );
   }
   return (
