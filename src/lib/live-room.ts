@@ -897,18 +897,27 @@ export function useLiveRoom(params: {
 
     // Durable backup: if the ephemeral broadcast is dropped, every client
     // still learns about the gift from the live_gifts INSERT (same gift id).
-    ch.on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "live_gifts",
-        filter: `live_id=eq.${liveId}`,
-      },
-      (payload) => {
-        void ingestGiftRowRef.current(payload.new as GiftDbRow);
-      },
-    );
+    // NOTE: this lives on its OWN uniquely-named channel. The `live:<id>`
+    // topic is shared by every view of the same live (mini-player + full
+    // screen) in the same tab, and attaching postgres_changes to an already
+    // subscribed shared topic throws "cannot add postgres_changes callbacks
+    // after subscribe()".
+    const giftsCh = supabase
+      .channel(`live-gifts:${liveId}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "live_gifts",
+          filter: `live_id=eq.${liveId}`,
+        },
+        (payload) => {
+          void ingestGiftRowRef.current(payload.new as GiftDbRow);
+        },
+      )
+      .subscribe();
+
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
