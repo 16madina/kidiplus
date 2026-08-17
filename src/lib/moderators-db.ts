@@ -309,7 +309,7 @@ export function useIsModerator(
     })();
 
     const ch = supabase
-      .channel(`mods:${liveId}:${userId}`)
+      .channel(`mods:${liveId}:${userId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "live_moderators", filter: `live_id=eq.${liveId}` },
@@ -350,7 +350,7 @@ export function useModerators(liveId: string | null | undefined): {
     void fetchModerators(liveId).then((r) => { if (alive) setModerators(r); });
 
     const ch = supabase
-      .channel(`mods-list:${liveId}`)
+      .channel(`mods-list:${liveId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "live_moderators", filter: `live_id=eq.${liveId}` },
@@ -414,7 +414,7 @@ export function useLiveChatMutes(liveId: string | null | undefined): Set<string>
     let alive = true;
     void fetchLiveChatMutes(liveId).then((s) => { if (alive) setMuted(s); });
     const ch = supabase
-      .channel(`chat-mutes:${liveId}`)
+      .channel(`chat-mutes:${liveId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "live_chat_mutes", filter: `live_id=eq.${liveId}` },

@@ -136,7 +136,7 @@ export function SellerProfileScreen() {
     const sellerId = profile?.id;
     if (!sellerId) return;
     const ch = supabase
-      .channel(`seller-profile-${sellerId}`)
+      .channel(`seller-profile-${sellerId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${sellerId}` }, (payload) => {
         const row = payload.new as Partial<SellerProfile>;
         setProfile((prev) => (prev ? { ...prev, ...row } : prev));
@@ -831,7 +831,7 @@ function BoutiqueTab({ sellerId, currency }: { sellerId: string; currency: strin
     };
     void reload();
     const ch = supabase
-      .channel(`shop-public-${sellerId}`)
+      .channel(`shop-public-${sellerId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shop_products", filter: `seller_id=eq.${sellerId}` }, () => { void reload(); })
       .subscribe();
     return () => { alive = false; void supabase.removeChannel(ch); };
@@ -1207,7 +1207,7 @@ function AvisTab({ sellerId }: { sellerId: string }) {
     };
     void reload();
     const ch = supabase
-      .channel(`reviews-${sellerId}`)
+      .channel(`reviews-${sellerId}:${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "seller_reviews", filter: `seller_id=eq.${sellerId}` }, () => { void reload(); })
       .subscribe();
     return () => { alive = false; void supabase.removeChannel(ch); };
