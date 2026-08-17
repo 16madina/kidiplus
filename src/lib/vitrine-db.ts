@@ -71,6 +71,8 @@ export type VitrineComment = {
   body: string;
   created_at: string;
   parent_id?: string | null;
+  like_count?: number;
+  liked_by_me?: boolean;
   author?: {
     display_name: string | null;
     handle: string | null;
