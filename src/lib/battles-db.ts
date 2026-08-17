@@ -41,7 +41,7 @@ export type BattleSessionRow = {
   currency: string;
   live_winner_seller_id: string | null;
   winner_seller_id: string | null;
-  end_reason: "timeout" | "forfeit" | "sudden_death" | "cancelled" | null;
+  end_reason: "timeout" | "forfeit" | "sudden_death" | "cancelled" | "disconnected" | null;
   sudden_death: boolean;
   rematch_of_battle_id: string | null;
   turn_side: "a" | "b" | null;
@@ -149,7 +149,7 @@ export async function battleEnterSuddenDeath(battleId: string): Promise<BattleRp
 
 export async function battleEnd(
   battleId: string,
-  reason: "timeout" | "forfeit" | "cancelled" | "sudden_death",
+  reason: "timeout" | "forfeit" | "cancelled" | "sudden_death" | "disconnected",
   forfeitSellerId?: string | null,
 ): Promise<BattleRpc> {
   const { data, error } = await supabase.rpc("battle_end", {

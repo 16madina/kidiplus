@@ -12,16 +12,22 @@ import type { BattleFighter, BattleSession } from "@/lib/battle-context";
 
 type Phase = "logo" | "card";
 
+function isAbandon(reason: BattleSession["endReason"]) {
+  return reason === "forfeit" || reason === "disconnected" || reason === "cancelled";
+}
+
 export function BattleResultOverlay({
   open,
   session,
   onDone,
   onRematch,
+  selfSellerId,
 }: {
   open: boolean;
   session: BattleSession | null;
   onDone: () => void;
   onRematch?: () => void;
+  selfSellerId?: string | null;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language?.startsWith("en") ? "en" : "fr";
@@ -51,7 +57,19 @@ export function BattleResultOverlay({
       : session.liveWinnerSide === "b"
         ? session.sideB
         : null;
-  const forfeit = session.endReason === "forfeit";
+  const abandon = isAbandon(session.endReason);
+  const left: BattleFighter | null = session.forfeitSellerId
+    ? session.forfeitSellerId === session.sideA.sellerId
+      ? session.sideA
+      : session.sideB
+    : winner
+      ? winner.sellerId === session.sideA.sellerId
+        ? session.sideB
+        : session.sideA
+      : null;
+  const leftName = left?.displayName ?? t("battle.result.opponentFallback");
+  const youWon = !!winner && !!selfSellerId && winner.sellerId === selfSellerId;
+  const showRematch = !!onRematch && !abandon;
   const brand = t(BATTLE_BRAND_I18N_KEY);
 
   return (
@@ -63,7 +81,7 @@ export function BattleResultOverlay({
         exit={{ opacity: 0 }}
         className="absolute inset-0 z-[70] grid place-items-center bg-black/55 px-5"
       >
-        <Confetti trigger={confetti} />
+        <Confetti trigger={winner ? confetti : 0} />
         <AnimatePresence mode="wait">
           {phase === "logo" ? (
             <motion.div
@@ -93,15 +111,28 @@ export function BattleResultOverlay({
                 {t("battle.result.heading")}
               </p>
               <p className="mb-3 text-[12px] font-semibold text-white/55">{brand}</p>
-              {winner ? (
+              {abandon ? (
+                <>
+                  <h3 className="text-[22px] font-black leading-tight">
+                    {session.endReason === "forfeit"
+                      ? t("battle.result.opponentForfeit", { name: leftName })
+                      : t("battle.result.opponentOffline", { name: leftName })}
+                  </h3>
+                  <p className="mt-2 text-[16px] font-bold text-[oklch(0.85_0.18_90)]">
+                    {winner
+                      ? youWon
+                        ? t("battle.result.forfeitWinYou")
+                        : t("battle.result.forfeitWin", { name: winner.displayName })
+                      : t("battle.result.challengeOver")}
+                  </p>
+                </>
+              ) : winner ? (
                 <>
                   <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-full bg-[oklch(0.85_0.18_90)] text-[#10162B]">
                     <Crown size={28} />
                   </div>
                   <h3 className="text-[22px] font-black leading-tight">
-                    {forfeit
-                      ? t("battle.result.forfeitWin", { name: winner.displayName })
-                      : t("battle.result.win", { name: winner.displayName })}
+                    {t("battle.result.win", { name: winner.displayName })}
                   </h3>
                   <p className="mt-2 text-[14px] leading-snug text-white/80">
                     {t("battle.result.scoreline", {
@@ -123,10 +154,12 @@ export function BattleResultOverlay({
               ) : (
                 <h3 className="text-[22px] font-black">{t("battle.result.tie")}</h3>
               )}
-              <p className="mt-4 text-[12px] leading-snug text-white/60">
-                {t("battle.result.pendingNote")}
-              </p>
-              {onRematch && (
+              {!abandon && (
+                <p className="mt-4 text-[12px] leading-snug text-white/60">
+                  {t("battle.result.pendingNote")}
+                </p>
+              )}
+              {showRematch && (
                 <Press
                   onClick={onRematch}
                   className="!min-h-11 mt-5 w-full rounded-full text-[14px] font-black"
@@ -137,10 +170,10 @@ export function BattleResultOverlay({
               )}
               <Press
                 onClick={() => onDoneRef.current()}
-                className={`!min-h-11 w-full rounded-full text-[14px] font-black ${onRematch ? "mt-2" : "mt-5"}`}
+                className={`!min-h-11 w-full rounded-full text-[14px] font-black ${showRematch ? "mt-2" : "mt-5"}`}
                 style={{
-                  backgroundColor: onRematch ? "rgba(255,255,255,0.12)" : "oklch(0.85 0.18 90)",
-                  color: onRematch ? "white" : "#10162B",
+                  backgroundColor: showRematch ? "rgba(255,255,255,0.12)" : "oklch(0.85 0.18 90)",
+                  color: showRematch ? "white" : "#10162B",
                 }}
               >
                 {t("battle.result.continue")}

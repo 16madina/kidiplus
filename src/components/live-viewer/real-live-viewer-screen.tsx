@@ -1795,6 +1795,7 @@ function BattleAwareViewerVideo({
       <BattleResultOverlay
         open={battle.resultOpen}
         session={battle.session}
+        selfSellerId={user?.id ?? null}
         onDone={battle.dismissResult}
       />
     </>

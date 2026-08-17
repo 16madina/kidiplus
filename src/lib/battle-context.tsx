@@ -20,7 +20,7 @@ import {
 } from "@/lib/battles-db";
 
 export type BattleSide = "a" | "b";
-export type BattleEndReason = "timeout" | "forfeit" | "cancelled" | "sudden_death";
+export type BattleEndReason = "timeout" | "forfeit" | "cancelled" | "sudden_death" | "disconnected";
 
 export type BattleFighter = {
   sellerId: string;
@@ -138,12 +138,23 @@ function toSession(battle: HydratedBattle): BattleSession | null {
   const sideA = toFighter(battle, "a");
   const sideB = toFighter(battle, "b");
   const winnerId = s.live_winner_seller_id;
+  const abandon =
+    s.end_reason === "forfeit" ||
+    s.end_reason === "disconnected" ||
+    s.end_reason === "cancelled";
   let liveWinnerSide: BattleSide | "tie" | null = null;
   if (s.status === "ended" || s.status === "cancelled") {
     if (winnerId && winnerId === sideA.sellerId) liveWinnerSide = "a";
     else if (winnerId && winnerId === sideB.sellerId) liveWinnerSide = "b";
+    else if (abandon) liveWinnerSide = null;
     else liveWinnerSide = "tie";
   }
+  const forfeitSellerId =
+    abandon && winnerId === sideA.sellerId
+      ? sideB.sellerId
+      : abandon && winnerId === sideB.sellerId
+        ? sideA.sellerId
+        : null;
   const startedAt = s.started_at ? Date.parse(s.started_at) : Date.now();
   const endsAt = s.ends_at ? Date.parse(s.ends_at) : startedAt + s.duration_sec * 1000;
   return {
@@ -157,7 +168,7 @@ function toSession(battle: HydratedBattle): BattleSession | null {
     sideB,
     endReason: s.end_reason,
     liveWinnerSide,
-    forfeitSellerId: null,
+    forfeitSellerId,
     suddenDeath: s.status === "sudden_death" || !!s.sudden_death,
     suddenDeathAt: s.sudden_death_at ? Date.parse(s.sudden_death_at) : null,
     turnSide: s.turn_side,

@@ -1851,7 +1851,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 }
           }
           onLeave={() => {
-            void battle.endBattle("forfeit", user?.id ?? battle.session?.sideA.sellerId);
+            if (user?.id) void battle.endBattle("forfeit", user.id);
           }}
           onOpenModerators={() => setModeratorsSheetOpen(true)}
           onOpenProducts={() => setProductsOpen(true)}
@@ -2285,6 +2285,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <BattleResultOverlay
         open={battle.resultOpen}
         session={battle.session}
+        selfSellerId={user?.id ?? null}
         onDone={battle.dismissResult}
         onRematch={() => {
           void battle.requestRematch().then((res) => {
