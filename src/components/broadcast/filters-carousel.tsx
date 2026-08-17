@@ -35,6 +35,7 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
     activeLens,
     setActiveLens,
     loadLenses,
+    refreshLenses,
     lensesLoading,
     lensesError,
   } = useFilter();
