@@ -151,6 +151,8 @@ export function ViewerLiveVideo({
   const audioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
   const hadLiveRef = useRef(false);
+  const pollRef = useRef<number | null>(null);
+
   const [status, setStatus] = useState<ViewerStatus>("connecting");
   const appActive = useAppActive();
   // Keep LiveKit connected in Android system PiP even though Capacitor
