@@ -666,6 +666,21 @@ export function ViewerLiveVideo({
         />
       )}
       <audio ref={audioRef} autoPlay playsInline />
+      {audioBlocked && status === "live" && (
+        <button
+          type="button"
+          onClick={() => { void enableSound(); }}
+          className="absolute left-1/2 top-4 z-[20] flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-bold text-white"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+        >
+          <Volume2 size={15} strokeWidth={2.2} />
+          {t("live.tapForSound", "Activer le son")}
+        </button>
+      )}
       {posterImage && (
         <img
           src={posterImage}
