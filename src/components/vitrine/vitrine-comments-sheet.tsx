@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Send, X } from "lucide-react";
+import { Heart, Loader2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
@@ -11,6 +11,7 @@ import { resolveAvatarUrl } from "@/lib/avatar-url";
 import {
   addVitrineComment,
   fetchVitrineComments,
+  toggleVitrineCommentLike,
   type VitrineComment,
 } from "@/lib/vitrine-db";
 
@@ -131,6 +132,36 @@ export function VitrineCommentsSheet({
     haptic.light();
     setText((prev) => (prev + emoji).slice(0, 1000));
     inputRef.current?.focus({ preventScroll: true });
+  };
+
+  const toggleLike = (c: VitrineComment) => {
+    if (guestMode || !user) {
+      openAuth();
+      return;
+    }
+    const liked = !!c.liked_by_me;
+    haptic.light();
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === c.id
+          ? {
+              ...r,
+              liked_by_me: !liked,
+              like_count: Math.max(0, (r.like_count ?? 0) + (liked ? -1 : 1)),
+            }
+          : r,
+      ),
+    );
+    void toggleVitrineCommentLike(c.id, liked).then((res) => {
+      if (res.ok) return;
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === c.id
+            ? { ...r, liked_by_me: liked, like_count: Math.max(0, (r.like_count ?? 0) + (liked ? 1 : -1)) }
+            : r,
+        ),
+      );
+    });
   };
 
   const startReply = (c: VitrineComment) => {
@@ -260,6 +291,7 @@ export function VitrineCommentsSheet({
                       initial={initial}
                       highlighted={highlighted}
                       onReply={() => startReply(c)}
+                      onLike={() => toggleLike(c)}
                       replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
                     />
                     {replies.length > 0 && (
@@ -290,6 +322,7 @@ export function VitrineCommentsSheet({
                                     .toUpperCase()}
                                   highlighted={highlightCommentId === r.id}
                                   onReply={() => startReply(r)}
+                                  onLike={() => toggleLike(r)}
                                   replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
                                   small
                                 />
@@ -392,6 +425,7 @@ function CommentRow({
   initial,
   highlighted,
   onReply,
+  onLike,
   replyLabel,
   small = false,
 }: {
@@ -400,6 +434,7 @@ function CommentRow({
   initial: string;
   highlighted: boolean;
   onReply: () => void;
+  onLike: () => void;
   replyLabel: string;
   small?: boolean;
 }) {
@@ -439,6 +474,21 @@ function CommentRow({
           {replyLabel}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={onLike}
+        aria-pressed={!!c.liked_by_me}
+        className="flex shrink-0 flex-col items-center gap-0.5 self-start pt-1 text-muted-foreground"
+      >
+        <Heart
+          size={small ? 14 : 16}
+          className={c.liked_by_me ? "text-rose-500" : ""}
+          fill={c.liked_by_me ? "currentColor" : "none"}
+        />
+        {(c.like_count ?? 0) > 0 && (
+          <span className="text-[11px] tabular-nums">{c.like_count}</span>
+        )}
+      </button>
     </div>
   );
 }

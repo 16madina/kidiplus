@@ -71,6 +71,8 @@ export type VitrineComment = {
   body: string;
   created_at: string;
   parent_id?: string | null;
+  like_count?: number;
+  liked_by_me?: boolean;
   author?: {
     display_name: string | null;
     handle: string | null;
@@ -514,7 +516,7 @@ export async function fetchVitrineComments(
       .from("vitrine_comments")
       .select(
         `
-        id, post_id, user_id, body, created_at, parent_id,
+        id, post_id, user_id, body, created_at, parent_id, like_count,
         author:profiles!vitrine_comments_user_id_fkey(display_name, handle, avatar_url)
         `,
       )
@@ -522,17 +524,60 @@ export async function fetchVitrineComments(
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error || !data) return [];
-    return data.map((r: any) => ({
+    const rows: VitrineComment[] = data.map((r: any) => ({
       id: r.id,
       post_id: r.post_id,
       user_id: r.user_id,
       body: r.body,
       created_at: r.created_at,
       parent_id: r.parent_id ?? null,
+      like_count: r.like_count ?? 0,
+      liked_by_me: false,
       author: r.author ?? null,
     }));
+
+    const uid = (await sb.auth.getUser()).data.user?.id;
+    if (uid && rows.length) {
+      const { data: mine } = await sb
+        .from("vitrine_comment_likes")
+        .select("comment_id")
+        .eq("user_id", uid)
+        .in("comment_id", rows.map((r) => r.id));
+      const liked = new Set((mine ?? []).map((m: any) => m.comment_id));
+      for (const r of rows) r.liked_by_me = liked.has(r.id);
+    }
+    return rows;
   } catch {
     return [];
+  }
+}
+
+/** Toggle a like on a single comment. Returns the resulting state. */
+export async function toggleVitrineCommentLike(
+  commentId: string,
+  currentlyLiked: boolean,
+): Promise<{ ok: boolean; liked: boolean }> {
+  const uid = (await sb.auth.getUser()).data.user?.id;
+  if (!uid) return { ok: false, liked: currentlyLiked };
+  try {
+    if (currentlyLiked) {
+      const { error } = await sb
+        .from("vitrine_comment_likes")
+        .delete()
+        .eq("comment_id", commentId)
+        .eq("user_id", uid);
+      if (error) return { ok: false, liked: currentlyLiked };
+      return { ok: true, liked: false };
+    }
+    const { error } = await sb
+      .from("vitrine_comment_likes")
+      .insert({ comment_id: commentId, user_id: uid });
+    if (error && !String(error.message || "").includes("duplicate")) {
+      return { ok: false, liked: currentlyLiked };
+    }
+    return { ok: true, liked: true };
+  } catch {
+    return { ok: false, liked: currentlyLiked };
   }
 }
 
