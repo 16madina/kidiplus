@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  animate,
+} from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
+
 
 // ---------------------------------------------------------------------------
 // Global stack of open overlays (PushScreens + BottomSheets).
@@ -54,6 +60,40 @@ export function closeTopPushScreen(): boolean {
   return true;
 }
 
+// --- Web/browser back ------------------------------------------------------
+// On the web (and in-app browsers) the browser/OS back gesture should close
+// the top overlay instead of leaving the app. We keep one dummy history entry
+// alive while at least one PushScreen is open.
+let webBackCount = 0;
+let webBackDetach: (() => void) | null = null;
+
+function attachWebBack(): () => void {
+  if (typeof window === "undefined") return () => {};
+  webBackCount += 1;
+  if (webBackCount === 1) {
+    const onPop = () => {
+      if (overlayStack.length === 0) return;
+      // Keep a guard entry so the next back press is caught too.
+      window.history.pushState({ kpOverlay: true }, "");
+      closeTopPushScreen();
+    };
+    window.history.pushState({ kpOverlay: true }, "");
+    window.addEventListener("popstate", onPop);
+    webBackDetach = () => window.removeEventListener("popstate", onPop);
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    webBackCount -= 1;
+    if (webBackCount === 0) {
+      webBackDetach?.();
+      webBackDetach = null;
+    }
+  };
+}
+
+
 // Reusable push-from-right screen with left-edge swipe-back.
 export function PushScreen({
   open,
@@ -77,6 +117,7 @@ export function PushScreen({
   const x = useMotionValue(0);
   const entryIdRef = useRef<number | null>(null);
 
+
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -92,10 +133,12 @@ export function PushScreen({
     };
     entryIdRef.current = entry.id;
     overlayStack.push(entry);
+    const detachWebBack = attachWebBack();
     return () => {
       const i = overlayStack.indexOf(entry);
       if (i >= 0) overlayStack.splice(i, 1);
       if (entryIdRef.current === entry.id) entryIdRef.current = null;
+      detachWebBack();
     };
   }, [open, zIndex]);
 
@@ -116,9 +159,25 @@ export function PushScreen({
       <AnimatePresence>
         {open && (
           <motion.div
+            key={`push-dim-${mountedKey}`}
+            className="fixed inset-0 bg-black"
+            style={{ zIndex: zIndex - 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.28 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE_IOS }}
+          />
+        )}
+        {open && (
+          <motion.div
             key={`push-${mountedKey}`}
             className="fixed inset-0 flex flex-col overflow-hidden bg-background"
-            style={{ x, zIndex }}
+            style={{
+              x,
+              zIndex,
+              boxShadow: "-12px 0 32px rgba(0,0,0,0.18)",
+            }}
+
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -126,17 +185,27 @@ export function PushScreen({
           >
             {swipeBackEnabled ? (
               <motion.div
-                className="absolute inset-y-0 left-0 z-40 w-5"
+                className="absolute inset-y-0 left-0 z-40 w-7"
+                style={{ touchAction: "pan-y" }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={{ left: 0, right: 0.6 }}
+                dragElastic={{ left: 0, right: 0.85 }}
+                dragMomentum={false}
                 onDrag={(_, i) => x.set(Math.max(0, i.offset.x))}
                 onDragEnd={(_, i) => {
-                  if (i.offset.x > 100 || i.velocity.x > 500) requestClose();
-                  else animate(x, 0, { duration: 0.22, ease: EASE_IOS });
+                  if (i.offset.x > 90 || i.velocity.x > 450) {
+                    animate(x, window.innerWidth, {
+                      duration: 0.18,
+                      ease: EASE_IOS,
+                    });
+                    requestClose();
+                  } else {
+                    animate(x, 0, { duration: 0.22, ease: EASE_IOS });
+                  }
                 }}
               />
             ) : null}
+
 
             <header
               className="relative z-30 shrink-0 pt-safe"
