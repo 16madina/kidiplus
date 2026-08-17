@@ -935,20 +935,27 @@ export async function createVitrineStory(
   music?: VitrineMusic | null,
   posterUrl?: string | null,
 ): Promise<VitrineStory | null> {
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   if (!uid || !mediaUrl) return null;
   try {
-    const { data, error } = await sb
-      .from("vitrine_stories")
-      .insert({
-        user_id: uid,
-        media_url: mediaUrl,
-        poster_url: posterUrl ?? null,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        ...musicToRow(music),
-      })
-      .select(`id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      sb
+        .from("vitrine_stories")
+        .insert({
+          user_id: uid,
+          media_url: mediaUrl,
+          poster_url: posterUrl ?? null,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          ...musicToRow(music),
+        })
+        .select(`id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
+        .maybeSingle(),
+      25000,
+      "insert_timeout",
+    );
+
     if (error) {
       console.warn("[vitrine] create story failed", error.message);
       return null;
