@@ -411,7 +411,8 @@
     "hostTokenFailedTitle": "Authentification impossible",
     "hostTokenFailedBody": "Impossible d'obtenir un jeton vidéo. Vérifie ta connexion et réessaie.",
     "hostConnectServerFailedTitle": "Serveur vidéo injoignable",
-    "hostConnectServerFailedBody": "Le serveur vidéo ne répond pas. Vérifie ta connexion et réessaie."
+    "hostConnectServerFailedBody": "Le serveur vidéo ne répond pas. Vérifie ta connexion et réessaie.",
+    "tapForSound": "Activer le son"
   },
   "broadcast": {
     "becomeSellerTitle": "Deviens vendeur",
