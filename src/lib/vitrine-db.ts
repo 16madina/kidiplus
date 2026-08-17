@@ -661,7 +661,7 @@ const SUPABASE_STORAGE_ORIGIN = CURRENT_STORAGE_HOST;
  * Garde-fou générique : aucune étape de publication ne doit pouvoir bloquer
  * le bouton « Publier » indéfiniment.
  */
-export function withTimeout<T>(p: Promise<T>, ms: number, code: string): Promise<T> {
+export function withTimeout<T>(p: PromiseLike<T>, ms: number, code: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const to = setTimeout(() => reject(new Error(code)), ms);
     p.then(
