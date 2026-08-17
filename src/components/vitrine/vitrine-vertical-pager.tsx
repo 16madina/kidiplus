@@ -254,8 +254,9 @@ function MediaSlide({
   const shouldPlay = playing && !suspended && eager;
   const [blocked, setBlocked] = useState(false);
 
-  // Démarrage instantané façon TikTok : on tente la lecture dès que le média a
-  // la moindre donnée, puis on réessaie sur chaque évènement de préparation.
+  // Démarrage instantané façon TikTok : on démarre TOUJOURS en muet (seule
+  // façon d'obtenir l'autoplay sur Chrome/Firefox/iOS/Android), puis on
+  // réactive le son de façon impérative une fois la lecture lancée.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
@@ -271,26 +272,48 @@ function MediaSlide({
     }
 
     let cancelled = false;
+    const wantsSound = !muted && volume > 0.001;
+
+    const applySound = (v: HTMLVideoElement) => {
+      if (!wantsSound) return;
+      try {
+        v.muted = false;
+        v.volume = volume;
+      } catch {
+        /* ignore */
+      }
+      // Certains navigateurs mettent la vidéo en pause en la démutant.
+      if (v.paused) {
+        void v.play().catch(() => {
+          try {
+            v.muted = true;
+            v.volume = 0;
+            void v.play().catch(() => undefined);
+          } catch {
+            /* ignore */
+          }
+        });
+      }
+    };
 
     const attempt = async () => {
       if (cancelled) return;
       const v = videoRef.current;
       if (!v) return;
-      v.muted = muted || volume <= 0.001;
-      v.volume = v.muted ? 0 : volume;
+      if (!v.paused) {
+        applySound(v);
+        return;
+      }
+      // Toujours tenter muet d'abord : garanti par les politiques d'autoplay.
+      v.muted = true;
+      v.volume = 0;
       try {
         await v.play();
-        if (!cancelled) setBlocked(false);
+        if (cancelled) return;
+        setBlocked(false);
+        applySound(v);
       } catch {
-        // Politique d'autoplay (surtout sur le web) : on retente en muet.
-        try {
-          v.muted = true;
-          v.volume = 0;
-          await v.play();
-          if (!cancelled) setBlocked(false);
-        } catch {
-          if (!cancelled) setBlocked(true);
-        }
+        if (!cancelled) setBlocked(true);
       }
     };
 
@@ -298,8 +321,8 @@ function MediaSlide({
     const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
     const onReady = () => void attempt();
     events.forEach((e) => el.addEventListener(e, onReady));
-    const retry = window.setInterval(() => void attempt(), 400);
-    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 3000);
+    const retry = window.setInterval(() => void attempt(), 300);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 4000);
 
     return () => {
       cancelled = true;
@@ -307,7 +330,8 @@ function MediaSlide({
       window.clearInterval(retry);
       window.clearTimeout(stopRetry);
     };
-  }, [url, asVideo, muted, shouldPlay, volume]);
+  }, [url, asVideo, muted, shouldPlay, volume, reloadKey]);
+
 
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
