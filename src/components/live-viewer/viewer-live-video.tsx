@@ -154,6 +154,7 @@ export function ViewerLiveVideo({
   const pollRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<ViewerStatus>("connecting");
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const appActive = useAppActive();
   // Keep LiveKit connected in Android system PiP even though Capacitor
   // reports the app as inactive while the PiP window is showing.
