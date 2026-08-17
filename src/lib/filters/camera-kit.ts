@@ -117,6 +117,10 @@ export function loadSnapLenses(force = false): Promise<SnapLens[]> {
       if (errors.length) {
         console.warn("[camera-kit] lens group load errors", errors.map(String));
       }
+      console.info(
+        `[camera-kit] group ${SNAP_LENS_GROUP_ID}: ${lenses.length} lens(es)`,
+        lenses.map((l) => l.name),
+      );
       lensesCache = lenses;
       return lenses;
     })().catch((e) => {
