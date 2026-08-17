@@ -311,7 +311,12 @@ export function ViewerLiveVideo({
           } else if (track.kind === Track.Kind.Audio && audioRef.current) {
             const el = audioRef.current;
             track.attach(el);
-            void el.play().catch(() => {});
+            el.muted = false;
+            el.volume = 1;
+            void el
+              .play()
+              .then(() => setAudioBlocked(false))
+              .catch(() => setAudioBlocked(true));
           }
         };
 
