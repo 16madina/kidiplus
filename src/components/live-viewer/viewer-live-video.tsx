@@ -266,6 +266,15 @@ export function ViewerLiveVideo({
         }
         roomRef.current = r;
 
+        // Autoplay policy: LiveKit reports when remote audio can't play.
+        setAudioBlocked(!r.canPlaybackAudio);
+        r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+          if (cancelled) return;
+          setAudioBlocked(!r.canPlaybackAudio);
+        });
+        void r.startAudio().catch(() => {});
+
+
         const attachTrack = (
           track: RemoteTrack,
           participant?: RemoteParticipant,
