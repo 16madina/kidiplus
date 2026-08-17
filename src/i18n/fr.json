@@ -778,7 +778,8 @@
     "cancelReply": "Annuler",
     "viewReplies": "Voir les réponses ({{count}})",
     "hideReplies": "Masquer les réponses",
-    "replySent": "Réponse publiée"
+    "replySent": "Réponse publiée",
+    "videoUnsupported": "Vidéo illisible sur cet appareil (format non supporté)"
   },
   "publish": {
     "title": "Publier",

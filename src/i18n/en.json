@@ -778,7 +778,8 @@
     "cancelReply": "Cancel",
     "viewReplies": "View replies ({{count}})",
     "hideReplies": "Hide replies",
-    "replySent": "Reply sent"
+    "replySent": "Reply sent",
+    "videoUnsupported": "This video can't be played on this device (unsupported format)"
   },
   "publish": {
     "title": "Publish",
