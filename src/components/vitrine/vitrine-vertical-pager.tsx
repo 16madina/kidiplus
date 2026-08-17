@@ -192,7 +192,11 @@ function MediaSlide({
   const videoRef = useRef<HTMLVideoElement>(null);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<
+    "loading" | "ready" | "error" | "stalled"
+  >("loading");
+  const [errorKind, setErrorKind] = useState<"format" | "network">("network");
+  const [reloadKey, setReloadKey] = useState(0);
   // Reset status during render when the url changes (an effect would race with
   // an onLoad already fired for a cached image → spinner stuck forever).
   const [statusUrl, setStatusUrl] = useState(url);
@@ -205,9 +209,8 @@ function MediaSlide({
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
-  // Some uploads are QuickTime/HEVC (.mov filmed on iPhone): Safari plays them,
-  // Chrome/Android cannot decode them at all → the <video> would spin forever.
-  // Probe support up-front and show a clear message instead.
+  // Only legacy QuickTime/HEVC uploads (.mov filmed on iPhone) can be truly
+  // undecodable on Chrome/Android. MP4 files are never rejected up-front.
   useEffect(() => {
     if (!asVideo || typeof document === "undefined") return;
     if (!/\.(mov|qt|3gp|avi|wmv|mkv)(\?|#|$)/i.test(url)) return;
@@ -215,22 +218,37 @@ function MediaSlide({
     const guesses = ["video/quicktime", 'video/mp4; codecs="hvc1"', "video/mp4"];
     const playable = guesses.some((type) => probe.canPlayType(type) !== "");
     if (!playable) {
+      setErrorKind("format");
       setStatus("error");
       reportBrokenMedia(url);
     }
   }, [asVideo, url]);
 
-  // Safety net: never leave a spinner up forever.
+  // Safety net: never leave a spinner up forever. A slow/stalled decode is NOT
+  // a format failure — show the poster with a retry affordance instead.
   useEffect(() => {
     if (status !== "loading" || !eager) return;
     const t = window.setTimeout(
-      // Images: assume they rendered. Videos: a stalled decode is a real
-      // failure — surface it instead of hiding the spinner over a black frame.
-      () => setStatus((s) => (s !== "loading" ? s : asVideo ? "error" : "ready")),
+      () => setStatus((s) => (s !== "loading" ? s : asVideo ? "stalled" : "ready")),
       8000,
     );
     return () => window.clearTimeout(t);
   }, [status, eager, url, asVideo]);
+
+  const retryMedia = () => {
+    setStatus("loading");
+    setReloadKey((k) => k + 1);
+    const v = videoRef.current;
+    if (v) {
+      try {
+        v.load();
+        void v.play().catch(() => undefined);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
 
 
   const shouldPlay = playing && !suspended && eager;
