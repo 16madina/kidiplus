@@ -78,6 +78,7 @@ export function VitrineScreen() {
   /** Deep-link: open comments on this post after landing on it. */
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
   const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
+  const [highlightParentCommentId, setHighlightParentCommentId] = useState<string | null>(null);
 
   const refreshLives = useCallback(async () => {
     const rows = await fetchActiveLives(60);
@@ -159,6 +160,7 @@ export function VitrineScreen() {
       const detail = (e as CustomEvent<{
         post_id?: string;
         comment_id?: string;
+        parent_comment_id?: string;
         open_comments?: boolean;
       }>).detail;
       const postId = detail?.post_id;
@@ -167,6 +169,7 @@ export function VitrineScreen() {
       setStoriesOpen(false);
       setOpenCommentsPostId(detail?.open_comments ? postId : null);
       setHighlightCommentId(detail?.comment_id ?? null);
+      setHighlightParentCommentId(detail?.parent_comment_id ?? null);
       void (async () => {
         const rows = await fetchVitrinePosts(PAGE_SIZE * 3, 0);
         let next = rows;
@@ -327,9 +330,13 @@ export function VitrineScreen() {
                 highlightCommentId={
                   openCommentsPostId === post.id ? highlightCommentId : null
                 }
+                highlightParentCommentId={
+                  openCommentsPostId === post.id ? highlightParentCommentId : null
+                }
                 onCommentsAutoOpened={() => {
                   setOpenCommentsPostId(null);
                   setHighlightCommentId(null);
+                  setHighlightParentCommentId(null);
                 }}
                 onBlocked={() => {
                   // Advance past this post; blockedIds filter removes the author.

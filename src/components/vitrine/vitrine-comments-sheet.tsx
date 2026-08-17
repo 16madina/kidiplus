@@ -23,6 +23,7 @@ export function VitrineCommentsSheet({
   onClose,
   postId,
   highlightCommentId = null,
+  highlightParentCommentId = null,
   onCommentAdded,
 }: {
   open: boolean;
@@ -30,6 +31,8 @@ export function VitrineCommentsSheet({
   postId: string;
   /** Scroll/highlight this comment when opening from an Activity deep-link. */
   highlightCommentId?: string | null;
+  /** Parent of a deep-linked reply: expand that thread on open. */
+  highlightParentCommentId?: string | null;
   onCommentAdded?: () => void;
 }) {
   const { t } = useTranslation();
@@ -58,13 +61,17 @@ export function VitrineCommentsSheet({
       if (!alive) return;
       setRows(r);
       setLoading(false);
-      if (highlightCommentId) {
-        window.setTimeout(() => {
-          const el = document.getElementById(`vitrine-comment-${highlightCommentId}`);
-          el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 420);
+      // Pre-expand the thread containing a deep-linked reply so the target
+      // row is mounted before we try to scroll to it.
+      const target = highlightCommentId
+        ? r.find((c) => c.id === highlightCommentId)
+        : null;
+      const parentId = target?.parent_id ?? highlightParentCommentId;
+      if (parentId) {
+        setOpenThreads((prev) => ({ ...prev, [parentId]: true }));
       }
     });
+
     // Focus after bottom-sheet slide-up so iOS opens the keyboard.
     // Skip auto-focus when deep-linking to a specific comment (avoid stealing scroll).
     const tFocus = window.setTimeout(() => {
@@ -76,7 +83,7 @@ export function VitrineCommentsSheet({
       alive = false;
       window.clearTimeout(tFocus);
     };
-  }, [open, postId, highlightCommentId]);
+  }, [open, postId, highlightCommentId, highlightParentCommentId]);
 
   // Keep composer above the software keyboard (TikTok-style).
   useEffect(() => {
@@ -236,14 +243,29 @@ export function VitrineCommentsSheet({
   }
   const roots = rows.filter((c) => !c.parent_id);
 
-  // Auto-expand the thread that contains a deep-linked reply.
+  // Auto-expand the thread that contains a deep-linked reply, then scroll to
+  // it (retrying while the sheet animates / the row mounts).
   useEffect(() => {
-    if (!highlightCommentId) return;
+    if (!open || !highlightCommentId) return;
     const target = rows.find((r) => r.id === highlightCommentId);
-    if (target?.parent_id) {
-      setOpenThreads((prev) => ({ ...prev, [target.parent_id as string]: true }));
+    const parentId = target?.parent_id ?? highlightParentCommentId;
+    if (parentId) {
+      setOpenThreads((prev) => (prev[parentId] ? prev : { ...prev, [parentId]: true }));
     }
-  }, [highlightCommentId, rows]);
+    let tries = 0;
+    const iv = window.setInterval(() => {
+      tries += 1;
+      const el = document.getElementById(`vitrine-comment-${highlightCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.clearInterval(iv);
+      } else if (tries > 25) {
+        window.clearInterval(iv);
+      }
+    }, 120);
+    return () => window.clearInterval(iv);
+  }, [open, highlightCommentId, highlightParentCommentId, rows]);
+
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={58} zIndex={92}>

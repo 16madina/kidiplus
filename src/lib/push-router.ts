@@ -11,6 +11,8 @@ export type PushOpenPayload = {
   thread_id?: string;
   post_id?: string;
   comment_id?: string;
+  parent_comment_id?: string;
+
   /** "1" / "true" → open the post comments sheet after jumping to the post. */
   open_comments?: string;
   // Free-form extras
@@ -125,6 +127,11 @@ export function payloadFromNotificationRow(row: {
     thread_id: data.thread_id as string | undefined,
     post_id: data.post_id as string | undefined,
     comment_id: commentId,
+    parent_comment_id:
+      typeof data.parent_comment_id === "string" && data.parent_comment_id.trim()
+        ? data.parent_comment_id.trim()
+        : undefined,
+
     open_comments: openComments,
   };
 }

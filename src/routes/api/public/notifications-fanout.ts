@@ -43,6 +43,8 @@ function buildFcmData(row: FanoutBody): Record<string, string> {
   putIfString("thread_id", src.thread_id);
   putIfString("post_id", src.post_id);
   putIfString("comment_id", src.comment_id);
+  putIfString("parent_comment_id", src.parent_comment_id);
+
   putIfString("actor_id", src.actor_id);
   if (row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply" || row.kind === "vitrine_comment_like" || src.comment_id) {
     out.open_comments = "1";
