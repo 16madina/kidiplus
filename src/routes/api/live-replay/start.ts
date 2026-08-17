@@ -156,6 +156,12 @@ export const Route = createFileRoute("/api/live-replay/start")({
         } catch (e) {
           console.error("[live-replay/start] startWebEgress failed", e);
           const msg = e instanceof Error ? e.message : String(e);
+          const status = (e as { status?: number } | null)?.status;
+          const quota =
+            status === 429 ||
+            /too many requests|minutes exceeded|resource_exhausted|quota/i.test(
+              msg,
+            );
           await supabaseAdmin
             .from("lives")
             .update({
@@ -164,18 +170,23 @@ export const Route = createFileRoute("/api/live-replay/start")({
               replay_storage_path: null,
             } as never)
             .eq("id", liveId);
+          // Soft failure: the live itself must keep working, so never surface a
+          // 5xx to the client (it trips the app error boundary / gateway 502).
           return liveReplayJson(
             {
-              error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
+              ok: false,
+              error: quota ? "egress_quota_exceeded" : "egress_failed",
+              message: quota
+                ? "Enregistrement indisponible : quota d’enregistrement LiveKit atteint."
+                : msg.includes("egress") || msg.includes("Egress")
                   ? msg
                   : "Impossible de démarrer l’enregistrement LiveKit",
             },
-            502,
+            200,
             origin,
           );
         }
+
 
         const egressId = egressInfo.egressId ?? "";
         if (!egressId) {
