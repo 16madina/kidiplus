@@ -205,15 +205,33 @@ function MediaSlide({
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
+  // Some uploads are QuickTime/HEVC (.mov filmed on iPhone): Safari plays them,
+  // Chrome/Android cannot decode them at all → the <video> would spin forever.
+  // Probe support up-front and show a clear message instead.
+  useEffect(() => {
+    if (!asVideo || typeof document === "undefined") return;
+    if (!/\.(mov|qt|3gp|avi|wmv|mkv)(\?|#|$)/i.test(url)) return;
+    const probe = document.createElement("video");
+    const guesses = ["video/quicktime", 'video/mp4; codecs="hvc1"', "video/mp4"];
+    const playable = guesses.some((type) => probe.canPlayType(type) !== "");
+    if (!playable) {
+      setStatus("error");
+      reportBrokenMedia(url);
+    }
+  }, [asVideo, url]);
+
   // Safety net: never leave a spinner up forever.
   useEffect(() => {
     if (status !== "loading" || !eager) return;
     const t = window.setTimeout(
-      () => setStatus((s) => (s === "loading" ? "ready" : s)),
+      // Images: assume they rendered. Videos: a stalled decode is a real
+      // failure — surface it instead of hiding the spinner over a black frame.
+      () => setStatus((s) => (s !== "loading" ? s : asVideo ? "error" : "ready")),
       8000,
     );
     return () => window.clearTimeout(t);
-  }, [status, eager, url]);
+  }, [status, eager, url, asVideo]);
+
 
   const shouldPlay = playing && !suspended && eager;
 
