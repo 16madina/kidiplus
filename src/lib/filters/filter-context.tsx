@@ -86,6 +86,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       .finally(() => setLensesLoading(false));
   }, []);
 
+  const loadLenses = useCallback(() => runLoad(false), [runLoad]);
+  const refreshLenses = useCallback(() => runLoad(true), [runLoad]);
+
   const value = useMemo<FilterContextValue>(
     () => ({
       activeLens,
