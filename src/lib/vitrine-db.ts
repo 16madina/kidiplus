@@ -752,13 +752,14 @@ function putWithProgress(
 export async function uploadVitrinePoster(videoFile: File): Promise<string | null> {
   try {
     const { generateVideoPoster } = await import("@/lib/media-optimize");
-    const poster = await generateVideoPoster(videoFile);
+    const poster = await withTimeout(generateVideoPoster(videoFile), 20000, "poster_timeout");
     if (!poster) return null;
-    return await uploadVitrineMedia(poster);
+    return await withTimeout(uploadVitrineMedia(poster), 60000, "poster_upload_timeout");
   } catch {
     return null;
   }
 }
+
 
 /** Upload an image/video into the public vitrine-media bucket. */
 export async function uploadVitrineMedia(
