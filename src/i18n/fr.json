@@ -772,7 +772,13 @@
     "manageShop": "Gérer ma boutique",
     "manageShopFail": "Ajoute un @pseudo pour ouvrir ta boutique.",
     "mediaUnavailable": "Média indisponible",
-    "mediaLoading": "Chargement…"
+    "mediaLoading": "Chargement…",
+    "reply": "Répondre",
+    "replyingTo": "Réponse à {{name}}",
+    "cancelReply": "Annuler",
+    "viewReplies": "Voir les réponses ({{count}})",
+    "hideReplies": "Masquer les réponses",
+    "replySent": "Réponse publiée"
   },
   "publish": {
     "title": "Publier",
