@@ -106,7 +106,7 @@ export function payloadFromNotificationRow(row: {
     else if (row.kind === "moderator_promoted") kind = "live";
     else if (row.kind === "live_host_absent") kind = "resume_host_live";
     else if (row.kind === "new_follower") kind = "seller";
-    else if (row.kind === "vitrine_like" || row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply") kind = "vitrine";
+    else if (row.kind === "vitrine_like" || row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply" || row.kind === "vitrine_comment_like") kind = "vitrine";
     else if (/^chat_/.test(row.kind)) kind = "chat";
     else kind = "notif";
   }
@@ -115,7 +115,7 @@ export function payloadFromNotificationRow(row: {
       ? data.comment_id.trim()
       : undefined;
   const openComments =
-    row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply" || !!commentId ? "1" : undefined;
+    row.kind === "vitrine_comment" || row.kind === "vitrine_comment_reply" || row.kind === "vitrine_comment_like" || !!commentId ? "1" : undefined;
   return {
     kind,
     order_id: row.order_id ?? (data.order_id as string | undefined),
