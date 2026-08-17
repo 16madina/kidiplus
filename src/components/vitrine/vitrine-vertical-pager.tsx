@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Loader2, Pause, Play } from "lucide-react";
 import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
@@ -190,6 +190,19 @@ function MediaSlide({
 }) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const explicitlyLoadedUrlRef = useRef<string | null>(null);
+  const bindVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node) return;
+    // WebKit checks the muted state at element creation time. Setting both the
+    // property and content attribute prevents its native Play overlay on first
+    // mount while still allowing imperative unmute after a real feed gesture.
+    node.defaultMuted = true;
+    node.muted = true;
+    node.setAttribute("muted", "");
+    node.setAttribute("playsinline", "");
+    node.setAttribute("webkit-playsinline", "");
+  }, []);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
   const [status, setStatus] = useState<
@@ -272,7 +285,24 @@ function MediaSlide({
     }
 
     let cancelled = false;
+    let policyFailures = 0;
+    let blockedTimer: number | null = null;
     const wantsSound = !muted && volume > 0.001;
+
+    // Some iOS/Android WebViews ignore preload on an off-screen element and
+    // keep networkState=EMPTY after it becomes the active slide. Kick the
+    // resource loader once before play; never repeat it or playback resets.
+    if (
+      el.networkState === HTMLMediaElement.NETWORK_EMPTY &&
+      explicitlyLoadedUrlRef.current !== url
+    ) {
+      explicitlyLoadedUrlRef.current = url;
+      try {
+        el.load();
+      } catch {
+        /* ignore */
+      }
+    }
 
     const applySound = (v: HTMLVideoElement) => {
       if (!wantsSound) return;
@@ -312,8 +342,19 @@ function MediaSlide({
         if (cancelled) return;
         setBlocked(false);
         applySound(v);
-      } catch {
-        if (!cancelled) setBlocked(true);
+      } catch (error) {
+        if (cancelled) return;
+        // AbortError/NotSupportedError while metadata is still arriving are
+        // transient. Only expose manual Play after repeated policy refusals.
+        const name = error instanceof DOMException ? error.name : "";
+        if (name === "NotAllowedError") {
+          policyFailures += 1;
+          if (policyFailures >= 2 && blockedTimer == null) {
+            blockedTimer = window.setTimeout(() => {
+              if (!cancelled && videoRef.current?.paused) setBlocked(true);
+            }, 1200);
+          }
+        }
       }
     };
 
@@ -322,13 +363,21 @@ function MediaSlide({
     const onReady = () => void attempt();
     events.forEach((e) => el.addEventListener(e, onReady));
     const retry = window.setInterval(() => void attempt(), 300);
-    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 4000);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 10000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void attempt();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onReady);
 
     return () => {
       cancelled = true;
       events.forEach((e) => el.removeEventListener(e, onReady));
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onReady);
       window.clearInterval(retry);
       window.clearTimeout(stopRetry);
+      if (blockedTimer != null) window.clearTimeout(blockedTimer);
     };
   }, [url, asVideo, muted, shouldPlay, volume, reloadKey]);
 
@@ -433,7 +482,7 @@ function MediaSlide({
           {eager && (
             <video
               key={reloadKey}
-              ref={videoRef}
+              ref={bindVideoRef}
               data-vitrine-feed
               src={url}
               poster={poster ?? undefined}
