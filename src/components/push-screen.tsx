@@ -116,10 +116,8 @@ export function PushScreen({
 }) {
   const [mountedKey] = useState(0);
   const x = useMotionValue(0);
-  // Dim + parallax of the screen underneath follow the swipe progress.
-  const dimOpacity = useTransform(x, [0, 400], [0.32, 0]);
-  const shadowOpacity = useTransform(x, [0, 400], [0.25, 0]);
   const entryIdRef = useRef<number | null>(null);
+
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
