@@ -239,14 +239,33 @@ export function VitrineCommentsSheet({
   }
   const roots = rows.filter((c) => !c.parent_id);
 
-  // Auto-expand the thread that contains a deep-linked reply.
+  // Auto-expand the thread that contains a deep-linked reply, then scroll to
+  // it (retrying while the sheet animates / the row mounts).
   useEffect(() => {
-    if (!highlightCommentId) return;
+    if (!open || !highlightCommentId) return;
     const target = rows.find((r) => r.id === highlightCommentId);
-    if (target?.parent_id) {
-      setOpenThreads((prev) => ({ ...prev, [target.parent_id as string]: true }));
+    if (!target) return;
+    if (target.parent_id) {
+      setOpenThreads((prev) =>
+        prev[target.parent_id as string]
+          ? prev
+          : { ...prev, [target.parent_id as string]: true },
+      );
     }
-  }, [highlightCommentId, rows]);
+    let tries = 0;
+    const iv = window.setInterval(() => {
+      tries += 1;
+      const el = document.getElementById(`vitrine-comment-${highlightCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.clearInterval(iv);
+      } else if (tries > 25) {
+        window.clearInterval(iv);
+      }
+    }, 120);
+    return () => window.clearInterval(iv);
+  }, [open, highlightCommentId, rows]);
+
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={58} zIndex={92}>
