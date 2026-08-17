@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+} from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { Press } from "./press";
 import { EASE_IOS } from "@/lib/motion";
+
 
 // ---------------------------------------------------------------------------
 // Global stack of open overlays (PushScreens + BottomSheets).
