@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound } from "lucide-react";
+import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound, Aperture } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -121,14 +121,26 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
             {t("broadcast.effects.title", "Fond & poster")}
           </p>
           <div className="mb-2 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {!effects.backgroundUnavailable && (
+              <EffectTile
+                label={t("broadcast.effects.blur", "Flou d'arrière-plan")}
+                active={effects.backgroundMode === "blur"}
+                thumb={null}
+                icon={<Aperture size={18} />}
+                onClick={() => {
+                  haptic.selection();
+                  effects.setBackgroundBlur(effects.backgroundMode !== "blur");
+                }}
+              />
+            )}
             <EffectTile
-              label={t("broadcast.effects.greenScreen", "Fond vert")}
-              active={!!effects.backgroundUrl}
-              thumb={effects.backgroundUrl}
+              label={t("broadcast.effects.greenScreen", "Fond personnalisé")}
+              active={effects.backgroundMode === "image"}
+              thumb={effects.backgroundMode === "image" ? effects.backgroundUrl : null}
               icon={<ImagePlus size={18} />}
               onClick={() => {
                 haptic.selection();
-                if (effects.backgroundUrl) effects.clearBackground();
+                if (effects.backgroundMode === "image") effects.clearBackground();
                 else bgInputRef.current?.click();
               }}
             />

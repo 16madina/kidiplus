@@ -132,6 +132,288 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_invites: {
+        Row: {
+          battle_id: string | null
+          created_at: string
+          duration_sec: number
+          expires_at: string
+          from_live_id: string
+          from_seller_id: string
+          id: string
+          rematch: boolean
+          rematch_of_battle_id: string | null
+          status: string
+          to_live_id: string | null
+          to_seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          battle_id?: string | null
+          created_at?: string
+          duration_sec?: number
+          expires_at: string
+          from_live_id: string
+          from_seller_id: string
+          id?: string
+          rematch?: boolean
+          rematch_of_battle_id?: string | null
+          status?: string
+          to_live_id?: string | null
+          to_seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          battle_id?: string | null
+          created_at?: string
+          duration_sec?: number
+          expires_at?: string
+          from_live_id?: string
+          from_seller_id?: string
+          id?: string
+          rematch?: boolean
+          rematch_of_battle_id?: string | null
+          status?: string
+          to_live_id?: string | null
+          to_seller_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_invites_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_from_live_id_fkey"
+            columns: ["from_live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_from_seller_id_fkey"
+            columns: ["from_seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_rematch_of_battle_id_fkey"
+            columns: ["rematch_of_battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_to_live_id_fkey"
+            columns: ["to_live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_invites_to_seller_id_fkey"
+            columns: ["to_seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_lives: {
+        Row: {
+          active: boolean
+          battle_id: string
+          live_id: string
+          seller_id: string
+          side: string
+        }
+        Insert: {
+          active?: boolean
+          battle_id: string
+          live_id: string
+          seller_id: string
+          side: string
+        }
+        Update: {
+          active?: boolean
+          battle_id?: string
+          live_id?: string
+          seller_id?: string
+          side?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_lives_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_lives_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_lives_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_participants: {
+        Row: {
+          active: boolean
+          battle_id: string
+          display_name: string | null
+          last_seen_at: string
+          left_at: string | null
+          score_amount_confirmed: number
+          score_amount_live: number
+          score_items: number
+          seller_id: string
+          side: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          battle_id: string
+          display_name?: string | null
+          last_seen_at?: string
+          left_at?: string | null
+          score_amount_confirmed?: number
+          score_amount_live?: number
+          score_items?: number
+          seller_id: string
+          side: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          battle_id?: string
+          display_name?: string | null
+          last_seen_at?: string
+          left_at?: string | null
+          score_amount_confirmed?: number
+          score_amount_live?: number
+          score_items?: number
+          seller_id?: string
+          side?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_participants_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_participants_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_sessions: {
+        Row: {
+          created_at: string
+          currency: string
+          duration_sec: number
+          end_reason: string | null
+          ended_at: string | null
+          ends_at: string | null
+          id: string
+          last_sale_at: string | null
+          last_sale_text: string | null
+          live_winner_seller_id: string | null
+          rematch_of_battle_id: string | null
+          started_at: string | null
+          status: string
+          sudden_death: boolean
+          sudden_death_at: string | null
+          turn_side: string | null
+          turn_until: string | null
+          updated_at: string
+          winner_seller_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          duration_sec: number
+          end_reason?: string | null
+          ended_at?: string | null
+          ends_at?: string | null
+          id?: string
+          last_sale_at?: string | null
+          last_sale_text?: string | null
+          live_winner_seller_id?: string | null
+          rematch_of_battle_id?: string | null
+          started_at?: string | null
+          status?: string
+          sudden_death?: boolean
+          sudden_death_at?: string | null
+          turn_side?: string | null
+          turn_until?: string | null
+          updated_at?: string
+          winner_seller_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          duration_sec?: number
+          end_reason?: string | null
+          ended_at?: string | null
+          ends_at?: string | null
+          id?: string
+          last_sale_at?: string | null
+          last_sale_text?: string | null
+          live_winner_seller_id?: string | null
+          rematch_of_battle_id?: string | null
+          started_at?: string | null
+          status?: string
+          sudden_death?: boolean
+          sudden_death_at?: string | null
+          turn_side?: string | null
+          turn_until?: string | null
+          updated_at?: string
+          winner_seller_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_sessions_live_winner_seller_id_fkey"
+            columns: ["live_winner_seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_sessions_rematch_of_battle_id_fkey"
+            columns: ["rematch_of_battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_sessions_winner_seller_id_fkey"
+            columns: ["winner_seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -1014,6 +1296,7 @@ export type Database = {
           address_snapshot: Json | null
           amount: number
           auction_round: number | null
+          battle_id: string | null
           buyer_id: string
           cancelled_reason: string | null
           created_at: string
@@ -1047,6 +1330,7 @@ export type Database = {
           address_snapshot?: Json | null
           amount: number
           auction_round?: number | null
+          battle_id?: string | null
           buyer_id: string
           cancelled_reason?: string | null
           created_at?: string
@@ -1080,6 +1364,7 @@ export type Database = {
           address_snapshot?: Json | null
           amount?: number
           auction_round?: number | null
+          battle_id?: string | null
           buyer_id?: string
           cancelled_reason?: string | null
           created_at?: string
@@ -1114,6 +1399,13 @@ export type Database = {
             columns: ["address_id"]
             isOneToOne: false
             referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battle_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -1912,6 +2204,57 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_milestone_rewards: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          order_id: string | null
+          reward_key: string
+          seen_at: string | null
+          seller_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency: string
+          id?: string
+          metadata?: Json
+          order_id?: string | null
+          reward_key: string
+          seen_at?: string | null
+          seller_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          order_id?: string | null
+          reward_key?: string
+          seen_at?: string | null
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_milestone_rewards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_milestone_rewards_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_reviews: {
         Row: {
           comment: string | null
@@ -2263,6 +2606,7 @@ export type Database = {
           music_url: string | null
           music_volume: number
           original_volume: number
+          poster_url: string | null
           product_id: string | null
           updated_at: string
           user_id: string
@@ -2283,6 +2627,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           product_id?: string | null
           updated_at?: string
           user_id: string
@@ -2303,6 +2648,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           product_id?: string | null
           updated_at?: string
           user_id?: string
@@ -2336,6 +2682,7 @@ export type Database = {
           music_url: string | null
           music_volume: number
           original_volume: number
+          poster_url: string | null
           user_id: string
         }
         Insert: {
@@ -2349,6 +2696,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           user_id: string
         }
         Update: {
@@ -2362,6 +2710,7 @@ export type Database = {
           music_url?: string | null
           music_volume?: number
           original_volume?: number
+          poster_url?: string | null
           user_id?: string
         }
         Relationships: [
@@ -2465,6 +2814,30 @@ export type Database = {
       _assert_admin: { Args: never; Returns: undefined }
       _assert_not_blocked: {
         Args: { _me: string; _other: string }
+        Returns: undefined
+      }
+      _battle_end_internal: {
+        Args: {
+          _battle_id: string
+          _forfeit_seller_id: string
+          _reason: string
+        }
+        Returns: Json
+      }
+      _battle_enter_sudden_death_internal: {
+        Args: { _battle_id: string }
+        Returns: Json
+      }
+      _battle_live_has_restream: {
+        Args: { _live: Database["public"]["Tables"]["lives"]["Row"] }
+        Returns: boolean
+      }
+      _battle_notify: {
+        Args: { _body: string; _data: Json; _title: string; _user_id: string }
+        Returns: undefined
+      }
+      _battle_recompute_scores: {
+        Args: { _battle_id: string }
         Returns: undefined
       }
       _claim_and_backfill: {
@@ -2672,6 +3045,35 @@ export type Database = {
       anonymize_my_account: { Args: never; Returns: Json }
       apply_promo_code: { Args: { _code: string }; Returns: Json }
       assert_user_active: { Args: never; Returns: undefined }
+      battle_accept: {
+        Args: { _duration_sec?: number; _invite_id: string }
+        Returns: Json
+      }
+      battle_decline: { Args: { _invite_id: string }; Returns: Json }
+      battle_end: {
+        Args: {
+          _battle_id: string
+          _forfeit_seller_id?: string
+          _reason?: string
+        }
+        Returns: Json
+      }
+      battle_enter_sudden_death: { Args: { _battle_id: string }; Returns: Json }
+      battle_finalize_confirmed: { Args: { _battle_id: string }; Returns: Json }
+      battle_heartbeat: { Args: { _battle_id: string }; Returns: Json }
+      battle_invite: {
+        Args: {
+          _duration_sec?: number
+          _from_live_id: string
+          _rematch_of?: string
+          _to_seller_id: string
+        }
+        Returns: Json
+      }
+      battle_opponent_has_active_auction: {
+        Args: { _live_id: string }
+        Returns: boolean
+      }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
       claim_promo_code: { Args: { _token: string }; Returns: Json }
       confirm_order_delivered: { Args: { _order_id: string }; Returns: Json }

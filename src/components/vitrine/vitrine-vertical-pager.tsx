@@ -4,9 +4,10 @@ import { motion, animate, useMotionValue } from "framer-motion";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import { isVideoUrl } from "@/lib/vitrine-db";
+import { reportBrokenMedia } from "@/lib/vitrine-broken-media";
 import { Fit916 } from "@/components/vitrine/media-preview-916";
 import type { VitrineMusic } from "@/lib/vitrine-music";
-import { getVitrineSoundOn, unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
+import { unlockVitrineSound, useVitrineSound } from "@/lib/vitrine-sound";
 import { useAppActive } from "@/lib/app-state";
 import { useTranslation } from "react-i18next";
 import {
@@ -52,6 +53,7 @@ export function VitrineVerticalPager({
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
+        onPointerDown={() => unlockVitrineSound()}
         drag
         dragDirectionLock
         dragElastic={0.35}
@@ -60,11 +62,8 @@ export function VitrineVerticalPager({
         onTap={(e) => {
           const t = e.target as HTMLElement | null;
           if (t?.closest?.("button, a, textarea, input, [data-no-pause]")) return;
-          // First tap only unlocks sound (TikTok). Later taps pause / resume.
-          if (!getVitrineSoundOn()) {
-            unlockVitrineSound();
-            return;
-          }
+          // TikTok: le tap débloque le son (geste utilisateur) ET met en pause / relance.
+          unlockVitrineSound();
           try {
             window.dispatchEvent(new CustomEvent(VITRINE_TOGGLE_PAUSE_EVENT));
           } catch {
@@ -168,6 +167,7 @@ export function VitrineVerticalPager({
 
 function MediaSlide({
   url,
+  poster,
   className: _className,
   forceVideo,
   muted,
@@ -176,6 +176,8 @@ function MediaSlide({
   volume = 1,
 }: {
   url: string;
+  /** Vignette légère affichée instantanément (vidéos). */
+  poster?: string | null;
   className?: string;
   forceVideo?: boolean;
   muted: boolean;
@@ -191,14 +193,27 @@ function MediaSlide({
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Reset status during render when the url changes (an effect would race with
+  // an onLoad already fired for a cached image → spinner stuck forever).
+  const [statusUrl, setStatusUrl] = useState(url);
+  if (statusUrl !== url) {
+    setStatusUrl(url);
+    setStatus("loading");
+  }
 
   useEffect(() => subscribeVitrinePlayback(() => {
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
+  // Safety net: never leave a spinner up forever.
   useEffect(() => {
-    setStatus("loading");
-  }, [url]);
+    if (status !== "loading" || !eager) return;
+    const t = window.setTimeout(
+      () => setStatus((s) => (s === "loading" ? "ready" : s)),
+      8000,
+    );
+    return () => window.clearTimeout(t);
+  }, [status, eager, url]);
 
   const shouldPlay = playing && !suspended && eager;
 
@@ -260,22 +275,53 @@ function MediaSlide({
   if (asVideo) {
     return (
       <div className="relative h-full w-full">
-        <Fit916>
+        <Fit916
+          backdrop={
+            poster ? (
+              <img
+                src={poster}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+                draggable={false}
+                decoding="async"
+                loading="lazy"
+              />
+            ) : null
+          }
+        >
+          {!eager && poster && (
+            <img
+              src={poster}
+              alt=""
+              aria-hidden
+              className={mediaClass}
+              draggable={false}
+              decoding="async"
+              loading="lazy"
+            />
+          )}
           {eager && (
             <video
               ref={videoRef}
               data-vitrine-feed
               src={url}
+              poster={poster ?? undefined}
               className={mediaClass}
               autoPlay={shouldPlay}
               muted={muted || !shouldPlay || volume <= 0.001}
               loop
               playsInline
-              preload="auto"
+              preload={shouldPlay ? "auto" : "metadata"}
               controls={false}
+              onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
-              onError={() => setStatus("error")}
+              onPlaying={() => setStatus("ready")}
+              onError={() => {
+                setStatus("error");
+                reportBrokenMedia(url);
+              }}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
           )}
@@ -302,14 +348,21 @@ function MediaSlide({
       >
         {eager && (
           <img
+            ref={(el) => {
+              // Cached images can finish before React binds onLoad.
+              if (el?.complete && el.naturalWidth > 0) setStatus("ready");
+            }}
             src={url}
             alt=""
             className={mediaClass}
             draggable={false}
             decoding="async"
-            loading="eager"
+            loading={eager ? "eager" : "lazy"}
             onLoad={() => setStatus("ready")}
-            onError={() => setStatus("error")}
+            onError={() => {
+              setStatus("error");
+              reportBrokenMedia(url);
+            }}
             style={{ pointerEvents: "none", touchAction: "none" }}
           />
         )}
@@ -323,12 +376,14 @@ function MediaSlide({
 /** Horizontal photo/video carousel — only for multi-media posts; isolated from tab swipes. */
 export function MediaCarousel({
   urls,
+  poster,
   className,
   forceVideo,
   active = true,
   music,
 }: {
   urls: string[];
+  poster?: string | null;
   className?: string;
   /** Musique ajoutée à la publication (jouée en boucle). */
   music?: VitrineMusic | null;
@@ -390,6 +445,7 @@ export function MediaCarousel({
     urls.length === 1 ? (
       <MediaSlide
         url={urls[0]!}
+        poster={poster}
         className={className}
         forceVideo={forceVideo}
         muted={muted}
@@ -420,6 +476,7 @@ export function MediaCarousel({
             <div key={u} className="h-full w-full shrink-0 snap-center">
               <MediaSlide
                 url={u}
+                poster={idx === 0 ? poster : null}
                 className="h-full w-full object-cover"
                 forceVideo={forceVideo}
                 muted={muted}

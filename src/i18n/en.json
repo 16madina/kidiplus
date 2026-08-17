@@ -33,10 +33,13 @@
     "name": {
       "rose": "Rose",
       "heart": "Golden heart",
+      "butterfly": "Radiant butterfly",
+      "star": "Lucky star",
       "diamond": "Diamond",
       "crown": "Crown",
       "rocket": "Rocket",
-      "lion": "Lion"
+      "lion": "Lion",
+      "kidi": "KD+ Gift"
     },
     "err": {
       "insufficient": "Not enough balance — top up your wallet",
@@ -46,6 +49,11 @@
       "sanctioned": "Account suspended",
       "auth": "Sign in to send a gift",
       "unknown": "Could not send"
+    },
+    "firstSale": {
+      "title": "Congratulations on your first sale!",
+      "subtitle": "KiDi+ is giving you the 10% commission",
+      "amount": "{{amount}} added to your earnings"
     }
   },
   "shop": {
@@ -421,10 +429,12 @@
     },
     "effects": {
       "title": "Background & poster",
-      "greenScreen": "Green screen",
+      "greenScreen": "Custom background",
       "posterFace": "Poster",
       "posterSide": "Beside",
-      "posterHint": "Drag to move · Pinch to zoom"
+      "posterHint": "Drag to move · Pinch to zoom",
+      "blur": "Background blur",
+      "unavailable": "Background effect unavailable on this device"
     },
     "setup": {
       "titlePlaceholder": "Live title…",
@@ -855,11 +865,12 @@
       "volume": "Music volume",
       "original": "Original sound",
       "startAt": "Music start",
-      "needAudio": "Pick an audio file.",
-      "tooLarge": "Audio too large (max 15 MB).",
-      "uploadFail": "Audio import failed.",
+      "needAudio": "Unsupported audio format.",
+      "tooLarge": "Audio too large (15 MB max).",
+      "uploadFail": "Could not import audio. Try again.",
       "rightsHint": "Only use music you have the rights to.",
-      "hint": "The music plays along with your post in Vitrine."
+      "hint": "The music plays along with your post in Vitrine.",
+      "needAuth": "Sign in again to import music."
     }
   },
   "dm": {

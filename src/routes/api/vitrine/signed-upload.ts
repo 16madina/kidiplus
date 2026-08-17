@@ -8,27 +8,6 @@ import { isAllowedOrigin } from "@/lib/api-cors";
 
 const BUCKET = "vitrine-media";
 const MAX_BYTES = 100 * 1024 * 1024;
-const ALLOWED_MIME = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "video/x-m4v",
-  "video/3gpp",
-  "video/3gpp2",
-  "audio/mpeg",
-  "audio/mp4",
-  "audio/aac",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/ogg",
-  "audio/flac",
-];
 
 
 function cors(origin: string | null): HeadersInit {
@@ -100,24 +79,22 @@ async function requireUser(
   return { ok: true, userId, origin };
 }
 
+type BucketOpts = {
+  public: boolean;
+  fileSizeLimit: number;
+  allowedMimeTypes: string[] | null;
+};
+
 async function ensureVitrineBucket(admin: {
   storage: {
     listBuckets: () => Promise<{ data: { id: string; name: string }[] | null }>;
     createBucket: (
       id: string,
-      opts: {
-        public: boolean;
-        fileSizeLimit: number;
-        allowedMimeTypes: string[];
-      },
+      opts: BucketOpts,
     ) => Promise<{ error: { message: string } | null }>;
     updateBucket: (
       id: string,
-      opts: {
-        public: boolean;
-        fileSizeLimit: number;
-        allowedMimeTypes: string[];
-      },
+      opts: BucketOpts,
     ) => Promise<{ error: { message: string } | null }>;
   };
 }) {
@@ -127,20 +104,22 @@ async function ensureVitrineBucket(admin: {
     const { error: createErr } = await admin.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: MAX_BYTES,
-      allowedMimeTypes: ALLOWED_MIME,
+      allowedMimeTypes: null,
     });
     // Race: another request may have created it.
     if (createErr && !/already exists|duplicate/i.test(createErr.message)) {
       throw createErr;
     }
   } else {
-    // Best-effort: keep mime/size in sync (ignore if API rejects).
+    // Best-effort: keep mime/size in sync. `null` = no mime restriction, so
+    // phone audio formats (m4a/aac/opus/ogg/wav…) are never rejected.
     try {
-      await admin.storage.updateBucket(BUCKET, {
+      const { error } = await admin.storage.updateBucket(BUCKET, {
         public: true,
         fileSizeLimit: MAX_BYTES,
-        allowedMimeTypes: ALLOWED_MIME,
+        allowedMimeTypes: null,
       });
+      if (error) console.warn("[vitrine/signed-upload] updateBucket", error.message);
     } catch {
       /* ignore */
     }

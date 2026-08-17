@@ -2,7 +2,9 @@
 //
 // Each gift has its OWN choreography, escalating with price:
 //   🌹 Rose (100)      — gentle petal float, ~2s. Modest.
-//   💛 Cœur d'or (250) — two-beat golden heart pulse + orbit sparkles, ~2s.
+//   💛 Cœur d'or (250) — bespoke transparent Blender animation, 2s.
+//   🦋 Papillon (500)  — two wing beats + graceful upward flight, 2s.
+//   ⭐ Étoile (1000)   — curved comet flight + three-star finale, 2s.
 //   💎 Diamant (500)   — drop from top, glint sweep, sparkle burst, ~2.5s.
 //   👑 Couronne (1000) — descend, royal shine sweep, gold rain, ~3s.
 //   🚀 Fusée (2500)    — flies diagonally with trail + subtle screen shake, ~3s.
@@ -23,15 +25,18 @@ type QueueItem = GiftEvt & { animId: string };
 const MAX_CONCURRENT_LOW = 2;
 
 const DURATIONS: Record<GiftKey, number> = {
-  rose: 2000,
+  rose: 1500,
   heart: 2000,
+  butterfly: 2000,
+  star: 2000,
   diamond: 2500,
   crown: 3000,
   rocket: 3000,
   lion: 4000,
+  kidi: 4600,
 };
 
-const isTier3 = (k: string) => k === "rocket" || k === "lion";
+const isTier3 = (k: string) => k === "rocket" || k === "lion" || k === "kidi";
 
 export function GiftAnimationsLayer({ trigger }: { trigger: GiftEvt | null }) {
   const [active, setActive] = useState<QueueItem[]>([]);
@@ -96,26 +101,185 @@ function GiftAnim({ item, onDone }: { item: QueueItem; onDone: () => void }) {
   const g = giftByKey(item.giftKey);
   const key = (g?.key ?? "rose") as GiftKey;
   const dur = DURATIONS[key];
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, dur);
+    // Host screens re-render every second for the live duration counter. Do
+    // not restart this timer on those parent renders, otherwise the first
+    // tier-3 gift never leaves `active` and every later gift stays queued.
+    const t = window.setTimeout(() => onDoneRef.current(), dur);
     return () => clearTimeout(t);
-  }, [dur, onDone]);
+  }, [dur, item.animId]);
 
   switch (key) {
     // Sender name lives in GiftComboFeed (TikTok-style corner), not here —
     // except Lion which keeps a full-width celebration banner.
-    case "rose":    return <RoseAnim dur={dur} />;
-    case "heart":   return <HeartAnim dur={dur} />;
-    case "diamond": return <DiamondAnim dur={dur} />;
-    case "crown":   return <CrownAnim dur={dur} />;
-    case "rocket":  return <RocketAnim dur={dur} />;
-    case "lion":    return <LionAnim name={item.senderName} dur={dur} />;
-    default:        return null;
+    case "rose":
+      return <RoseGiftAnim dur={dur} animId={item.animId} />;
+    case "heart":
+      return (
+        <TransparentBlenderGift
+          src="/gifts/heart-gift.png"
+          kind="heart"
+          dur={dur}
+          animId={item.animId}
+        />
+      );
+    case "butterfly":
+      return (
+        <TransparentBlenderGift
+          src="/gifts/butterfly-gift.png"
+          kind="butterfly"
+          dur={dur}
+          animId={item.animId}
+        />
+      );
+    case "star":
+      return (
+        <TransparentBlenderGift
+          src="/gifts/lucky-star-gift.png"
+          kind="star"
+          dur={dur}
+          animId={item.animId}
+        />
+      );
+    case "diamond":
+      return <DiamondAnim dur={dur} />;
+    case "crown":
+      return <CrownAnim dur={dur} />;
+    case "rocket":
+      return <RocketAnim dur={dur} />;
+    case "lion":
+      return <LionAnim name={item.senderName} dur={dur} />;
+    case "kidi":
+      return <KidiGiftAnim name={item.senderName} dur={dur} animId={item.animId} />;
+    default:
+      return null;
   }
 }
 
-/* ---------- Rose (tier 1) — gentle petals ---------- */
+/* ---------- New 2-second transparent Blender gifts ---------- */
+function TransparentBlenderGift({
+  src,
+  kind,
+  dur,
+  animId,
+}: {
+  src: string;
+  kind: "heart" | "butterfly" | "star";
+  dur: number;
+  animId: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (imageFailed) {
+    if (kind === "heart") return <HeartAnim dur={dur} />;
+    return <SimpleEmojiGiftAnim emoji={kind === "butterfly" ? "🦋" : "⭐"} dur={dur} />;
+  }
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: dur / 1000, times: [0, 0.03, 0.94, 1] }}
+    >
+      <img
+        src={`${src}#gift=${encodeURIComponent(animId)}`}
+        alt=""
+        draggable={false}
+        onError={() => setImageFailed(true)}
+        className="absolute inset-0 h-full w-full select-none object-contain"
+      />
+    </motion.div>
+  );
+}
+
+function SimpleEmojiGiftAnim({ emoji, dur }: { emoji: string; dur: number }) {
+  return (
+    <motion.div className="absolute inset-0 flex items-center justify-center">
+      <motion.span
+        initial={{ scale: 0.2, opacity: 0, y: 70 }}
+        animate={{ scale: [0.2, 1.15, 1, 0.85], opacity: [0, 1, 1, 0], y: [70, 0, -20, -80] }}
+        transition={{ duration: dur / 1000, ease: EASE_IOS, times: [0, 0.22, 0.75, 1] }}
+        className="text-[130px] leading-none drop-shadow-2xl"
+      >
+        {emoji}
+      </motion.span>
+    </motion.div>
+  );
+}
+
+/* ---------- KD+ (tier 3) — bespoke transparent Blender animation ---------- */
+function KidiGiftAnim({ name, dur, animId }: { name: string; dur: number; animId: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: dur / 1000, times: [0, 0.06, 0.9, 1] }}
+    >
+      {imageFailed ? (
+        <motion.img
+          src="/kidi-plus-logo.png"
+          alt=""
+          className="relative w-[46%] max-w-[190px] object-contain drop-shadow-2xl"
+          initial={{ y: 120, scale: 0.4, opacity: 0 }}
+          animate={{ y: [120, 0, -12, 0], scale: [0.4, 1.08, 1, 1], opacity: 1 }}
+          transition={{ duration: 1.4, ease: EASE_IOS }}
+        />
+      ) : (
+        <img
+          src={`/gifts/kidiplus-first-sale.png#gift=${encodeURIComponent(animId)}`}
+          alt=""
+          draggable={false}
+          onError={() => setImageFailed(true)}
+          className="relative w-[50%] max-w-[210px] select-none object-contain drop-shadow-2xl"
+        />
+      )}
+      <motion.div
+        className="absolute inset-x-4 bottom-[14%] mx-auto max-w-md rounded-full px-5 py-3 text-center text-[14px] font-black text-white"
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: [24, 0, 0, -12], opacity: [0, 1, 1, 0] }}
+        transition={{ duration: dur / 1000, times: [0, 0.18, 0.82, 1], ease: EASE_IOS }}
+        style={{
+          background: "linear-gradient(90deg, rgba(8,35,104,.92), rgba(214,151,25,.94))",
+          boxShadow: "0 0 36px rgba(240,180,44,.45)",
+        }}
+      >
+        {name} a envoyé le cadeau KD+ !
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ---------- Rose (tier 1) — transparent Blender gift ---------- */
+function RoseGiftAnim({ dur, animId }: { dur: number; animId: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (imageFailed) return <RoseAnim dur={dur} />;
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: dur / 1000, times: [0, 0.04, 0.92, 1] }}
+    >
+      <img
+        src={`/gifts/rose-gift.png#gift=${encodeURIComponent(animId)}`}
+        alt=""
+        draggable={false}
+        onError={() => setImageFailed(true)}
+        className="absolute inset-0 h-full w-full select-none object-contain"
+      />
+    </motion.div>
+  );
+}
+
+/* Emoji fallback if the transparent application asset cannot load. */
 function RoseAnim({ dur }: { dur: number }) {
   const petals = useMemo(
     () =>
@@ -163,7 +327,7 @@ function HeartAnim({ dur }: { dur: number }) {
   const sparkles = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => {
-        const a = ((i * 60) * Math.PI) / 180;
+        const a = (i * 60 * Math.PI) / 180;
         return { i, x: Math.cos(a) * 90, y: Math.sin(a) * 90 };
       }),
     [],
@@ -177,8 +341,7 @@ function HeartAnim({ dur }: { dur: number }) {
           animate={{ opacity: [0, 0.55, 0.35, 0], scale: [0.6, 1.2, 1.15, 1.3] }}
           transition={{ duration: dur / 1000, ease: EASE_IOS }}
           style={{
-            background:
-              "radial-gradient(circle, oklch(0.85 0.16 85 / 0.55), transparent 70%)",
+            background: "radial-gradient(circle, oklch(0.85 0.16 85 / 0.55), transparent 70%)",
           }}
         />
         <motion.span
@@ -239,8 +402,7 @@ function DiamondAnim({ dur }: { dur: number }) {
           animate={{ opacity: [0, 0.6, 0], scale: [0.5, 1.4, 1.6] }}
           transition={{ duration: dur / 1000, delay: 0.55, ease: EASE_IOS }}
           style={{
-            background:
-              "radial-gradient(circle, oklch(0.9 0.14 220 / 0.65), transparent 65%)",
+            background: "radial-gradient(circle, oklch(0.9 0.14 220 / 0.65), transparent 65%)",
           }}
         />
         {/* Diamond drops in */}
@@ -278,8 +440,7 @@ function DiamondAnim({ dur }: { dur: number }) {
             transition={{ duration: 0.6, delay: 0.55, ease: "linear" }}
             className="absolute inset-y-0 w-16"
             style={{
-              background:
-                "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
               filter: "blur(2px)",
               transform: "skewX(-20deg)",
             }}
@@ -419,8 +580,7 @@ function RocketAnim({ dur }: { dur: number }) {
         transition={{ duration: dur / 1000, ease: "linear" }}
         className="absolute left-0 top-1/2 h-[3px] w-full origin-left"
         style={{
-          background:
-            "linear-gradient(90deg, transparent, oklch(0.85 0.18 60 / 0.9), transparent)",
+          background: "linear-gradient(90deg, transparent, oklch(0.85 0.18 60 / 0.9), transparent)",
           transform: "rotate(-40deg) translateY(-40px)",
         }}
       />
@@ -556,4 +716,3 @@ function LionAnim({ name, dur }: { name: string; dur: number }) {
     </motion.div>
   );
 }
-

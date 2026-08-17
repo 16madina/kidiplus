@@ -159,7 +159,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       const wantEffects = fx.hasEffects;
       const wantSnap = !wantEffects && lens.isSnapLens === true && isCameraKitSupported();
       lastPipelineKeyRef.current = wantEffects
-        ? `fx:${fx.backgroundUrl ?? ""}:${fx.posterUrl ?? ""}:${fx.posterMode}:${facing}`
+        ? `fx:${fx.backgroundMode}:${fx.backgroundUrl ?? ""}:${fx.posterUrl ?? ""}:${fx.posterMode}:${facing}`
         : `${wantSnap ? lens.lensId : "none"}:${facing}`;
       try {
         const current = track.getProcessor();
@@ -169,6 +169,17 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (wantEffects) {
           const cfg = {
             backgroundUrl: fx.backgroundUrl,
+            backgroundMode: fx.backgroundMode,
+            onUnavailable: () => {
+              toast.error(
+                t(
+                  "broadcast.effects.unavailable",
+                  "Arrière-plan indisponible sur cet appareil",
+                ),
+                { id: "bg-unavailable" },
+              );
+              effectsRef.current.markBackgroundUnavailable();
+            },
             posterUrl: fx.posterUrl,
             posterMode: fx.posterMode,
             posterX: fx.posterTransform.x,
@@ -787,7 +798,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       const wantEffects = effects.hasEffects;
       const wantSnap = !wantEffects && activeLens.isSnapLens === true && isCameraKitSupported();
       const key = wantEffects
-        ? `fx:${effects.backgroundUrl ?? ""}:${effects.posterUrl ?? ""}:${effects.posterMode}:${facing}`
+        ? `fx:${effects.backgroundMode}:${effects.backgroundUrl ?? ""}:${effects.posterUrl ?? ""}:${effects.posterMode}:${facing}`
         : `${wantSnap ? activeLens.lensId : "none"}:${facing}`;
       if (key === lastPipelineKeyRef.current) return;
       void applyHostPipeline(track, facing);
@@ -796,6 +807,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       activeLens.lensId,
       activeLens.isSnapLens,
       effects.hasEffects,
+      effects.backgroundMode,
       effects.backgroundUrl,
       effects.posterUrl,
       effects.posterMode,

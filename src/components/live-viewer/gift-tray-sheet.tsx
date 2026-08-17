@@ -145,9 +145,17 @@ export function GiftTraySheet({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.85, opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="text-[32px] leading-none"
+                    className="grid h-10 place-items-center text-[32px] leading-none"
                   >
-                    {g.emoji}
+                    {g.imageSrc ? (
+                      <img
+                        src={g.imageSrc}
+                        alt=""
+                        className="h-9 w-auto max-w-[72px] object-contain"
+                      />
+                    ) : (
+                      g.emoji
+                    )}
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-[11px] font-semibold leading-tight">

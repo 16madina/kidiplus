@@ -184,6 +184,13 @@ export type GiftEvt = {
   ts: number;
 };
 
+type GiftDbRow = {
+  id: string;
+  sender_id: string;
+  gift_key: string;
+  created_at?: string | null;
+};
+
 export type LivePresenceViewer = {
   /** Presence key / identity — for signed-in users this is their profile UUID. */
   identity: string;
@@ -346,6 +353,28 @@ export function useLiveRoom(params: {
     }
     setLastGift(evt);
   };
+  const ingestGiftRowRef = useRef<(row: GiftDbRow) => Promise<void>>(async () => {});
+  ingestGiftRowRef.current = async (row: GiftDbRow) => {
+    if (!row?.id || !row.gift_key || seenGiftIdsRef.current.has(row.id)) return;
+    let senderName = "invité";
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, handle")
+        .eq("id", row.sender_id)
+        .maybeSingle();
+      senderName = data?.display_name || data?.handle || senderName;
+    } catch {
+      /* best-effort */
+    }
+    ingestGiftRef.current({
+      id: row.id,
+      giftKey: row.gift_key,
+      senderId: row.sender_id,
+      senderName,
+      ts: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+    });
+  };
 
   // Drop ephemeral room state whenever the live changes — otherwise a prior
   // auction:end / bid / countdown can leak into the next live (or a re-open)
@@ -376,6 +405,56 @@ export function useLiveRoom(params: {
     }, 8_000);
     return () => window.clearTimeout(t);
   }, [lastGift]);
+
+  // A gift is first persisted by send_gift, then announced over Realtime.
+  // Mobile WebViews can occasionally miss both the broadcast and the INSERT
+  // frame while reconnecting. Poll only the tiny recent tail as a durable
+  // rescue path; ids are shared with both fast paths, so every screen still
+  // animates exactly once. The five-second lookback also closes the subscribe
+  // race without replaying old gifts when somebody joins a live later.
+  useEffect(() => {
+    if (!liveId) return;
+    let alive = true;
+    let inFlight = false;
+    let cursorIso = new Date(Date.now() - 5_000).toISOString();
+
+    const rescueGifts = async () => {
+      if (!alive || inFlight || document.visibilityState === "hidden") return;
+      inFlight = true;
+      try {
+        const { data, error } = await supabase
+          .from("live_gifts")
+          .select("id, sender_id, gift_key, created_at")
+          .eq("live_id", liveId)
+          .gte("created_at", cursorIso)
+          .order("created_at", { ascending: true })
+          .limit(20);
+        if (!alive || error || !data?.length) return;
+        for (const row of data as GiftDbRow[]) {
+          if (!alive) return;
+          await ingestGiftRowRef.current(row);
+        }
+        const newest = data[data.length - 1] as GiftDbRow | undefined;
+        if (newest?.created_at) cursorIso = newest.created_at;
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void rescueGifts();
+    const timer = window.setInterval(() => { void rescueGifts(); }, 3_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void rescueGifts();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [liveId]);
 
   // Load initial products + rehydrate an already-running auction so late
   // joiners see the same countdown as everyone else. `auction_deadline_at`
@@ -668,7 +747,10 @@ export function useLiveRoom(params: {
     if (!liveId) return;
     let dead = false;
     const ch = supabase.channel(`live:${liveId}`, {
-      config: { presence: { key: identity } },
+      config: {
+        broadcast: { self: false, ack: true },
+        presence: { key: identity },
+      },
     });
     channelRef.current = ch;
 
@@ -824,33 +906,7 @@ export function useLiveRoom(params: {
         filter: `live_id=eq.${liveId}`,
       },
       (payload) => {
-        const row = payload.new as {
-          id: string;
-          sender_id: string;
-          gift_key: string;
-          created_at?: string;
-        };
-        if (!row?.id || !row.gift_key) return;
-        void (async () => {
-          let senderName = "invité";
-          try {
-            const { data } = await supabase
-              .from("profiles")
-              .select("display_name, handle")
-              .eq("id", row.sender_id)
-              .maybeSingle();
-            senderName = data?.display_name || data?.handle || senderName;
-          } catch {
-            /* best-effort */
-          }
-          ingestGiftRef.current({
-            id: row.id,
-            giftKey: row.gift_key,
-            senderId: row.sender_id,
-            senderName,
-            ts: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-          });
-        })();
+        void ingestGiftRowRef.current(payload.new as GiftDbRow);
       },
     );
 

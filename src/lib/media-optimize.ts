@@ -101,114 +101,52 @@ export async function optimizeImageFor916(file: File): Promise<File> {
   }
 }
 
-function supportedRecorderMime(): string | null {
-  if (typeof MediaRecorder === "undefined") return null;
-  const candidates = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
-  for (const m of candidates) {
-    try {
-      if (MediaRecorder.isTypeSupported(m)) return m;
-    } catch {
-      /* ignore */
-    }
-  }
-  return null;
-}
-
 /**
- * Re-encode une vidéo en 9:16 (cover, 1080x1920) avec un bitrate maîtrisé.
- * Best-effort : si le navigateur ne supporte pas la capture canvas, on
- * renvoie le fichier d'origine inchangé.
+ * Génère une vignette (poster) JPEG à partir de la première image d'une vidéo.
+ * Utilisée dans le feed pour ne PAS télécharger la vidéo entière au scroll.
  */
-export async function optimizeVideoFor916(
-  file: File,
-  onProgress?: (p: number) => void,
-): Promise<File> {
-  if (file.size < VIDEO_TRANSCODE_MIN_BYTES) return file;
-  const mime = supportedRecorderMime();
-  if (!mime) return file;
-
+export async function generateVideoPoster(file: File): Promise<File | null> {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
-  video.muted = false;
+  video.muted = true;
   video.playsInline = true;
-  video.preload = "auto";
-
+  video.preload = "metadata";
   try {
     await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("video_metadata_failed"));
+      const to = window.setTimeout(() => reject(new Error("poster_timeout")), 8000);
+      video.onloadeddata = () => {
+        window.clearTimeout(to);
+        resolve();
+      };
+      video.onerror = () => {
+        window.clearTimeout(to);
+        reject(new Error("poster_decode_failed"));
+      };
     });
-    const sw = video.videoWidth;
-    const sh = video.videoHeight;
-    if (!sw || !sh) return file;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = TARGET_W;
-    canvas.height = TARGET_H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx || typeof canvas.captureStream !== "function") return file;
-
-    const stream = canvas.captureStream(30);
-    // Conserve l'audio quand le navigateur l'expose.
-    const withAudio = video as HTMLVideoElement & {
-      captureStream?: () => MediaStream;
-    };
     try {
-      const srcStream = withAudio.captureStream?.();
-      srcStream?.getAudioTracks().forEach((tr) => stream.addTrack(tr));
+      video.currentTime = Math.min(0.2, (video.duration || 1) / 10);
+      await new Promise<void>((resolve) => {
+        const to = window.setTimeout(() => resolve(), 1500);
+        video.onseeked = () => {
+          window.clearTimeout(to);
+          resolve();
+        };
+      });
     } catch {
       /* ignore */
     }
-
-    const recorder = new MediaRecorder(stream, {
-      mimeType: mime,
-      videoBitsPerSecond: 2_500_000,
-      audioBitsPerSecond: 128_000,
-    });
-    const chunks: BlobPart[] = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-    const done = new Promise<void>((resolve) => {
-      recorder.onstop = () => resolve();
-    });
-
-    const scale = Math.max(TARGET_W / sw, TARGET_H / sh);
-    const dw = sw * scale;
-    const dh = sh * scale;
-    const dx = (TARGET_W - dw) / 2;
-    const dy = (TARGET_H - dh) / 2;
-
-    let raf = 0;
-    const draw = () => {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, TARGET_W, TARGET_H);
-      ctx.drawImage(video, dx, dy, dw, dh);
-      if (video.duration > 0) onProgress?.(Math.min(1, video.currentTime / video.duration));
-      raf = requestAnimationFrame(draw);
-    };
-
-    recorder.start(1000);
-    await video.play().catch(() => undefined);
-    draw();
-
-    await new Promise<void>((resolve) => {
-      video.onended = () => resolve();
-    });
-    cancelAnimationFrame(raf);
-    recorder.stop();
-    await done;
-    onProgress?.(1);
-
-    const outMime = mime.split(";")[0] ?? "video/mp4";
-    const blob = new Blob(chunks, { type: outMime });
-    if (!blob.size || blob.size >= file.size) return file;
-    const base = file.name.replace(/\.[^.]+$/, "") || "video";
-    const ext = outMime.includes("webm") ? "webm" : "mp4";
-    return new File([blob], `${base}-916.${ext}`, { type: outMime });
+    const sw = video.videoWidth;
+    const sh = video.videoHeight;
+    if (!sw || !sh) return null;
+    const canvas = drawCover(video, sw, sh);
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.7),
+    );
+    if (!blob || blob.size === 0) return null;
+    return new File([blob], `poster-${Date.now()}.jpg`, { type: "image/jpeg" });
   } catch {
-    return file;
+    return null;
   } finally {
     try {
       video.pause();
@@ -219,12 +157,22 @@ export async function optimizeVideoFor916(
   }
 }
 
+/**
+ * Vidéo : plus de ré-encodage temps réel (MediaRecorder rejouait la vidéo en
+ * entier, ce qui rendait la publication interminable). On uploade le fichier
+ * tel quel et on s'appuie sur le poster + le lazy-loading côté feed.
+ */
+export async function optimizeVideoFor916(file: File): Promise<File> {
+  return file;
+}
+
 /** Point d'entrée unique : optimise photo ou vidéo pour le rendu 9:16. */
 export async function optimizeMediaFor916(
   file: File,
-  onProgress?: (p: number) => void,
+  _onProgress?: (p: number) => void,
 ): Promise<File> {
-  if (isVideoFileLike(file)) return optimizeVideoFor916(file, onProgress);
+  if (isVideoFileLike(file)) return file;
   if (isImageFileLike(file)) return optimizeImageFor916(file);
   return file;
 }
+

@@ -152,6 +152,17 @@ export const Route = createFileRoute("/api/checkout")({
         // application fee. The webhook then skips credit_seller_earning so the
         // seller is never paid twice (Stripe transfer + wallet escrow).
         let connectDestination = "";
+        // First-sale rewards are settled through the KiDi+ escrow ledger so
+        // credit_seller_earning can atomically waive the commission and emit
+        // the seller's celebration. Existing sellers are backfilled in the
+        // migration, so absence of this marker means the reward is available.
+        const { data: firstSaleMarker, error: firstSaleMarkerError } = await admin
+          .from("seller_milestone_rewards")
+          .select("id")
+          .eq("seller_id", order.seller_id)
+          .eq("reward_key", "first_sale_fee_waiver")
+          .maybeSingle();
+        const firstSaleRewardEligible = !firstSaleMarkerError && !firstSaleMarker;
         {
           const { data: sellerProfile } = await admin
             .from("profiles")
@@ -160,6 +171,7 @@ export const Route = createFileRoute("/api/checkout")({
             .maybeSingle();
           const sp = (sellerProfile ?? {}) as Record<string, unknown>;
           if (
+            !firstSaleRewardEligible &&
             typeof sp.stripe_connect_id === "string" &&
             sp.stripe_connect_id.startsWith("acct_") &&
             sp.connect_status === "active" &&
@@ -179,6 +191,15 @@ export const Route = createFileRoute("/api/checkout")({
             intent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
             if (intent.status === "succeeded" || intent.status === "canceled") {
               intent = undefined; // create a fresh one
+            } else if (
+              firstSaleRewardEligible &&
+              intent.metadata?.connectTransfer === "1"
+            ) {
+              // An intent may predate this feature. It already reserves a 10%
+              // Connect fee, so replace it before payment to preserve the
+              // promised first-sale waiver.
+              await stripe.paymentIntents.cancel(intent.id).catch(() => undefined);
+              intent = undefined;
             }
           } catch {
             intent = undefined;
@@ -209,6 +230,7 @@ export const Route = createFileRoute("/api/checkout")({
                 connectTransfer: connectDestination ? "1" : "0",
                 connectDestination,
                 applicationFee: String(applicationFeeMinor),
+                firstSaleRewardEligible: firstSaleRewardEligible ? "1" : "0",
               },
               description: `KiDi+ · ${order.item_name}`,
             });

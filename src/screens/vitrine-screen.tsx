@@ -33,10 +33,17 @@ import { useAppActive } from "@/lib/app-state";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { EASE_IOS } from "@/lib/motion";
 import { useBlockedIds } from "@/lib/moderation-db";
+import {
+  isBrokenMedia,
+  isPostMediaBroken,
+  subscribeBrokenMedia,
+} from "@/lib/vitrine-broken-media";
 
 type Cat = "forYou" | "live" | "soon";
 
 const FEED_POLL_MS = 12_000;
+/** Nombre de posts chargés par page (scroll infini). */
+const PAGE_SIZE = 8;
 const GOLD = "#E8B93B";
 
 export function VitrineScreen() {
@@ -51,6 +58,12 @@ export function VitrineScreen() {
   const [storiesOpen, setStoriesOpen] = useState(true);
 
   const [posts, setPosts] = useState<VitrinePost[]>([]);
+  // Incrémenté quand un média du feed échoue à charger (404) → on le retire.
+  const [brokenTick, setBrokenTick] = useState(0);
+  useEffect(
+    () => subscribeBrokenMedia(() => setBrokenTick((n) => n + 1)),
+    [],
+  );
   const [stories, setStories] = useState<VitrineStory[]>([]);
   const [lives, setLives] = useState<LiveStream[]>([]);
   const [soon, setSoon] = useState<ScheduledLiveWithSeller[]>([]);
@@ -58,6 +71,8 @@ export function VitrineScreen() {
   const [loadingLives, setLoadingLives] = useState(true);
   const [loadingSoon, setLoadingSoon] = useState(true);
   const [postIndex, setPostIndex] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [liveIndex, setLiveIndex] = useState(0);
   const [soonIndex, setSoonIndex] = useState(0);
   /** Deep-link: open comments on this post after landing on it. */
@@ -78,13 +93,34 @@ export function VitrineScreen() {
 
   const refreshPosts = useCallback(async () => {
     const [p, s] = await Promise.all([
-      fetchVitrinePosts(40),
+      fetchVitrinePosts(PAGE_SIZE, 0),
       fetchVitrineStories(30),
     ]);
     setPosts(p);
     setStories(s);
+    setHasMorePosts(p.length >= PAGE_SIZE);
     setLoadingPosts(false);
   }, []);
+
+  /** Pagination : charge la page suivante quand on approche de la fin. */
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMore || !hasMorePosts) return;
+    setLoadingMore(true);
+    try {
+      const next = await fetchVitrinePosts(PAGE_SIZE, posts.length);
+      if (next.length === 0) {
+        setHasMorePosts(false);
+        return;
+      }
+      setPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...next.filter((p) => !seen.has(p.id))];
+      });
+      setHasMorePosts(next.length >= PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMorePosts, posts.length]);
 
   // Same live feed source + realtime as Home.
   useEffect(() => {
@@ -132,7 +168,7 @@ export function VitrineScreen() {
       setOpenCommentsPostId(detail?.open_comments ? postId : null);
       setHighlightCommentId(detail?.comment_id ?? null);
       void (async () => {
-        const rows = await fetchVitrinePosts(60);
+        const rows = await fetchVitrinePosts(PAGE_SIZE * 3, 0);
         let next = rows;
         let idx = rows.findIndex((p) => p.id === postId);
         if (idx < 0) {
@@ -173,16 +209,21 @@ export function VitrineScreen() {
   const postsVisible = useMemo(
     () =>
       posts.filter(
-        (p) => !p.user_id || p.user_id.startsWith("demo-") || !blockedIds.has(p.user_id),
+        (p) =>
+          (!p.user_id || p.user_id.startsWith("demo-") || !blockedIds.has(p.user_id)) &&
+          !isPostMediaBroken(p.media_urls),
       ),
-    [posts, blockedIds],
+    // brokenTick force le recalcul quand un média 404 est détecté.
+    [posts, blockedIds, brokenTick],
   );
   const storiesVisible = useMemo(
     () =>
       stories.filter(
-        (s) => !s.user_id || s.user_id.startsWith("demo-") || !blockedIds.has(s.user_id),
+        (s) =>
+          (!s.user_id || s.user_id.startsWith("demo-") || !blockedIds.has(s.user_id)) &&
+          !isBrokenMedia(s.media_url),
       ),
-    [stories, blockedIds],
+    [stories, blockedIds, brokenTick],
   );
   const soonVisible = useMemo(
     () => soon.filter((s) => !s.seller_id || !blockedIds.has(s.seller_id)),
@@ -268,7 +309,9 @@ export function VitrineScreen() {
           onIndexChange={(i) => {
             setPostIndex(i);
             if (i > 0) setStoriesOpen(false);
+            if (i >= postsVisible.length - 3) void loadMorePosts();
           }}
+
           onPullReveal={() => setStoriesOpen(true)}
           onSwipeCategory={swipeCategory}
         >

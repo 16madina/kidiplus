@@ -33,10 +33,13 @@
     "name": {
       "rose": "Rose",
       "heart": "Cœur d'or",
+      "butterfly": "Papillon éclatant",
+      "star": "Étoile porte-bonheur",
       "diamond": "Diamant",
       "crown": "Couronne",
       "rocket": "Fusée",
-      "lion": "Lion"
+      "lion": "Lion",
+      "kidi": "Cadeau KD+"
     },
     "err": {
       "insufficient": "Solde insuffisant — recharge ton portefeuille",
@@ -46,6 +49,11 @@
       "sanctioned": "Compte suspendu",
       "auth": "Connecte-toi pour envoyer un cadeau",
       "unknown": "Envoi impossible"
+    },
+    "firstSale": {
+      "title": "Félicitations, première vente !",
+      "subtitle": "KiDi+ t'offre la commission de 10%",
+      "amount": "{{amount}} ajoutés à tes gains"
     }
   },
   "shop": {
@@ -421,10 +429,12 @@
     },
     "effects": {
       "title": "Fond & poster",
-      "greenScreen": "Fond vert",
+      "greenScreen": "Fond personnalisé",
       "posterFace": "Poster",
       "posterSide": "À côté",
-      "posterHint": "Glisse pour déplacer · Pince pour zoomer"
+      "posterHint": "Glisse pour déplacer · Pince pour zoomer",
+      "blur": "Flou d'arrière-plan",
+      "unavailable": "Arrière-plan indisponible sur cet appareil"
     },
     "setup": {
       "titlePlaceholder": "Titre du live…",
@@ -855,11 +865,12 @@
       "volume": "Volume musique",
       "original": "Son d'origine",
       "startAt": "Départ de la musique",
-      "needAudio": "Choisis un fichier audio.",
+      "needAudio": "Format audio non pris en charge.",
       "tooLarge": "Audio trop lourd (max 15 Mo).",
-      "uploadFail": "Import audio impossible.",
+      "uploadFail": "Import audio impossible. Réessaie.",
       "rightsHint": "Utilise uniquement de la musique dont tu détiens les droits.",
-      "hint": "La musique est jouée avec ta publication dans la Vitrine."
+      "hint": "La musique est jouée avec ta publication dans la Vitrine.",
+      "needAuth": "Reconnecte-toi pour importer une musique."
     }
   },
   "dm": {

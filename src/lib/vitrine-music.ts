@@ -76,8 +76,16 @@ export const MUSIC_LIBRARY: MusicTrack[] = [
 
 export const MAX_MUSIC_BYTES = 15 * 1024 * 1024;
 
+/** Formats audio courants sur téléphone (Android/iOS) + desktop. */
+export const AUDIO_ACCEPT =
+  "audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.aiff,.caf,.amr,.3gp,.weba";
+
 export function isAudioFile(f: File) {
-  return f.type.startsWith("audio/") || /\.(mp3|m4a|aac|wav|ogg|oga|flac)$/i.test(f.name);
+  return (
+    f.type.startsWith("audio/") ||
+    f.type === "application/ogg" ||
+    /\.(mp3|m4a|mp4a|aac|wav|wave|ogg|oga|opus|flac|aiff|aif|caf|amr|3gp|weba|webm)$/i.test(f.name)
+  );
 }
 
 export function defaultMusicFor(track: { url: string; title?: string; artist?: string }): VitrineMusic {
@@ -95,10 +103,16 @@ export function defaultMusicFor(track: { url: string; title?: string; artist?: s
 export async function uploadMusicFile(
   file: File,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  if (!isAudioFile(file)) return { ok: false, error: "bad_mime" };
-  if (file.size > MAX_MUSIC_BYTES) return { ok: false, error: "file_too_large" };
-  const { uploadVitrineMediaDetailed } = await import("@/lib/vitrine-db");
-  return uploadVitrineMediaDetailed(file);
+  try {
+    if (!isAudioFile(file)) return { ok: false, error: "bad_mime" };
+    if (!file.size) return { ok: false, error: "empty_file" };
+    if (file.size > MAX_MUSIC_BYTES) return { ok: false, error: "file_too_large" };
+    const { uploadVitrineMediaDetailed } = await import("@/lib/vitrine-db");
+    return await uploadVitrineMediaDetailed(file);
+  } catch (e) {
+    console.warn("[vitrine-music] import failed", e);
+    return { ok: false, error: e instanceof Error ? e.message : "upload_failed" };
+  }
 }
 
 /** Lit les colonnes musique d'une ligne Supabase (posts / stories). */
