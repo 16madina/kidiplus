@@ -1,7 +1,7 @@
 // Viewer-side LiveKit video layer. Subscribes to the host's camera + mic
 // and renders them full-bleed. Falls back to a placeholder image while the
 // host is not connected yet, or after they leave.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
 import {
