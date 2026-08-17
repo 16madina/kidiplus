@@ -3,17 +3,12 @@
 
 import { useEffect, useState } from "react";
 
-const KEY = "vitrine_sound_on";
 const EVT = "vitrine-sound-change";
 
+// Autoplay permission is granted by the browser for the current page lifecycle,
+// not permanently. Restoring a previous "sound on" value makes a fresh iOS /
+// Android session unmute before it has received a gesture, which cancels play().
 let soundOn = false;
-if (typeof window !== "undefined") {
-  try {
-    soundOn = window.localStorage.getItem(KEY) === "1";
-  } catch {
-    /* ignore */
-  }
-}
 
 export function getVitrineSoundOn(): boolean {
   return soundOn;
@@ -21,11 +16,6 @@ export function getVitrineSoundOn(): boolean {
 
 export function setVitrineSoundOn(on: boolean) {
   soundOn = on;
-  try {
-    window.localStorage.setItem(KEY, on ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
   try {
     window.dispatchEvent(new CustomEvent(EVT));
   } catch {

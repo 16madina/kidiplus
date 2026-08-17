@@ -272,6 +272,8 @@ function MediaSlide({
     }
 
     let cancelled = false;
+    let policyFailures = 0;
+    let blockedTimer: number | null = null;
     const wantsSound = !muted && volume > 0.001;
 
     const applySound = (v: HTMLVideoElement) => {
@@ -312,8 +314,19 @@ function MediaSlide({
         if (cancelled) return;
         setBlocked(false);
         applySound(v);
-      } catch {
-        if (!cancelled) setBlocked(true);
+      } catch (error) {
+        if (cancelled) return;
+        // AbortError/NotSupportedError while metadata is still arriving are
+        // transient. Only expose manual Play after repeated policy refusals.
+        const name = error instanceof DOMException ? error.name : "";
+        if (name === "NotAllowedError") {
+          policyFailures += 1;
+          if (policyFailures >= 2 && blockedTimer == null) {
+            blockedTimer = window.setTimeout(() => {
+              if (!cancelled && videoRef.current?.paused) setBlocked(true);
+            }, 1200);
+          }
+        }
       }
     };
 
@@ -322,13 +335,21 @@ function MediaSlide({
     const onReady = () => void attempt();
     events.forEach((e) => el.addEventListener(e, onReady));
     const retry = window.setInterval(() => void attempt(), 300);
-    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 4000);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 10000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void attempt();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onReady);
 
     return () => {
       cancelled = true;
       events.forEach((e) => el.removeEventListener(e, onReady));
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onReady);
       window.clearInterval(retry);
       window.clearTimeout(stopRetry);
+      if (blockedTimer != null) window.clearTimeout(blockedTimer);
     };
   }, [url, asVideo, muted, shouldPlay, volume, reloadKey]);
 
