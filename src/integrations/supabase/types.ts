@@ -2840,6 +2840,7 @@ export type Database = {
         Args: { _battle_id: string }
         Returns: undefined
       }
+      _battle_sweep_stale: { Args: never; Returns: undefined }
       _claim_and_backfill: {
         Args: { _owner: string; _promo_id: string }
         Returns: Json
