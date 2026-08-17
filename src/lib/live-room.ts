@@ -1013,7 +1013,9 @@ export function useLiveRoom(params: {
       setReady(false);
       setPresentViewers([]);
       supabase.removeChannel(ch);
+      supabase.removeChannel(giftsCh);
       channelRef.current = null;
+
     };
 
   }, [liveId, identity, displayName, isHost, silent]);
