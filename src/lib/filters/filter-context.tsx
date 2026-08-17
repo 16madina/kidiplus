@@ -34,6 +34,8 @@ type FilterContextValue = {
   lenses: Lens[];
   /** Charge les vraies lenses Snap du groupe (no-op si déjà fait). */
   loadLenses: () => void;
+  /** Recharge le groupe en ignorant le cache (nouvelles lenses ajoutées). */
+  refreshLenses: () => void;
   lensesLoading: boolean;
   /** Last Snap load error message (for UI), cleared on success. */
   lensesError: string | null;
