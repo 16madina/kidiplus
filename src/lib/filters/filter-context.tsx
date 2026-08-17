@@ -98,10 +98,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       // Vraies lenses AR d'abord, puis les styles CSS.
       lenses: [NONE_LENS, ...snapLenses, ...LENSES.filter((l) => l.lensId !== "none")],
       loadLenses,
+      refreshLenses,
       lensesLoading,
       lensesError,
     }),
-    [activeLens, snapLenses, loadLenses, lensesLoading, lensesError],
+    [activeLens, snapLenses, loadLenses, refreshLenses, lensesLoading, lensesError],
   );
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
