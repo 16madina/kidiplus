@@ -58,13 +58,16 @@ export function VitrineCommentsSheet({
       if (!alive) return;
       setRows(r);
       setLoading(false);
-      if (highlightCommentId) {
-        window.setTimeout(() => {
-          const el = document.getElementById(`vitrine-comment-${highlightCommentId}`);
-          el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 420);
+      // Pre-expand the thread containing a deep-linked reply so the target
+      // row is mounted before we try to scroll to it.
+      const target = highlightCommentId
+        ? r.find((c) => c.id === highlightCommentId)
+        : null;
+      if (target?.parent_id) {
+        setOpenThreads((prev) => ({ ...prev, [target.parent_id as string]: true }));
       }
     });
+
     // Focus after bottom-sheet slide-up so iOS opens the keyboard.
     // Skip auto-focus when deep-linking to a specific comment (avoid stealing scroll).
     const tFocus = window.setTimeout(() => {
