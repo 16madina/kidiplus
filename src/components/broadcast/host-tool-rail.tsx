@@ -29,14 +29,37 @@ export type HostToolRailProps = {
   align?: "left" | "right";
 };
 
+// Icônes : une seule taille et une seule graisse de trait pour toute la barre,
+// sinon le micro paraît plus lourd que le bouclier à l'écran.
+const ICON = 19;
+const STROKE = 1.9;
+
 const btn =
-  "!min-h-11 !min-w-11 h-11 w-11 rounded-full text-white grid place-items-center";
+  "!min-h-11 !min-w-11 h-11 w-11 rounded-full text-white grid place-items-center transition-colors";
 const btnStyle = {
-  backgroundColor: "rgba(0,0,0,0.55)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.12)",
+  backgroundColor: "rgba(10,12,20,0.42)",
+  backdropFilter: "blur(18px) saturate(140%)",
+  WebkitBackdropFilter: "blur(18px) saturate(140%)",
+  border: "1px solid rgba(255,255,255,0.16)",
+  boxShadow:
+    "0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.14)",
 };
+
+const offStyle = {
+  backgroundColor: "rgba(216,44,52,0.82)",
+  border: "1px solid rgba(255,255,255,0.28)",
+  boxShadow:
+    "0 6px 18px rgba(150,20,25,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+};
+
+/** Anneau or + halo doux quand l'outil est actif. */
+const activeStyle = {
+  border: "1.5px solid oklch(0.85 0.18 90)",
+  color: "oklch(0.88 0.16 90)",
+  boxShadow:
+    "0 0 0 3px color-mix(in oklab, oklch(0.85 0.18 90) 18%, transparent), 0 6px 18px rgba(0,0,0,0.35)",
+};
+
 
 export function HostToolRail({
   micOn = true,
@@ -65,7 +88,7 @@ export function HostToolRail({
   const battle = layout === "battle";
   return (
     <div
-      className="pointer-events-none absolute z-30 flex flex-col items-center gap-2"
+      className="pointer-events-none absolute z-30 flex flex-col items-center gap-2.5 [&_svg]:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       style={
         battle
           ? {
@@ -92,12 +115,13 @@ export function HostToolRail({
           onClick={() => { haptic.selection(); onToggleMic(); }}
           aria-label={micOn ? "Couper le micro" : "Réactiver le micro"}
           className={`${btn} pointer-events-auto`}
-          style={{
-            ...btnStyle,
-            backgroundColor: micOn ? btnStyle.backgroundColor : "rgba(220,30,40,0.9)",
-          }}
+          style={micOn ? btnStyle : { ...btnStyle, ...offStyle }}
         >
-          {micOn ? <Mic size={16} /> : <MicOff size={16} />}
+          {micOn ? (
+            <Mic size={ICON} strokeWidth={STROKE} />
+          ) : (
+            <MicOff size={ICON} strokeWidth={STROKE} />
+          )}
         </Press>
       )}
       {!hideAV && onToggleCam && (
@@ -105,12 +129,13 @@ export function HostToolRail({
           onClick={() => { haptic.selection(); onToggleCam(); }}
           aria-label={camOn ? "Couper la caméra" : "Activer la caméra"}
           className={`${btn} pointer-events-auto`}
-          style={{
-            ...btnStyle,
-            backgroundColor: camOn ? btnStyle.backgroundColor : "rgba(220,30,40,0.9)",
-          }}
+          style={camOn ? btnStyle : { ...btnStyle, ...offStyle }}
         >
-          {camOn ? <Video size={16} /> : <VideoOff size={16} />}
+          {camOn ? (
+            <Video size={ICON} strokeWidth={STROKE} />
+          ) : (
+            <VideoOff size={ICON} strokeWidth={STROKE} />
+          )}
         </Press>
       )}
       {!hideAV && canFlip && onFlip && (
@@ -121,14 +146,9 @@ export function HostToolRail({
           onClick={() => { haptic.selection(); onOpenFilters(); }}
           aria-label="Filtres"
           className={`${btn} pointer-events-auto`}
-          style={{
-            ...btnStyle,
-            outline: filtersActive ? "2px solid oklch(0.85 0.18 90)" : undefined,
-            outlineOffset: -2,
-            color: filtersActive ? "oklch(0.85 0.18 90)" : "white",
-          }}
+          style={filtersActive ? { ...btnStyle, ...activeStyle } : btnStyle}
         >
-          <Sparkles size={16} />
+          <Sparkles size={ICON} strokeWidth={STROKE} />
         </Press>
       )}
       {onOpenBattle && (
@@ -136,14 +156,9 @@ export function HostToolRail({
           onClick={() => { haptic.selection(); onOpenBattle(); }}
           aria-label={t("battle.rail")}
           className={`${btn} pointer-events-auto`}
-          style={{
-            ...btnStyle,
-            outline: battleActive ? "2px solid oklch(0.85 0.18 90)" : undefined,
-            outlineOffset: -2,
-            color: battleActive ? "oklch(0.85 0.18 90)" : "white",
-          }}
+          style={battleActive ? { ...btnStyle, ...activeStyle } : btnStyle}
         >
-          <Swords size={16} />
+          <Swords size={ICON} strokeWidth={STROKE} />
         </Press>
       )}
       {onOpenModerators && (
@@ -151,27 +166,26 @@ export function HostToolRail({
           onClick={() => { haptic.selection(); onOpenModerators(); }}
           aria-label="Modérateurs"
           className={`${btn} pointer-events-auto`}
-          style={{
-            ...btnStyle,
-            outline: moderatorsOpen ? "2px solid oklch(0.85 0.18 90)" : undefined,
-            outlineOffset: -2,
-          }}
+          style={moderatorsOpen ? { ...btnStyle, ...activeStyle } : btnStyle}
         >
-          <Shield size={16} />
+          <Shield size={ICON} strokeWidth={STROKE} />
         </Press>
       )}
       {onAddProduct && (
         <Press
           onClick={() => { haptic.medium(); onAddProduct(); }}
           aria-label="Ajouter un produit"
-          className={`${btn} pointer-events-auto`}
+          className={`${btn} pointer-events-auto mt-1`}
           style={{
             ...btnStyle,
             backgroundColor: "oklch(0.85 0.18 90)",
+            border: "1px solid color-mix(in oklab, oklch(0.92 0.14 90) 70%, transparent)",
             color: "#10162B",
+            boxShadow:
+              "0 0 18px color-mix(in oklab, oklch(0.85 0.18 90) 38%, transparent), 0 6px 18px rgba(0,0,0,0.35)",
           }}
         >
-          <Plus size={18} />
+          <Plus size={22} strokeWidth={2.6} />
         </Press>
       )}
     </div>
@@ -192,7 +206,11 @@ function FlipButton({ onFlip, busy }: { onFlip: () => void; busy?: boolean }) {
         className={`${btn} pointer-events-auto`}
         style={{ ...btnStyle, opacity: busy ? 0.55 : 1 }}
       >
-        <RefreshCw size={16} className={busy ? "animate-spin" : undefined} />
+        <RefreshCw
+          size={ICON}
+          strokeWidth={STROKE}
+          className={busy ? "animate-spin" : undefined}
+        />
       </Press>
     </motion.div>
   );
