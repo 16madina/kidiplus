@@ -3147,6 +3147,10 @@ export type Database = {
         }
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_battle_opponent_of_live: {
+        Args: { _live_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_live_moderator: {
         Args: { _live_id: string; _user_id: string }
         Returns: boolean
