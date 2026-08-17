@@ -380,16 +380,19 @@ function MediaSlide({
               src={url}
               poster={poster ?? undefined}
               className={mediaClass}
-              autoPlay={shouldPlay}
+              autoPlay
               muted={muted || !shouldPlay || volume <= 0.001}
               loop
               playsInline
-              preload={shouldPlay ? "auto" : "metadata"}
+              preload="auto"
               controls={false}
               onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
-              onPlaying={() => setStatus("ready")}
+              onPlaying={() => {
+                setStatus("ready");
+                setBlocked(false);
+              }}
               onError={() => {
                 setStatus("error");
                 reportBrokenMedia(url);
@@ -399,7 +402,31 @@ function MediaSlide({
           )}
         </Fit916>
         {overlay}
+        {asVideo && blocked && shouldPlay && status !== "error" && (
+          <button
+            type="button"
+            data-no-pause
+            aria-label="Play"
+            onClick={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              v.muted = muted || volume <= 0.001;
+              v.volume = v.muted ? 0 : volume;
+              void v.play().then(() => setBlocked(false)).catch(() => {
+                v.muted = true;
+                void v.play().then(() => setBlocked(false)).catch(() => undefined);
+              });
+            }}
+            className="absolute inset-0 z-[15] grid place-items-center"
+          >
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white">
+              <Play size={28} fill="white" />
+            </span>
+          </button>
+        )}
       </div>
+
     );
   }
   return (
