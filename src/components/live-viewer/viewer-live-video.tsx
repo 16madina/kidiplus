@@ -3,6 +3,7 @@
 // host is not connected yet, or after they leave.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Volume2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import {
   RoomEvent,
