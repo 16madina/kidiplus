@@ -82,6 +82,9 @@ export function PushScreen({
 }) {
   const [mountedKey] = useState(0);
   const x = useMotionValue(0);
+  // Dim + parallax of the screen underneath follow the swipe progress.
+  const dimOpacity = useTransform(x, [0, 400], [0.32, 0]);
+  const shadowOpacity = useTransform(x, [0, 400], [0.25, 0]);
   const entryIdRef = useRef<number | null>(null);
 
   const onCloseRef = useRef(onClose);
@@ -99,10 +102,12 @@ export function PushScreen({
     };
     entryIdRef.current = entry.id;
     overlayStack.push(entry);
+    const detachWebBack = attachWebBack();
     return () => {
       const i = overlayStack.indexOf(entry);
       if (i >= 0) overlayStack.splice(i, 1);
       if (entryIdRef.current === entry.id) entryIdRef.current = null;
+      detachWebBack();
     };
   }, [open, zIndex]);
 
@@ -122,10 +127,25 @@ export function PushScreen({
     typeof document !== "undefined" ? (
       <AnimatePresence>
         {open && (
+          <motion.div key={`push-dim-${mountedKey}`} className="fixed inset-0 bg-black"
+            style={{ opacity: dimOpacity, zIndex: zIndex - 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.32 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE_IOS }}
+          />
+        )}
+        {open && (
           <motion.div
             key={`push-${mountedKey}`}
             className="fixed inset-0 flex flex-col overflow-hidden bg-background"
-            style={{ x, zIndex }}
+            style={{
+              x,
+              zIndex,
+              boxShadow: "-12px 0 32px rgba(0,0,0,0.18)",
+              opacity: 1,
+              ["--kp-push-shadow" as string]: shadowOpacity,
+            }}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -133,17 +153,27 @@ export function PushScreen({
           >
             {swipeBackEnabled ? (
               <motion.div
-                className="absolute inset-y-0 left-0 z-40 w-5"
+                className="absolute inset-y-0 left-0 z-40 w-7"
+                style={{ touchAction: "pan-y" }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={{ left: 0, right: 0.6 }}
+                dragElastic={{ left: 0, right: 0.85 }}
+                dragMomentum={false}
                 onDrag={(_, i) => x.set(Math.max(0, i.offset.x))}
                 onDragEnd={(_, i) => {
-                  if (i.offset.x > 100 || i.velocity.x > 500) requestClose();
-                  else animate(x, 0, { duration: 0.22, ease: EASE_IOS });
+                  if (i.offset.x > 90 || i.velocity.x > 450) {
+                    animate(x, window.innerWidth, {
+                      duration: 0.18,
+                      ease: EASE_IOS,
+                    });
+                    requestClose();
+                  } else {
+                    animate(x, 0, { duration: 0.22, ease: EASE_IOS });
+                  }
                 }}
               />
             ) : null}
+
 
             <header
               className="relative z-30 shrink-0 pt-safe"
