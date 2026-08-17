@@ -34,6 +34,8 @@ type FilterContextValue = {
   lenses: Lens[];
   /** Charge les vraies lenses Snap du groupe (no-op si déjà fait). */
   loadLenses: () => void;
+  /** Recharge le groupe en ignorant le cache (nouvelles lenses ajoutées). */
+  refreshLenses: () => void;
   lensesLoading: boolean;
   /** Last Snap load error message (for UI), cleared on success. */
   lensesError: string | null;
@@ -48,8 +50,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [lensesError, setLensesError] = useState<string | null>(null);
   const loadStartedRef = useRef(false);
 
-  const loadLenses = useCallback(() => {
-    if (loadStartedRef.current) return;
+  const runLoad = useCallback((force: boolean) => {
+    if (loadStartedRef.current && !force) return;
     if (!isCameraKitSupported()) {
       setLensesError("Camera Kit non supporté sur cet appareil");
       return;
@@ -57,7 +59,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     loadStartedRef.current = true;
     setLensesLoading(true);
     setLensesError(null);
-    loadSnapLenses()
+    loadSnapLenses(force)
       .then((lenses) => {
         setSnapLenses(
           lenses.map((l) => ({
@@ -84,6 +86,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       .finally(() => setLensesLoading(false));
   }, []);
 
+  const loadLenses = useCallback(() => runLoad(false), [runLoad]);
+  const refreshLenses = useCallback(() => runLoad(true), [runLoad]);
+
   const value = useMemo<FilterContextValue>(
     () => ({
       activeLens,
@@ -93,10 +98,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       // Vraies lenses AR d'abord, puis les styles CSS.
       lenses: [NONE_LENS, ...snapLenses, ...LENSES.filter((l) => l.lensId !== "none")],
       loadLenses,
+      refreshLenses,
       lensesLoading,
       lensesError,
     }),
-    [activeLens, snapLenses, loadLenses, lensesLoading, lensesError],
+    [activeLens, snapLenses, loadLenses, refreshLenses, lensesLoading, lensesError],
   );
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
@@ -114,6 +120,7 @@ export function useFilter(): FilterContextValue {
       cssFilter: "none",
       lenses: LENSES,
       loadLenses: () => {},
+      refreshLenses: () => {},
       lensesLoading: false,
       lensesError: null,
     };
