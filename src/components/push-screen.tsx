@@ -161,10 +161,12 @@ export function PushScreen({
     typeof document !== "undefined" ? (
       <AnimatePresence>
         {open && (
-          <motion.div key={`push-dim-${mountedKey}`} className="fixed inset-0 bg-black"
-            style={{ opacity: dimOpacity, zIndex: zIndex - 1 }}
+          <motion.div
+            key={`push-dim-${mountedKey}`}
+            className="fixed inset-0 bg-black"
+            style={{ zIndex: zIndex - 1 }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.32 }}
+            animate={{ opacity: 0.28 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE_IOS }}
           />
@@ -177,6 +179,7 @@ export function PushScreen({
               x,
               zIndex,
               boxShadow: "-12px 0 32px rgba(0,0,0,0.18)",
+
               opacity: 1,
               ["--kp-push-shadow" as string]: shadowOpacity,
             }}
