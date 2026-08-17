@@ -29,14 +29,37 @@ export type HostToolRailProps = {
   align?: "left" | "right";
 };
 
+// Icônes : une seule taille et une seule graisse de trait pour toute la barre,
+// sinon le micro paraît plus lourd que le bouclier à l'écran.
+const ICON = 19;
+const STROKE = 1.9;
+
 const btn =
-  "!min-h-11 !min-w-11 h-11 w-11 rounded-full text-white grid place-items-center";
+  "!min-h-11 !min-w-11 h-11 w-11 rounded-full text-white grid place-items-center transition-colors";
 const btnStyle = {
-  backgroundColor: "rgba(0,0,0,0.55)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.12)",
+  backgroundColor: "rgba(10,12,20,0.42)",
+  backdropFilter: "blur(18px) saturate(140%)",
+  WebkitBackdropFilter: "blur(18px) saturate(140%)",
+  border: "1px solid rgba(255,255,255,0.16)",
+  boxShadow:
+    "0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.14)",
 };
+
+const offStyle = {
+  backgroundColor: "rgba(216,44,52,0.82)",
+  border: "1px solid rgba(255,255,255,0.28)",
+  boxShadow:
+    "0 6px 18px rgba(150,20,25,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+};
+
+/** Anneau or + halo doux quand l'outil est actif. */
+const activeStyle = {
+  border: "1.5px solid oklch(0.85 0.18 90)",
+  color: "oklch(0.88 0.16 90)",
+  boxShadow:
+    "0 0 0 3px color-mix(in oklab, oklch(0.85 0.18 90) 18%, transparent), 0 6px 18px rgba(0,0,0,0.35)",
+};
+
 
 export function HostToolRail({
   micOn = true,
