@@ -276,15 +276,29 @@ function MediaSlide({
 
   const overlay =
     status === "error" ? (
-      <div className="absolute inset-0 z-[5] grid place-items-center bg-black px-8 text-center">
-        <p className="text-[14px] font-medium text-white/70">
-          {asVideo
-            ? t("vitrine.videoUnsupported", {
-                defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
-              })
-            : t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
-        </p>
+      <div className="absolute inset-0 z-[5]">
+        {asVideo && poster ? (
+          <img
+            src={poster}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+            decoding="async"
+          />
+        ) : null}
+        <div className="absolute inset-0 grid place-items-center bg-black/60 px-8 text-center">
+          <p className="text-[14px] font-medium text-white/75">
+            {asVideo
+              ? t("vitrine.videoUnsupported", {
+                  defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
+                })
+              : t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+          </p>
+        </div>
       </div>
+
+
 
     ) : status === "loading" && eager ? (
       <div className="absolute inset-0 z-[5] grid place-items-center bg-black/40">
