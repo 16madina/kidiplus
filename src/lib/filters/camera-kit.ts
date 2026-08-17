@@ -98,8 +98,15 @@ export function getCameraKit(): Promise<CameraKit> {
 let lensesCache: SnapLens[] | null = null;
 let lensesPromise: Promise<SnapLens[]> | null = null;
 
+/** Vide le cache mémoire des lenses (pour re-télécharger le groupe). */
+export function clearSnapLensesCache(): void {
+  lensesCache = null;
+  lensesPromise = null;
+}
+
 /** Charge (et met en cache) les lenses du groupe KIDI+. */
-export function loadSnapLenses(): Promise<SnapLens[]> {
+export function loadSnapLenses(force = false): Promise<SnapLens[]> {
+  if (force) clearSnapLensesCache();
   if (lensesCache) return Promise.resolve(lensesCache);
   if (!lensesPromise) {
     lensesPromise = (async () => {
