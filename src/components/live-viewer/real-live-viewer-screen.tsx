@@ -18,6 +18,7 @@ import { liveShareUrl } from "@/lib/deep-links";
 import { usePush } from "@/lib/push";
 import { useLiveRoom } from "@/lib/live-room";
 import { placeBidInDb, type LiveProductRow } from "@/lib/lives-db";
+import { useBattleForLive, useOpponentBattleProducts } from "@/lib/battles-db";
 import { createLiveOrder, fetchOrderById, type OrderRow } from "@/lib/orders-db";
 import { fetchDeliverySettings } from "@/lib/delivery-db";
 import { fetchDefaultAddress } from "@/lib/addresses-db";
@@ -48,7 +49,12 @@ import { WinnerReveal } from "./winner-reveal";
 import { SuddenDeathFlash } from "./sudden-death-flash";
 import { AuctionFinalCountdown } from "./auction-final-countdown";
 import { BidPulseFlash } from "./bid-pulse-flash";
-import { ViewerLiveVideo, type ViewerStatus } from "./viewer-live-video";
+import { ViewerLiveVideo, type ViewerLiveVideoProps, type ViewerStatus } from "./viewer-live-video";
+import { BattleProvider, useBattle } from "@/lib/battle-context";
+import { BattleScoreHud } from "@/components/battle/battle-score-hud";
+import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
+import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
+import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
 import { LivePeekSlide, prefetchLivePeek } from "./live-peek-slide";
 import { LivePipShell, useLivePip } from "./live-pip-shell";
 import { ReportSheet } from "@/components/moderation/report-sheet";
@@ -132,6 +138,7 @@ function toProduct(
   row: LiveProductRow,
   activeId: string | null,
   t: (key: string, fallback: string) => string,
+  sellerName?: string,
 ): Product {
   const status: Product["status"] =
     row.status === "sold" || row.status === "out" || row.status === "unsold"
@@ -160,6 +167,7 @@ function toProduct(
     description: row.description,
     colors,
     sizes,
+    sellerName,
   };
 }
 
@@ -212,6 +220,15 @@ export function RealLiveViewerScreen() {
     isHost: false,
     isModerator,
   });
+  const liveBattle = useBattleForLive(active?.liveId ?? null);
+  const opponentLive =
+    liveBattle?.session.status === "running" || liveBattle?.session.status === "sudden_death"
+      ? liveBattle.lives.find((l) => l.live_id !== active?.liveId) ?? null
+      : null;
+  const opponentProducts = useOpponentBattleProducts(
+    opponentLive?.live_id ?? null,
+    !!opponentLive,
+  );
   const [viewerVideoStatus, setViewerVideoStatus] = useState<ViewerStatus>("connecting");
   const [hostDisconnectEnded, setHostDisconnectEnded] = useState(false);
   const liveEnded = room.liveStatus === "ended" || hostDisconnectEnded;
@@ -1033,10 +1050,16 @@ export function RealLiveViewerScreen() {
     close();
     return null;
   }
-  const productsForSheet = room.products.map((r) => toProduct(r, activeAuctionId, t));
+  const productsForSheet = [
+    ...room.products.map((r) => toProduct(r, activeAuctionId, t, active.seller)),
+    ...opponentProducts.map((r) =>
+      toProduct(r, null, t, opponentLive?.display_name),
+    ),
+  ];
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
 
   return (
+  <BattleProvider liveId={active.liveId ?? null} userId={user?.id ?? null}>
     <LivePipShell>
       {/* Current live — slides with the finger; remounts on active.id only. */}
       <motion.div
@@ -1045,7 +1068,7 @@ export function RealLiveViewerScreen() {
         style={{ y: chromeHidden ? 0 : dragY }}
       >
       {active.roomName ? (
-        <ViewerLiveVideo
+        <BattleAwareViewerVideo
           room={active.roomName}
           identity={isGuest ? identity : `viewer_${identity.slice(0, 8)}`}
           name={displayName}
@@ -1421,7 +1444,9 @@ export function RealLiveViewerScreen() {
         onBuyFixed={(p) => {
           if (liveEnded) return;
           setShowProducts(false);
-          const row = room.products.find((r) => r.id === p.id);
+          const row =
+            room.products.find((r) => r.id === p.id) ??
+            opponentProducts.find((r) => r.id === p.id);
           if (row) void startFixedPurchase(row);
         }}
         disabled={liveEnded}
@@ -1444,12 +1469,16 @@ export function RealLiveViewerScreen() {
         onClose={() => setPendingOrder(null)}
         productColors={
           pendingOrder?.product_id
-            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.colors ?? [])
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.colors
+                ?? opponentProducts.find((p) => p.id === pendingOrder.product_id)?.colors
+                ?? [])
             : []
         }
         productSizes={
           pendingOrder?.product_id
-            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.sizes ?? [])
+            ? (room.products.find((p) => p.id === pendingOrder.product_id)?.sizes
+                ?? opponentProducts.find((p) => p.id === pendingOrder.product_id)?.sizes
+                ?? [])
             : []
         }
         onOrderPatched={(o) => setPendingOrder(o)}
@@ -1650,6 +1679,75 @@ export function RealLiveViewerScreen() {
       </>
       )}
     </LivePipShell>
+  </BattleProvider>
+  );
+}
+
+function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
+  const battle = useBattle();
+  const [saleFlash, setSaleFlash] = useState<string | null>(null);
+  const seenSaleRef = useRef<string | null>(null);
+  useEffect(() => {
+    const text = battle.lastSaleText;
+    const at = battle.session?.lastSaleAt;
+    if (!text || !at || !battle.isRunning) return;
+    const key = `${text}:${at}`;
+    if (seenSaleRef.current === key) return;
+    if (Date.now() - at > 8000) return;
+    seenSaleRef.current = key;
+    setSaleFlash(text);
+    const id = window.setTimeout(() => setSaleFlash(null), 2800);
+    return () => window.clearTimeout(id);
+  }, [battle.lastSaleText, battle.session?.lastSaleAt, battle.isRunning]);
+
+  return (
+    <>
+      <ViewerLiveVideo {...props} layout={battle.isRunning ? "split" : "single"} />
+      {battle.isRunning && battle.session && (
+        <div
+          className="absolute inset-x-0 z-[34]"
+          style={{ top: "calc(env(safe-area-inset-top) + 52px)" }}
+        >
+          <BattleScoreHud
+            session={battle.session}
+            remainingMs={battle.remainingMs}
+            turnRemainingMs={battle.turnRemainingMs}
+            turnName={
+              battle.session.turnSide === "b"
+                ? battle.session.sideB.displayName
+                : battle.session.sideA.displayName
+            }
+          />
+        </div>
+      )}
+      {battle.isRunning && (
+        <BattleCountdownOverlay remainingMs={battle.countdownMs} />
+      )}
+      <BattleSuddenDeathOverlay
+        active={!!battle.session?.suddenDeath && battle.isRunning}
+      />
+      <AnimatePresence>
+        {saleFlash && (
+          <motion.div
+            key={saleFlash}
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute left-1/2 top-28 z-40 -translate-x-1/2 rounded-full px-4 py-2 text-[13px] font-bold text-white"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.72 0.2 145), oklch(0.62 0.2 155))",
+            }}
+          >
+            {saleFlash}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <BattleResultOverlay
+        open={battle.resultOpen}
+        session={battle.session}
+        onDone={battle.dismissResult}
+      />
+    </>
   );
 }
 

@@ -24,6 +24,16 @@ import {
 } from "@/lib/tiktok-restream";
 import { useFilter } from "@/lib/filters/filter-context";
 import { useLiveEffects } from "@/lib/filters/live-effects-context";
+import { useBattle } from "@/lib/battle-context";
+import { battleOpponentHasActiveAuction, isBattleGuestIdentity, useOpponentBattleProducts } from "@/lib/battles-db";
+import { useBattleGuestPublish } from "@/lib/battle-guest-publish";
+import { BattleInviteSheet } from "@/components/battle/battle-invite-sheet";
+import { BattleIncomingInviteSheet } from "@/components/battle/battle-incoming-invite-sheet";
+import { BattleSplitStage } from "@/components/battle/battle-split-stage";
+import { BattleScoreHud } from "@/components/battle/battle-score-hud";
+import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
+import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
+import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
 import { ModeratorPromoteForm } from "./moderator-promote-form";
 import {
   muteLiveChatUser,
@@ -120,11 +130,53 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const { activeLens } = useFilter();
+  const { activeLens, clearLens } = useFilter();
   const liveEffects = useLiveEffects();
+  const battle = useBattle();
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
   const videoHandleRef = useRef<BroadcastVideoHandle>(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const getBattleSourceTrack = useCallback(
+    () => videoHandleRef.current?.getCameraTrack() ?? null,
+    [],
+  );
+  const opponentFighter = useMemo(() => {
+    if (!battle.session || !user?.id) return null;
+    return battle.session.sideA.sellerId === user.id
+      ? battle.session.sideB
+      : battle.session.sideA;
+  }, [battle.session, user?.id]);
+  const opponentProducts = useOpponentBattleProducts(
+    opponentFighter?.liveId ?? null,
+    battle.isRunning,
+  );
+  const opponentRoomName = useMemo(() => {
+    if (!battle.session || !user?.id) return null;
+    const mine =
+      battle.session.sideA.sellerId === user.id
+        ? battle.session.sideA
+        : battle.session.sideB;
+    const other =
+      mine.sellerId === battle.session.sideA.sellerId
+        ? battle.session.sideB
+        : battle.session.sideA;
+    return other.roomName;
+  }, [battle.session, user?.id]);
+  const [remoteBattleTracks, setRemoteBattleTracks] = useState<
+    { identity: string; track: import("livekit-client").RemoteTrack }[]
+  >([]);
+  const guestTrack =
+    remoteBattleTracks.find((x) => isBattleGuestIdentity(x.identity))?.track ??
+    remoteBattleTracks[0]?.track ??
+    null;
+  const remoteBattleStatus = useBattleGuestPublish({
+    enabled: !!battle.isRunning && !isRtmp,
+    userId: user?.id ?? null,
+    displayName: profile?.display_name || b.hostName || "Host",
+    remoteRoomName: opponentRoomName,
+    getSourceTrack: getBattleSourceTrack,
+    facingKey: facing,
+  });
   const { moderators } = useModerators(b.liveId);
   const chatMutes = useLiveChatMutes(b.liveId);
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,6 +229,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       }
     };
   }, [localImageMap]);
+
+  useEffect(() => {
+    if (!battle.isRunning) return;
+    clearLens();
+    liveEffects.clearAll();
+    setFiltersOpen(false);
+  }, [battle.isRunning, clearLens, liveEffects.clearAll]);
+
   const imgFor = useCallback(
     (p: LiveProductRow) => p.image_url || localImageMap.get(p.id) || null,
     [localImageMap],
@@ -451,6 +511,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.warning();
   }, [room.lastExtension]);
 
+  useEffect(() => {
+    if (battle.session?.suddenDeath) {
+      setSuddenDeathTick((n) => n + 1);
+    }
+  }, [battle.session?.suddenDeath]);
+
   // React to auction:end (from ourselves too) — flash + confetti + system msg + reveal.
   const [winnerReveal, setWinnerReveal] = useState<{
     key: string;
@@ -548,6 +614,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
   }, [room.lastAuctionEnd, t, room, fmt, resolveWinnerAvatar]);
+
+  const seenBattleSaleRef = useRef<string | null>(null);
+  useEffect(() => {
+    const text = battle.lastSaleText;
+    const at = battle.session?.lastSaleAt;
+    if (!text || !at || !battle.isRunning) return;
+    const key = `${text}:${at}`;
+    if (seenBattleSaleRef.current === key) return;
+    if (at < joinedAtRef.current - 1000) return;
+    seenBattleSaleRef.current = key;
+    setLastSaleFlash(text);
+    setConfettiTrigger((n) => n + 1);
+    haptic.success();
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 2800);
+  }, [battle.lastSaleText, battle.session?.lastSaleAt, battle.isRunning]);
 
   // Host-visible bid flash for every new realtime bid.
   const seenBidRef = useRef<number | null>(null);
@@ -692,6 +774,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
       return;
     }
+    if (battle.isRunning && b.liveId) {
+      if (!battle.session?.suddenDeath && !battle.isMyTurn) {
+        toast.error(t("battle.turn.notYours"));
+        return;
+      }
+      const locked = await battleOpponentHasActiveAuction(b.liveId);
+      if (locked) {
+        toast.error(t("battle.turn.wait"));
+        return;
+      }
+    }
     haptic.medium();
     setFeaturedId(p.id);
     // Relaunch / rejouer — allow this product back onto the star card.
@@ -820,6 +913,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleYoutubeRestream = async () => {
     if (!b.liveId || isRtmp || ytBusy) return;
+    if (!ytRestreaming && battle.isRunning) {
+      toast.error(t("battle.blocked.restreamOn"));
+      return;
+    }
     if (!ytConnected) {
       toast.error(
         t(
@@ -864,6 +961,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleFacebookRestream = async () => {
     if (!b.liveId || isRtmp || fbBusy) return;
+    if (!fbRestreaming && battle.isRunning) {
+      toast.error(t("battle.blocked.restreamOn"));
+      return;
+    }
     if (!fbReady) {
       toast.error(
         t(
@@ -901,6 +1002,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleTiktokRestream = async () => {
     if (!b.liveId || isRtmp || ttBusy) return;
+    if (!ttRestreaming && battle.isRunning) {
+      toast.error(t("battle.blocked.restreamOn"));
+      return;
+    }
     haptic.selection();
     if (ttRestreaming) {
       setTtBusy(true);
@@ -929,6 +1034,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     streamKey: string;
   }) => {
     if (!b.liveId || ttBusy) return;
+    if (battle.isRunning) {
+      toast.error(t("battle.blocked.restreamOn"));
+      return;
+    }
     setTtBusy(true);
     try {
       await startTiktokRestream({
@@ -1119,25 +1228,34 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       transition={{ duration: 0.3, ease: EASE_IOS }}
       className="relative h-full w-full overflow-hidden bg-black"
     >
-      <BroadcastVideo
-        ref={videoHandleRef}
-        facing={facing}
-        enabled={isRtmp ? true : cameraOn}
-        micEnabled={isRtmp ? false : micOn}
-        videoSource={isRtmp ? "rtmp" : "camera"}
-        ingressIdentity={b.rtmpCreds?.participantIdentity}
-        fallbackImage={b.cover}
-        retryKey={retryKey}
-        onStatus={setVideoStatus}
-        onCanFlipChange={setCanFlip}
-        onFlipBusyChange={setFlipBusy}
-        onFacingApplied={(applied) => setFacing(applied)}
-        onFlipRevert={(prev) => setFacing(prev)}
-        onMicSync={(enabled) => setMicOn(enabled)}
-        livekit={
-          b.roomName && b.hostIdentity
-            ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
-            : undefined
+      <BattleSplitStage
+        active={!!battle.isRunning}
+        session={battle.session}
+        guestTrack={guestTrack}
+        guestStatus={remoteBattleStatus}
+        hostVideo={
+          <BroadcastVideo
+            ref={videoHandleRef}
+            facing={facing}
+            enabled={isRtmp ? true : cameraOn}
+            micEnabled={isRtmp ? false : micOn}
+            videoSource={isRtmp ? "rtmp" : "camera"}
+            ingressIdentity={b.rtmpCreds?.participantIdentity}
+            fallbackImage={b.cover}
+            retryKey={retryKey}
+            onStatus={setVideoStatus}
+            onCanFlipChange={setCanFlip}
+            onFlipBusyChange={setFlipBusy}
+            onFacingApplied={(applied) => setFacing(applied)}
+            onFlipRevert={(prev) => setFacing(prev)}
+            onMicSync={(enabled) => setMicOn(enabled)}
+            onRemoteVideosChange={setRemoteBattleTracks}
+            livekit={
+              b.roomName && b.hostIdentity
+                ? { room: b.roomName, identity: b.hostIdentity, name: b.hostName }
+                : undefined
+            }
+          />
         }
       />
 
@@ -1263,6 +1381,26 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       )}
 
       {/* Session stats strip (metrics only). Keep clear of the featured card. */}
+      {battle.isRunning && battle.session ? (
+        <div
+          className="absolute z-[34] inset-x-0"
+          style={{ top: "calc(env(safe-area-inset-top) + 48px)" }}
+        >
+          <BattleScoreHud
+            session={battle.session}
+            remainingMs={battle.remainingMs}
+            turnRemainingMs={battle.turnRemainingMs}
+            turnName={
+              battle.session.turnSide === "b"
+                ? battle.session.sideB.displayName
+                : battle.session.sideA.displayName
+            }
+            onForfeit={() => {
+              void battle.endBattle("forfeit", user?.id ?? battle.session?.sideA.sellerId);
+            }}
+          />
+        </div>
+      ) : (
       <div
         className="absolute z-30"
         style={{
@@ -1359,6 +1497,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           </div>
         )}
       </div>
+      )}
 
       <FloatingHearts useBus />
       <Confetti trigger={confettiTrigger} />
@@ -1652,7 +1791,21 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         flipBusy={flipBusy}
         moderatorsOpen={moderatorsSheetOpen}
         filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
-        onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+        onOpenFilters={
+          isRtmp || battle.isRunning ? undefined : () => setFiltersOpen((o) => !o)
+        }
+        battleActive={battle.isRunning}
+        onOpenBattle={() => {
+          if (ytRestreaming || fbRestreaming || ttRestreaming) {
+            toast.error(t("battle.blocked.restreamActive"));
+            return;
+          }
+          if (battle.isRunning) {
+            toast(t("battle.blocked.alreadyRunning"));
+            return;
+          }
+          battle.openInvite();
+        }}
         onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
         onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
         onFlip={
@@ -1911,6 +2064,43 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               })}
             </ul>
 
+            {battle.isRunning && opponentProducts.length > 0 && (
+              <div className="mt-5">
+                <p className="pb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {t("battle.products.opponent", {
+                    name: opponentFighter?.displayName ?? t("battle.unknownSeller"),
+                  })}
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {opponentProducts.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center gap-3 rounded-2xl border p-2.5"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      <LiveProductImage
+                        src={p.image_url}
+                        className="h-14 w-14 rounded-xl object-cover"
+                        placeholderClassName="bg-muted"
+                        iconClassName="text-muted-foreground"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-semibold">{p.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {p.mode === "auction"
+                            ? `${fmt(p.start_price)} · ${p.timer_seconds}s`
+                            : `${fmt(p.price)} · stock ${Math.max(0, p.stock)}`}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                        {opponentFighter?.displayName}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Moderators — host manages who can help with product actions. */}
             <div className="mt-5">
               <div className="flex items-center gap-2 pb-2">
@@ -2013,6 +2203,68 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         onClose={() => setShopPickerOpen(false)}
         onConfirm={(items) => {
           for (const it of items) void onAddProductMidLive(it);
+        }}
+      />
+      <BattleInviteSheet
+        open={battle.inviteOpen}
+        onClose={battle.closeInvite}
+        excludeSellerId={user?.id ?? null}
+        onInvite={(draft, durationSec) => {
+          void battle.sendInvite(draft, durationSec).then((res) => {
+            if (!res.ok) {
+              toast.error(
+                res.error === "not_live"
+                  ? t("battle.invite.notLiveHint")
+                  : res.error === "restream_active"
+                    ? t("battle.blocked.restreamActive")
+                    : res.error === "target_busy" || res.error === "already_in_battle"
+                      ? t("battle.blocked.alreadyRunning")
+                      : t("battle.invite.failed"),
+              );
+            } else {
+              toast.success(t("battle.invite.sent"));
+            }
+          });
+        }}
+      />
+      <BattleIncomingInviteSheet
+        invite={battle.incoming}
+        onDecline={() => { void battle.declineIncoming(); }}
+        onAccept={(durationSec) => {
+          void battle.acceptIncoming(durationSec).then((res) => {
+            if (!res.ok) {
+              toast.error(
+                res.error === "expired"
+                  ? t("battle.incoming.expired")
+                  : t("battle.invite.failed"),
+              );
+            }
+          });
+        }}
+      />
+      {battle.isRunning && (
+        <BattleCountdownOverlay remainingMs={battle.countdownMs} />
+      )}
+      <BattleSuddenDeathOverlay
+        active={!!battle.session?.suddenDeath && battle.isRunning}
+        onPickLastItem={() => setProductsOpen(true)}
+      />
+      <BattleResultOverlay
+        open={battle.resultOpen}
+        session={battle.session}
+        onDone={battle.dismissResult}
+        onRematch={() => {
+          void battle.requestRematch().then((res) => {
+            if (!res.ok) {
+              toast.error(
+                res.error === "not_live"
+                  ? t("battle.invite.notLiveHint")
+                  : t("battle.invite.failed"),
+              );
+            } else {
+              toast.success(t("battle.invite.sent"));
+            }
+          });
         }}
       />
     </motion.div>

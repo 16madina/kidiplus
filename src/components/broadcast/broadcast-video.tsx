@@ -81,6 +81,7 @@ export type BroadcastVideoProps = {
   onFacingApplied?: (facing: CameraFacing) => void;
   /** Sync parent mic UI when LiveKit mute/unmute fails or disagrees. */
   onMicSync?: (enabled: boolean) => void;
+  onRemoteVideosChange?: (tracks: { identity: string; track: RemoteTrack }[]) => void;
 };
 
 export type BroadcastStatus =
@@ -102,6 +103,7 @@ export type BroadcastVideoHandle = {
    * of the *actual* hardware camera (recommended after leave/return).
    */
   switchCamera: (facing?: CameraFacing) => Promise<CameraFacing>;
+  getCameraTrack: () => LocalVideoTrack | null;
 };
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
@@ -122,6 +124,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       onFlipBusyChange,
       onFacingApplied,
       onMicSync,
+      onRemoteVideosChange,
     },
     ref,
   ) {
@@ -283,6 +286,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     };
 
     useImperativeHandle(ref, () => ({
+      getCameraTrack: () => {
+        const room = roomRef.current;
+        let track = localVideoTrackRef.current;
+        if (!track && room) {
+          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          if (pub?.track) track = pub.track as LocalVideoTrack;
+        }
+        return track ?? null;
+      },
       switchCamera: async (target?: CameraFacing) => {
         const room = roomRef.current;
         let track = localVideoTrackRef.current;
@@ -466,6 +478,22 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           roomRef.current = room;
+
+          const emitRemotes = () => {
+            if (cancelled || !onRemoteVideosChange) return;
+            const list: { identity: string; track: RemoteTrack }[] = [];
+            for (const p of room.remoteParticipants.values()) {
+              for (const pub of p.trackPublications.values()) {
+                if (pub.track && pub.track.kind === Track.Kind.Video) {
+                  list.push({ identity: p.identity, track: pub.track as RemoteTrack });
+                }
+              }
+            }
+            onRemoteVideosChange(list);
+          };
+          room.on(RoomEvent.TrackSubscribed, emitRemotes);
+          room.on(RoomEvent.TrackUnsubscribed, emitRemotes);
+          emitRemotes();
 
           room.on(RoomEvent.Reconnecting, () => {
             if (!cancelled) setState("reconnecting");

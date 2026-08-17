@@ -1,7 +1,8 @@
 // Right-side vertical tool rail for the host (and moderator) during a live.
 // TikTok-style column: 44pt glass buttons + optional tiny label underneath.
 import { motion } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Mic, MicOff, Video, VideoOff, RefreshCw, Shield, Plus, Sparkles, Swords } from "lucide-react";
 import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { isNative } from "@/lib/native";
@@ -18,6 +19,8 @@ export type HostToolRailProps = {
   onFlip?: () => void;
   onOpenModerators?: () => void;
   onOpenFilters?: () => void;
+  onOpenBattle?: () => void;
+  battleActive?: boolean;
   onAddProduct?: () => void;
   /** Hide the mic/cam buttons (viewer moderator mode). */
   hideAV?: boolean;
@@ -44,9 +47,12 @@ export function HostToolRail({
   onFlip,
   onOpenModerators,
   onOpenFilters,
+  onOpenBattle,
+  battleActive = false,
   onAddProduct,
   hideAV = false,
 }: HostToolRailProps) {
+  const { t } = useTranslation();
   // Web preview: the featured-auction card lives at the vertical middle on the
   // right edge and collides with this rail. On iOS/Android the rail sits higher
   // on the screen so it stays clear — only shift down for web.
@@ -102,6 +108,21 @@ export function HostToolRail({
           }}
         >
           <Sparkles size={16} />
+        </Press>
+      )}
+      {onOpenBattle && (
+        <Press
+          onClick={() => { haptic.selection(); onOpenBattle(); }}
+          aria-label={t("battle.rail")}
+          className={`${btn} pointer-events-auto`}
+          style={{
+            ...btnStyle,
+            outline: battleActive ? "2px solid oklch(0.85 0.18 90)" : undefined,
+            outlineOffset: -2,
+            color: battleActive ? "oklch(0.85 0.18 90)" : "white",
+          }}
+        >
+          <Swords size={16} />
         </Press>
       )}
       {onOpenModerators && (

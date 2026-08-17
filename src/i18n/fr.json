@@ -1915,5 +1915,99 @@
     },
     "countryLabel": "Pays de ton compte vendeur",
     "countryHint": "Choisis le pays de ta banque / de ton entreprise. Il ne pourra plus être modifié après la création du compte Stripe."
+  },
+  "battle": {
+    "brand": "Défi Plus",
+    "headline": "Qui vend plus ?",
+    "signature": "Deux vendeurs. Deux communautés. Un seul défi : qui vendra le plus ?",
+    "tagline": "Le Défi Plus : deux vendeurs s’affrontent en direct. À la fin, celui qui vend plus gagne plus.",
+    "rail": "Lancer un Défi Plus",
+    "ranking": "Classement Défi Plus",
+    "unknownSeller": "Boutique",
+    "duration": {
+      "min": "{{count}} min",
+      "demo": "Démo 90 s"
+    },
+    "invite": {
+      "title": "Lancer un Défi Plus",
+      "subtitle": "Deux vendeurs. Deux communautés. Un seul défi : qui vendra le plus ?",
+      "tabLive": "En live maintenant",
+      "tabSearch": "Rechercher",
+      "searchPlaceholder": "Nom de boutique ou pseudo…",
+      "searchHint": "Tape au moins 2 lettres pour chercher une boutique.",
+      "emptyLive": "Aucun autre vendeur n’est en live pour le moment.",
+      "emptySearch": "Aucune boutique ne correspond.",
+      "shop": "Boutique",
+      "liveBadge": "Live",
+      "offlineBadge": "Hors live",
+      "notLiveHint": "Ce vendeur n’est pas en live. Le Défi Plus ne peut commencer que si les deux vendent déjà en direct.",
+      "duration": "Durée du défi",
+      "cta": "Inviter un vendeur",
+      "sent": "Invitation envoyée",
+      "failed": "Impossible d’envoyer l’invitation"
+    },
+    "incoming": {
+      "title": "🔥 {{name}} vous lance un Défi Plus !",
+      "body": "Vous aurez {{count}} minutes pour vendre le plus.",
+      "ask": "Acceptez-vous le défi ?",
+      "prototypeHint": "Aperçu : tu vois ici l’invitation que l’autre vendeur recevrait.",
+      "accept": "Accepter le défi",
+      "decline": "Refuser",
+      "expired": "L’invitation a expiré"
+    },
+    "countdown": {
+      "title_one": "Le Défi Plus commence dans {{count}} seconde",
+      "title_other": "Le Défi Plus commence dans {{count}} secondes"
+    },
+    "split": {
+      "vs": "PLUS",
+      "remotePlaceholder": "En attente de sa caméra",
+      "reconnecting": "Reconnexion…"
+    },
+    "hud": {
+      "banner": "DÉFI PLUS — QUI VEND PLUS ?",
+      "leading": "En tête",
+      "leadingName": "{{name}} mène",
+      "crown": "👑",
+      "behind": "À {{amount}} de {{name}}",
+      "tied": "À égalité",
+      "items_one": "{{count}} article vendu",
+      "items_other": "{{count}} articles vendus",
+      "remain": "Temps restant : {{time}}",
+      "suddenDeathRemain": "Mort subite · {{time}}",
+      "provisional": "résultat provisoire",
+      "leave": "Quitter le défi"
+    },
+    "result": {
+      "heading": "Résultats du Défi Plus",
+      "win": "🏆 {{name}} remporte le Défi Plus !",
+      "forfeitWin": "{{name}} gagne par abandon",
+      "scoreline": "Avec {{winnerAmount}} de ventes contre {{loserAmount}}.",
+      "champion": "{{name}} devient Championne du Défi Plus !",
+      "tie": "Égalité",
+      "pendingNote": "Résultat en attente de confirmation des paiements. Les récompenses ne seront débloquées qu’après règlement des commandes.",
+      "rematch": "Demander une revanche",
+      "continue": "Continuer le live"
+    },
+    "blocked": {
+      "restreamActive": "Impossible de lancer un Défi Plus pendant un restream YouTube, Facebook ou TikTok.",
+      "restreamOn": "Impossible de lancer un restream pendant un Défi Plus.",
+      "alreadyRunning": "Un Défi Plus est déjà en cours."
+    },
+    "turn": {
+      "wait": "Une enchère est déjà en cours de l’autre côté. Attends qu’elle se termine.",
+      "notYours": "Ce n’est pas encore ton tour d’enchère.",
+      "now": "Tour de {{name}} · {{time}}"
+    },
+    "sudden": {
+      "title": "🔥 ÉGALITÉ — MORT SUBITE !",
+      "body": "Le prochain article vendu décide du gagnant.",
+      "clock": "MORT SUBITE",
+      "hint": "Première vente valide gagne",
+      "pick": "Choisir un dernier article"
+    },
+    "products": {
+      "opponent": "Chez {{name}}"
+    }
   }
 }

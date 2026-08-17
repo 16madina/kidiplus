@@ -27,6 +27,14 @@ export const HOST_VIDEO_RESOLUTION_CHAIN = [
   { width: 640, height: 360, frameRate: 24 },
 ] as const;
 
+/** Guest camera published into the remote battle room (≤540p + simulcast). */
+export const BATTLE_GUEST_VIDEO = {
+  width: 960,
+  height: 540,
+  frameRate: 24,
+  maxBitrate: 700_000,
+} as const;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -143,7 +151,7 @@ export async function getToken(
 export async function connectRoom(
   url: string,
   token: string,
-  opts?: { adaptiveStream?: boolean },
+  opts?: { adaptiveStream?: boolean; autoSubscribe?: boolean },
 ): Promise<Room> {
   const room = new Room({
     // Full-screen viewer: adaptiveStream often leaves the first open on a
@@ -152,7 +160,9 @@ export async function connectRoom(
     adaptiveStream: opts?.adaptiveStream ?? true,
     dynacast: true,
   });
-  await room.connect(url, token);
+  await room.connect(url, token, {
+    autoSubscribe: opts?.autoSubscribe ?? true,
+  });
   return room;
 }
 

@@ -96,6 +96,7 @@ export type Product = {
   winner?: string;
   /** Compact meta under the name (brand · color · size · condition). */
   metaLine?: string;
+  sellerName?: string;
   description?: string | null;
   colors?: string[];
   sizes?: string[];

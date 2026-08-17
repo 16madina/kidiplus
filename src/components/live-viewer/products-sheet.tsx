@@ -104,6 +104,9 @@ function ProductRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{product.name}</p>
+        {product.sellerName ? (
+          <p className="truncate text-[10px] font-semibold text-muted-foreground">{product.sellerName}</p>
+        ) : null}
         {product.metaLine ? (
           <p className="truncate text-[11px] text-muted-foreground">{product.metaLine}</p>
         ) : null}

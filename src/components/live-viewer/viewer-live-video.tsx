@@ -30,6 +30,8 @@ export type ViewerLiveVideoProps = {
   name?: string;
   posterImage?: string | null;
   onStatus?: (s: ViewerStatus) => void;
+  /** Two host cameras during a Défi Plus. */
+  layout?: "single" | "split";
 };
 
 export type ViewerStatus =
@@ -63,6 +65,21 @@ function pickRemoteVideoTrack(room: Room): RemoteTrack | null {
     }
   }
   return fallback;
+}
+
+function pickHostVideos(room: Room): RemoteTrack[] {
+  const host: RemoteTrack[] = [];
+  const guests: RemoteTrack[] = [];
+  for (const p of room.remoteParticipants.values()) {
+    for (const pub of p.trackPublications.values()) {
+      const track = pub.track;
+      if (!track || track.kind !== Track.Kind.Video) continue;
+      if (p.identity.startsWith("rtmp-host-")) return [track];
+      if (p.identity.startsWith("battle_")) guests.push(track);
+      else host.push(track);
+    }
+  }
+  return [...host, ...guests];
 }
 
 /** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
@@ -121,9 +138,11 @@ export function ViewerLiveVideo({
   name,
   posterImage,
   onStatus,
+  layout = "single",
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoBRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const roomRef = useRef<Room | null>(null);
   const hadLiveRef = useRef(false);
@@ -457,6 +476,27 @@ export function ViewerLiveVideo({
     };
   }, [status, isIosNative, inSystemPip, appActive, pipHold]);
 
+  useEffect(() => {
+    const r = roomRef.current;
+    if (!r || layout !== "split") return;
+    const tracks = pickHostVideos(r);
+    if (videoRef.current && tracks[0]) {
+      try {
+        tracks[0].attach(videoRef.current);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (videoBRef.current && tracks[1]) {
+      try {
+        tracks[1].attach(videoBRef.current);
+        void videoBRef.current.play().catch(() => {});
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [layout, status]);
+
   const showPoster = status !== "live";
 
   const statusLabel =
@@ -474,14 +514,36 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      {/* Keep <video> always opaque so decoding keeps running under the poster. */}
-      <video
-        ref={videoRef}
-        playsInline
-        autoPlay
-        muted
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      {layout === "split" ? (
+        <div className="absolute inset-0 flex flex-col">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <video
+              ref={videoRef}
+              playsInline
+              autoPlay
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-[#0c0c10]">
+            <video
+              ref={videoBRef}
+              playsInline
+              autoPlay
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
+        </div>
+      ) : (
+        <video
+          ref={videoRef}
+          playsInline
+          autoPlay
+          muted
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
       <audio ref={audioRef} autoPlay playsInline />
       {posterImage && (
         <img

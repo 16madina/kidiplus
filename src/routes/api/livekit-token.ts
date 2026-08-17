@@ -183,6 +183,33 @@ export const Route = createFileRoute("/api/livekit-token")({
             allowed = !!modRow;
           }
           if (!allowed) {
+            const { data: battleLink } = await supabaseAdmin
+              .from("battle_lives" as never)
+              .select("battle_id, seller_id")
+              .eq("live_id", liveRow.id)
+              .eq("active", true)
+              .maybeSingle();
+            if (battleLink) {
+              const link = battleLink as { battle_id: string; seller_id: string };
+              const { data: peer } = await supabaseAdmin
+                .from("battle_lives" as never)
+                .select("seller_id")
+                .eq("battle_id", link.battle_id)
+                .eq("seller_id", callerId)
+                .eq("active", true)
+                .maybeSingle();
+              const { data: session } = await supabaseAdmin
+                .from("battle_sessions" as never)
+                .select("status")
+                .eq("id", link.battle_id)
+                .maybeSingle();
+              allowed =
+                !!peer &&
+                (session as { status?: string } | null)?.status === "running" &&
+                link.seller_id !== callerId;
+            }
+          }
+          if (!allowed) {
             return json(
               { error: "Not authorized to publish to this room" },
               403,

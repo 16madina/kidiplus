@@ -7,6 +7,7 @@ import { Press } from "@/components/press";
 import { BroadcastProvider, useBroadcast } from "@/lib/broadcast-context";
 import { FilterProvider } from "@/lib/filters/filter-context";
 import { LiveEffectsProvider } from "@/lib/filters/live-effects-context";
+import { BattleProvider } from "@/lib/battle-context";
 import { BroadcastSetup } from "@/components/broadcast/broadcast-setup";
 import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
@@ -392,7 +393,7 @@ function BroadcastFlow() {
   const {
     stage, goEntry, goSetup, goLive, goSummary, reset,
     setHost, setCurrency, setLiveId, setRoomName, setTitle, setCategory, setCover, setSession,
-    setStreamSource, setRtmpCreds, setAllowGifts,
+    setStreamSource, setRtmpCreds, setAllowGifts, liveId,
   } = useBroadcast();
   const { profile, user } = useAuth();
   const [openLives, setOpenLives] = useState<Array<{
@@ -695,7 +696,9 @@ function BroadcastFlow() {
         )}
         {stage === "live" && (
           <ErrorBoundary key="live" boundary="broadcast_live" onReset={() => goSummary()}>
-            <BroadcastLive onEnd={() => goSummary()} />
+            <BattleProvider liveId={liveId} userId={user?.id ?? null}>
+              <BroadcastLive onEnd={() => goSummary()} />
+            </BattleProvider>
           </ErrorBoundary>
         )}
 

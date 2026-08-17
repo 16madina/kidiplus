@@ -1915,5 +1915,99 @@
     },
     "countryLabel": "Your seller account country",
     "countryHint": "Pick the country of your bank / business. It can't be changed once the Stripe account is created."
+  },
+  "battle": {
+    "brand": "Défi Plus",
+    "headline": "Who sells more?",
+    "signature": "Two sellers. Two communities. One challenge: who will sell more?",
+    "tagline": "Défi Plus: two sellers go live head-to-head. In the end, whoever sells more, wins more.",
+    "rail": "Start a Défi Plus",
+    "ranking": "Défi Plus leaderboard",
+    "unknownSeller": "Shop",
+    "duration": {
+      "min": "{{count}} min",
+      "demo": "Demo 90 s"
+    },
+    "invite": {
+      "title": "Start a Défi Plus",
+      "subtitle": "Two sellers. Two communities. One challenge: who will sell more?",
+      "tabLive": "Live now",
+      "tabSearch": "Search",
+      "searchPlaceholder": "Shop name or handle…",
+      "searchHint": "Type at least 2 letters to search a shop.",
+      "emptyLive": "No other seller is live right now.",
+      "emptySearch": "No shop matches that search.",
+      "shop": "Shop",
+      "liveBadge": "Live",
+      "offlineBadge": "Offline",
+      "notLiveHint": "This seller isn’t live. Défi Plus can only start when both are already selling live.",
+      "duration": "Challenge length",
+      "cta": "Invite a seller",
+      "sent": "Invite sent",
+      "failed": "Couldn’t send the invite"
+    },
+    "incoming": {
+      "title": "🔥 {{name}} just sent you a Défi Plus!",
+      "body": "You’ll have {{count}} minutes to sell the most.",
+      "ask": "Do you accept the challenge?",
+      "prototypeHint": "Preview: this is the invite the other seller would see.",
+      "accept": "Accept the challenge",
+      "decline": "Decline",
+      "expired": "This invite expired"
+    },
+    "countdown": {
+      "title_one": "Défi Plus starts in {{count}} second",
+      "title_other": "Défi Plus starts in {{count}} seconds"
+    },
+    "split": {
+      "vs": "PLUS",
+      "remotePlaceholder": "Waiting for their camera",
+      "reconnecting": "Reconnecting…"
+    },
+    "hud": {
+      "banner": "DÉFI PLUS — WHO SELLS MORE?",
+      "leading": "In the lead",
+      "leadingName": "{{name}} is leading",
+      "crown": "👑",
+      "behind": "{{amount}} behind {{name}}",
+      "tied": "Tied",
+      "items_one": "{{count}} item sold",
+      "items_other": "{{count}} items sold",
+      "remain": "Time left: {{time}}",
+      "suddenDeathRemain": "Sudden death · {{time}}",
+      "provisional": "provisional result",
+      "leave": "Leave the challenge"
+    },
+    "result": {
+      "heading": "Défi Plus results",
+      "win": "🏆 {{name}} wins the Défi Plus!",
+      "forfeitWin": "{{name}} wins by forfeit",
+      "scoreline": "With {{winnerAmount}} in sales against {{loserAmount}}.",
+      "champion": "{{name}} is now the Défi Plus Champion!",
+      "tie": "It’s a tie",
+      "pendingNote": "Result pending payment confirmation. Rewards unlock only after orders are paid.",
+      "rematch": "Ask for a rematch",
+      "continue": "Continue the live"
+    },
+    "blocked": {
+      "restreamActive": "You can’t start a Défi Plus while YouTube, Facebook or TikTok restream is on.",
+      "restreamOn": "You can’t start a restream during a Défi Plus.",
+      "alreadyRunning": "A Défi Plus is already in progress."
+    },
+    "turn": {
+      "wait": "An auction is already live on the other side. Wait until it ends.",
+      "notYours": "It’s not your auction turn yet.",
+      "now": "{{name}}’s turn · {{time}}"
+    },
+    "sudden": {
+      "title": "🔥 TIE — SUDDEN DEATH!",
+      "body": "The next item sold decides the winner.",
+      "clock": "SUDDEN DEATH",
+      "hint": "First valid sale wins",
+      "pick": "Pick a last item"
+    },
+    "products": {
+      "opponent": "{{name}}’s shop"
+    }
   }
 }
