@@ -854,19 +854,25 @@ export async function uploadVitrineMediaDetailed(
   onProgress?: UploadProgress,
 ): Promise<VitrineUploadResult> {
 
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   if (!uid) return { ok: false, error: "not_authenticated" };
   if (file.size <= 0) return { ok: false, error: "empty_file" };
   if (file.size > VITRINE_MAX_BYTES) return { ok: false, error: "file_too_large" };
 
   // Filet de sécurité : un .mov QuickTime/HEVC est converti en MP4/H.264
-  // avant l'envoi, sinon Android ne peut pas le lire.
+  // avant l'envoi, sinon Android ne peut pas le lire. Le ré-encodage temps
+  // réel peut caler : on borne à 3 min et on garde l'original si dépassé.
   try {
     const { isQuickTimeFile, transcodeMovToMp4 } = await import("@/lib/video-transcode");
-    if (isQuickTimeFile(file)) file = await transcodeMovToMp4(file);
+    if (isQuickTimeFile(file)) {
+      file = await withTimeout(transcodeMovToMp4(file), 180000, "transcode_timeout");
+    }
   } catch {
     /* on garde le fichier d'origine */
   }
+
 
   const contentType = guessVitrineContentType(file);
 
