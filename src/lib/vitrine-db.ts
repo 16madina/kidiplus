@@ -897,11 +897,16 @@ export async function uploadVitrineMediaDetailed(
 
   // Fallback: direct client upload (needs bucket + insert policy).
   const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from("vitrine-media").upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType,
-  });
+  const { error } = await withTimeout(
+    supabase.storage.from("vitrine-media").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType,
+    }),
+    240000,
+    "upload_timeout",
+  ).catch((e) => ({ error: { message: e instanceof Error ? e.message : "upload_timeout" } }) as never);
+
   if (error) {
     const msg = (error.message || "").toLowerCase();
     const signedMsg = signed && "error" in signed ? String(signed.error) : "";
