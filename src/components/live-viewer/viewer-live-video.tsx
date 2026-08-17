@@ -177,6 +177,41 @@ export function ViewerLiveVideo({
     if (status === "live") hadLiveRef.current = true;
   }, [status]);
 
+  /** Browsers block autoplay with sound until a gesture — retry then. */
+  const enableSound = useCallback(async () => {
+    const el = audioRef.current;
+    if (el) {
+      el.muted = false;
+      el.volume = 1;
+    }
+    const r = roomRef.current;
+    try {
+      if (r) await r.startAudio();
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (r) reattachRemoteMedia(r, videoRef.current, el, false);
+      await el?.play();
+      setAudioBlocked(false);
+    } catch {
+      setAudioBlocked(true);
+    }
+  }, []);
+
+  // Any user gesture anywhere in the app unlocks the live audio.
+  useEffect(() => {
+    if (!audioBlocked) return;
+    const onGesture = () => { void enableSound(); };
+    document.addEventListener("pointerdown", onGesture, { passive: true });
+    document.addEventListener("touchstart", onGesture, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onGesture);
+      document.removeEventListener("touchstart", onGesture);
+    };
+  }, [audioBlocked, enableSound]);
+
+
   useEffect(() => {
     if (!sessionActive) return;
     let cancelled = false;
