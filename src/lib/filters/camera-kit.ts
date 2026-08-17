@@ -57,6 +57,21 @@ export function isSnapProductionToken(): boolean {
 export const SNAP_LENS_GROUP_ID =
   readEnv("VITE_SNAP_LENS_GROUP_ID") || "df287f43-6646-4b01-a711-1a0e632c211a";
 
+/** Groupes supplémentaires chargés en plus du groupe principal.
+ * Configurable via VITE_SNAP_LENS_GROUP_IDS (liste séparée par des virgules). */
+export const SNAP_LENS_GROUP_IDS: string[] = Array.from(
+  new Set(
+    [
+      SNAP_LENS_GROUP_ID,
+      ...readEnv("VITE_SNAP_LENS_GROUP_IDS")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      "2a4e2449-ebd0-4c81-8a6f-d01c603fbe8c",
+    ].filter(Boolean),
+  ),
+);
+
 /** Supporté = WebGL2 + WebAssembly + un token Camera Kit configuré.
  * Si le token est vide, le carrousel tombe automatiquement sur les filtres CSS. */
 export function isCameraKitSupported(): boolean {
