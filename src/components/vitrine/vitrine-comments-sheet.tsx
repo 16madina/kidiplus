@@ -474,6 +474,21 @@ function CommentRow({
           {replyLabel}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={onLike}
+        aria-pressed={!!c.liked_by_me}
+        className="flex shrink-0 flex-col items-center gap-0.5 self-start pt-1 text-muted-foreground"
+      >
+        <Heart
+          size={small ? 14 : 16}
+          className={c.liked_by_me ? "text-rose-500" : ""}
+          fill={c.liked_by_me ? "currentColor" : "none"}
+        />
+        {(c.like_count ?? 0) > 0 && (
+          <span className="text-[11px] tabular-nums">{c.like_count}</span>
+        )}
+      </button>
     </div>
   );
 }
