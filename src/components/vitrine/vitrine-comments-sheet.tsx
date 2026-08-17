@@ -392,6 +392,7 @@ function CommentRow({
   initial,
   highlighted,
   onReply,
+  onLike,
   replyLabel,
   small = false,
 }: {
@@ -400,6 +401,7 @@ function CommentRow({
   initial: string;
   highlighted: boolean;
   onReply: () => void;
+  onLike: () => void;
   replyLabel: string;
   small?: boolean;
 }) {
