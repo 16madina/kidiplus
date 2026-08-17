@@ -192,7 +192,11 @@ function MediaSlide({
   const videoRef = useRef<HTMLVideoElement>(null);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<
+    "loading" | "ready" | "error" | "stalled"
+  >("loading");
+  const [errorKind, setErrorKind] = useState<"format" | "network">("network");
+  const [reloadKey, setReloadKey] = useState(0);
   // Reset status during render when the url changes (an effect would race with
   // an onLoad already fired for a cached image → spinner stuck forever).
   const [statusUrl, setStatusUrl] = useState(url);
@@ -205,9 +209,8 @@ function MediaSlide({
     setSuspended(isVitrinePlaybackSuspended());
   }), []);
 
-  // Some uploads are QuickTime/HEVC (.mov filmed on iPhone): Safari plays them,
-  // Chrome/Android cannot decode them at all → the <video> would spin forever.
-  // Probe support up-front and show a clear message instead.
+  // Only legacy QuickTime/HEVC uploads (.mov filmed on iPhone) can be truly
+  // undecodable on Chrome/Android. MP4 files are never rejected up-front.
   useEffect(() => {
     if (!asVideo || typeof document === "undefined") return;
     if (!/\.(mov|qt|3gp|avi|wmv|mkv)(\?|#|$)/i.test(url)) return;
@@ -215,29 +218,45 @@ function MediaSlide({
     const guesses = ["video/quicktime", 'video/mp4; codecs="hvc1"', "video/mp4"];
     const playable = guesses.some((type) => probe.canPlayType(type) !== "");
     if (!playable) {
+      setErrorKind("format");
       setStatus("error");
       reportBrokenMedia(url);
     }
   }, [asVideo, url]);
 
-  // Safety net: never leave a spinner up forever.
+  // Safety net: never leave a spinner up forever. A slow/stalled decode is NOT
+  // a format failure — show the poster with a retry affordance instead.
   useEffect(() => {
     if (status !== "loading" || !eager) return;
     const t = window.setTimeout(
-      // Images: assume they rendered. Videos: a stalled decode is a real
-      // failure — surface it instead of hiding the spinner over a black frame.
-      () => setStatus((s) => (s !== "loading" ? s : asVideo ? "error" : "ready")),
+      () => setStatus((s) => (s !== "loading" ? s : asVideo ? "stalled" : "ready")),
       8000,
     );
     return () => window.clearTimeout(t);
   }, [status, eager, url, asVideo]);
 
+  const retryMedia = () => {
+    setStatus("loading");
+    setReloadKey((k) => k + 1);
+    const v = videoRef.current;
+    if (v) {
+      try {
+        v.load();
+        void v.play().catch(() => undefined);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+
 
   const shouldPlay = playing && !suspended && eager;
   const [blocked, setBlocked] = useState(false);
 
-  // Démarrage instantané façon TikTok : on tente la lecture dès que le média a
-  // la moindre donnée, puis on réessaie sur chaque évènement de préparation.
+  // Démarrage instantané façon TikTok : on démarre TOUJOURS en muet (seule
+  // façon d'obtenir l'autoplay sur Chrome/Firefox/iOS/Android), puis on
+  // réactive le son de façon impérative une fois la lecture lancée.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
@@ -253,26 +272,48 @@ function MediaSlide({
     }
 
     let cancelled = false;
+    const wantsSound = !muted && volume > 0.001;
+
+    const applySound = (v: HTMLVideoElement) => {
+      if (!wantsSound) return;
+      try {
+        v.muted = false;
+        v.volume = volume;
+      } catch {
+        /* ignore */
+      }
+      // Certains navigateurs mettent la vidéo en pause en la démutant.
+      if (v.paused) {
+        void v.play().catch(() => {
+          try {
+            v.muted = true;
+            v.volume = 0;
+            void v.play().catch(() => undefined);
+          } catch {
+            /* ignore */
+          }
+        });
+      }
+    };
 
     const attempt = async () => {
       if (cancelled) return;
       const v = videoRef.current;
       if (!v) return;
-      v.muted = muted || volume <= 0.001;
-      v.volume = v.muted ? 0 : volume;
+      if (!v.paused) {
+        applySound(v);
+        return;
+      }
+      // Toujours tenter muet d'abord : garanti par les politiques d'autoplay.
+      v.muted = true;
+      v.volume = 0;
       try {
         await v.play();
-        if (!cancelled) setBlocked(false);
+        if (cancelled) return;
+        setBlocked(false);
+        applySound(v);
       } catch {
-        // Politique d'autoplay (surtout sur le web) : on retente en muet.
-        try {
-          v.muted = true;
-          v.volume = 0;
-          await v.play();
-          if (!cancelled) setBlocked(false);
-        } catch {
-          if (!cancelled) setBlocked(true);
-        }
+        if (!cancelled) setBlocked(true);
       }
     };
 
@@ -280,8 +321,8 @@ function MediaSlide({
     const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
     const onReady = () => void attempt();
     events.forEach((e) => el.addEventListener(e, onReady));
-    const retry = window.setInterval(() => void attempt(), 400);
-    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 3000);
+    const retry = window.setInterval(() => void attempt(), 300);
+    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 4000);
 
     return () => {
       cancelled = true;
@@ -289,7 +330,8 @@ function MediaSlide({
       window.clearInterval(retry);
       window.clearTimeout(stopRetry);
     };
-  }, [url, asVideo, muted, shouldPlay, volume]);
+  }, [url, asVideo, muted, shouldPlay, volume, reloadKey]);
+
 
 
   // Hard-stop on unmount so audio never leaks after leaving Vitrine.
@@ -310,7 +352,7 @@ function MediaSlide({
   }, []);
 
   const overlay =
-    status === "error" ? (
+    status === "error" || status === "stalled" ? (
       <div className="absolute inset-0 z-[5]">
         {asVideo && poster ? (
           <img
@@ -322,24 +364,39 @@ function MediaSlide({
             decoding="async"
           />
         ) : null}
-        <div className="absolute inset-0 grid place-items-center bg-black/60 px-8 text-center">
+        <div className="absolute inset-0 grid place-items-center gap-3 bg-black/60 px-8 text-center">
           <p className="text-[14px] font-medium text-white/75">
-            {asVideo
-              ? t("vitrine.videoUnsupported", {
-                  defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
-                })
-              : t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+            {!asVideo
+              ? t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })
+              : status === "stalled" || errorKind === "network"
+                ? t("vitrine.videoLoadFailed", {
+                    defaultValue: "La vidéo met du temps à charger",
+                  })
+                : t("vitrine.videoUnsupported", {
+                    defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
+                  })}
           </p>
+          {asVideo && (status === "stalled" || errorKind === "network") ? (
+            <button
+              type="button"
+              data-no-pause
+              onClick={(e) => {
+                e.stopPropagation();
+                retryMedia();
+              }}
+              className="rounded-full bg-white/15 px-4 py-2 text-[13px] font-semibold text-white"
+            >
+              {t("vitrine.retry", { defaultValue: "Réessayer" })}
+            </button>
+          ) : null}
         </div>
       </div>
-
-
-
     ) : status === "loading" && eager ? (
       <div className="absolute inset-0 z-[5] grid place-items-center bg-black/40">
         <Loader2 className="animate-spin text-white/70" size={28} />
       </div>
     ) : null;
+
 
   const mediaClass =
     "absolute inset-0 h-full w-full object-cover";
@@ -375,13 +432,16 @@ function MediaSlide({
           )}
           {eager && (
             <video
+              key={reloadKey}
               ref={videoRef}
               data-vitrine-feed
               src={url}
               poster={poster ?? undefined}
               className={mediaClass}
               autoPlay
-              muted={muted || !shouldPlay || volume <= 0.001}
+              // Toujours muet côté React : le son est réactivé en impératif
+              // après le démarrage, sinon l'autoplay est refusé.
+              muted
               loop
               playsInline
               preload="auto"
@@ -394,15 +454,22 @@ function MediaSlide({
                 setBlocked(false);
               }}
               onError={() => {
+                const code = videoRef.current?.error?.code;
+                const fatalFormat =
+                  code === 3 /* MEDIA_ERR_DECODE */ ||
+                  code === 4 /* MEDIA_ERR_SRC_NOT_SUPPORTED */;
+                setErrorKind(fatalFormat ? "format" : "network");
                 setStatus("error");
-                reportBrokenMedia(url);
+                // On ne condamne le média que lorsqu'il est réellement illisible.
+                if (fatalFormat) reportBrokenMedia(url);
               }}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
           )}
         </Fit916>
         {overlay}
-        {asVideo && blocked && shouldPlay && status !== "error" && (
+        {asVideo && blocked && shouldPlay && status === "ready" && (
+
           <button
             type="button"
             data-no-pause

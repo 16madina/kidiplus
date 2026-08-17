@@ -779,7 +779,9 @@
     "viewReplies": "Voir les réponses ({{count}})",
     "hideReplies": "Masquer les réponses",
     "replySent": "Réponse publiée",
-    "videoUnsupported": "Vidéo illisible sur cet appareil (format non supporté)"
+    "videoUnsupported": "Vidéo illisible sur cet appareil (format non supporté)",
+    "videoLoadFailed": "La vidéo met du temps à charger",
+    "retry": "Réessayer"
   },
   "publish": {
     "title": "Publier",

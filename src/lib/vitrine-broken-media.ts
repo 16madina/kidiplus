@@ -6,17 +6,26 @@
 
 const EVT = "kidi:vitrine-broken-media";
 const KEY = "vitrine_broken_media";
+// Bump when the detection rules change: purges entries wrongly marked broken
+// by an older, over-eager version (slow decode ≠ média cassé).
+const VERSION = "2";
+const VERSION_KEY = "vitrine_broken_media_v";
 
 const broken = new Set<string>();
 
 if (typeof window !== "undefined") {
   try {
+    if (window.sessionStorage.getItem(VERSION_KEY) !== VERSION) {
+      window.sessionStorage.removeItem(KEY);
+      window.sessionStorage.setItem(VERSION_KEY, VERSION);
+    }
     const raw = window.sessionStorage.getItem(KEY);
     if (raw) (JSON.parse(raw) as string[]).forEach((u) => broken.add(u));
   } catch {
     /* ignore */
   }
 }
+
 
 export function isBrokenMedia(url: string | null | undefined): boolean {
   return !!url && broken.has(url);
