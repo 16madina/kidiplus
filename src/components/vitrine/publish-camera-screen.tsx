@@ -428,10 +428,14 @@ export function PublishCameraScreen({
       setPreview(null);
       setPhase("camera");
       onClose();
+    } catch (e) {
+      console.warn("[publish] failed", e);
+      toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
     } finally {
       setBusy(false);
     }
   };
+
 
   const modeLabel = (m: PublishCameraMode) => {
     if (m === "story") return t("publish.modes.story", { defaultValue: "STORY" });
