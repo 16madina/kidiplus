@@ -98,6 +98,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
     { id: "referral", icon: <HeartHandshake size={14} />,  label: t("admin.tabs.referral", "Parrainage") },
+    { id: "media",    icon: <RefreshCw size={14} />,       label: t("admin.tabs.media", "Vidéos") },
   ];
   return (
     <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-border bg-background/90 px-2 py-2 backdrop-blur">
