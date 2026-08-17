@@ -278,9 +278,14 @@ function MediaSlide({
     status === "error" ? (
       <div className="absolute inset-0 z-[5] grid place-items-center bg-black px-8 text-center">
         <p className="text-[14px] font-medium text-white/70">
-          {t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+          {asVideo
+            ? t("vitrine.videoUnsupported", {
+                defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
+              })
+            : t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
         </p>
       </div>
+
     ) : status === "loading" && eager ? (
       <div className="absolute inset-0 z-[5] grid place-items-center bg-black/40">
         <Loader2 className="animate-spin text-white/70" size={28} />
