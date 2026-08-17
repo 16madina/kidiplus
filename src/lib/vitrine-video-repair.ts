@@ -84,7 +84,7 @@ export async function repairLegacyMovPost(
   const { data, error } = await supabase.rpc("admin_replace_vitrine_video", {
     _post_id: post.id,
     _new_url: newUrl,
-    _new_poster: poster,
+    _new_poster: poster ?? undefined,
   });
   const res = data as { ok?: boolean; error?: string } | null;
   if (error || !res?.ok) {
