@@ -777,18 +777,28 @@ async function requestSignedUpload(
   ext: string,
   onProgress?: UploadProgress,
 ) {
-  const { data: sess } = await supabase.auth.getSession();
+  const { data: sess } = await withTimeout(
+    supabase.auth.getSession(),
+    10000,
+    "session_timeout",
+  ).catch(() => ({ data: { session: null } }) as never);
   const token = sess.session?.access_token;
   if (!token) return null;
 
-  const res = await fetch("/api/vitrine/signed-upload", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ ext, contentType }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api/vitrine/signed-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ext, contentType }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch {
+    return { error: "signed_url_timeout" } as const;
+  }
   if (!res.ok) {
     let message = `http_${res.status}`;
     try {
@@ -818,16 +828,25 @@ async function requestSignedUpload(
     console.warn("[vitrine] direct PUT failed, fallback SDK", put.error);
   }
 
-  const { error: upErr } = await supabase.storage
-    .from("vitrine-media")
-    .uploadToSignedUrl(j.path, j.token, file, { contentType, upsert: false });
-  if (upErr) {
-    console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
-    return { error: upErr.message } as const;
+  try {
+    const { error: upErr } = await withTimeout(
+      supabase.storage
+        .from("vitrine-media")
+        .uploadToSignedUrl(j.path, j.token, file, { contentType, upsert: false }),
+      240000,
+      "upload_timeout",
+    );
+    if (upErr) {
+      console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
+      return { error: upErr.message } as const;
+    }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "upload_timeout" } as const;
   }
   onProgress?.(1);
   return { url: j.publicUrl } as const;
 }
+
 
 /** Same as uploadVitrineMedia but returns a readable error for toasts. */
 export async function uploadVitrineMediaDetailed(
