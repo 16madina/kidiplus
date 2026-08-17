@@ -11,6 +11,8 @@ export type PushOpenPayload = {
   thread_id?: string;
   post_id?: string;
   comment_id?: string;
+  parent_comment_id?: string;
+
   /** "1" / "true" → open the post comments sheet after jumping to the post. */
   open_comments?: string;
   // Free-form extras
