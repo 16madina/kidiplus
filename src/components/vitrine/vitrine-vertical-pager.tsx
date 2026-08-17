@@ -352,7 +352,7 @@ function MediaSlide({
   }, []);
 
   const overlay =
-    status === "error" ? (
+    status === "error" || status === "stalled" ? (
       <div className="absolute inset-0 z-[5]">
         {asVideo && poster ? (
           <img
@@ -364,24 +364,39 @@ function MediaSlide({
             decoding="async"
           />
         ) : null}
-        <div className="absolute inset-0 grid place-items-center bg-black/60 px-8 text-center">
+        <div className="absolute inset-0 grid place-items-center gap-3 bg-black/60 px-8 text-center">
           <p className="text-[14px] font-medium text-white/75">
-            {asVideo
-              ? t("vitrine.videoUnsupported", {
-                  defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
-                })
-              : t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })}
+            {!asVideo
+              ? t("vitrine.mediaUnavailable", { defaultValue: "Média indisponible" })
+              : status === "stalled" || errorKind === "network"
+                ? t("vitrine.videoLoadFailed", {
+                    defaultValue: "La vidéo met du temps à charger",
+                  })
+                : t("vitrine.videoUnsupported", {
+                    defaultValue: "Vidéo illisible sur cet appareil (format non supporté)",
+                  })}
           </p>
+          {asVideo && (status === "stalled" || errorKind === "network") ? (
+            <button
+              type="button"
+              data-no-pause
+              onClick={(e) => {
+                e.stopPropagation();
+                retryMedia();
+              }}
+              className="rounded-full bg-white/15 px-4 py-2 text-[13px] font-semibold text-white"
+            >
+              {t("vitrine.retry", { defaultValue: "Réessayer" })}
+            </button>
+          ) : null}
         </div>
       </div>
-
-
-
     ) : status === "loading" && eager ? (
       <div className="absolute inset-0 z-[5] grid place-items-center bg-black/40">
         <Loader2 className="animate-spin text-white/70" size={28} />
       </div>
     ) : null;
+
 
   const mediaClass =
     "absolute inset-0 h-full w-full object-cover";
