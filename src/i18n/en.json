@@ -772,7 +772,13 @@
     "manageShop": "Manage my shop",
     "manageShopFail": "Add a @handle to open your shop.",
     "mediaUnavailable": "Media unavailable",
-    "mediaLoading": "Loading…"
+    "mediaLoading": "Loading…",
+    "reply": "Reply",
+    "replyingTo": "Replying to {{name}}",
+    "cancelReply": "Cancel",
+    "viewReplies": "View replies ({{count}})",
+    "hideReplies": "Hide replies",
+    "replySent": "Reply sent"
   },
   "publish": {
     "title": "Publish",

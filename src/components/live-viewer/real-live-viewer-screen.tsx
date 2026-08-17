@@ -1730,6 +1730,7 @@ function BattleAwareViewerVideo({
   ...props
 }: ViewerLiveVideoProps & { liveId?: string | null }) {
   const battle = useBattle();
+  const { user } = useAuth();
   const [saleFlash, setSaleFlash] = useState<string | null>(null);
   const seenSaleRef = useRef<string | null>(null);
   useEffect(() => {

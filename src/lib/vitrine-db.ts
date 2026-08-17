@@ -70,6 +70,7 @@ export type VitrineComment = {
   user_id: string;
   body: string;
   created_at: string;
+  parent_id?: string | null;
   author?: {
     display_name: string | null;
     handle: string | null;
@@ -513,7 +514,7 @@ export async function fetchVitrineComments(
       .from("vitrine_comments")
       .select(
         `
-        id, post_id, user_id, body, created_at,
+        id, post_id, user_id, body, created_at, parent_id,
         author:profiles!vitrine_comments_user_id_fkey(display_name, handle, avatar_url)
         `,
       )
@@ -527,6 +528,7 @@ export async function fetchVitrineComments(
       user_id: r.user_id,
       body: r.body,
       created_at: r.created_at,
+      parent_id: r.parent_id ?? null,
       author: r.author ?? null,
     }));
   } catch {
@@ -537,6 +539,7 @@ export async function fetchVitrineComments(
 export async function addVitrineComment(
   postId: string,
   body: string,
+  parentId?: string | null,
 ): Promise<VitrineComment | null> {
   if (postId.startsWith("demo-")) return null;
   const uid = (await sb.auth.getUser()).data.user?.id;
@@ -546,8 +549,8 @@ export async function addVitrineComment(
   try {
     const { data, error } = await sb
       .from("vitrine_comments")
-      .insert({ post_id: postId, user_id: uid, body: trimmed })
-      .select("id, post_id, user_id, body, created_at")
+      .insert({ post_id: postId, user_id: uid, body: trimmed, parent_id: parentId ?? null })
+      .select("id, post_id, user_id, body, created_at, parent_id")
       .maybeSingle();
     if (error || !data) return null;
     return data as VitrineComment;
