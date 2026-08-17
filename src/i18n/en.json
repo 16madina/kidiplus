@@ -1972,9 +1972,22 @@
       "title_other": "Défi Plus starts in {{count}} seconds"
     },
     "split": {
-      "vs": "Duel Plus",
+      "vs": "Défi Plus",
       "remotePlaceholder": "Waiting for their camera",
       "reconnecting": "Reconnecting…"
+    },
+    "card": {
+      "select": "+ Select an item",
+      "next": "Next item coming soon",
+      "start": "Start",
+      "bid": "Bid +{{amount}}"
+    },
+    "more": {
+      "title": "More",
+      "peek": "Show controls",
+      "products": "Products",
+      "moderators": "Moderation",
+      "settings": "Settings"
     },
     "hud": {
       "banner": "DÉFI PLUS",
@@ -1987,8 +2000,8 @@
       "items_other": "{{count}} sales",
       "remain": "Time left: {{time}}",
       "suddenDeathRemain": "Sudden death · {{time}}",
-      "provisional": "provisional result",
-      "leave": "Leave the challenge"
+      "provisional": "Sales pending payment",
+      "leave": "Leave Défi Plus"
     },
     "result": {
       "heading": "Défi Plus results",

@@ -52,6 +52,10 @@ import { BidPulseFlash } from "./bid-pulse-flash";
 import { ViewerLiveVideo, type ViewerLiveVideoProps, type ViewerStatus } from "./viewer-live-video";
 import { BattleProvider, useBattle } from "@/lib/battle-context";
 import { BattleScoreHud } from "@/components/battle/battle-score-hud";
+import {
+  BattleFeaturedRow,
+  pickBattleFeatured,
+} from "@/components/battle/battle-featured-row";
 import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
 import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
 import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
@@ -1057,6 +1061,14 @@ export function RealLiveViewerScreen() {
     ),
   ];
   const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
+  const defiPlusOn =
+    liveBattle?.session.status === "running" ||
+    liveBattle?.session.status === "sudden_death";
+  const viewingSideB =
+    !!liveBattle &&
+    liveBattle.lives.find((l) => l.side === "b")?.live_id === active.liveId;
+  const thisBattleProduct = currentProduct ?? pickBattleFeatured(room.products);
+  const opponentBattleProduct = pickBattleFeatured(opponentProducts);
 
   return (
   <BattleProvider liveId={active.liveId ?? null} userId={user?.id ?? null}>
@@ -1167,7 +1179,7 @@ export function RealLiveViewerScreen() {
         <LiveChat
           messages={messages}
           bottomOffset={0}
-          height="38dvh"
+          height={defiPlusOn ? "30dvh" : "38dvh"}
           moderation={{
             canModerate: isModerator,
             // Even regular viewers can now open the message menu — Apple 1.2
@@ -1216,6 +1228,33 @@ export function RealLiveViewerScreen() {
           }}
         />
       </div>
+
+      {defiPlusOn && (
+        <BattleFeaturedRow
+          left={viewingSideB ? opponentBattleProduct : thisBattleProduct}
+          right={viewingSideB ? thisBattleProduct : opponentBattleProduct}
+          currency={liveCurrency}
+          leftSecondsLeft={viewingSideB ? 0 : secondsLeft}
+          rightSecondsLeft={viewingSideB ? secondsLeft : 0}
+          viewer
+          onOpenLeft={() => setShowProducts(true)}
+          onOpenRight={() => setShowProducts(true)}
+          onBidLeft={
+            !viewingSideB && auctionIsLive
+              ? () => {
+                  void doBid();
+                }
+              : undefined
+          }
+          onBidRight={
+            viewingSideB && auctionIsLive
+              ? () => {
+                  void doBid();
+                }
+              : undefined
+          }
+        />
+      )}
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 px-3 pb-safe"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
@@ -1314,15 +1353,10 @@ export function RealLiveViewerScreen() {
         </Press>
         </div>
 
-        {currentAsProduct ? (
+        {currentAsProduct && !defiPlusOn ? (
           <AuctionCard
             product={currentAsProduct}
-            tone={
-              liveBattle?.session.status === "running" ||
-              liveBattle?.session.status === "sudden_death"
-                ? "battle"
-                : "default"
-            }
+            tone="default"
             secondsLeft={secondsLeft}
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
@@ -1712,6 +1746,20 @@ function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
         {...props}
         layout={battle.isRunning ? "split" : "single"}
         splitReverse={!!battle.session && battle.session.sideB.roomName === props.room}
+        splitHostName={
+          battle.session
+            ? battle.session.sideB.roomName === props.room
+              ? battle.session.sideB.displayName
+              : battle.session.sideA.displayName
+            : undefined
+        }
+        splitGuestName={
+          battle.session
+            ? battle.session.sideB.roomName === props.room
+              ? battle.session.sideA.displayName
+              : battle.session.sideB.displayName
+            : undefined
+        }
       />
       {battle.isRunning && battle.session && (
         <div

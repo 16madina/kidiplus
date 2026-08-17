@@ -495,6 +495,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const list: { identity: string; track: RemoteTrack }[] = [];
             for (const p of room.remoteParticipants.values()) {
               for (const pub of p.trackPublications.values()) {
+                if (pub.kind === Track.Kind.Video && !pub.isSubscribed) {
+                  try {
+                    pub.setSubscribed(true);
+                  } catch {
+                    /* ignore */
+                  }
+                }
                 if (pub.track && pub.track.kind === Track.Kind.Video) {
                   list.push({ identity: p.identity, track: pub.track as RemoteTrack });
                 }
@@ -504,6 +511,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           };
           room.on(RoomEvent.TrackSubscribed, emitRemotes);
           room.on(RoomEvent.TrackUnsubscribed, emitRemotes);
+          room.on(RoomEvent.TrackPublished, emitRemotes);
+          room.on(RoomEvent.ParticipantConnected, emitRemotes);
           emitRemotes();
 
           room.on(RoomEvent.Reconnecting, () => {

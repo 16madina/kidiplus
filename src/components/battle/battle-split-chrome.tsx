@@ -3,11 +3,16 @@ import { motion } from "framer-motion";
 
 /** Top dock for the two camera boxes — leaves the lower screen for chat / likes. */
 export const BATTLE_VIDEO_DOCK_STYLE = {
-  top: "calc(env(safe-area-inset-top, 0px) + 118px)",
-  height: "min(40dvh, 340px)",
+  top: "calc(env(safe-area-inset-top, 0px) + 108px)",
+  height: "min(36dvh, 300px)",
 } as const;
 
-/** Vertical glow + gold “Duel Plus” badge between the two cameras. */
+export const BATTLE_CARD_ROW_STYLE = {
+  top: "calc(env(safe-area-inset-top, 0px) + 108px + min(36dvh, 300px) + 6px)",
+  height: 76,
+} as const;
+
+/** Vertical glow + gold “Défi Plus” badge between the two cameras. */
 export function BattleSplitDivider() {
   const { t } = useTranslation();
   return (
@@ -22,19 +27,19 @@ export function BattleSplitDivider() {
       />
       <motion.div
         className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
-        animate={{ scale: [1, 1.06, 1] }}
+        animate={{ scale: [1, 1.04, 1] }}
         transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
       >
         <div
-          className="grid h-[3.35rem] w-[3.35rem] place-items-center rounded-full text-center"
+          className="grid h-11 w-11 place-items-center rounded-full text-center"
           style={{
             background: "linear-gradient(160deg, #f8e08a 0%, #e8b923 42%, #c99212 100%)",
             color: "#1a1408",
             boxShadow:
-              "0 0 0 2px rgba(255,236,170,0.55), 0 0 22px 6px rgba(234,179,8,0.42)",
+              "0 0 0 2px rgba(255,236,170,0.55), 0 0 18px 5px rgba(234,179,8,0.38)",
           }}
         >
-          <span className="flex flex-col items-center text-[10px] font-black leading-[1.05] tracking-[0.02em]">
+          <span className="flex flex-col items-center text-[8px] font-black leading-[1.05] tracking-[0.02em]">
             {t("battle.split.vs")
               .split(/\s+/)
               .map((word) => (

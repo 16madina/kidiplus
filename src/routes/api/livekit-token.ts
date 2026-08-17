@@ -205,7 +205,8 @@ export const Route = createFileRoute("/api/livekit-token")({
                 .maybeSingle();
               allowed =
                 !!peer &&
-                (session as { status?: string } | null)?.status === "running" &&
+                ((session as { status?: string } | null)?.status === "running" ||
+                  (session as { status?: string } | null)?.status === "sudden_death") &&
                 link.seller_id !== callerId;
             }
           }

@@ -13,6 +13,10 @@ import {
 } from "@/lib/livekit";
 import { battleGuestIdentity } from "@/lib/battles-db";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /**
  * During a battle, publish a reduced clone of the host camera into the
  * opponent's LiveKit room so their audience sees the split without leaving.
@@ -30,6 +34,8 @@ export function useBattleGuestPublish(opts: {
   >("idle");
   const roomRef = useRef<Room | null>(null);
   const cloneRef = useRef<MediaStreamTrack | null>(null);
+  const getSourceRef = useRef(opts.getSourceTrack);
+  getSourceRef.current = opts.getSourceTrack;
 
   useEffect(() => {
     if (!opts.enabled || !opts.userId || !opts.remoteRoomName) {
@@ -40,9 +46,29 @@ export function useBattleGuestPublish(opts: {
     const roomName = opts.remoteRoomName;
     const identity = battleGuestIdentity(opts.userId);
 
+    async function waitForSource(): Promise<LocalVideoTrack | null> {
+      for (let i = 0; i < 24 && !cancelled; i++) {
+        const track = getSourceRef.current();
+        if (track?.mediaStreamTrack && track.mediaStreamTrack.readyState === "live") {
+          return track;
+        }
+        await sleep(250);
+      }
+      return getSourceRef.current();
+    }
+
     async function start() {
       setRemoteStatus("connecting");
       try {
+        const source = await waitForSource();
+        const media = source?.mediaStreamTrack;
+        if (cancelled) return;
+        if (!media || media.readyState !== "live") {
+          console.warn("[battle] guest publish: camera not ready");
+          setRemoteStatus("error");
+          return;
+        }
+
         const { token, url } = await getToken(
           roomName,
           identity,
@@ -69,12 +95,6 @@ export function useBattleGuestPublish(opts: {
           if (!cancelled) setRemoteStatus("error");
         });
 
-        const source = opts.getSourceTrack();
-        const media = source?.mediaStreamTrack;
-        if (!media) {
-          setRemoteStatus("error");
-          return;
-        }
         const clone = media.clone();
         cloneRef.current = clone;
         try {
@@ -118,14 +138,7 @@ export function useBattleGuestPublish(opts: {
       roomRef.current = null;
       void disconnectRoom(room);
     };
-  }, [
-    opts.enabled,
-    opts.userId,
-    opts.displayName,
-    opts.remoteRoomName,
-    opts.facingKey,
-    opts.getSourceTrack,
-  ]);
+  }, [opts.enabled, opts.userId, opts.displayName, opts.remoteRoomName, opts.facingKey]);
 
   return remoteStatus;
 }

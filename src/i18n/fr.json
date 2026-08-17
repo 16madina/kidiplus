@@ -1972,9 +1972,22 @@
       "title_other": "Le Défi Plus commence dans {{count}} secondes"
     },
     "split": {
-      "vs": "Duel Plus",
+      "vs": "Défi Plus",
       "remotePlaceholder": "En attente de sa caméra",
       "reconnecting": "Reconnexion…"
+    },
+    "card": {
+      "select": "+ Sélectionner un article",
+      "next": "Prochain article bientôt disponible",
+      "start": "Démarrer",
+      "bid": "Enchérir +{{amount}}"
+    },
+    "more": {
+      "title": "Plus",
+      "peek": "Afficher les commandes",
+      "products": "Produits",
+      "moderators": "Modération",
+      "settings": "Paramètres"
     },
     "hud": {
       "banner": "DÉFI PLUS",
@@ -1987,8 +2000,8 @@
       "items_other": "{{count}} ventes",
       "remain": "Temps restant : {{time}}",
       "suddenDeathRemain": "Mort subite · {{time}}",
-      "provisional": "résultat provisoire",
-      "leave": "Quitter le défi"
+      "provisional": "Ventes sous réserve de paiement",
+      "leave": "Quitter le Défi Plus"
     },
     "result": {
       "heading": "Résultats du Défi Plus",

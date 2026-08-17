@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { RemoteTrack } from "livekit-client";
 import type { BattleFighter, BattleSession, BattleSide } from "@/lib/battle-context";
@@ -71,25 +71,12 @@ function PaneName({ name }: { name: string }) {
   );
 }
 
-function GuestPane({
-  fighter,
-  guestTrack,
-  guestStatus,
-}: {
-  fighter: BattleFighter;
-  guestTrack: RemoteTrack | null;
-  guestStatus?: string;
-}) {
-  return (
-    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-[#0c0c10]">
-      {guestTrack ? (
-        <BattleRemoteVideo track={guestTrack} />
-      ) : (
-        <GuestPlaceholder fighter={fighter} status={guestStatus} />
-      )}
-      <PaneName name={fighter.displayName} />
-    </div>
-  );
+function paneStyle(side: "left" | "right"): CSSProperties {
+  return {
+    ...BATTLE_VIDEO_DOCK_STYLE,
+    left: side === "left" ? 4 : "calc(50% + 2px)",
+    width: "calc(50% - 6px)",
+  };
 }
 
 export function BattleSplitStage({
@@ -114,38 +101,48 @@ export function BattleSplitStage({
       ? session.sideA
       : session.sideB
     : null;
-
-  if (!running || !session) {
-    return <div className="contents">{hostVideo}</div>;
-  }
+  const guestFighter = session
+    ? hostOnLeft
+      ? session.sideB
+      : session.sideA
+    : null;
 
   return (
-    <div
-      className="absolute inset-x-1 z-[12] flex flex-row gap-1 overflow-visible"
-      style={BATTLE_VIDEO_DOCK_STYLE}
-    >
-      {!hostOnLeft && (
-        <GuestPane
-          fighter={session.sideA}
-          guestTrack={guestTrack}
-          guestStatus={guestStatus}
-        />
-      )}
-
-      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-black">
+    <>
+      <div
+        className={
+          running
+            ? "absolute z-[12] overflow-hidden rounded-[18px] bg-black"
+            : "absolute inset-0 overflow-hidden bg-black"
+        }
+        style={running ? paneStyle(hostOnLeft ? "left" : "right") : undefined}
+      >
         {hostVideo}
-        {hostFighter && <PaneName name={hostFighter.displayName} />}
+        {running && hostFighter && <PaneName name={hostFighter.displayName} />}
       </div>
 
-      {hostOnLeft && (
-        <GuestPane
-          fighter={session.sideB}
-          guestTrack={guestTrack}
-          guestStatus={guestStatus}
-        />
+      {running && session && guestFighter && (
+        <div
+          className="absolute z-[12] overflow-hidden rounded-[18px] bg-[#0c0c10]"
+          style={paneStyle(hostOnLeft ? "right" : "left")}
+        >
+          {guestTrack ? (
+            <BattleRemoteVideo track={guestTrack} />
+          ) : (
+            <GuestPlaceholder fighter={guestFighter} status={guestStatus} />
+          )}
+          <PaneName name={guestFighter.displayName} />
+        </div>
       )}
 
-      <BattleSplitDivider />
-    </div>
+      {running && (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-[20]"
+          style={BATTLE_VIDEO_DOCK_STYLE}
+        >
+          <BattleSplitDivider />
+        </div>
+      )}
+    </>
   );
 }

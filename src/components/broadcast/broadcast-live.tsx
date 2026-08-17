@@ -31,6 +31,11 @@ import { BattleInviteSheet } from "@/components/battle/battle-invite-sheet";
 import { BattleIncomingInviteSheet } from "@/components/battle/battle-incoming-invite-sheet";
 import { BattleSplitStage } from "@/components/battle/battle-split-stage";
 import { BattleScoreHud } from "@/components/battle/battle-score-hud";
+import { BattleHostBar } from "@/components/battle/battle-host-bar";
+import {
+  BattleFeaturedRow,
+  pickBattleFeatured,
+} from "@/components/battle/battle-featured-row";
 import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
 import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
 import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
@@ -762,6 +767,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     return sorted[sorted.length - 1] ?? null;
   }, [room.products, featuredId, retiredFeaturedIds]);
 
+  const opponentFeatured = useMemo(
+    () => pickBattleFeatured(opponentProducts),
+    [opponentProducts],
+  );
+
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
     if (activeAuction && activeAuction.productId !== p.id) {
@@ -1373,9 +1383,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <BattleScoreHud
             session={battle.session}
             remainingMs={battle.remainingMs}
-            onForfeit={() => {
-              void battle.endBattle("forfeit", user?.id ?? battle.session?.sideA.sellerId);
-            }}
           />
         </div>
       ) : (
@@ -1502,7 +1509,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <LiveChat
         messages={chatMessages}
         bottomOffset="calc(env(safe-area-inset-bottom) + 64px)"
-        height="34dvh"
+        height={battle.isRunning ? "28dvh" : "34dvh"}
         moderation={{
           canModerate: true,
           canReport: true,
@@ -1593,7 +1600,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       {/* Compact featured card (top-right). Always shown while a product is
           queued; swaps in the next upcoming one automatically after a sale. */}
       <AnimatePresence mode="wait">
-        {featured ? (
+        {featured && !battle.isRunning ? (
           <motion.button
             key={featured.id}
             type="button"
@@ -1603,19 +1610,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
-            style={
-              battle.isRunning
-                ? {
-                    top: "calc(env(safe-area-inset-top, 0px) + 118px)",
-                    ...(battle.mySide === "b"
-                      ? { right: "max(2.6rem, env(safe-area-inset-right, 0px))" }
-                      : { left: "max(2.6rem, env(safe-area-inset-left, 0px))" }),
-                  }
-                : {
-                    top: "calc(env(safe-area-inset-top, 0px) + 96px)",
-                    right: "max(0.5rem, env(safe-area-inset-right, 0px))",
-                  }
-            }
+            style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
+              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
+            }}
           >
             <div
               className="w-[6.75rem] rounded-2xl p-1.5 text-white"
@@ -1690,19 +1688,72 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         ) : null}
       </AnimatePresence>
 
+      {battle.isRunning && (
+        <BattleFeaturedRow
+          left={battle.mySide === "b" ? opponentFeatured : featured}
+          right={battle.mySide === "b" ? featured : opponentFeatured}
+          currency={cur}
+          leftImage={
+            battle.mySide === "b"
+              ? opponentFeatured?.image_url
+              : featured
+                ? imgFor(featured)
+                : null
+          }
+          rightImage={
+            battle.mySide === "b"
+              ? featured
+                ? imgFor(featured)
+                : null
+              : opponentFeatured?.image_url
+          }
+          leftSecondsLeft={
+            battle.mySide !== "b" && featured && activeAuction?.productId === featured.id
+              ? timeLeft
+              : 0
+          }
+          rightSecondsLeft={
+            battle.mySide === "b" && featured && activeAuction?.productId === featured.id
+              ? timeLeft
+              : 0
+          }
+          leftOwned={battle.mySide !== "b"}
+          rightOwned={battle.mySide === "b"}
+          onOpenLeft={() => {
+            haptic.selection();
+            setProductsOpen(true);
+          }}
+          onOpenRight={() => {
+            haptic.selection();
+            setProductsOpen(true);
+          }}
+          onOwnerActionLeft={
+            battle.mySide !== "b" && featured
+              ? () => {
+                  if (featured.mode === "auction") void startAuction(featured);
+                  else void toggleFixedSale(featured);
+                }
+              : undefined
+          }
+          onOwnerActionRight={
+            battle.mySide === "b" && featured
+              ? () => {
+                  if (featured.mode === "auction") void startAuction(featured);
+                  else void toggleFixedSale(featured);
+                }
+              : undefined
+          }
+        />
+      )}
+
       {/* Host chat composer — same comments as viewers (reply supported). */}
       <div
         className="absolute inset-x-0 z-30 flex flex-col gap-1.5 kp-live-safe-x"
         style={{
           bottom: "calc(env(safe-area-inset-bottom) + 10px)",
-          paddingRight:
-            battle.isRunning && battle.mySide !== "b"
-              ? "max(12px, env(safe-area-inset-right, 0px))"
-              : "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
-          paddingLeft:
-            battle.isRunning && battle.mySide !== "b"
-              ? "max(72px, calc(env(safe-area-inset-left, 0px) + 52px))"
-              : undefined,
+          paddingRight: battle.isRunning
+            ? "max(12px, env(safe-area-inset-right, 0px))"
+            : "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
           maxWidth: "min(100%, 42rem)",
         }}
       >
@@ -1773,57 +1824,72 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         </form>
       </div>
 
-      {/* Bottom area is chat + featured card only. Mic / cam / flip /
-          moderators / add live on the right tool rail. Filters removed. */}
-      <HostToolRail
-        hideAV={isRtmp}
-        layout={battle.isRunning ? "battle" : "default"}
-        align={battle.isRunning && battle.mySide !== "b" ? "left" : "right"}
-        micOn={micOn}
-        camOn={cameraOn}
-        canFlip={!isRtmp && canFlip && cameraOn}
-        flipBusy={flipBusy}
-        moderatorsOpen={moderatorsSheetOpen}
-        filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
-        onOpenFilters={
-          isRtmp || battle.isRunning ? undefined : () => setFiltersOpen((o) => !o)
-        }
-        battleActive={battle.isRunning}
-        onOpenBattle={() => {
-          if (ytRestreaming || fbRestreaming || ttRestreaming) {
-            toast.error(t("battle.blocked.restreamActive"));
-            return;
+      {battle.isRunning ? (
+        <BattleHostBar
+          hideAV={isRtmp}
+          micOn={micOn}
+          camOn={cameraOn}
+          canFlip={!isRtmp && canFlip && cameraOn}
+          flipBusy={flipBusy}
+          onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
+          onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
+          onFlip={
+            isRtmp
+              ? undefined
+              : () => {
+                  if (flipBusy || !cameraOn) return;
+                  void videoHandleRef.current
+                    ?.switchCamera()
+                    .then((applied) => setFacing(applied))
+                    .catch(() => {
+                      /* toast + revert handled inside BroadcastVideo */
+                    });
+                }
           }
-          if (battle.isRunning && battle.remainingMs > 0) {
-            toast(t("battle.blocked.alreadyRunning"));
-            return;
+          onLeave={() => {
+            void battle.endBattle("forfeit", user?.id ?? battle.session?.sideA.sellerId);
+          }}
+          onOpenModerators={() => setModeratorsSheetOpen(true)}
+          onOpenProducts={() => setProductsOpen(true)}
+          onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+        />
+      ) : (
+        <HostToolRail
+          hideAV={isRtmp}
+          micOn={micOn}
+          camOn={cameraOn}
+          canFlip={!isRtmp && canFlip && cameraOn}
+          flipBusy={flipBusy}
+          moderatorsOpen={moderatorsSheetOpen}
+          filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
+          onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+          battleActive={false}
+          onOpenBattle={() => {
+            if (ytRestreaming || fbRestreaming || ttRestreaming) {
+              toast.error(t("battle.blocked.restreamActive"));
+              return;
+            }
+            battle.openInvite();
+          }}
+          onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
+          onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
+          onFlip={
+            isRtmp
+              ? undefined
+              : () => {
+                  if (flipBusy || !cameraOn) return;
+                  void videoHandleRef.current
+                    ?.switchCamera()
+                    .then((applied) => setFacing(applied))
+                    .catch(() => {
+                      /* toast + revert handled inside BroadcastVideo */
+                    });
+                }
           }
-          if (battle.isRunning && battle.remainingMs <= 0) {
-            void battle
-              .endBattle(battle.session?.suddenDeath ? "sudden_death" : "timeout")
-              .finally(() => battle.openInvite());
-            return;
-          }
-          battle.openInvite();
-        }}
-        onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
-        onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
-        onFlip={
-          isRtmp
-            ? undefined
-            : () => {
-                if (flipBusy || !cameraOn) return;
-                void videoHandleRef.current
-                  ?.switchCamera()
-                  .then((applied) => setFacing(applied))
-                  .catch(() => {
-                    /* toast + revert handled inside BroadcastVideo */
-                  });
-              }
-        }
-        onOpenModerators={() => setModeratorsSheetOpen(true)}
-        onAddProduct={() => setAddOpen(true)}
-      />
+          onOpenModerators={() => setModeratorsSheetOpen(true)}
+          onAddProduct={() => setAddOpen(true)}
+        />
+      )}
 
       {!isRtmp && (
         <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />

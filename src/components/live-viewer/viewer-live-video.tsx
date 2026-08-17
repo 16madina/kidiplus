@@ -35,6 +35,8 @@ export type ViewerLiveVideoProps = {
   layout?: "single" | "split";
   /** Side B's room: put the guest (side A) on the left. */
   splitReverse?: boolean;
+  splitHostName?: string | null;
+  splitGuestName?: string | null;
 };
 
 export type ViewerStatus =
@@ -143,6 +145,8 @@ export function ViewerLiveVideo({
   onStatus,
   layout = "single",
   splitReverse = false,
+  splitHostName,
+  splitGuestName,
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -531,6 +535,11 @@ export function ViewerLiveVideo({
                   muted
                   className="absolute inset-0 h-full w-full object-cover"
                 />
+                {splitHostName ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
+                    <p className="truncate text-[11px] font-bold text-white">{splitHostName}</p>
+                  </div>
+                ) : null}
               </div>
               <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-[#0c0c10]">
                 <video
@@ -540,6 +549,11 @@ export function ViewerLiveVideo({
                   muted
                   className="absolute inset-0 h-full w-full object-cover"
                 />
+                {splitGuestName ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
+                    <p className="truncate text-[11px] font-bold text-white">{splitGuestName}</p>
+                  </div>
+                ) : null}
               </div>
               <BattleSplitDivider />
             </div>

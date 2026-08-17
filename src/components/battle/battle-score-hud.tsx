@@ -1,8 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Press } from "@/components/press";
 import { formatMoney } from "@/lib/money";
 import type { BattleSession } from "@/lib/battle-context";
-import { haptic } from "@/lib/haptics";
 
 function formatRemain(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -14,11 +12,9 @@ function formatRemain(ms: number): string {
 export function BattleScoreHud({
   session,
   remainingMs,
-  onForfeit,
 }: {
   session: BattleSession;
   remainingMs: number;
-  onForfeit?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language?.startsWith("en") ? "en" : "fr";
@@ -45,8 +41,8 @@ export function BattleScoreHud({
             boxShadow: "0 0 16px rgba(232,197,71,0.28)",
           }}
         >
-          <p className="text-center text-[8px] font-black leading-tight tracking-[0.14em] text-[#f0d36a]">
-            {t("battle.hud.banner")}
+          <p className="text-center text-[8px] font-black leading-tight tracking-[0.04em] text-[#f0d36a]">
+            {t("battle.headline")}
           </p>
           <span className="mt-0.5 text-[20px] font-black tabular-nums leading-none text-white">
             {formatRemain(remainingMs)}
@@ -65,24 +61,9 @@ export function BattleScoreHud({
           side="b"
         />
       </div>
-      <div className="mt-1 flex items-center justify-center gap-2 px-1 text-[10px] text-white/55">
-        {session.suddenDeath ? (
-          <span className="font-bold text-[#f0d36a]">{t("battle.sudden.hint")}</span>
-        ) : null}
-        {session.suddenDeath && <span>·</span>}
-        <span>{t("battle.hud.provisional")}</span>
-        {onForfeit && (
-          <Press
-            onClick={() => {
-              haptic.warning();
-              onForfeit();
-            }}
-            className="pointer-events-auto !min-h-0 ml-1 text-[10px] font-semibold text-white/45 underline-offset-2"
-          >
-            {t("battle.hud.leave")}
-          </Press>
-        )}
-      </div>
+      <p className="mt-0.5 text-center text-[9px] font-medium text-white/45">
+        {session.suddenDeath ? t("battle.sudden.hint") : t("battle.hud.provisional")}
+      </p>
     </div>
   );
 }
