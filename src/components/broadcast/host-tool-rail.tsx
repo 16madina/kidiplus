@@ -88,7 +88,7 @@ export function HostToolRail({
   const battle = layout === "battle";
   return (
     <div
-      className="pointer-events-none absolute z-30 flex flex-col items-center gap-2"
+      className="pointer-events-none absolute z-30 flex flex-col items-center gap-2.5 [&_svg]:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       style={
         battle
           ? {
