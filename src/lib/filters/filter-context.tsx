@@ -50,8 +50,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [lensesError, setLensesError] = useState<string | null>(null);
   const loadStartedRef = useRef(false);
 
-  const loadLenses = useCallback(() => {
-    if (loadStartedRef.current) return;
+  const runLoad = useCallback((force: boolean) => {
+    if (loadStartedRef.current && !force) return;
     if (!isCameraKitSupported()) {
       setLensesError("Camera Kit non supporté sur cet appareil");
       return;
@@ -59,7 +59,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     loadStartedRef.current = true;
     setLensesLoading(true);
     setLensesError(null);
-    loadSnapLenses()
+    loadSnapLenses(force)
       .then((lenses) => {
         setSnapLenses(
           lenses.map((l) => ({
