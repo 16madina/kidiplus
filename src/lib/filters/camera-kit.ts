@@ -126,15 +126,14 @@ export function loadSnapLenses(force = false): Promise<SnapLens[]> {
   if (!lensesPromise) {
     lensesPromise = (async () => {
       const cameraKit = await getCameraKit();
-      const { lenses, errors } = await cameraKit.lensRepository.loadLensGroups([
-        SNAP_LENS_GROUP_ID,
-      ]);
+      const { lenses, errors } =
+        await cameraKit.lensRepository.loadLensGroups(SNAP_LENS_GROUP_IDS);
       if (errors.length) {
         console.warn("[camera-kit] lens group load errors", errors.map(String));
       }
       console.info(
-        `[camera-kit] group ${SNAP_LENS_GROUP_ID}: ${lenses.length} lens(es)`,
-        lenses.map((l) => l.name),
+        `[camera-kit] groups ${SNAP_LENS_GROUP_IDS.join(", ")}: ${lenses.length} lens(es)`,
+        lenses.map((l) => `${l.name} (${l.groupId})`),
       );
       lensesCache = lenses;
       return lenses;
