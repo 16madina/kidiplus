@@ -880,7 +880,8 @@
       "rightsHint": "Utilise uniquement de la musique dont tu détiens les droits.",
       "hint": "La musique est jouée avec ta publication dans la Vitrine.",
       "needAuth": "Reconnecte-toi pour importer une musique."
-    }
+    },
+    "uploadTimeout": "Connexion trop lente : l'envoi n'a pas abouti. Réessaie."
   },
   "dm": {
     "title": "Message",
