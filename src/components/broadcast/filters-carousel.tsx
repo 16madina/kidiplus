@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound, Aperture } from "lucide-react";
+import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound, Aperture, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
