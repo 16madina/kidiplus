@@ -190,6 +190,7 @@ function MediaSlide({
 }) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const explicitlyLoadedUrlRef = useRef<string | null>(null);
   const bindVideoRef = useCallback((node: HTMLVideoElement | null) => {
     videoRef.current = node;
     if (!node) return;
@@ -287,6 +288,21 @@ function MediaSlide({
     let policyFailures = 0;
     let blockedTimer: number | null = null;
     const wantsSound = !muted && volume > 0.001;
+
+    // Some iOS/Android WebViews ignore preload on an off-screen element and
+    // keep networkState=EMPTY after it becomes the active slide. Kick the
+    // resource loader once before play; never repeat it or playback resets.
+    if (
+      el.networkState === HTMLMediaElement.NETWORK_EMPTY &&
+      explicitlyLoadedUrlRef.current !== url
+    ) {
+      explicitlyLoadedUrlRef.current = url;
+      try {
+        el.load();
+      } catch {
+        /* ignore */
+      }
+    }
 
     const applySound = (v: HTMLVideoElement) => {
       if (!wantsSound) return;
