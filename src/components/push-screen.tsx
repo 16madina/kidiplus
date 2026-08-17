@@ -179,10 +179,8 @@ export function PushScreen({
               x,
               zIndex,
               boxShadow: "-12px 0 32px rgba(0,0,0,0.18)",
-
-              opacity: 1,
-              ["--kp-push-shadow" as string]: shadowOpacity,
             }}
+
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
