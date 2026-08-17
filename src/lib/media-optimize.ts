@@ -158,21 +158,27 @@ export async function generateVideoPoster(file: File): Promise<File | null> {
 }
 
 /**
- * Vidéo : plus de ré-encodage temps réel (MediaRecorder rejouait la vidéo en
- * entier, ce qui rendait la publication interminable). On uploade le fichier
- * tel quel et on s'appuie sur le poster + le lazy-loading côté feed.
+ * Vidéo : plus de ré-encodage 9:16 temps réel (MediaRecorder rejouait la vidéo
+ * en entier). En revanche, les .mov QuickTime/HEVC filmés sur iPhone sont
+ * convertis en MPEG-4/H.264 pour être lisibles sur Android et partout ailleurs.
  */
-export async function optimizeVideoFor916(file: File): Promise<File> {
-  return file;
+export async function optimizeVideoFor916(
+  file: File,
+  onProgress?: (p: number) => void,
+): Promise<File> {
+  const { isQuickTimeFile, transcodeMovToMp4 } = await import("@/lib/video-transcode");
+  if (!isQuickTimeFile(file)) return file;
+  return transcodeMovToMp4(file, onProgress);
 }
 
 /** Point d'entrée unique : optimise photo ou vidéo pour le rendu 9:16. */
 export async function optimizeMediaFor916(
   file: File,
-  _onProgress?: (p: number) => void,
+  onProgress?: (p: number) => void,
 ): Promise<File> {
-  if (isVideoFileLike(file)) return file;
+  if (isVideoFileLike(file)) return optimizeVideoFor916(file, onProgress);
   if (isImageFileLike(file)) return optimizeImageFor916(file);
   return file;
 }
+
 
