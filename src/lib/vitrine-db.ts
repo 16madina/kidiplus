@@ -1009,30 +1009,39 @@ export async function createVitrinePost(input: {
   music?: VitrineMusic | null;
   posterUrl?: string | null;
 }): Promise<VitrinePost | null> {
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   // Live announcements may ship with cover URL only, or caption + live_id.
   if (!uid) return null;
   if (input.mediaUrls.length === 0 && !input.liveId) return null;
   try {
     // Insert + plain select (no join) — join-on-insert fails on some PostgREST
     // setups and made publish look broken after a successful upload.
-    const { data, error } = await sb
-      .from("vitrine_posts")
-      .insert({
-        user_id: uid,
-        media_type: input.mediaType,
-        media_urls: input.mediaUrls,
-        poster_url: input.posterUrl ?? null,
-        caption: input.caption?.trim() || null,
-        product_id: input.productId ?? null,
-        live_id: input.liveId ?? null,
-        active: true,
-        ...musicToRow(input.music),
-      })
-      .select(
-        `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
-      )
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      Promise.resolve(
+        sb
+          .from("vitrine_posts")
+          .insert({
+            user_id: uid,
+            media_type: input.mediaType,
+            media_urls: input.mediaUrls,
+            poster_url: input.posterUrl ?? null,
+            caption: input.caption?.trim() || null,
+            product_id: input.productId ?? null,
+            live_id: input.liveId ?? null,
+            active: true,
+            ...musicToRow(input.music),
+          })
+          .select(
+            `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
+          )
+          .maybeSingle(),
+      ),
+      25000,
+      "insert_timeout",
+    );
+
     if (error) {
       console.warn("[vitrine] create post failed", error.message);
       return null;
