@@ -337,19 +337,64 @@ export function ViewerLiveVideo({
         });
 
 
-        // Attach any tracks already subscribed at connect time.
-        r.remoteParticipants.forEach((p) => {
-          p.trackPublications.forEach((pub) => {
-            try {
-              if (!pub.isSubscribed) pub.setSubscribed(true);
-            } catch {
-              /* ignore */
-            }
-            if (pub.track) attachTrack(pub.track, p);
+        // Some publishes arrive as "published but not yet subscribed"
+        // (autoSubscribe race, or a host republish after a camera flip).
+        // Force the subscription so we never sit on the poster while the
+        // host is actually broadcasting.
+        const forceSubscribeAll = () => {
+          if (cancelled) return false;
+          let got = false;
+          r.remoteParticipants.forEach((p) => {
+            p.trackPublications.forEach((pub) => {
+              try {
+                if (!pub.isSubscribed) pub.setSubscribed(true);
+              } catch {
+                /* ignore */
+              }
+              if (pub.track) {
+                attachTrack(pub.track, p);
+                if (pub.track.kind === Track.Kind.Video) got = true;
+              }
+            });
           });
+          return got;
+        };
+
+        r.on(RoomEvent.TrackPublished, (pub, p) => {
+          if (cancelled) return;
+          try {
+            pub.setSubscribed(true);
+          } catch {
+            /* ignore */
+          }
+          if (pub.track) attachTrack(pub.track, p);
         });
 
+        r.on(RoomEvent.ParticipantConnected, () => {
+          if (cancelled) return;
+          forceSubscribeAll();
+        });
+
+        // Attach any tracks already subscribed at connect time.
+        forceSubscribeAll();
+
+        // Watchdog: while we still show the poster, keep retrying every 2s.
+        // Covers WKWebView/Android cases where neither TrackSubscribed nor
+        // TrackPublished fires after a host renegotiation.
+        const pollId = window.setInterval(() => {
+          if (cancelled || !roomRef.current) return;
+          if (hadVideo && !videoRef.current?.paused) return;
+          const got = forceSubscribeAll();
+          if (!got) {
+            console.info("[livekit viewer] no remote video yet", {
+              participants: roomRef.current.remoteParticipants.size,
+            });
+          }
+        }, 2000);
+        pollRef.current = pollId;
+
         if (r.remoteParticipants.size === 0) setStatus("waiting");
+
       } catch (err) {
         console.error("[livekit viewer] failed", err);
         if (!cancelled) setStatus("error");
