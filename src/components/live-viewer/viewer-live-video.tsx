@@ -23,7 +23,7 @@ import {
   usePipHold,
 } from "@/lib/pip-session";
 import { Room } from "livekit-client";
-import { BattleSplitDivider } from "@/components/battle/battle-split-chrome";
+import { BattleSplitDivider, BATTLE_VIDEO_DOCK_STYLE } from "@/components/battle/battle-split-chrome";
 
 export type ViewerLiveVideoProps = {
   room: string;
@@ -518,29 +518,32 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      {layout === "split" ? (
-        <div className={`absolute inset-0 flex ${splitReverse ? "flex-row-reverse" : "flex-row"}`}>
-          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
-            <video
-              ref={videoRef}
-              playsInline
-              autoPlay
-              muted
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </div>
-          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-[#0c0c10]">
-            <video
-              ref={videoBRef}
-              playsInline
-              autoPlay
-              muted
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </div>
-          <BattleSplitDivider />
-        </div>
-      ) : (
+          {layout === "split" ? (
+            <div
+              className={`absolute inset-x-1 z-[12] flex gap-1 ${splitReverse ? "flex-row-reverse" : "flex-row"}`}
+              style={BATTLE_VIDEO_DOCK_STYLE}
+            >
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-black">
+                <video
+                  ref={videoRef}
+                  playsInline
+                  autoPlay
+                  muted
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-[#0c0c10]">
+                <video
+                  ref={videoBRef}
+                  playsInline
+                  autoPlay
+                  muted
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+              <BattleSplitDivider />
+            </div>
+          ) : (
         <video
           ref={videoRef}
           playsInline

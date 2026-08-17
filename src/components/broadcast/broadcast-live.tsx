@@ -1603,12 +1603,19 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.25, ease: EASE_IOS }}
             className="absolute z-30 text-left"
-            style={{
-              // Under Terminer, but BELOW the stats row so it never covers
-              // Ventes / Articles / Cadeaux on narrow phones (iPhone 15).
-              top: "calc(env(safe-area-inset-top, 0px) + 96px)",
-              right: "max(0.5rem, env(safe-area-inset-right, 0px))",
-            }}
+            style={
+              battle.isRunning
+                ? {
+                    top: "calc(env(safe-area-inset-top, 0px) + 118px)",
+                    ...(battle.mySide === "b"
+                      ? { right: "max(2.6rem, env(safe-area-inset-right, 0px))" }
+                      : { left: "max(2.6rem, env(safe-area-inset-left, 0px))" }),
+                  }
+                : {
+                    top: "calc(env(safe-area-inset-top, 0px) + 96px)",
+                    right: "max(0.5rem, env(safe-area-inset-right, 0px))",
+                  }
+            }
           >
             <div
               className="w-[6.75rem] rounded-2xl p-1.5 text-white"
@@ -1688,7 +1695,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         className="absolute inset-x-0 z-30 flex flex-col gap-1.5 kp-live-safe-x"
         style={{
           bottom: "calc(env(safe-area-inset-bottom) + 10px)",
-          paddingRight: "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
+          paddingRight:
+            battle.isRunning && battle.mySide !== "b"
+              ? "max(12px, env(safe-area-inset-right, 0px))"
+              : "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
+          paddingLeft:
+            battle.isRunning && battle.mySide !== "b"
+              ? "max(72px, calc(env(safe-area-inset-left, 0px) + 52px))"
+              : undefined,
           maxWidth: "min(100%, 42rem)",
         }}
       >
@@ -1763,6 +1777,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           moderators / add live on the right tool rail. Filters removed. */}
       <HostToolRail
         hideAV={isRtmp}
+        layout={battle.isRunning ? "battle" : "default"}
+        align={battle.isRunning && battle.mySide !== "b" ? "left" : "right"}
         micOn={micOn}
         camOn={cameraOn}
         canFlip={!isRtmp && canFlip && cameraOn}
@@ -1778,8 +1794,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             toast.error(t("battle.blocked.restreamActive"));
             return;
           }
-          if (battle.isRunning) {
+          if (battle.isRunning && battle.remainingMs > 0) {
             toast(t("battle.blocked.alreadyRunning"));
+            return;
+          }
+          if (battle.isRunning && battle.remainingMs <= 0) {
+            void battle
+              .endBattle(battle.session?.suddenDeath ? "sudden_death" : "timeout")
+              .finally(() => battle.openInvite());
             return;
           }
           battle.openInvite();

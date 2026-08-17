@@ -24,6 +24,9 @@ export type HostToolRailProps = {
   onAddProduct?: () => void;
   /** Hide the mic/cam buttons (viewer moderator mode). */
   hideAV?: boolean;
+  /** Pin the rail to the host's camera box during a Défi Plus. */
+  layout?: "default" | "battle";
+  align?: "left" | "right";
 };
 
 const btn =
@@ -51,20 +54,38 @@ export function HostToolRail({
   battleActive = false,
   onAddProduct,
   hideAV = false,
+  layout = "default",
+  align = "right",
 }: HostToolRailProps) {
   const { t } = useTranslation();
   // Web preview: the featured-auction card lives at the vertical middle on the
   // right edge and collides with this rail. On iOS/Android the rail sits higher
   // on the screen so it stays clear — only shift down for web.
   const webOffset = !isNative();
+  const battle = layout === "battle";
   return (
     <div
       className="pointer-events-none absolute z-30 flex flex-col items-center gap-2"
-      style={{
-        top: webOffset ? "68%" : "50%",
-        right: "max(0.75rem, env(safe-area-inset-right, 0px))",
-        transform: "translateY(-50%)",
-      }}
+      style={
+        battle
+          ? {
+              top: "calc(env(safe-area-inset-top, 0px) + 118px + min(20dvh, 170px))",
+              left:
+                align === "left"
+                  ? "max(0.35rem, env(safe-area-inset-left, 0px))"
+                  : undefined,
+              right:
+                align === "right"
+                  ? "max(0.35rem, env(safe-area-inset-right, 0px))"
+                  : undefined,
+              transform: "translateY(-50%)",
+            }
+          : {
+              top: webOffset ? "68%" : "50%",
+              right: "max(0.75rem, env(safe-area-inset-right, 0px))",
+              transform: "translateY(-50%)",
+            }
+      }
     >
       {!hideAV && onToggleMic && (
         <Press

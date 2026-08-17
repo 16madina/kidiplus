@@ -245,15 +245,23 @@ export function BattleProvider({
       void battleHeartbeat(session.id);
     };
     beat();
-    const id = window.setInterval(beat, 10_000);
+    const expired = remainingMs <= 0;
+    const id = window.setInterval(beat, expired ? 2_000 : 10_000);
     return () => window.clearInterval(id);
-  }, [session?.id, session?.status, userId]);
+  }, [session?.id, session?.status, userId, remainingMs <= 0]);
 
   useEffect(() => {
     if (!session || session.status !== "running" || !userId) return;
     if (remainingMs > 0) return;
     void battleHeartbeat(session.id);
-  }, [remainingMs, session?.id, session?.status, userId]);
+    const fallback = window.setTimeout(() => {
+      void battleEnd(
+        session.id,
+        session.suddenDeath ? "sudden_death" : "timeout",
+      );
+    }, 4_000);
+    return () => window.clearTimeout(fallback);
+  }, [remainingMs, session?.id, session?.status, session?.suddenDeath, userId]);
 
   const incoming: IncomingBattleInvite | null = pendingInvite
     ? {
@@ -274,6 +282,13 @@ export function BattleProvider({
       if (!liveId) return { ok: false, error: "no_live" };
       setSending(true);
       try {
+        if (session?.status === "running" && remainingMs <= 0) {
+          await battleHeartbeat(session.id);
+          await battleEnd(
+            session.id,
+            session.suddenDeath ? "sudden_death" : "timeout",
+          );
+        }
         const res = await battleInvite({
           fromLiveId: liveId,
           toSellerId: draft.toSellerId,
@@ -286,7 +301,7 @@ export function BattleProvider({
         setSending(false);
       }
     },
-    [liveId],
+    [liveId, session, remainingMs],
   );
 
   const acceptIncoming = useCallback(async () => {

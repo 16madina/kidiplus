@@ -1,6 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
+/** Top dock for the two camera boxes — leaves the lower screen for chat / likes. */
+export const BATTLE_VIDEO_DOCK_STYLE = {
+  top: "calc(env(safe-area-inset-top, 0px) + 118px)",
+  height: "min(40dvh, 340px)",
+} as const;
+
 /** Vertical glow + gold “Duel Plus” badge between the two cameras. */
 export function BattleSplitDivider() {
   const { t } = useTranslation();
