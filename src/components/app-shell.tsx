@@ -400,6 +400,9 @@ function AppShellInner() {
                   detail: {
                     post_id: p.post_id,
                     comment_id: typeof p.comment_id === "string" ? p.comment_id : undefined,
+                    parent_comment_id:
+                      typeof p.parent_comment_id === "string" ? p.parent_comment_id : undefined,
+
                     open_comments: openComments,
                   },
                 }),
