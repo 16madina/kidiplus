@@ -61,6 +61,40 @@ export function closeTopPushScreen(): boolean {
   return true;
 }
 
+// --- Web/browser back ------------------------------------------------------
+// On the web (and in-app browsers) the browser/OS back gesture should close
+// the top overlay instead of leaving the app. We keep one dummy history entry
+// alive while at least one PushScreen is open.
+let webBackCount = 0;
+let webBackDetach: (() => void) | null = null;
+
+function attachWebBack(): () => void {
+  if (typeof window === "undefined") return () => {};
+  webBackCount += 1;
+  if (webBackCount === 1) {
+    const onPop = () => {
+      if (overlayStack.length === 0) return;
+      // Keep a guard entry so the next back press is caught too.
+      window.history.pushState({ kpOverlay: true }, "");
+      closeTopPushScreen();
+    };
+    window.history.pushState({ kpOverlay: true }, "");
+    window.addEventListener("popstate", onPop);
+    webBackDetach = () => window.removeEventListener("popstate", onPop);
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    webBackCount -= 1;
+    if (webBackCount === 0) {
+      webBackDetach?.();
+      webBackDetach = null;
+    }
+  };
+}
+
+
 // Reusable push-from-right screen with left-edge swipe-back.
 export function PushScreen({
   open,
