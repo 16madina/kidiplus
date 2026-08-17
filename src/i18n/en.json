@@ -880,7 +880,8 @@
       "rightsHint": "Only use music you have the rights to.",
       "hint": "The music plays along with your post in Vitrine.",
       "needAuth": "Sign in again to import music."
-    }
+    },
+    "uploadTimeout": "Connection too slow: the upload didn't finish. Please try again."
   },
   "dm": {
     "title": "Message",

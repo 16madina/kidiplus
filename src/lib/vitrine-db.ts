@@ -657,6 +657,26 @@ export type UploadProgress = (fraction: number) => void;
 
 const SUPABASE_STORAGE_ORIGIN = CURRENT_STORAGE_HOST;
 
+/**
+ * Garde-fou générique : aucune étape de publication ne doit pouvoir bloquer
+ * le bouton « Publier » indéfiniment.
+ */
+export function withTimeout<T>(p: PromiseLike<T>, ms: number, code: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const to = setTimeout(() => reject(new Error(code)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(to);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(to);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** PUT direct vers l'URL signée avec progression réelle (XHR). */
 function putWithProgress(
   signedPath: string,
@@ -673,24 +693,57 @@ function putWithProgress(
       xhr.open("PUT", clean, true);
       xhr.setRequestHeader("Content-Type", contentType);
       xhr.setRequestHeader("x-upsert", "false");
+      // Plafond dur : au-delà, on rend la main avec une erreur lisible.
+      xhr.timeout = 240000;
+      let settled = false;
+      const finish = (r: { ok: true } | { ok: false; error: string }) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(stallTimer);
+        resolve(r);
+      };
+      // Détection de blocage : aucune progression pendant 60 s → on abandonne.
+      let stallTimer = window.setTimeout(() => {
+        try {
+          xhr.abort();
+        } catch {
+          /* ignore */
+        }
+        finish({ ok: false, error: "upload_stalled" });
+      }, 60000);
+      const bump = () => {
+        window.clearTimeout(stallTimer);
+        stallTimer = window.setTimeout(() => {
+          try {
+            xhr.abort();
+          } catch {
+            /* ignore */
+          }
+          finish({ ok: false, error: "upload_stalled" });
+        }, 60000);
+      };
       xhr.upload.onprogress = (e) => {
+        bump();
         if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           onProgress?.(1);
-          resolve({ ok: true });
+          finish({ ok: true });
         } else {
-          resolve({ ok: false, error: `http_${xhr.status}` });
+          finish({ ok: false, error: `http_${xhr.status}` });
         }
       };
-      xhr.onerror = () => resolve({ ok: false, error: "network_error" });
+      xhr.onerror = () => finish({ ok: false, error: "network_error" });
+      xhr.ontimeout = () => finish({ ok: false, error: "upload_timeout" });
+      xhr.onabort = () => finish({ ok: false, error: "upload_stalled" });
       xhr.send(file);
     } catch (e) {
       resolve({ ok: false, error: e instanceof Error ? e.message : "upload_failed" });
     }
   });
 }
+
 
 /**
  * Génère et envoie la vignette d'une vidéo. Renvoie null si impossible
@@ -699,13 +752,14 @@ function putWithProgress(
 export async function uploadVitrinePoster(videoFile: File): Promise<string | null> {
   try {
     const { generateVideoPoster } = await import("@/lib/media-optimize");
-    const poster = await generateVideoPoster(videoFile);
+    const poster = await withTimeout(generateVideoPoster(videoFile), 20000, "poster_timeout");
     if (!poster) return null;
-    return await uploadVitrineMedia(poster);
+    return await withTimeout(uploadVitrineMedia(poster), 60000, "poster_upload_timeout");
   } catch {
     return null;
   }
 }
+
 
 /** Upload an image/video into the public vitrine-media bucket. */
 export async function uploadVitrineMedia(
@@ -723,18 +777,28 @@ async function requestSignedUpload(
   ext: string,
   onProgress?: UploadProgress,
 ) {
-  const { data: sess } = await supabase.auth.getSession();
+  const { data: sess } = await withTimeout(
+    supabase.auth.getSession(),
+    10000,
+    "session_timeout",
+  ).catch(() => ({ data: { session: null } }) as never);
   const token = sess.session?.access_token;
   if (!token) return null;
 
-  const res = await fetch("/api/vitrine/signed-upload", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ ext, contentType }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api/vitrine/signed-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ext, contentType }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch {
+    return { error: "signed_url_timeout" } as const;
+  }
   if (!res.ok) {
     let message = `http_${res.status}`;
     try {
@@ -764,16 +828,25 @@ async function requestSignedUpload(
     console.warn("[vitrine] direct PUT failed, fallback SDK", put.error);
   }
 
-  const { error: upErr } = await supabase.storage
-    .from("vitrine-media")
-    .uploadToSignedUrl(j.path, j.token, file, { contentType, upsert: false });
-  if (upErr) {
-    console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
-    return { error: upErr.message } as const;
+  try {
+    const { error: upErr } = await withTimeout(
+      supabase.storage
+        .from("vitrine-media")
+        .uploadToSignedUrl(j.path, j.token, file, { contentType, upsert: false }),
+      240000,
+      "upload_timeout",
+    );
+    if (upErr) {
+      console.warn("[vitrine] uploadToSignedUrl failed", upErr.message);
+      return { error: upErr.message } as const;
+    }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "upload_timeout" } as const;
   }
   onProgress?.(1);
   return { url: j.publicUrl } as const;
 }
+
 
 /** Same as uploadVitrineMedia but returns a readable error for toasts. */
 export async function uploadVitrineMediaDetailed(
@@ -781,19 +854,25 @@ export async function uploadVitrineMediaDetailed(
   onProgress?: UploadProgress,
 ): Promise<VitrineUploadResult> {
 
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   if (!uid) return { ok: false, error: "not_authenticated" };
   if (file.size <= 0) return { ok: false, error: "empty_file" };
   if (file.size > VITRINE_MAX_BYTES) return { ok: false, error: "file_too_large" };
 
   // Filet de sécurité : un .mov QuickTime/HEVC est converti en MP4/H.264
-  // avant l'envoi, sinon Android ne peut pas le lire.
+  // avant l'envoi, sinon Android ne peut pas le lire. Le ré-encodage temps
+  // réel peut caler : on borne à 3 min et on garde l'original si dépassé.
   try {
     const { isQuickTimeFile, transcodeMovToMp4 } = await import("@/lib/video-transcode");
-    if (isQuickTimeFile(file)) file = await transcodeMovToMp4(file);
+    if (isQuickTimeFile(file)) {
+      file = await withTimeout(transcodeMovToMp4(file), 180000, "transcode_timeout");
+    }
   } catch {
     /* on garde le fichier d'origine */
   }
+
 
   const contentType = guessVitrineContentType(file);
 
@@ -818,11 +897,16 @@ export async function uploadVitrineMediaDetailed(
 
   // Fallback: direct client upload (needs bucket + insert policy).
   const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from("vitrine-media").upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType,
-  });
+  const { error } = await withTimeout(
+    supabase.storage.from("vitrine-media").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType,
+    }),
+    240000,
+    "upload_timeout",
+  ).catch((e) => ({ error: { message: e instanceof Error ? e.message : "upload_timeout" } }) as never);
+
   if (error) {
     const msg = (error.message || "").toLowerCase();
     const signedMsg = signed && "error" in signed ? String(signed.error) : "";
@@ -851,20 +935,30 @@ export async function createVitrineStory(
   music?: VitrineMusic | null,
   posterUrl?: string | null,
 ): Promise<VitrineStory | null> {
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   if (!uid || !mediaUrl) return null;
   try {
-    const { data, error } = await sb
-      .from("vitrine_stories")
-      .insert({
-        user_id: uid,
-        media_url: mediaUrl,
-        poster_url: posterUrl ?? null,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        ...musicToRow(music),
-      })
-      .select(`id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      Promise.resolve(
+        sb
+          .from("vitrine_stories")
+          .insert({
+            user_id: uid,
+            media_url: mediaUrl,
+            poster_url: posterUrl ?? null,
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            ...musicToRow(music),
+          })
+          .select(`id, user_id, media_url, poster_url, expires_at, created_at, ${MUSIC_COLUMNS}`)
+          .maybeSingle(),
+      ),
+      25000,
+      "insert_timeout",
+    );
+
+
     if (error) {
       console.warn("[vitrine] create story failed", error.message);
       return null;
@@ -915,30 +1009,39 @@ export async function createVitrinePost(input: {
   music?: VitrineMusic | null;
   posterUrl?: string | null;
 }): Promise<VitrinePost | null> {
-  const uid = (await sb.auth.getUser()).data.user?.id;
+  const uid = await withTimeout(sb.auth.getUser(), 10000, "auth_timeout")
+    .then((r) => r.data.user?.id)
+    .catch(() => undefined);
   // Live announcements may ship with cover URL only, or caption + live_id.
   if (!uid) return null;
   if (input.mediaUrls.length === 0 && !input.liveId) return null;
   try {
     // Insert + plain select (no join) — join-on-insert fails on some PostgREST
     // setups and made publish look broken after a successful upload.
-    const { data, error } = await sb
-      .from("vitrine_posts")
-      .insert({
-        user_id: uid,
-        media_type: input.mediaType,
-        media_urls: input.mediaUrls,
-        poster_url: input.posterUrl ?? null,
-        caption: input.caption?.trim() || null,
-        product_id: input.productId ?? null,
-        live_id: input.liveId ?? null,
-        active: true,
-        ...musicToRow(input.music),
-      })
-      .select(
-        `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
-      )
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      Promise.resolve(
+        sb
+          .from("vitrine_posts")
+          .insert({
+            user_id: uid,
+            media_type: input.mediaType,
+            media_urls: input.mediaUrls,
+            poster_url: input.posterUrl ?? null,
+            caption: input.caption?.trim() || null,
+            product_id: input.productId ?? null,
+            live_id: input.liveId ?? null,
+            active: true,
+            ...musicToRow(input.music),
+          })
+          .select(
+            `id, user_id, media_type, media_urls, poster_url, caption, product_id, live_id, like_count, comment_count, created_at, ${MUSIC_COLUMNS}`,
+          )
+          .maybeSingle(),
+      ),
+      25000,
+      "insert_timeout",
+    );
+
     if (error) {
       console.warn("[vitrine] create post failed", error.message);
       return null;

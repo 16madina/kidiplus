@@ -14,6 +14,7 @@ import {
   isVideoUrl,
   uploadVitrineMediaDetailed,
   uploadVitrinePoster,
+  withTimeout,
 } from "@/lib/vitrine-db";
 
 const GOLD = "#E8B93B";
@@ -120,10 +121,13 @@ export function CreateVitrineContentSheet({
     try {
       optimized = [];
       for (const f of next) {
-        optimized.push(await optimizeMediaFor916(f));
+        // Le recadrage ne doit jamais figer l'écran : au-delà de 60 s on
+        // garde le fichier d'origine.
+        optimized.push(await withTimeout(optimizeMediaFor916(f), 60000, "optimize_timeout"));
       }
     } catch {
       optimized = next;
+
     } finally {
       setOptimizing(false);
     }
@@ -174,6 +178,12 @@ export function CreateVitrineContentSheet({
       case "forbidden":
         return t("publish.uploadForbidden", {
           defaultValue: "Envoi refusé. Vérifie que tu es bien connecté en vendeur.",
+        });
+      case "upload_stalled":
+      case "upload_timeout":
+      case "signed_url_timeout":
+        return t("publish.uploadTimeout", {
+          defaultValue: "Connexion trop lente : l'envoi n'a pas abouti. Réessaie.",
         });
       case "empty_file":
         return t("publish.emptyFile", { defaultValue: "Fichier vide. Choisis une autre vidéo." });
@@ -247,6 +257,9 @@ export function CreateVitrineContentSheet({
       toast.success(t("vitrine.published", { defaultValue: "Publication en ligne" }));
       onDone?.();
       close();
+    } catch (e) {
+      console.warn("[publish] failed", e);
+      toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
     } finally {
       setBusy(false);
     }

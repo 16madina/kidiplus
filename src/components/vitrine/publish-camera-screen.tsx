@@ -373,6 +373,12 @@ export function PublishCameraScreen({
         return t("publish.uploadForbidden", {
           defaultValue: "Envoi refusé. Vérifie que tu es bien connecté en vendeur.",
         });
+      case "upload_stalled":
+      case "upload_timeout":
+      case "signed_url_timeout":
+        return t("publish.uploadTimeout", {
+          defaultValue: "Connexion trop lente : l'envoi n'a pas abouti. Réessaie.",
+        });
       case "empty_file":
         return t("publish.emptyFile", { defaultValue: "Fichier vide." });
       default: {
@@ -428,10 +434,14 @@ export function PublishCameraScreen({
       setPreview(null);
       setPhase("camera");
       onClose();
+    } catch (e) {
+      console.warn("[publish] failed", e);
+      toast.error(t("vitrine.publishFail", { defaultValue: "Impossible de publier." }));
     } finally {
       setBusy(false);
     }
   };
+
 
   const modeLabel = (m: PublishCameraMode) => {
     if (m === "story") return t("publish.modes.story", { defaultValue: "STORY" });
