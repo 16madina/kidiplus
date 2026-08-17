@@ -48,6 +48,7 @@ export type BattleSessionRow = {
   turn_until: string | null;
   last_sale_text: string | null;
   last_sale_at: string | null;
+  sudden_death_at: string | null;
 };
 
 export type BattleInviteRow = {

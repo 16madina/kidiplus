@@ -23,6 +23,7 @@ import {
   usePipHold,
 } from "@/lib/pip-session";
 import { Room } from "livekit-client";
+import { BattleSplitDivider } from "@/components/battle/battle-split-chrome";
 
 export type ViewerLiveVideoProps = {
   room: string;
@@ -32,6 +33,8 @@ export type ViewerLiveVideoProps = {
   onStatus?: (s: ViewerStatus) => void;
   /** Two host cameras during a Défi Plus. */
   layout?: "single" | "split";
+  /** Side B's room: put the guest (side A) on the left. */
+  splitReverse?: boolean;
 };
 
 export type ViewerStatus =
@@ -139,6 +142,7 @@ export function ViewerLiveVideo({
   posterImage,
   onStatus,
   layout = "single",
+  splitReverse = false,
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -515,8 +519,8 @@ export function ViewerLiveVideo({
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
       {layout === "split" ? (
-        <div className="absolute inset-0 flex flex-col">
-          <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className={`absolute inset-0 flex ${splitReverse ? "flex-row-reverse" : "flex-row"}`}>
+          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
             <video
               ref={videoRef}
               playsInline
@@ -525,7 +529,7 @@ export function ViewerLiveVideo({
               className="absolute inset-0 h-full w-full object-cover"
             />
           </div>
-          <div className="relative min-h-0 flex-1 overflow-hidden bg-[#0c0c10]">
+          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-[#0c0c10]">
             <video
               ref={videoBRef}
               playsInline
@@ -534,6 +538,7 @@ export function ViewerLiveVideo({
               className="absolute inset-0 h-full w-full object-cover"
             />
           </div>
+          <BattleSplitDivider />
         </div>
       ) : (
         <video

@@ -25,7 +25,7 @@ import {
 import { useFilter } from "@/lib/filters/filter-context";
 import { useLiveEffects } from "@/lib/filters/live-effects-context";
 import { useBattle } from "@/lib/battle-context";
-import { battleOpponentHasActiveAuction, isBattleGuestIdentity, useOpponentBattleProducts } from "@/lib/battles-db";
+import { isBattleGuestIdentity, useOpponentBattleProducts } from "@/lib/battles-db";
 import { useBattleGuestPublish } from "@/lib/battle-guest-publish";
 import { BattleInviteSheet } from "@/components/battle/battle-invite-sheet";
 import { BattleIncomingInviteSheet } from "@/components/battle/battle-incoming-invite-sheet";
@@ -511,12 +511,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     haptic.warning();
   }, [room.lastExtension]);
 
-  useEffect(() => {
-    if (battle.session?.suddenDeath) {
-      setSuddenDeathTick((n) => n + 1);
-    }
-  }, [battle.session?.suddenDeath]);
-
   // React to auction:end (from ourselves too) — flash + confetti + system msg + reveal.
   const [winnerReveal, setWinnerReveal] = useState<{
     key: string;
@@ -773,17 +767,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (activeAuction && activeAuction.productId !== p.id) {
       toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
       return;
-    }
-    if (battle.isRunning && b.liveId) {
-      if (!battle.session?.suddenDeath && !battle.isMyTurn) {
-        toast.error(t("battle.turn.notYours"));
-        return;
-      }
-      const locked = await battleOpponentHasActiveAuction(b.liveId);
-      if (locked) {
-        toast.error(t("battle.turn.wait"));
-        return;
-      }
     }
     haptic.medium();
     setFeaturedId(p.id);
@@ -1231,6 +1214,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <BattleSplitStage
         active={!!battle.isRunning}
         session={battle.session}
+        selfSide={battle.mySide ?? "a"}
         guestTrack={guestTrack}
         guestStatus={remoteBattleStatus}
         hostVideo={
@@ -1389,12 +1373,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <BattleScoreHud
             session={battle.session}
             remainingMs={battle.remainingMs}
-            turnRemainingMs={battle.turnRemainingMs}
-            turnName={
-              battle.session.turnSide === "b"
-                ? battle.session.sideB.displayName
-                : battle.session.sideA.displayName
-            }
             onForfeit={() => {
               void battle.endBattle("forfeit", user?.id ?? battle.session?.sideA.sellerId);
             }}
@@ -2230,8 +2208,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       <BattleIncomingInviteSheet
         invite={battle.incoming}
         onDecline={() => { void battle.declineIncoming(); }}
-        onAccept={(durationSec) => {
-          void battle.acceptIncoming(durationSec).then((res) => {
+        onAccept={() => {
+          void battle.acceptIncoming().then((res) => {
             if (!res.ok) {
               toast.error(
                 res.error === "expired"
@@ -2247,7 +2225,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       )}
       <BattleSuddenDeathOverlay
         active={!!battle.session?.suddenDeath && battle.isRunning}
-        onPickLastItem={() => setProductsOpen(true)}
       />
       <BattleResultOverlay
         open={battle.resultOpen}

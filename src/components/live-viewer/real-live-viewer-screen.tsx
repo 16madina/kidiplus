@@ -1317,6 +1317,12 @@ export function RealLiveViewerScreen() {
         {currentAsProduct ? (
           <AuctionCard
             product={currentAsProduct}
+            tone={
+              liveBattle?.session.status === "running" ||
+              liveBattle?.session.status === "sudden_death"
+                ? "battle"
+                : "default"
+            }
             secondsLeft={secondsLeft}
             currency={liveCurrency}
             viewerCurrency={walletCurrency}
@@ -1702,7 +1708,11 @@ function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
 
   return (
     <>
-      <ViewerLiveVideo {...props} layout={battle.isRunning ? "split" : "single"} />
+      <ViewerLiveVideo
+        {...props}
+        layout={battle.isRunning ? "split" : "single"}
+        splitReverse={!!battle.session && battle.session.sideB.roomName === props.room}
+      />
       {battle.isRunning && battle.session && (
         <div
           className="absolute inset-x-0 z-[34]"
@@ -1711,12 +1721,6 @@ function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
           <BattleScoreHud
             session={battle.session}
             remainingMs={battle.remainingMs}
-            turnRemainingMs={battle.turnRemainingMs}
-            turnName={
-              battle.session.turnSide === "b"
-                ? battle.session.sideB.displayName
-                : battle.session.sideA.displayName
-            }
           />
         </div>
       )}

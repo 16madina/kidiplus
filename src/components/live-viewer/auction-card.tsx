@@ -31,6 +31,7 @@ export function AuctionCard({
   onToggleCustom,
   customPanel,
   customOpen = false,
+  tone = "default",
 }: {
   product: Product;
   secondsLeft: number;
@@ -49,6 +50,8 @@ export function AuctionCard({
   onToggleCustom?: () => void;
   customPanel?: ReactNode;
   customOpen?: boolean;
+  /** Défi Plus: navy card + circular timer, closer to the spectator mockup. */
+  tone?: "default" | "battle";
 }) {
   const { t, i18n } = useTranslation();
   const [bidPulse, setBidPulse] = useState(0);
@@ -74,11 +77,12 @@ export function AuctionCard({
   const canBid =
     auctionActive && !isHighestBidder && !disabled && !deliveryBlocked;
 
+  const battle = tone === "battle";
   const glass = {
-    backgroundColor: "rgba(0, 0, 0, 0.32)",
+    backgroundColor: battle ? "rgba(12, 22, 48, 0.78)" : "rgba(0, 0, 0, 0.32)",
     backdropFilter: "blur(12px) saturate(140%)",
     WebkitBackdropFilter: "blur(12px) saturate(140%)",
-    border: "1px solid rgba(255,255,255,0.14)",
+    border: battle ? "1px solid rgba(96,165,250,0.28)" : "1px solid rgba(255,255,255,0.14)",
   } as const;
 
   const ctaLabel = (() => {
@@ -114,6 +118,11 @@ export function AuctionCard({
           draggable={false}
         />
         <div className="min-w-0 flex-1">
+          {battle && isAuction && auctionActive ? (
+            <p className="mb-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#7dd3fc]">
+              ● {t("live.auctionLive", "Enchère en cours")}
+            </p>
+          ) : null}
           <div className="flex items-center gap-1">
             <p className="min-w-0 truncate text-[13px] font-semibold leading-tight text-white">
               {product.name}
@@ -131,9 +140,11 @@ export function AuctionCard({
               initial={{ scale: 1 }}
               animate={{ scale: [1, 1.12, 1] }}
               transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-              className="text-[16px] font-bold tabular-nums leading-none text-white"
+              className={`text-[16px] font-bold tabular-nums leading-none ${battle ? "text-[#f6d365]" : "text-white"}`}
             >
-              {formatMoney(product.price, cur, locale)}
+              {battle && isAuction
+                ? `${t("live.currentBid")} : ${formatMoney(product.price, cur, locale)}`
+                : formatMoney(product.price, cur, locale)}
             </motion.span>
             {convHint ? (
               <span className="truncate text-[11px] tabular-nums text-white/55">{convHint}</span>
@@ -155,7 +166,38 @@ export function AuctionCard({
           </div>
         </div>
 
-        {isAuction ? (
+        {isAuction && battle ? (
+          <div className="flex shrink-0 flex-col items-center">
+            <p className="mb-0.5 max-w-[4.6rem] text-center text-[7px] font-bold uppercase leading-tight tracking-wide text-white/55">
+              {t("live.auctionEnds")}
+            </p>
+            <div className="relative grid h-12 w-12 place-items-center">
+              <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.14)"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="none"
+                  stroke={urgent ? "#ef4444" : "#f59e0b"}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${urgent ? 70 : 94} 94`}
+                />
+              </svg>
+              <span className="text-[11px] font-black tabular-nums text-white">
+                {mm}:{ss}
+              </span>
+            </div>
+          </div>
+        ) : isAuction ? (
           <div
             className="flex shrink-0 items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[13px] font-bold tabular-nums"
             style={{

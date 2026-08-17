@@ -2,13 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { EASE_IOS } from "@/lib/motion";
 
-export function BattleSuddenDeathOverlay({
-  active,
-  onPickLastItem,
-}: {
-  active: boolean;
-  onPickLastItem?: () => void;
-}) {
+export function BattleSuddenDeathOverlay({ active }: { active: boolean }) {
   const { t } = useTranslation();
 
   return (
@@ -33,15 +27,6 @@ export function BattleSuddenDeathOverlay({
           >
             <p className="text-[15px] font-black tracking-tight">{t("battle.sudden.title")}</p>
             <p className="mt-0.5 text-[12px] font-semibold opacity-80">{t("battle.sudden.body")}</p>
-            {onPickLastItem && (
-              <button
-                type="button"
-                onClick={onPickLastItem}
-                className="pointer-events-auto mt-2 rounded-full bg-[#10162B] px-3 py-1.5 text-[11px] font-bold text-white"
-              >
-                {t("battle.sudden.pick")}
-              </button>
-            )}
           </div>
         </motion.div>
       )}

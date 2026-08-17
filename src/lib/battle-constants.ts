@@ -8,8 +8,8 @@ export const BATTLE_DEFAULT_DURATION_SEC = 900;
 export const BATTLE_INVITE_TTL_SEC = 60;
 export const BATTLE_COUNTDOWN_SEC = 5;
 export const BATTLE_TURN_SEC = 120;
-export const BATTLE_SUDDEN_DEATH_SEC = 30;
-export const BATTLE_SUDDEN_DEATH_MAX_SEC = 600;
+export const BATTLE_SUDDEN_DEATH_SEC = 60;
+export const BATTLE_SUDDEN_DEATH_MAX_SEC = 60;
 export const BATTLE_FORFEIT_GRACE_SEC = 30;
 
 export type BattleDurationSec = (typeof BATTLE_DURATIONS_SEC)[number];

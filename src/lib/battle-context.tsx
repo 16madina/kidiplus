@@ -47,6 +47,7 @@ export type BattleSession = {
   liveWinnerSide: BattleSide | "tie" | null;
   forfeitSellerId: string | null;
   suddenDeath: boolean;
+  suddenDeathAt: number | null;
   turnSide: BattleSide | null;
   turnUntil: number | null;
   lastSaleText: string | null;
@@ -96,7 +97,7 @@ type BattleContextValue = {
     durationSec: number,
     rematchOf?: string | null,
   ) => Promise<{ ok: boolean; error?: string }>;
-  acceptIncoming: (durationSec: number) => Promise<{ ok: boolean; error?: string }>;
+  acceptIncoming: () => Promise<{ ok: boolean; error?: string }>;
   declineIncoming: () => Promise<void>;
   endBattle: (reason: BattleEndReason, forfeitSellerId?: string | null) => Promise<void>;
   dismissResult: () => void;
@@ -158,6 +159,7 @@ function toSession(battle: HydratedBattle): BattleSession | null {
     liveWinnerSide,
     forfeitSellerId: null,
     suddenDeath: s.status === "sudden_death" || !!s.sudden_death,
+    suddenDeathAt: s.sudden_death_at ? Date.parse(s.sudden_death_at) : null,
     turnSide: s.turn_side,
     turnUntil: s.turn_until ? Date.parse(s.turn_until) : null,
     lastSaleText: s.last_sale_text,
@@ -193,7 +195,11 @@ export function BattleProvider({
   }, [hydrated, dismissedId]);
 
   const remainingMs = useMemo(() => {
-    if (!session || session.status !== "running" || session.suddenDeath) return 0;
+    if (!session || session.status !== "running") return 0;
+    if (session.suddenDeath) {
+      const start = session.suddenDeathAt ?? session.endsAt;
+      return Math.max(0, start + BATTLE_SUDDEN_DEATH_SEC * 1000 - now);
+    }
     return Math.max(0, session.endsAt - now);
   }, [session, now]);
 
@@ -245,10 +251,9 @@ export function BattleProvider({
 
   useEffect(() => {
     if (!session || session.status !== "running" || !userId) return;
-    if (session.suddenDeath) return;
     if (remainingMs > 0) return;
     void battleHeartbeat(session.id);
-  }, [remainingMs, session?.id, session?.status, session?.suddenDeath, userId]);
+  }, [remainingMs, session?.id, session?.status, userId]);
 
   const incoming: IncomingBattleInvite | null = pendingInvite
     ? {
@@ -284,9 +289,9 @@ export function BattleProvider({
     [liveId],
   );
 
-  const acceptIncoming = useCallback(async (durationSec: number) => {
+  const acceptIncoming = useCallback(async () => {
     if (!pendingInvite) return { ok: false, error: "no_invite" };
-    const res = await battleAccept(pendingInvite.id, durationSec);
+    const res = await battleAccept(pendingInvite.id);
     return res.ok ? { ok: true } : { ok: false, error: res.error };
   }, [pendingInvite]);
 

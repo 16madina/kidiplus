@@ -7,12 +7,7 @@ import { Press } from "@/components/press";
 import { haptic } from "@/lib/haptics";
 import { EASE_IOS } from "@/lib/motion";
 import { registerOverlay } from "@/components/push-screen";
-import {
-  BATTLE_BRAND_I18N_KEY,
-  BATTLE_DEFAULT_DURATION_SEC,
-  BATTLE_DURATIONS_SEC,
-  BATTLE_PROTO_DEMO_SEC,
-} from "@/lib/battle-constants";
+import { BATTLE_BRAND_I18N_KEY, BATTLE_PROTO_DEMO_SEC } from "@/lib/battle-constants";
 import type { IncomingBattleInvite } from "@/lib/battle-context";
 
 function formatCountdown(ms: number): string {
@@ -26,18 +21,11 @@ export function BattleIncomingInviteSheet({
   onDecline,
 }: {
   invite: IncomingBattleInvite | null;
-  onAccept: (durationSec: number) => void;
+  onAccept: () => void;
   onDecline: () => void;
 }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
-  const [durationSec, setDurationSec] = useState<number>(
-    invite?.durationSec ?? BATTLE_DEFAULT_DURATION_SEC,
-  );
-
-  useEffect(() => {
-    setDurationSec(invite?.durationSec ?? BATTLE_DEFAULT_DURATION_SEC);
-  }, [invite?.id, invite?.durationSec]);
 
   useEffect(() => {
     if (!invite) return;
@@ -52,6 +40,7 @@ export function BattleIncomingInviteSheet({
 
   const leftMs = invite ? invite.expiresAt - now : 0;
   const brand = t(BATTLE_BRAND_I18N_KEY);
+  const durationSec = invite?.durationSec ?? 0;
 
   const node = (
     <AnimatePresence>
@@ -110,9 +99,11 @@ export function BattleIncomingInviteSheet({
                   <p className="text-[13px] text-white/50">@{invite.fromHandle}</p>
                 )}
                 <p className="mt-1 text-[13px] leading-snug text-white/70">
-                  {t("battle.incoming.body", {
-                    count: Math.max(1, Math.round(durationSec / 60)),
-                  })}
+                  {durationSec === BATTLE_PROTO_DEMO_SEC
+                    ? t("battle.incoming.bodyDemo")
+                    : t("battle.incoming.body", {
+                        count: Math.max(1, Math.round(durationSec / 60)),
+                      })}
                 </p>
                 <p className="mt-1 text-[13px] font-semibold text-white/85">
                   {t("battle.incoming.ask")}
@@ -120,49 +111,10 @@ export function BattleIncomingInviteSheet({
               </div>
             </div>
 
-            {invite.prototypePreview && (
-              <p className="mb-3 rounded-xl bg-white/8 px-3 py-2 text-[11px] leading-snug text-white/60">
-                {t("battle.incoming.prototypeHint")}
-              </p>
-            )}
-
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/45">
-              {t("battle.invite.duration")}
-            </p>
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              <Press
-                onClick={() => {
-                  haptic.selection();
-                  setDurationSec(BATTLE_PROTO_DEMO_SEC);
-                }}
-                className="!min-h-9 rounded-full px-3 text-[12px] font-bold"
-                style={{
-                  backgroundColor:
-                    durationSec === BATTLE_PROTO_DEMO_SEC
-                      ? "oklch(0.85 0.18 90)"
-                      : "rgba(255,255,255,0.1)",
-                  color: durationSec === BATTLE_PROTO_DEMO_SEC ? "#10162B" : "white",
-                }}
-              >
-                {t("battle.duration.demo")}
-              </Press>
-              {BATTLE_DURATIONS_SEC.map((sec) => (
-                <Press
-                  key={sec}
-                  onClick={() => {
-                    haptic.selection();
-                    setDurationSec(sec);
-                  }}
-                  className="!min-h-9 flex-1 rounded-full text-[12px] font-bold"
-                  style={{
-                    backgroundColor:
-                      durationSec === sec ? "oklch(0.85 0.18 90)" : "rgba(255,255,255,0.1)",
-                    color: durationSec === sec ? "#10162B" : "white",
-                  }}
-                >
-                  {t("battle.duration.min", { count: sec / 60 })}
-                </Press>
-              ))}
+            <div className="mb-4 inline-flex rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-bold text-white/80">
+              {durationSec === BATTLE_PROTO_DEMO_SEC
+                ? t("battle.duration.demo")
+                : t("battle.duration.min", { count: durationSec / 60 })}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -179,7 +131,7 @@ export function BattleIncomingInviteSheet({
               <Press
                 onClick={() => {
                   haptic.success();
-                  onAccept(durationSec);
+                  onAccept();
                 }}
                 className="!min-h-12 rounded-full text-[15px] font-black"
                 style={{ backgroundColor: "oklch(0.85 0.18 90)", color: "#10162B" }}

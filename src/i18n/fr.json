@@ -1960,6 +1960,7 @@
     "incoming": {
       "title": "🔥 {{name}} vous lance un Défi Plus !",
       "body": "Vous aurez {{count}} minutes pour vendre le plus.",
+      "bodyDemo": "Vous aurez 90 secondes pour vendre le plus.",
       "ask": "Acceptez-vous le défi ?",
       "prototypeHint": "Aperçu : tu vois ici l’invitation que l’autre vendeur recevrait.",
       "accept": "Accepter le défi",
@@ -1971,19 +1972,19 @@
       "title_other": "Le Défi Plus commence dans {{count}} secondes"
     },
     "split": {
-      "vs": "PLUS",
+      "vs": "Duel Plus",
       "remotePlaceholder": "En attente de sa caméra",
       "reconnecting": "Reconnexion…"
     },
     "hud": {
-      "banner": "DÉFI PLUS — QUI VEND PLUS ?",
+      "banner": "DÉFI PLUS",
       "leading": "En tête",
       "leadingName": "{{name}} mène",
       "crown": "👑",
       "behind": "À {{amount}} de {{name}}",
       "tied": "À égalité",
-      "items_one": "{{count}} article vendu",
-      "items_other": "{{count}} articles vendus",
+      "items_one": "{{count}} vente",
+      "items_other": "{{count}} ventes",
       "remain": "Temps restant : {{time}}",
       "suddenDeathRemain": "Mort subite · {{time}}",
       "provisional": "résultat provisoire",
@@ -2012,9 +2013,9 @@
     },
     "sudden": {
       "title": "🔥 ÉGALITÉ — MORT SUBITE !",
-      "body": "Le prochain article vendu décide du gagnant.",
+      "body": "Prolongation : continuez à vendre. Qui mène à la fin du chrono gagne.",
       "clock": "MORT SUBITE",
-      "hint": "Première vente valide gagne",
+      "hint": "Prolongation — vendez encore",
       "pick": "Choisir un dernier article"
     },
     "products": {

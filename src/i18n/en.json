@@ -1960,6 +1960,7 @@
     "incoming": {
       "title": "🔥 {{name}} just sent you a Défi Plus!",
       "body": "You’ll have {{count}} minutes to sell the most.",
+      "bodyDemo": "You’ll have 90 seconds to sell the most.",
       "ask": "Do you accept the challenge?",
       "prototypeHint": "Preview: this is the invite the other seller would see.",
       "accept": "Accept the challenge",
@@ -1971,19 +1972,19 @@
       "title_other": "Défi Plus starts in {{count}} seconds"
     },
     "split": {
-      "vs": "PLUS",
+      "vs": "Duel Plus",
       "remotePlaceholder": "Waiting for their camera",
       "reconnecting": "Reconnecting…"
     },
     "hud": {
-      "banner": "DÉFI PLUS — WHO SELLS MORE?",
+      "banner": "DÉFI PLUS",
       "leading": "In the lead",
       "leadingName": "{{name}} is leading",
       "crown": "👑",
       "behind": "{{amount}} behind {{name}}",
       "tied": "Tied",
-      "items_one": "{{count}} item sold",
-      "items_other": "{{count}} items sold",
+      "items_one": "{{count}} sale",
+      "items_other": "{{count}} sales",
       "remain": "Time left: {{time}}",
       "suddenDeathRemain": "Sudden death · {{time}}",
       "provisional": "provisional result",
@@ -2012,9 +2013,9 @@
     },
     "sudden": {
       "title": "🔥 TIE — SUDDEN DEATH!",
-      "body": "The next item sold decides the winner.",
+      "body": "Overtime: keep selling. Whoever leads when the clock hits zero wins.",
       "clock": "SUDDEN DEATH",
-      "hint": "First valid sale wins",
+      "hint": "Overtime — keep selling",
       "pick": "Pick a last item"
     },
     "products": {

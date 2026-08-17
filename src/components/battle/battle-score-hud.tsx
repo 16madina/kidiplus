@@ -14,14 +14,10 @@ function formatRemain(ms: number): string {
 export function BattleScoreHud({
   session,
   remainingMs,
-  turnRemainingMs = 0,
-  turnName,
   onForfeit,
 }: {
   session: BattleSession;
   remainingMs: number;
-  turnRemainingMs?: number;
-  turnName?: string | null;
   onForfeit?: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -32,90 +28,103 @@ export function BattleScoreHud({
   const bLeads = b.scoreAmountLive > a.scoreAmountLive;
 
   return (
-    <div className="pointer-events-none px-3">
-      <div
-        className="overflow-hidden rounded-[20px] text-white"
-        style={{
-          backgroundColor: "rgba(8,8,12,0.48)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-        }}
-      >
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-1 px-3 pt-2">
-          <HudCol
-            name={a.displayName}
-            amount={formatMoney(a.scoreAmountLive, session.currency, locale)}
-            items={a.scoreItems}
-            crown={aLeads}
-            align="left"
-          />
-          <div className="flex min-w-[7.5rem] flex-col items-center px-1 pt-0.5">
-            <p className="text-center text-[9px] font-black leading-tight tracking-[0.12em] text-[oklch(0.85_0.18_90)]">
-              {t("battle.hud.banner")}
+    <div className="pointer-events-none px-2">
+      <div className="flex items-stretch overflow-hidden rounded-[14px] shadow-[0_10px_28px_rgba(0,0,0,0.35)]">
+        <HudBanner
+          name={a.displayName}
+          amount={formatMoney(a.scoreAmountLive, session.currency, locale)}
+          items={a.scoreItems}
+          crown={aLeads}
+          side="a"
+        />
+        <div
+          className="relative z-10 -mx-1.5 flex min-w-[5.6rem] shrink-0 flex-col items-center justify-center rounded-[12px] px-2 py-1.5"
+          style={{
+            background: "linear-gradient(180deg, #141a2c 0%, #0b1020 100%)",
+            border: "1.5px solid #e8c547",
+            boxShadow: "0 0 16px rgba(232,197,71,0.28)",
+          }}
+        >
+          <p className="text-center text-[8px] font-black leading-tight tracking-[0.14em] text-[#f0d36a]">
+            {t("battle.hud.banner")}
+          </p>
+          <span className="mt-0.5 text-[20px] font-black tabular-nums leading-none text-white">
+            {formatRemain(remainingMs)}
+          </span>
+          {session.suddenDeath && (
+            <p className="mt-0.5 text-[7px] font-black tracking-[0.12em] text-[#f0d36a]">
+              {t("battle.sudden.clock")}
             </p>
-            <span className="mt-1 text-[18px] font-black tabular-nums leading-none">
-              {session.suddenDeath ? t("battle.sudden.clock") : formatRemain(remainingMs)}
-            </span>
-          </div>
-          <HudCol
-            name={b.displayName}
-            amount={formatMoney(b.scoreAmountLive, session.currency, locale)}
-            items={b.scoreItems}
-            crown={bLeads}
-            align="right"
-          />
-        </div>
-        <div className="flex items-center justify-center gap-2 px-3 pb-1.5 pt-1 text-[10px] text-white/55">
-          {session.suddenDeath ? (
-            <span className="font-bold text-[oklch(0.85_0.18_90)]">{t("battle.sudden.hint")}</span>
-          ) : turnName ? (
-            <span>
-              {t("battle.turn.now", { name: turnName, time: formatRemain(turnRemainingMs) })}
-            </span>
-          ) : null}
-          <span>·</span>
-          <span>{t("battle.hud.provisional")}</span>
-          {onForfeit && (
-            <Press
-              onClick={() => {
-                haptic.warning();
-                onForfeit();
-              }}
-              className="pointer-events-auto !min-h-0 ml-1 text-[10px] font-semibold text-white/45 underline-offset-2"
-            >
-              {t("battle.hud.leave")}
-            </Press>
           )}
         </div>
+        <HudBanner
+          name={b.displayName}
+          amount={formatMoney(b.scoreAmountLive, session.currency, locale)}
+          items={b.scoreItems}
+          crown={bLeads}
+          side="b"
+        />
+      </div>
+      <div className="mt-1 flex items-center justify-center gap-2 px-1 text-[10px] text-white/55">
+        {session.suddenDeath ? (
+          <span className="font-bold text-[#f0d36a]">{t("battle.sudden.hint")}</span>
+        ) : null}
+        {session.suddenDeath && <span>·</span>}
+        <span>{t("battle.hud.provisional")}</span>
+        {onForfeit && (
+          <Press
+            onClick={() => {
+              haptic.warning();
+              onForfeit();
+            }}
+            className="pointer-events-auto !min-h-0 ml-1 text-[10px] font-semibold text-white/45 underline-offset-2"
+          >
+            {t("battle.hud.leave")}
+          </Press>
+        )}
       </div>
     </div>
   );
 }
 
-function HudCol({
+function HudBanner({
   name,
   amount,
   items,
   crown,
-  align,
+  side,
 }: {
   name: string;
   amount: string;
   items: number;
   crown: boolean;
-  align: "left" | "right";
+  side: "a" | "b";
 }) {
   const { t } = useTranslation();
+  const isA = side === "a";
   return (
-    <div className={align === "right" ? "text-right" : "text-left"}>
-      <p className="truncate text-[11px] font-black uppercase tracking-wide text-white">
+    <div
+      className={`min-w-0 flex-1 px-2.5 py-1.5 ${isA ? "pr-4 text-left" : "pl-4 text-right"}`}
+      style={{
+        background: isA
+          ? "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)"
+          : "linear-gradient(135deg, #e8c547 0%, #b8860b 100%)",
+        clipPath: isA
+          ? "polygon(0 0, 100% 0, 86% 100%, 0 100%)"
+          : "polygon(14% 0, 100% 0, 100% 100%, 0 100%)",
+        color: isA ? "white" : "#1a1408",
+      }}
+    >
+      <p className="truncate text-[11px] font-black uppercase tracking-wide">
         {crown ? `${t("battle.hud.crown")} ` : ""}
         {name}
       </p>
-      <p className="text-[10px] text-white/55">{t("battle.hud.items", { count: items })}</p>
+      <p className={`text-[10px] font-semibold ${isA ? "text-white/70" : "text-black/55"}`}>
+        {t("battle.hud.items", { count: items })}
+      </p>
       <p
-        className="text-[15px] font-black tabular-nums leading-tight"
-        style={{ color: crown ? "oklch(0.88 0.16 90)" : "white" }}
+        className="text-[14px] font-black tabular-nums leading-tight"
+        style={{ color: isA ? "#f6d365" : "#1a1408" }}
       >
         {amount}
       </p>
