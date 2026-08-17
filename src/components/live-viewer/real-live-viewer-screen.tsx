@@ -54,8 +54,10 @@ import { BattleProvider, useBattle } from "@/lib/battle-context";
 import { BattleScoreHud } from "@/components/battle/battle-score-hud";
 import {
   BattleFeaturedRow,
+  BattlePeerProductSheet,
   pickBattleFeatured,
 } from "@/components/battle/battle-featured-row";
+import { battleLayoutSides } from "@/lib/battle-layout";
 import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
 import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
 import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
@@ -909,6 +911,7 @@ export function RealLiveViewerScreen() {
 
   // Sheets
   const [showProducts, setShowProducts] = useState(false);
+  const [peerProductOpen, setPeerProductOpen] = useState(false);
 
   // Fixed-price flow: optional variant pick → server creates order (stock +
   // fees + delivery). Abandoned payments restore stock via expire_overdue_orders.
@@ -1054,19 +1057,18 @@ export function RealLiveViewerScreen() {
     close();
     return null;
   }
-  const productsForSheet = [
-    ...room.products.map((r) => toProduct(r, activeAuctionId, t, active.seller)),
-    ...opponentProducts.map((r) =>
-      toProduct(r, null, t, opponentLive?.display_name),
-    ),
-  ];
-  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
   const defiPlusOn =
     liveBattle?.session.status === "running" ||
     liveBattle?.session.status === "sudden_death";
-  const viewingSideB =
-    !!liveBattle &&
-    liveBattle.lives.find((l) => l.side === "b")?.live_id === active.liveId;
+  const productsForSheet = [
+    ...room.products.map((r) => toProduct(r, activeAuctionId, t, active.seller)),
+    ...(defiPlusOn
+      ? []
+      : opponentProducts.map((r) =>
+          toProduct(r, null, t, opponentLive?.display_name),
+        )),
+  ];
+  const currentAsProduct = currentProduct ? toProduct(currentProduct, activeAuctionId, t) : null;
   const thisBattleProduct = currentProduct ?? pickBattleFeatured(room.products);
   const opponentBattleProduct = pickBattleFeatured(opponentProducts);
 
@@ -1082,6 +1084,7 @@ export function RealLiveViewerScreen() {
       {active.roomName ? (
         <BattleAwareViewerVideo
           room={active.roomName}
+          liveId={active.liveId}
           identity={isGuest ? identity : `viewer_${identity.slice(0, 8)}`}
           name={displayName}
           posterImage={active.thumbnail.replace("w=600", "w=1200")}
@@ -1231,30 +1234,29 @@ export function RealLiveViewerScreen() {
 
       {defiPlusOn && (
         <BattleFeaturedRow
-          left={viewingSideB ? opponentBattleProduct : thisBattleProduct}
-          right={viewingSideB ? thisBattleProduct : opponentBattleProduct}
+          own={thisBattleProduct}
+          peer={opponentBattleProduct}
           currency={liveCurrency}
-          leftSecondsLeft={viewingSideB ? 0 : secondsLeft}
-          rightSecondsLeft={viewingSideB ? secondsLeft : 0}
+          ownSecondsLeft={secondsLeft}
           viewer
-          onOpenLeft={() => setShowProducts(true)}
-          onOpenRight={() => setShowProducts(true)}
-          onBidLeft={
-            !viewingSideB && auctionIsLive
+          onManageOwn={() => setShowProducts(true)}
+          onBidOwn={
+            auctionIsLive
               ? () => {
                   void doBid();
                 }
               : undefined
           }
-          onBidRight={
-            viewingSideB && auctionIsLive
-              ? () => {
-                  void doBid();
-                }
-              : undefined
-          }
+          onOpenPeer={() => setPeerProductOpen(true)}
         />
       )}
+      <BattlePeerProductSheet
+        open={peerProductOpen && !!opponentBattleProduct}
+        onClose={() => setPeerProductOpen(false)}
+        product={opponentBattleProduct}
+        image={opponentBattleProduct?.image_url}
+        currency={liveCurrency}
+      />
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 px-3 pb-safe"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
@@ -1723,7 +1725,10 @@ export function RealLiveViewerScreen() {
   );
 }
 
-function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
+function BattleAwareViewerVideo({
+  liveId,
+  ...props
+}: ViewerLiveVideoProps & { liveId?: string | null }) {
   const battle = useBattle();
   const [saleFlash, setSaleFlash] = useState<string | null>(null);
   const seenSaleRef = useRef<string | null>(null);
@@ -1740,28 +1745,19 @@ function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
     return () => window.clearTimeout(id);
   }, [battle.lastSaleText, battle.session?.lastSaleAt, battle.isRunning]);
 
+  const layoutSides = battle.session
+    ? battleLayoutSides(battle.session, { roomName: props.room, liveId })
+    : null;
+
   return (
     <>
       <ViewerLiveVideo
         {...props}
         layout={battle.isRunning ? "split" : "single"}
-        splitReverse={!!battle.session && battle.session.sideB.roomName === props.room}
-        splitHostName={
-          battle.session
-            ? battle.session.sideB.roomName === props.room
-              ? battle.session.sideB.displayName
-              : battle.session.sideA.displayName
-            : undefined
-        }
-        splitGuestName={
-          battle.session
-            ? battle.session.sideB.roomName === props.room
-              ? battle.session.sideA.displayName
-              : battle.session.sideB.displayName
-            : undefined
-        }
+        splitHostName={layoutSides?.left.displayName}
+        splitGuestName={layoutSides?.right.displayName}
       />
-      {battle.isRunning && battle.session && (
+      {battle.isRunning && battle.session && layoutSides && (
         <div
           className="absolute inset-x-0 z-[34]"
           style={{ top: "calc(env(safe-area-inset-top) + 52px)" }}
@@ -1769,6 +1765,8 @@ function BattleAwareViewerVideo(props: ViewerLiveVideoProps) {
           <BattleScoreHud
             session={battle.session}
             remainingMs={battle.remainingMs}
+            left={layoutSides.left}
+            right={layoutSides.right}
           />
         </div>
       )}

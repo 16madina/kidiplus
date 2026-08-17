@@ -95,14 +95,13 @@ export function BattleSplitStage({
   selfSide?: BattleSide;
 }) {
   const running = active && !!session;
-  const hostOnLeft = selfSide !== "b";
   const hostFighter = session
-    ? hostOnLeft
-      ? session.sideA
-      : session.sideB
+    ? selfSide === "b"
+      ? session.sideB
+      : session.sideA
     : null;
   const guestFighter = session
-    ? hostOnLeft
+    ? hostFighter?.sellerId === session.sideA.sellerId
       ? session.sideB
       : session.sideA
     : null;
@@ -115,7 +114,7 @@ export function BattleSplitStage({
             ? "absolute z-[12] overflow-hidden rounded-[18px] bg-black"
             : "absolute inset-0 overflow-hidden bg-black"
         }
-        style={running ? paneStyle(hostOnLeft ? "left" : "right") : undefined}
+        style={running ? paneStyle("left") : undefined}
       >
         {hostVideo}
         {running && hostFighter && <PaneName name={hostFighter.displayName} />}
@@ -124,7 +123,7 @@ export function BattleSplitStage({
       {running && session && guestFighter && (
         <div
           className="absolute z-[12] overflow-hidden rounded-[18px] bg-[#0c0c10]"
-          style={paneStyle(hostOnLeft ? "right" : "left")}
+          style={paneStyle("right")}
         >
           {guestTrack ? (
             <BattleRemoteVideo track={guestTrack} />

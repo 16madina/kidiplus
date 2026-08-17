@@ -1980,7 +1980,12 @@
       "select": "+ Select an item",
       "next": "Next item coming soon",
       "start": "Start",
-      "bid": "Bid +{{amount}}"
+      "bid": "Bid +{{amount}}",
+      "forbidden": "You can only manage your own items.",
+      "statusWait": "Waiting",
+      "statusLive": "Live",
+      "statusSold": "Sold",
+      "statusUnsold": "Unsold"
     },
     "more": {
       "title": "More",

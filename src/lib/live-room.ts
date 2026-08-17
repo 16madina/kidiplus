@@ -1172,13 +1172,15 @@ export function useLiveRoom(params: {
           text: trimmed,
           system: true,
         };
-        setChat((prev) => [...prev, evt].slice(-60));
-        // Broadcast so viewers + social egress see host system lines
-        // (e.g. "Mettre en vente — …"), not only the host's local chat.
-        void channelRef.current?.send({
-          type: "broadcast",
-          event: "chat",
-          payload: evt,
+        setChat((prev) => {
+          const last = [...prev].reverse().find((m) => m.system && !m.systemKind);
+          if (last && last.text === trimmed) return prev;
+          void channelRef.current?.send({
+            type: "broadcast",
+            event: "chat",
+            payload: evt,
+          });
+          return [...prev, evt].slice(-60);
         });
       },
     }),

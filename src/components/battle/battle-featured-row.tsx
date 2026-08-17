@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import type { LiveProductRow } from "@/lib/lives-db";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
 import { Press } from "@/components/press";
 import { bidStepFor, formatMoney, normalizeCurrency } from "@/lib/money";
 import { BATTLE_CARD_ROW_STYLE } from "@/components/battle/battle-split-chrome";
+import { BottomSheet } from "@/components/live-viewer/bottom-sheet";
 import { useTranslation } from "react-i18next";
 import { haptic } from "@/lib/haptics";
+import { conditionLabel } from "@/lib/live-product-options";
 
 export function pickBattleFeatured(products: LiveProductRow[]): LiveProductRow | null {
   const playable = products.filter(
@@ -29,40 +32,40 @@ function formatClock(sec: number): string {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
+function peerStatusKey(product: LiveProductRow): string {
+  if (product.status === "active") return "battle.card.statusLive";
+  if (product.status === "sold") return "battle.card.statusSold";
+  if (product.status === "unsold") return "battle.card.statusUnsold";
+  return "battle.card.statusWait";
+}
+
+/** Own product always LEFT, opponent always RIGHT. */
 export function BattleFeaturedRow({
-  left,
-  right,
+  own,
+  peer,
   currency,
-  leftImage,
-  rightImage,
-  leftSecondsLeft = 0,
-  rightSecondsLeft = 0,
-  leftOwned = false,
-  rightOwned = false,
+  ownImage,
+  peerImage,
+  ownSecondsLeft = 0,
+  peerSecondsLeft = 0,
   viewer = false,
-  onOpenLeft,
-  onOpenRight,
-  onOwnerActionLeft,
-  onOwnerActionRight,
-  onBidLeft,
-  onBidRight,
+  onManageOwn,
+  onStartOwn,
+  onBidOwn,
+  onOpenPeer,
 }: {
-  left: LiveProductRow | null;
-  right: LiveProductRow | null;
+  own: LiveProductRow | null;
+  peer: LiveProductRow | null;
   currency: string;
-  leftImage?: string | null;
-  rightImage?: string | null;
-  leftSecondsLeft?: number;
-  rightSecondsLeft?: number;
-  leftOwned?: boolean;
-  rightOwned?: boolean;
+  ownImage?: string | null;
+  peerImage?: string | null;
+  ownSecondsLeft?: number;
+  peerSecondsLeft?: number;
   viewer?: boolean;
-  onOpenLeft: () => void;
-  onOpenRight: () => void;
-  onOwnerActionLeft?: () => void;
-  onOwnerActionRight?: () => void;
-  onBidLeft?: () => void;
-  onBidRight?: () => void;
+  onManageOwn?: () => void;
+  onStartOwn?: () => void;
+  onBidOwn?: () => void;
+  onOpenPeer?: () => void;
 }) {
   return (
     <div
@@ -70,28 +73,82 @@ export function BattleFeaturedRow({
       style={BATTLE_CARD_ROW_STYLE}
     >
       <MiniCard
-        product={left}
-        image={leftImage ?? left?.image_url}
+        product={own}
+        image={ownImage ?? own?.image_url}
         currency={currency}
-        secondsLeft={leftSecondsLeft}
-        owned={leftOwned}
+        secondsLeft={ownSecondsLeft}
+        owned={!viewer}
         viewer={viewer}
-        onOpen={onOpenLeft}
-        onOwnerAction={onOwnerActionLeft}
-        onBid={onBidLeft}
+        onOpen={onManageOwn}
+        onOwnerAction={onStartOwn}
+        onBid={onBidOwn}
+        onAdd={viewer ? undefined : onManageOwn}
       />
       <MiniCard
-        product={right}
-        image={rightImage ?? right?.image_url}
+        product={peer}
+        image={peerImage ?? peer?.image_url}
         currency={currency}
-        secondsLeft={rightSecondsLeft}
-        owned={rightOwned}
+        secondsLeft={peerSecondsLeft}
+        owned={false}
         viewer={viewer}
-        onOpen={onOpenRight}
-        onOwnerAction={onOwnerActionRight}
-        onBid={onBidRight}
+        readonly
+        onOpen={peer ? onOpenPeer : undefined}
       />
     </div>
+  );
+}
+
+export function BattlePeerProductSheet({
+  open,
+  onClose,
+  product,
+  image,
+  currency,
+}: {
+  open: boolean;
+  onClose: () => void;
+  product: LiveProductRow | null;
+  image?: string | null;
+  currency: string;
+}) {
+  const { t, i18n } = useTranslation();
+  const cur = normalizeCurrency(currency);
+  if (!product) return null;
+  return (
+    <BottomSheet open={open} onClose={onClose} heightPercent={52}>
+      <div className="flex flex-col gap-3 px-1 pb-4 pt-1">
+        <LiveProductImage
+          src={image ?? product.image_url}
+          className="h-40 w-full rounded-2xl object-cover"
+          iconClassName="text-white/40"
+        />
+        <div>
+          <p className="text-[18px] font-black text-white">{product.name}</p>
+          <p className="mt-0.5 text-[12px] font-semibold text-white/55">
+            {t(peerStatusKey(product))}
+          </p>
+        </div>
+        <p className="text-[20px] font-black tabular-nums text-[#f6d365]">
+          {formatMoney(
+            Number(
+              product.status === "active" || product.mode === "fixed"
+                ? product.price
+                : product.start_price,
+            ),
+            cur,
+            i18n.language,
+          )}
+        </p>
+        {product.description ? (
+          <p className="text-[13px] leading-snug text-white/70">{product.description}</p>
+        ) : null}
+        {product.condition ? (
+          <p className="text-[12px] text-white/50">
+            {conditionLabel(product.condition, (key, fallback) => t(key, fallback))}
+          </p>
+        ) : null}
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -102,9 +159,11 @@ function MiniCard({
   secondsLeft,
   owned,
   viewer,
+  readonly = false,
   onOpen,
   onOwnerAction,
   onBid,
+  onAdd,
 }: {
   product: LiveProductRow | null;
   image?: string | null;
@@ -112,9 +171,11 @@ function MiniCard({
   secondsLeft: number;
   owned: boolean;
   viewer: boolean;
-  onOpen: () => void;
+  readonly?: boolean;
+  onOpen?: () => void;
   onOwnerAction?: () => void;
   onBid?: () => void;
+  onAdd?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const cur = normalizeCurrency(currency);
@@ -138,26 +199,37 @@ function MiniCard({
 
   if (!product) {
     return (
-      <Press
-        onClick={() => {
-          haptic.selection();
-          onOpen();
-        }}
-        className="flex h-[76px] min-w-0 items-center rounded-[14px] px-2.5 text-left"
+      <div
+        className="flex h-[76px] min-w-0 items-center gap-1 rounded-[14px] p-1.5"
         style={{
           backgroundColor: "rgba(12,16,28,0.82)",
           border: "1px solid rgba(255,255,255,0.12)",
         }}
       >
-        <p className="truncate text-[11px] font-semibold text-white/80">
-          {owned ? t("battle.card.select") : t("battle.card.next")}
-        </p>
-      </Press>
+        {owned && onOpen ? (
+          <button
+            type="button"
+            onClick={() => {
+              haptic.selection();
+              onOpen();
+            }}
+            className="min-w-0 flex-1 truncate px-1.5 text-left text-[11px] font-semibold text-white/80"
+          >
+            {t("battle.card.select")}
+          </button>
+        ) : (
+          <p className="min-w-0 flex-1 truncate px-1.5 text-[11px] font-semibold text-white/80">
+            {t("battle.card.next")}
+          </p>
+        )}
+        {owned && onAdd ? <AddButton onClick={onAdd} /> : null}
+      </div>
     );
   }
 
   const step = bidStepFor(Number(product.price), cur);
   const action = (() => {
+    if (readonly) return null;
     if (owned && onOwnerAction && !auctionOn) {
       return {
         label: product.mode === "auction" ? t("battle.card.start") : t("live.listForSale"),
@@ -184,6 +256,7 @@ function MiniCard({
       <button
         type="button"
         onClick={() => {
+          if (!onOpen) return;
           haptic.selection();
           onOpen();
         }}
@@ -212,6 +285,11 @@ function MiniCard({
               )}
             </span>
           )}
+          {readonly ? (
+            <span className="mt-0.5 block truncate text-[9px] font-semibold uppercase tracking-wide text-white/45">
+              {t(peerStatusKey(product))}
+            </span>
+          ) : null}
         </span>
       </button>
       {action ? (
@@ -220,12 +298,30 @@ function MiniCard({
             haptic.medium();
             action.run();
           }}
-          className="!min-h-8 !min-w-0 h-8 max-w-[46%] shrink-0 truncate rounded-full px-2 text-[10px] font-bold"
+          className="!min-h-8 !min-w-0 h-8 max-w-[42%] shrink-0 truncate rounded-full px-2 text-[10px] font-bold"
           style={{ backgroundColor: "oklch(0.85 0.18 90)", color: "#10162B" }}
         >
           {action.label}
         </Press>
       ) : null}
+      {owned && onAdd ? <AddButton onClick={onAdd} /> : null}
     </div>
+  );
+}
+
+function AddButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Press
+      onClick={() => {
+        haptic.selection();
+        onClick();
+      }}
+      aria-label={t("battle.card.select")}
+      className="!min-h-8 !min-w-8 h-8 w-8 shrink-0 rounded-full"
+      style={{ backgroundColor: "oklch(0.85 0.18 90)", color: "#10162B" }}
+    >
+      <Plus size={16} strokeWidth={3} />
+    </Press>
   );
 }

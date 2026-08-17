@@ -34,8 +34,10 @@ import { BattleScoreHud } from "@/components/battle/battle-score-hud";
 import { BattleHostBar } from "@/components/battle/battle-host-bar";
 import {
   BattleFeaturedRow,
+  BattlePeerProductSheet,
   pickBattleFeatured,
 } from "@/components/battle/battle-featured-row";
+import { battleLayoutSides } from "@/lib/battle-layout";
 import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
 import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
 import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
@@ -128,6 +130,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [videoStatus, setVideoStatus] = useState<import("./broadcast-video").BroadcastStatus>("idle");
   const [retryKey, setRetryKey] = useState(0);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [peerProductOpen, setPeerProductOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [shopPickerOpen, setShopPickerOpen] = useState(false);
   const [addingProduct, setAddingProduct] = useState(false);
@@ -364,6 +367,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   // Guard against instant finalize on start (race / clock skew), but still
   // end reliably once the auction has actually been running.
   const endingRef = useRef<string | null>(null);
+  const startingAuctionRef = useRef(false);
   const sawCountdownRef = useRef<string | null>(null);
   useEffect(() => {
     if (!activeAuction) {
@@ -529,6 +533,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const joinedAtRef = useRef(Date.now());
   const productsRef = useRef(room.products);
   productsRef.current = room.products;
+  const systemMessageRef = useRef(room.systemMessage);
+  systemMessageRef.current = room.systemMessage;
 
   useEffect(() => {
     joinedAtRef.current = Date.now();
@@ -543,10 +549,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Only dedupe by unique endId — never by product/winner/price/order.
     // Same buyer can win the same item N times in one live.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
-    if (seenEndIdsRef.current.has(endId)) return;
+    const chatKey = `${evt.productId}:${evt.auctionRound ?? 1}:${evt.winnerId ? "sold" : "unsold"}`;
+    if (seenEndIdsRef.current.has(endId) || seenEndIdsRef.current.has(chatKey)) return;
     const ts = evt.ts ?? 0;
     if (ts > 0 && ts < joinedAtRef.current - 2500) return;
     seenEndIdsRef.current.add(endId);
+    seenEndIdsRef.current.add(chatKey);
     // Bound memory across a long live.
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
@@ -579,7 +587,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
-      room.systemMessage(label);
+      systemMessageRef.current(label);
       setWinnerReveal({
         key: endId,
         name: null,
@@ -594,7 +602,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setLastSaleFlash(label);
     setConfettiTrigger((n) => n + 1);
     haptic.success();
-    room.systemMessage(label + (prod ? ` — ${prod.name}` : ""));
+    systemMessageRef.current(label + (prod ? ` — ${prod.name}` : ""));
     setWinnerReveal({
       key: endId,
       name: evt.winnerName,
@@ -612,7 +620,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     });
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = setTimeout(() => setLastSaleFlash(null), 1800);
-  }, [room.lastAuctionEnd, t, room, fmt, resolveWinnerAvatar]);
+  }, [room.lastAuctionEnd, t, fmt, resolveWinnerAvatar, retiredFeaturedIds]);
 
   const seenBattleSaleRef = useRef<string | null>(null);
   useEffect(() => {
@@ -774,11 +782,17 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const startAuction = async (p: LiveProductRow) => {
     if (p.mode !== "auction") return;
+    if (p.live_id && b.liveId && p.live_id !== b.liveId) {
+      toast.error(t("battle.card.forbidden"));
+      return;
+    }
+    if (startingAuctionRef.current) return;
     if (activeAuction && activeAuction.productId !== p.id) {
       toast.error(t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord."));
       return;
     }
     haptic.medium();
+    startingAuctionRef.current = true;
     setFeaturedId(p.id);
     // Relaunch / rejouer — allow this product back onto the star card.
     setRetiredFeaturedIds((prev) => prev.filter((id) => id !== p.id));
@@ -792,6 +806,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // and postgres_changes could not recover anyone who missed the single
     // broadcast frame — exactly the "some viewers see the auction, others
     // stay on waiting-for-seller" desync. Retry once, then surface the error.
+    try {
     let res = await startAuctionInDb(p.id);
     if (!res.ok || !res.deadlineMs) res = await startAuctionInDb(p.id);
     if (!res.ok || !res.deadlineMs) {
@@ -799,6 +814,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       toast.error(
         err === "auction_already_running"
           ? t("live.auctionAlreadyRunning", "Une enchère est déjà en cours. Termine-la d'abord.")
+          : err === "forbidden"
+            ? t("battle.card.forbidden")
           : (res.error ?? t("moderator.startAuctionFailed", "Impossible de démarrer l'enchère")),
       );
       return;
@@ -810,6 +827,9 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       ...(res.auctionRound != null ? { auctionRound: res.auctionRound } : {}),
     });
     room.systemMessage(`${t("live.startAuction")} — ${p.name} · ${fmt(p.start_price)}`);
+    } finally {
+      startingAuctionRef.current = false;
+    }
   };
 
 
@@ -885,6 +905,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleFixedSale = async (p: LiveProductRow) => {
     if (p.mode !== "fixed") return;
+    if (p.live_id && b.liveId && p.live_id !== b.liveId) {
+      toast.error(t("battle.card.forbidden"));
+      return;
+    }
     haptic.medium();
     setFeaturedId(p.id);
     if (p.status === "active") {
@@ -1383,6 +1407,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           <BattleScoreHud
             session={battle.session}
             remainingMs={battle.remainingMs}
+            left={battleLayoutSides(battle.session, { sellerId: user?.id }).left}
+            right={battleLayoutSides(battle.session, { sellerId: user?.id }).right}
           />
         </div>
       ) : (
@@ -1690,61 +1716,39 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
       {battle.isRunning && (
         <BattleFeaturedRow
-          left={battle.mySide === "b" ? opponentFeatured : featured}
-          right={battle.mySide === "b" ? featured : opponentFeatured}
+          own={featured}
+          peer={opponentFeatured}
           currency={cur}
-          leftImage={
-            battle.mySide === "b"
-              ? opponentFeatured?.image_url
-              : featured
-                ? imgFor(featured)
-                : null
+          ownImage={featured ? imgFor(featured) : null}
+          peerImage={opponentFeatured?.image_url}
+          ownSecondsLeft={
+            featured && activeAuction?.productId === featured.id ? timeLeft : 0
           }
-          rightImage={
-            battle.mySide === "b"
-              ? featured
-                ? imgFor(featured)
-                : null
-              : opponentFeatured?.image_url
-          }
-          leftSecondsLeft={
-            battle.mySide !== "b" && featured && activeAuction?.productId === featured.id
-              ? timeLeft
-              : 0
-          }
-          rightSecondsLeft={
-            battle.mySide === "b" && featured && activeAuction?.productId === featured.id
-              ? timeLeft
-              : 0
-          }
-          leftOwned={battle.mySide !== "b"}
-          rightOwned={battle.mySide === "b"}
-          onOpenLeft={() => {
+          onManageOwn={() => {
             haptic.selection();
             setProductsOpen(true);
           }}
-          onOpenRight={() => {
-            haptic.selection();
-            setProductsOpen(true);
-          }}
-          onOwnerActionLeft={
-            battle.mySide !== "b" && featured
+          onStartOwn={
+            featured
               ? () => {
                   if (featured.mode === "auction") void startAuction(featured);
                   else void toggleFixedSale(featured);
                 }
               : undefined
           }
-          onOwnerActionRight={
-            battle.mySide === "b" && featured
-              ? () => {
-                  if (featured.mode === "auction") void startAuction(featured);
-                  else void toggleFixedSale(featured);
-                }
-              : undefined
-          }
+          onOpenPeer={() => {
+            haptic.selection();
+            setPeerProductOpen(true);
+          }}
         />
       )}
+      <BattlePeerProductSheet
+        open={peerProductOpen && !!opponentFeatured}
+        onClose={() => setPeerProductOpen(false)}
+        product={opponentFeatured}
+        image={opponentFeatured?.image_url}
+        currency={cur}
+      />
 
       {/* Host chat composer — same comments as viewers (reply supported). */}
       <div
@@ -2130,44 +2134,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               })}
             </ul>
 
-            {battle.isRunning && opponentProducts.length > 0 && (
-              <div className="mt-5">
-                <p className="pb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  {t("battle.products.opponent", {
-                    name: opponentFighter?.displayName ?? t("battle.unknownSeller"),
-                  })}
-                </p>
-                <ul className="flex flex-col gap-2">
-                  {opponentProducts.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center gap-3 rounded-2xl border p-2.5"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <LiveProductImage
-                        src={p.image_url}
-                        className="h-14 w-14 rounded-xl object-cover"
-                        placeholderClassName="bg-muted"
-                        iconClassName="text-muted-foreground"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-semibold">{p.name}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {p.mode === "auction"
-                            ? `${fmt(p.start_price)} · ${p.timer_seconds}s`
-                            : `${fmt(p.price)} · stock ${Math.max(0, p.stock)}`}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
-                        {opponentFighter?.displayName}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Moderators — host manages who can help with product actions. */}
+            {!battle.isRunning && (
             <div className="mt-5">
               <div className="flex items-center gap-2 pb-2">
                 <Shield size={14} className="text-muted-foreground" />
@@ -2227,6 +2194,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 />
               )}
             </div>
+            )}
           </div>
         </div>
       </BottomSheet>

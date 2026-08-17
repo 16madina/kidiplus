@@ -33,8 +33,6 @@ export type ViewerLiveVideoProps = {
   onStatus?: (s: ViewerStatus) => void;
   /** Two host cameras during a Défi Plus. */
   layout?: "single" | "split";
-  /** Side B's room: put the guest (side A) on the left. */
-  splitReverse?: boolean;
   splitHostName?: string | null;
   splitGuestName?: string | null;
 };
@@ -144,7 +142,6 @@ export function ViewerLiveVideo({
   posterImage,
   onStatus,
   layout = "single",
-  splitReverse = false,
   splitHostName,
   splitGuestName,
 }: ViewerLiveVideoProps) {
@@ -524,7 +521,7 @@ export function ViewerLiveVideo({
     <div className="absolute inset-0 overflow-hidden bg-black">
           {layout === "split" ? (
             <div
-              className={`absolute inset-x-1 z-[12] flex gap-1 ${splitReverse ? "flex-row-reverse" : "flex-row"}`}
+              className={`absolute inset-x-1 z-[12] flex gap-1 flex-row`}
               style={BATTLE_VIDEO_DOCK_STYLE}
             >
               <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-black">

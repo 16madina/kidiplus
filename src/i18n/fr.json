@@ -1980,7 +1980,12 @@
       "select": "+ Sélectionner un article",
       "next": "Prochain article bientôt disponible",
       "start": "Démarrer",
-      "bid": "Enchérir +{{amount}}"
+      "bid": "Enchérir +{{amount}}",
+      "forbidden": "Tu ne peux gérer que tes propres articles.",
+      "statusWait": "En attente",
+      "statusLive": "En cours",
+      "statusSold": "Vendu",
+      "statusUnsold": "Invendu"
     },
     "more": {
       "title": "Plus",
