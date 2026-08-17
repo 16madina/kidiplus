@@ -432,13 +432,16 @@ function MediaSlide({
           )}
           {eager && (
             <video
+              key={reloadKey}
               ref={videoRef}
               data-vitrine-feed
               src={url}
               poster={poster ?? undefined}
               className={mediaClass}
               autoPlay
-              muted={muted || !shouldPlay || volume <= 0.001}
+              // Toujours muet côté React : le son est réactivé en impératif
+              // après le démarrage, sinon l'autoplay est refusé.
+              muted
               loop
               playsInline
               preload="auto"
@@ -451,15 +454,22 @@ function MediaSlide({
                 setBlocked(false);
               }}
               onError={() => {
+                const code = videoRef.current?.error?.code;
+                const fatalFormat =
+                  code === 3 /* MEDIA_ERR_DECODE */ ||
+                  code === 4 /* MEDIA_ERR_SRC_NOT_SUPPORTED */;
+                setErrorKind(fatalFormat ? "format" : "network");
                 setStatus("error");
-                reportBrokenMedia(url);
+                // On ne condamne le média que lorsqu'il est réellement illisible.
+                if (fatalFormat) reportBrokenMedia(url);
               }}
               style={{ pointerEvents: "none", touchAction: "none" }}
             />
           )}
         </Fit916>
         {overlay}
-        {asVideo && blocked && shouldPlay && status !== "error" && (
+        {asVideo && blocked && shouldPlay && status === "ready" && (
+
           <button
             type="button"
             data-no-pause
