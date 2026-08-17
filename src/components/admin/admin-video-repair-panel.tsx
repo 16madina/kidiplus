@@ -31,7 +31,7 @@ export function AdminVideoRepairPanel() {
 
   const run = async () => {
     if (running || posts.length === 0) return;
-    haptic.impact();
+    haptic.medium();
     setRunning(true);
     setResults({});
     const all = await repairAllLegacyMovPosts(
