@@ -320,7 +320,7 @@ export function useBattleForLive(liveId: string | null) {
     };
     load();
     const ch = supabase
-      .channel(`battle-live:${liveId}`)
+      .channel(`battle-live:${liveId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "battle_lives", filter: `live_id=eq.${liveId}` },
