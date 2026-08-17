@@ -78,6 +78,22 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
           <div className="mb-2 flex items-center justify-between gap-2 px-2">
             <div className="min-w-0 flex items-center gap-2">
               <span className="text-[13px] font-bold text-white">Filtres</span>
+              <Press
+                onClick={() => {
+                  haptic.selection();
+                  refreshLenses();
+                }}
+                aria-label="Actualiser les filtres AR"
+                className="!min-h-7 !min-w-7 h-7 w-7 shrink-0 rounded-full text-white grid place-items-center"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
+              >
+                <RefreshCw size={12} className={lensesLoading ? "animate-spin" : undefined} />
+              </Press>
               <span className="truncate text-[11px] text-white/60">
                 {activeLens.lensId === "none" ? "Aucun" : activeLens.name}
               </span>
