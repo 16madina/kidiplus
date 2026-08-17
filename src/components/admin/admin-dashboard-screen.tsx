@@ -15,6 +15,7 @@ import {
 import { fetchPaypalConfig, sendPaypalPayout, checkPaypalPayoutStatus } from "@/lib/paypal-payout-client";
 import { AdminPushPanel } from "./admin-push-panel";
 import { AdminReferralPanel } from "./admin-referral-panel";
+import { AdminVideoRepairPanel } from "./admin-video-repair-panel";
 import { PushScreen } from "@/components/push-screen";
 import { Press } from "@/components/press";
 import { formatMoney, normalizeCurrency, convertMoney } from "@/lib/money";
@@ -45,7 +46,7 @@ import { PaymentsModeBadge } from "./payments-mode-badge";
 
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk" | "media";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -72,6 +73,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "risk" && open && <RiskTab />}
             {tab === "verify" && open && <VerificationsTab />}
             {tab === "referral" && open && <AdminReferralPanel />}
+            {tab === "media" && open && <AdminVideoRepairPanel />}
           </div>
         </>
       )}
@@ -96,6 +98,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
     { id: "referral", icon: <HeartHandshake size={14} />,  label: t("admin.tabs.referral", "Parrainage") },
+    { id: "media",    icon: <RefreshCw size={14} />,       label: t("admin.tabs.media", "Vidéos") },
   ];
   return (
     <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-border bg-background/90 px-2 py-2 backdrop-blur">

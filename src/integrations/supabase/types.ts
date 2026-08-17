@@ -3039,6 +3039,10 @@ export type Database = {
         Args: { _amount?: number; _promo_code_id: string }
         Returns: Json
       }
+      admin_replace_vitrine_video: {
+        Args: { _new_poster?: string; _new_url: string; _post_id: string }
+        Returns: Json
+      }
       admin_resolve_report: {
         Args: { _note?: string; _report_id: string; _status: string }
         Returns: Json
