@@ -39,6 +39,8 @@ export function VitrineCommentsSheet({
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState<VitrineComment | null>(null);
+  const [openThreads, setOpenThreads] = useState<Record<string, boolean>>({});
   const [kbPad, setKbPad] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,7 @@ export function VitrineCommentsSheet({
     let alive = true;
     setLoading(true);
     setText("");
+    setReplyTo(null);
     void fetchVitrineComments(postId).then((r) => {
       if (!alive) return;
       setRows(r);
@@ -130,6 +133,20 @@ export function VitrineCommentsSheet({
     inputRef.current?.focus({ preventScroll: true });
   };
 
+  const startReply = (c: VitrineComment) => {
+    if (guestMode || !user) {
+      openAuth();
+      return;
+    }
+    haptic.light();
+    setReplyTo(c);
+    const handle = c.author?.handle;
+    const mention = handle ? `@${handle} ` : "";
+    setText(mention);
+    if (inputRef.current) inputRef.current.value = mention;
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
   const send = async () => {
     if (guestMode || !user) {
       openAuth();
@@ -146,7 +163,7 @@ export function VitrineCommentsSheet({
     setSending(true);
     haptic.light();
     try {
-      const row = await addVitrineComment(postId, body);
+      const row = await addVitrineComment(postId, body, replyTo?.id ?? null);
       if (!row) {
         toast.error(t("common.error", { defaultValue: "Erreur" }));
         return;
@@ -162,14 +179,40 @@ export function VitrineCommentsSheet({
       setRows((prev) => [withAuthor, ...prev]);
       setText("");
       if (inputRef.current) inputRef.current.value = "";
+      if (replyTo) setOpenThreads((prev) => ({ ...prev, [replyTo.id]: true }));
+      const wasReply = !!replyTo;
+      setReplyTo(null);
       onCommentAdded?.();
-      listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-      toast.success(t("vitrine.commentSent", { defaultValue: "Commentaire publié" }));
+      if (!wasReply) listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      toast.success(
+        wasReply
+          ? t("vitrine.replySent", { defaultValue: "Réponse publiée" })
+          : t("vitrine.commentSent", { defaultValue: "Commentaire publié" }),
+      );
     } finally {
       setSending(false);
     }
   };
 
+
+  const repliesByParent: Record<string, VitrineComment[]> = {};
+  for (const c of rows) {
+    if (!c.parent_id) continue;
+    (repliesByParent[c.parent_id] ??= []).push(c);
+  }
+  for (const list of Object.values(repliesByParent)) {
+    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+  const roots = rows.filter((c) => !c.parent_id);
+
+  // Auto-expand the thread that contains a deep-linked reply.
+  useEffect(() => {
+    if (!highlightCommentId) return;
+    const target = rows.find((r) => r.id === highlightCommentId);
+    if (target?.parent_id) {
+      setOpenThreads((prev) => ({ ...prev, [target.parent_id as string]: true }));
+    }
+  }, [highlightCommentId, rows]);
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={58} zIndex={92}>
@@ -197,7 +240,7 @@ export function VitrineCommentsSheet({
             </p>
           ) : (
             <ul className="space-y-3 pb-2">
-              {rows.map((c) => {
+              {roots.map((c) => {
                 const initial = (
                   c.author?.display_name ||
                   c.author?.handle ||
@@ -207,35 +250,55 @@ export function VitrineCommentsSheet({
                   .toUpperCase();
                 const avatar = avatars[c.id];
                 const highlighted = highlightCommentId === c.id;
+                const replies = repliesByParent[c.id] ?? [];
+                const expanded = !!openThreads[c.id];
                 return (
-                  <li
-                    id={`vitrine-comment-${c.id}`}
-                    key={c.id}
-                    className="flex gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors"
-                    style={
-                      highlighted
-                        ? { background: "color-mix(in oklch, #E8B93B 22%, transparent)" }
-                        : undefined
-                    }
-                  >
-                    <div
-                      className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[12px] font-bold text-white"
-                      style={{ background: "#10162B" }}
-                    >
-                      {avatar ? (
-                        <img src={avatar} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        initial
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-semibold">
-                        {c.author?.display_name || c.author?.handle || "…"}
-                      </p>
-                      <p className="text-[13px] text-foreground/90 whitespace-pre-wrap break-words">
-                        {c.body}
-                      </p>
-                    </div>
+                  <li key={c.id}>
+                    <CommentRow
+                      c={c}
+                      avatar={avatar}
+                      initial={initial}
+                      highlighted={highlighted}
+                      onReply={() => startReply(c)}
+                      replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
+                    />
+                    {replies.length > 0 && (
+                      <div className="ml-11 mt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenThreads((prev) => ({ ...prev, [c.id]: !prev[c.id] }))
+                          }
+                          className="text-[12px] font-semibold text-muted-foreground"
+                        >
+                          {expanded
+                            ? t("vitrine.hideReplies", { defaultValue: "Masquer les réponses" })
+                            : t("vitrine.viewReplies", {
+                                count: replies.length,
+                                defaultValue: `Voir les réponses (${replies.length})`,
+                              })}
+                        </button>
+                        {expanded && (
+                          <ul className="mt-2 space-y-2">
+                            {replies.map((r) => (
+                              <li key={r.id}>
+                                <CommentRow
+                                  c={r}
+                                  avatar={avatars[r.id]}
+                                  initial={(r.author?.display_name || r.author?.handle || "?")
+                                    .slice(0, 1)
+                                    .toUpperCase()}
+                                  highlighted={highlightCommentId === r.id}
+                                  onReply={() => startReply(r)}
+                                  replyLabel={t("vitrine.reply", { defaultValue: "Répondre" })}
+                                  small
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -244,6 +307,28 @@ export function VitrineCommentsSheet({
         </div>
 
         <div className="shrink-0 border-t border-border bg-background px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {replyTo && (
+            <div className="mb-2 flex items-center justify-between rounded-xl bg-muted/60 px-3 py-1.5">
+              <span className="truncate text-[12px] text-muted-foreground">
+                {t("vitrine.replyingTo", {
+                  name:
+                    replyTo.author?.display_name || replyTo.author?.handle || "…",
+                  defaultValue: "Réponse à {{name}}",
+                })}
+              </span>
+              <Press
+                aria-label={t("vitrine.cancelReply", { defaultValue: "Annuler" })}
+                onClick={() => {
+                  setReplyTo(null);
+                  setText("");
+                  if (inputRef.current) inputRef.current.value = "";
+                }}
+                className="!min-h-0 h-7 w-7 rounded-full p-0 text-muted-foreground"
+              >
+                <X size={14} />
+              </Press>
+            </div>
+          )}
           {/* Quick reactions — post a heart / emoji without opening the keyboard. */}
           <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
             {QUICK_EMOJIS.map((e) => (
@@ -297,5 +382,63 @@ export function VitrineCommentsSheet({
 
       </div>
     </BottomSheet>
+  );
+}
+
+
+function CommentRow({
+  c,
+  avatar,
+  initial,
+  highlighted,
+  onReply,
+  replyLabel,
+  small = false,
+}: {
+  c: VitrineComment;
+  avatar?: string;
+  initial: string;
+  highlighted: boolean;
+  onReply: () => void;
+  replyLabel: string;
+  small?: boolean;
+}) {
+  const size = small ? "h-7 w-7" : "h-9 w-9";
+  return (
+    <div
+      id={`vitrine-comment-${c.id}`}
+      className="flex gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors"
+      style={
+        highlighted
+          ? { background: "color-mix(in oklch, #E8B93B 22%, transparent)" }
+          : undefined
+      }
+    >
+      <div
+        className={`grid ${size} shrink-0 place-items-center overflow-hidden rounded-full text-[12px] font-bold text-white`}
+        style={{ background: "#10162B" }}
+      >
+        {avatar ? (
+          <img src={avatar} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initial
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold">
+          {c.author?.display_name || c.author?.handle || "…"}
+        </p>
+        <p className="text-[13px] text-foreground/90 whitespace-pre-wrap break-words">
+          {c.body}
+        </p>
+        <button
+          type="button"
+          onClick={onReply}
+          className="mt-0.5 text-[12px] font-semibold text-muted-foreground"
+        >
+          {replyLabel}
+        </button>
+      </div>
+    </div>
   );
 }
