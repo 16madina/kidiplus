@@ -314,7 +314,7 @@ export function useBattleForLive(liveId: string | null) {
       return;
     }
     let cancelled = false;
-    let debounce: ReturnType<typeof setTimeout> | null = null;
+    let debounce: number | null = null;
     const load = () => {
       void fetchBattleForLive(liveId).then((b) => {
         if (!cancelled) setBattle(b);
@@ -346,7 +346,7 @@ export function useBattleForLive(liveId: string | null) {
   useEffect(() => {
     if (!liveId || !battleId) return;
     let cancelled = false;
-    let debounce: ReturnType<typeof setTimeout> | null = null;
+    let debounce: number | null = null;
     const load = () => {
       void fetchBattleById(battleId).then((b) => {
         if (!cancelled && b) setBattle(b);
@@ -437,7 +437,7 @@ export function useOpponentBattleProducts(
       });
     };
     load();
-    let debounce: ReturnType<typeof setTimeout> | null = null;
+    let debounce: number | null = null;
     const scheduleLoad = () => {
       if (debounce != null) return;
       debounce = window.setTimeout(() => {
