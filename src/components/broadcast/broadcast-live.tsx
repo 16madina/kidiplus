@@ -967,10 +967,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleYoutubeRestream = async () => {
     if (!b.liveId || isRtmp || ytBusy) return;
-    if (!ytRestreaming && battle.isRunning) {
-      toast.error(t("battle.blocked.restreamOn"));
-      return;
-    }
     if (!ytConnected) {
       toast.error(
         t(
@@ -1015,10 +1011,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleFacebookRestream = async () => {
     if (!b.liveId || isRtmp || fbBusy) return;
-    if (!fbRestreaming && battle.isRunning) {
-      toast.error(t("battle.blocked.restreamOn"));
-      return;
-    }
     if (!fbReady) {
       toast.error(
         t(
@@ -1056,10 +1048,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
 
   const toggleTiktokRestream = async () => {
     if (!b.liveId || isRtmp || ttBusy) return;
-    if (!ttRestreaming && battle.isRunning) {
-      toast.error(t("battle.blocked.restreamOn"));
-      return;
-    }
     haptic.selection();
     if (ttRestreaming) {
       setTtBusy(true);
@@ -1088,10 +1076,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     streamKey: string;
   }) => {
     if (!b.liveId || ttBusy) return;
-    if (battle.isRunning) {
-      toast.error(t("battle.blocked.restreamOn"));
-      return;
-    }
     setTtBusy(true);
     try {
       await startTiktokRestream({
@@ -1910,10 +1894,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
           battleActive={false}
           onOpenBattle={() => {
-            if (ytRestreaming || fbRestreaming || ttRestreaming) {
-              toast.error(t("battle.blocked.restreamActive"));
-              return;
-            }
             battle.openInvite();
           }}
           onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
@@ -2320,7 +2300,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }}
       />
       {battle.isRunning && (
-        <BattleCountdownOverlay remainingMs={battle.countdownMs} />
+        <BattleCountdownOverlay startsAt={battle.session?.startedAt} />
       )}
       <BattleSuddenDeathOverlay
         active={!!battle.session?.suddenDeath && battle.isRunning}

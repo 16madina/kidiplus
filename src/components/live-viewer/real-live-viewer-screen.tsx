@@ -1772,7 +1772,7 @@ function BattleAwareViewerVideo({
         </div>
       )}
       {battle.isRunning && (
-        <BattleCountdownOverlay remainingMs={battle.countdownMs} />
+        <BattleCountdownOverlay startsAt={battle.session?.startedAt} />
       )}
       <BattleSuddenDeathOverlay
         active={!!battle.session?.suddenDeath && battle.isRunning}

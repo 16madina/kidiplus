@@ -19,6 +19,12 @@ import { SuddenDeathFlash } from "@/components/live-viewer/sudden-death-flash";
 import { AuctionFinalCountdown } from "@/components/live-viewer/auction-final-countdown";
 import { BidPulseFlash } from "@/components/live-viewer/bid-pulse-flash";
 import { LiveProductImage } from "@/components/live-viewer/live-product-image";
+import { BattleProvider, useBattle } from "@/lib/battle-context";
+import { battleLayoutSides } from "@/lib/battle-layout";
+import { BattleScoreHud } from "@/components/battle/battle-score-hud";
+import { BattleCountdownOverlay } from "@/components/battle/battle-countdown-overlay";
+import { BattleSuddenDeathOverlay } from "@/components/battle/battle-sudden-death-overlay";
+import { BattleResultOverlay } from "@/components/battle/battle-result-overlay";
 import {
   BroadcastEgressVideo,
   type BroadcastEgressVideoStatus,
@@ -46,7 +52,15 @@ export type BroadcastCompositionProps = {
   productImages?: Record<string, string>;
 };
 
-export function BroadcastComposition({
+export function BroadcastComposition(props: BroadcastCompositionProps) {
+  return (
+    <BattleProvider liveId={props.liveId} userId={null}>
+      <BroadcastCompositionInner {...props} />
+    </BattleProvider>
+  );
+}
+
+function BroadcastCompositionInner({
   liveId,
   livekitUrl,
   livekitToken,
@@ -59,6 +73,7 @@ export function BroadcastComposition({
   productImages,
 }: BroadcastCompositionProps) {
   const { t, i18n } = useTranslation();
+  const battle = useBattle();
   const liveCurrency = normalizeCurrency(currency ?? "EUR");
   const fmt = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
@@ -143,6 +158,10 @@ export function BroadcastComposition({
   }, [room.chat]);
 
   const displayViewers = Math.max(1, room.viewerCount);
+  const layoutSides =
+    battle.isRunning && battle.session
+      ? battleLayoutSides(battle.session, { liveId })
+      : null;
 
   const [confettiKey, setConfettiKey] = useState(0);
   const [winnerReveal, setWinnerReveal] = useState<{
@@ -217,10 +236,13 @@ export function BroadcastComposition({
         posterImage={coverUrl}
         onStatus={setVideoStatus}
         brighten
+        layout={battle.isRunning ? "split" : "single"}
+        splitHostName={layoutSides?.left.displayName}
+        splitGuestName={layoutSides?.right.displayName}
       />
 
       {/* Brand mark — centered, slightly larger CSS wordmark */}
-      {showWatermark ? (
+      {showWatermark && !battle.isRunning ? (
         <div
           aria-hidden
           className="pointer-events-none absolute z-40"
@@ -266,6 +288,7 @@ export function BroadcastComposition({
         }}
       >
         {/* Top: brand + description CTA | featured product */}
+        {!battle.isRunning ? (
         <div className="flex items-start justify-between gap-2.5">
           <div
             className="min-w-0 max-w-[52%] rounded-2xl px-3 py-2"
@@ -382,6 +405,7 @@ export function BroadcastComposition({
             </div>
           )}
         </div>
+        ) : null}
 
         {/* Spacer pushes chat toward lower safe band (above FB native chrome) */}
         <div className="min-h-3 flex-1" />
@@ -451,6 +475,33 @@ export function BroadcastComposition({
       </div>
 
       {/* No FloatingHearts — Facebook/YouTube already show native likes. */}
+      {battle.isRunning && battle.session && layoutSides ? (
+        <div
+          className="pointer-events-none absolute z-[36]"
+          style={{
+            top: SAFE_TOP,
+            left: SAFE_LEFT,
+            right: SAFE_RIGHT,
+          }}
+        >
+          <BattleScoreHud
+            session={battle.session}
+            remainingMs={battle.remainingMs}
+            left={layoutSides.left}
+            right={layoutSides.right}
+          />
+        </div>
+      ) : null}
+      <BattleCountdownOverlay startsAt={battle.session?.startedAt} />
+      <BattleSuddenDeathOverlay
+        active={!!battle.session?.suddenDeath && battle.isRunning}
+      />
+      <BattleResultOverlay
+        open={battle.resultOpen}
+        session={battle.session}
+        selfSellerId={null}
+        onDone={battle.dismissResult}
+      />
       <GiftAnimationsLayer trigger={room.lastGift} />
       <Confetti trigger={confettiKey} />
       <SuddenDeathFlash tick={suddenDeathTick} />

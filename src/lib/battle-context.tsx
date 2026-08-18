@@ -212,19 +212,21 @@ export function BattleProvider({
     return mapped;
   }, [hydrated, dismissedId]);
 
+  const countdownMs = useMemo(() => {
+    if (!session || session.status !== "running" || session.suddenDeath) return 0;
+    return Math.max(0, session.startedAt + BATTLE_COUNTDOWN_SEC * 1000 - now);
+  }, [session, now]);
+
   const remainingMs = useMemo(() => {
     if (!session || session.status !== "running") return 0;
     if (session.suddenDeath) {
       const start = session.suddenDeathAt ?? session.endsAt;
       return Math.max(0, start + BATTLE_SUDDEN_DEATH_SEC * 1000 - now);
     }
+    // HUD stays frozen on the full duration until the intro overlay hits 0.
+    if (countdownMs > 0) return session.durationSec * 1000;
     return Math.max(0, session.endsAt - now);
-  }, [session, now]);
-
-  const countdownMs = useMemo(() => {
-    if (!session || session.status !== "running" || session.suddenDeath) return 0;
-    return Math.max(0, session.startedAt + BATTLE_COUNTDOWN_SEC * 1000 - now);
-  }, [session, now]);
+  }, [session, now, countdownMs]);
 
   const mySide = useMemo<BattleSide | null>(() => {
     if (!session || !userId) return null;
@@ -246,9 +248,16 @@ export function BattleProvider({
 
   useEffect(() => {
     if (!session || session.status !== "running") return;
-    const id = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(id);
-  }, [session?.id, session?.status]);
+    let timeout = 0;
+    const loop = () => {
+      const t = Date.now();
+      setNow(t);
+      const introEnd = session.startedAt + BATTLE_COUNTDOWN_SEC * 1000;
+      timeout = window.setTimeout(loop, t < introEnd ? 50 : 1_000);
+    };
+    loop();
+    return () => window.clearTimeout(timeout);
+  }, [session?.id, session?.status, session?.startedAt]);
 
   useEffect(() => {
     if (session?.status === "ended" && session.id !== dismissedId) {

@@ -7,6 +7,12 @@ export const BATTLE_VIDEO_DOCK_STYLE = {
   height: "min(36dvh, 300px)",
 } as const;
 
+/** Same split, in the visible band of YouTube / Facebook / TikTok players. */
+export const BATTLE_VIDEO_DOCK_STYLE_SOCIAL = {
+  top: "16%",
+  height: "38%",
+} as const;
+
 export const BATTLE_CARD_ROW_STYLE = {
   top: "calc(env(safe-area-inset-top, 0px) + 124px + min(36dvh, 300px) + 6px)",
   height: 76,
