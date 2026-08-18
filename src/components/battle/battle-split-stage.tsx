@@ -33,6 +33,26 @@ export function BattleRemoteVideo({ track }: { track: RemoteTrack | null }) {
   );
 }
 
+function BattleRemoteAudio({ track }: { track: RemoteTrack | null }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !track) return;
+    track.attach(el);
+    el.muted = false;
+    el.volume = 1;
+    void el.play().catch(() => {});
+    return () => {
+      try {
+        track.detach(el);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [track]);
+  return <audio ref={ref} autoPlay playsInline />;
+}
+
 function GuestPlaceholder({
   fighter,
   status,
@@ -84,6 +104,7 @@ export function BattleSplitStage({
   session,
   hostVideo,
   guestTrack = null,
+  guestAudio = null,
   guestStatus,
   selfSide = "a",
 }: {
@@ -91,6 +112,7 @@ export function BattleSplitStage({
   session: BattleSession | null;
   hostVideo: ReactNode;
   guestTrack?: RemoteTrack | null;
+  guestAudio?: RemoteTrack | null;
   guestStatus?: string;
   selfSide?: BattleSide;
 }) {
@@ -111,7 +133,7 @@ export function BattleSplitStage({
       <div
         className={
           running
-            ? "absolute z-[12] overflow-hidden rounded-[18px] bg-black"
+            ? "absolute z-[12] overflow-hidden rounded-[18px] bg-black isolate"
             : "absolute inset-0 overflow-hidden bg-black"
         }
         style={running ? paneStyle("left") : undefined}
@@ -122,7 +144,7 @@ export function BattleSplitStage({
 
       {running && session && guestFighter && (
         <div
-          className="absolute z-[12] overflow-hidden rounded-[18px] bg-[#0c0c10]"
+          className="absolute z-[12] isolate overflow-hidden rounded-[18px] bg-[#0c0c10]"
           style={paneStyle("right")}
         >
           {guestTrack ? (
@@ -130,6 +152,7 @@ export function BattleSplitStage({
           ) : (
             <GuestPlaceholder fighter={guestFighter} status={guestStatus} />
           )}
+          <BattleRemoteAudio track={guestAudio} />
           <PaneName name={guestFighter.displayName} />
         </div>
       )}

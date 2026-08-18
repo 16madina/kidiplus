@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, animate } from "framer-motion";
-import { Bell, Radio, Truck, Trash2, Inbox, Check, PackageCheck, ShieldCheck, Heart, MessageCircle } from "lucide-react";
+import { Bell, Radio, Truck, Trash2, Inbox, Check, PackageCheck, ShieldCheck, Heart, MessageCircle, Swords } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
@@ -385,6 +385,7 @@ function NotifKindIcon({ kind }: { kind: string }) {
   else if (kind === "order_reminder") { icon = <Bell size={18} />; bg = "oklch(0.62 0.24 20)"; }
   else if (kind === "dispute_released" || kind === "dispute_refunded") { icon = <ShieldCheck size={18} />; bg = "oklch(0.55 0.16 300)"; }
   else if (kind === "live") { icon = <Radio size={18} />; bg = "oklch(0.65 0.26 15)"; }
+  else if (kind === "battle") { icon = <Swords size={18} />; bg = "oklch(0.45 0.12 85)"; }
   else if (kind === "vitrine_like") { icon = <Heart size={18} />; bg = "oklch(0.62 0.2 25)"; }
   else if (kind === "vitrine_comment" || kind === "vitrine_comment_reply" || kind === "vitrine_comment_like") { icon = <MessageCircle size={18} />; bg = "oklch(0.6 0.16 230)"; }
   return (

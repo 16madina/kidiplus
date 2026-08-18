@@ -288,6 +288,8 @@ export function useLiveRoom(params: {
   const [lastExtension, setLastExtension] = useState<AuctionExtendEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
   const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
+  const productsRef = useRef<LiveProductRow[]>([]);
+  productsRef.current = products;
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const readyRef = useRef(false);
@@ -442,7 +444,7 @@ export function useLiveRoom(params: {
     };
 
     void rescueGifts();
-    const timer = window.setInterval(() => { void rescueGifts(); }, 3_000);
+    const timer = window.setInterval(() => { void rescueGifts(); }, 8_000);
     const onVisible = () => {
       if (document.visibilityState === "visible") void rescueGifts();
     };
@@ -626,18 +628,12 @@ export function useLiveRoom(params: {
               system: true,
             },
           ]);
-          // If someone else is bidding, this auction is live — recover
-          // auctionStart when auction:start broadcast / product UPDATE were missed
-          // (classic "En attente du vendeur" while friends keep bidding).
-          void (async () => {
-            const { data } = await supabase
-              .from("live_products")
-              .select("id, mode, status, auction_deadline_at, timer_seconds, auction_round")
-              .eq("id", row.product_id)
-              .maybeSingle();
-            if (!data) return;
-            tryAdoptAuctionStart(auctionStartFromProduct(data));
-          })();
+          // Recover auctionStart from the already-hydrated row. Fetching the
+          // product on every bid used to fan out N viewers × 1 query per bid.
+          const local = productsRef.current.find((p) => p.id === row.product_id);
+          if (local) {
+            tryAdoptAuctionStart(auctionStartFromProduct(local));
+          }
         },
       )
       .subscribe();
@@ -690,11 +686,13 @@ export function useLiveRoom(params: {
       // stuck on 00:01 with no winner while finalize failed).
       if (deadlineMs > 0 && deadlineMs < Date.now() - 3_000 && Date.now() >= settleCooldownUntil) {
         settleCooldownUntil = Date.now() + 8_000;
-        try {
-          await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
-            .rpc("settle_expired_auctions", { _live_id: liveId });
-        } catch {
-          /* ignore — next tick retries */
+        if (isHost) {
+          try {
+            await (supabase as unknown as { rpc: (n: string, a: object) => Promise<unknown> })
+              .rpc("settle_expired_auctions", { _live_id: liveId });
+          } catch {
+            /* ignore — next tick retries */
+          }
         }
         // Unstick local UI immediately — don't wait for DB if finalize is wedged.
         setAuctionStart((cur) => (cur && cur.productId === data.id ? null : cur));
@@ -740,7 +738,7 @@ export function useLiveRoom(params: {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onVis);
     };
-  }, [liveId]);
+  }, [liveId, isHost]);
 
   // Broadcast + presence channel.
   useEffect(() => {
@@ -921,7 +919,8 @@ export function useLiveRoom(params: {
 
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
-      setViewerCount(Math.max(1, Object.keys(state).length));
+      const count = Math.max(1, Object.keys(state).length);
+      setViewerCount((prev) => (prev === count ? prev : count));
       const people: LivePresenceViewer[] = [];
       const seen = new Set<string>();
       for (const [key, metas] of Object.entries(state)) {
@@ -934,17 +933,26 @@ export function useLiveRoom(params: {
         const identity = String(m?.identity ?? key);
         if (!identity || seen.has(identity)) continue;
         seen.add(identity);
-        const isHost = !!m?.host;
+        const hostFlag = !!m?.host;
         // Guests / truncated LiveKit ids can't be promoted — only real profile UUIDs.
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identity);
-        if (isHost || !isUuid) continue;
+        if (hostFlag || !isUuid) continue;
         people.push({
           identity,
           name: String(m?.name ?? "").trim() || identity.slice(0, 8),
-          isHost,
+          isHost: hostFlag,
         });
       }
-      setPresentViewers(people);
+      people.sort((a, b) => a.identity.localeCompare(b.identity));
+      setPresentViewers((prev) => {
+        if (
+          prev.length === people.length &&
+          prev.every((p, i) => p.identity === people[i]!.identity && p.name === people[i]!.name)
+        ) {
+          return prev;
+        }
+        return people;
+      });
     });
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;

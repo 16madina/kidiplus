@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 
 /** Top dock for the two camera boxes — leaves the lower screen for chat / likes. */
 export const BATTLE_VIDEO_DOCK_STYLE = {
-  top: "calc(env(safe-area-inset-top, 0px) + 108px)",
+  top: "calc(env(safe-area-inset-top, 0px) + 124px)",
   height: "min(36dvh, 300px)",
 } as const;
 
 export const BATTLE_CARD_ROW_STYLE = {
-  top: "calc(env(safe-area-inset-top, 0px) + 108px + min(36dvh, 300px) + 6px)",
+  top: "calc(env(safe-area-inset-top, 0px) + 124px + min(36dvh, 300px) + 6px)",
   height: 76,
 } as const;
 

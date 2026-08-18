@@ -10,11 +10,27 @@ import { useTranslation } from "react-i18next";
 import { haptic } from "@/lib/haptics";
 import { conditionLabel } from "@/lib/live-product-options";
 
-export function pickBattleFeatured(products: LiveProductRow[]): LiveProductRow | null {
-  const playable = products.filter(
-    (p) => p.status !== "sold" && p.status !== "out" && p.status !== "unsold",
+function isExpiredAuction(product: LiveProductRow, now = Date.now()): boolean {
+  return (
+    product.status === "active" &&
+    product.mode === "auction" &&
+    !!product.auction_deadline_at &&
+    Date.parse(product.auction_deadline_at) <= now
   );
-  const active = playable.find((p) => p.status === "active");
+}
+
+export function pickBattleFeatured(
+  products: LiveProductRow[],
+  endedProductId?: string | null,
+): LiveProductRow | null {
+  const now = Date.now();
+  const playable = products.filter((p) => {
+    if (endedProductId && p.id === endedProductId) return false;
+    if (p.status === "sold" || p.status === "out" || p.status === "unsold") return false;
+    if (isExpiredAuction(p, now)) return false;
+    return true;
+  });
+  const active = playable.find((p) => p.status === "active" && !isExpiredAuction(p, now));
   if (active) return active;
   const sorted = [...playable].sort((a, b) => a.position - b.position);
   return sorted[0] ?? null;
@@ -180,7 +196,11 @@ function MiniCard({
   const { t, i18n } = useTranslation();
   const cur = normalizeCurrency(currency);
   const locale = i18n.language;
-  const auctionOn = !!product && product.status === "active" && product.mode === "auction";
+  const auctionOn =
+    !!product &&
+    product.status === "active" &&
+    product.mode === "auction" &&
+    !isExpiredAuction(product);
   const [clock, setClock] = useState(secondsLeft);
 
   useEffect(() => {
@@ -262,11 +282,13 @@ function MiniCard({
         }}
         className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
       >
-        <LiveProductImage
-          src={image}
-          className="h-[62px] w-[62px] shrink-0 rounded-[10px] object-cover"
-          iconClassName="text-white/50"
-        />
+        <div className="relative h-[62px] w-[62px] shrink-0 overflow-hidden rounded-[10px]">
+          <LiveProductImage
+            src={image}
+            className="h-full w-full object-cover"
+            iconClassName="text-white/50"
+          />
+        </div>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[11px] font-bold leading-tight text-white">
             {product.name}
@@ -298,7 +320,7 @@ function MiniCard({
             haptic.medium();
             action.run();
           }}
-          className="!min-h-8 !min-w-0 h-8 max-w-[42%] shrink-0 truncate rounded-full px-2 text-[10px] font-bold"
+          className="relative z-20 !min-h-8 !min-w-[4.5rem] h-8 max-w-[46%] shrink-0 truncate rounded-full px-2 text-[10px] font-bold"
           style={{ backgroundColor: "oklch(0.85 0.18 90)", color: "#10162B" }}
         >
           {action.label}

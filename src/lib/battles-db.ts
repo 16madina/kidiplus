@@ -306,6 +306,7 @@ export async function fetchPendingIncomingInvite(
 
 export function useBattleForLive(liveId: string | null) {
   const [battle, setBattle] = useState<HydratedBattle | null>(null);
+  const battleId = battle?.session?.id ?? null;
 
   useEffect(() => {
     if (!liveId) {
@@ -313,35 +314,70 @@ export function useBattleForLive(liveId: string | null) {
       return;
     }
     let cancelled = false;
+    let debounce: ReturnType<typeof setTimeout> | null = null;
     const load = () => {
       void fetchBattleForLive(liveId).then((b) => {
         if (!cancelled) setBattle(b);
       });
     };
+    const scheduleLoad = () => {
+      if (debounce != null) return;
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        load();
+      }, 400);
+    };
     load();
     const ch = supabase
-      .channel(`battle-live:${liveId}:${Math.random().toString(36).slice(2)}`)
+      .channel(`battle-lives:${liveId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "battle_lives", filter: `live_id=eq.${liveId}` },
-        load,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "battle_sessions" },
-        load,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "battle_participants" },
-        load,
+        scheduleLoad,
       )
       .subscribe();
     return () => {
       cancelled = true;
+      if (debounce != null) window.clearTimeout(debounce);
       void supabase.removeChannel(ch);
     };
   }, [liveId]);
+
+  useEffect(() => {
+    if (!liveId || !battleId) return;
+    let cancelled = false;
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const load = () => {
+      void fetchBattleById(battleId).then((b) => {
+        if (!cancelled && b) setBattle(b);
+      });
+    };
+    const scheduleLoad = () => {
+      if (debounce != null) return;
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        load();
+      }, 400);
+    };
+    const ch = supabase
+      .channel(`battle-session:${battleId}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "battle_sessions", filter: `id=eq.${battleId}` },
+        scheduleLoad,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "battle_participants", filter: `battle_id=eq.${battleId}` },
+        scheduleLoad,
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      if (debounce != null) window.clearTimeout(debounce);
+      void supabase.removeChannel(ch);
+    };
+  }, [liveId, battleId]);
 
   return battle;
 }
@@ -401,10 +437,28 @@ export function useOpponentBattleProducts(
       });
     };
     load();
-    const id = window.setInterval(load, 4000);
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const scheduleLoad = () => {
+      if (debounce != null) return;
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        load();
+      }, 400);
+    };
+    const ch = supabase
+      .channel(`battle-opp-products:${opponentLiveId}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "live_products", filter: `live_id=eq.${opponentLiveId}` },
+        scheduleLoad,
+      )
+      .subscribe();
+    const id = window.setInterval(load, 12_000);
     return () => {
       cancelled = true;
+      if (debounce != null) window.clearTimeout(debounce);
       window.clearInterval(id);
+      void supabase.removeChannel(ch);
     };
   }, [opponentLiveId, active]);
 

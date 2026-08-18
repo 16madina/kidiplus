@@ -12,6 +12,7 @@ import {
   battleAccept,
   battleDecline,
   battleEnd,
+  battleEnterSuddenDeath,
   battleHeartbeat,
   battleInvite,
   useBattleForLive,
@@ -138,10 +139,16 @@ function toSession(battle: HydratedBattle): BattleSession | null {
   const sideA = toFighter(battle, "a");
   const sideB = toFighter(battle, "b");
   const winnerId = s.live_winner_seller_id;
-  const abandon =
+  const remaining =
+    winnerId === sideA.sellerId ? sideA : winnerId === sideB.sellerId ? sideB : null;
+  const remainingHasSales =
+    !!remaining && (remaining.scoreAmountLive > 0 || remaining.scoreItems > 0);
+  const leftMidFight =
     s.end_reason === "forfeit" ||
     s.end_reason === "disconnected" ||
     s.end_reason === "cancelled";
+  // Opponent left but remaining seller already sold → scored win, not forfeit.
+  const abandon = leftMidFight && !remainingHasSales;
   let liveWinnerSide: BattleSide | "tie" | null = null;
   if (s.status === "ended" || s.status === "cancelled") {
     if (winnerId && winnerId === sideA.sellerId) liveWinnerSide = "a";
@@ -239,7 +246,7 @@ export function BattleProvider({
 
   useEffect(() => {
     if (!session || session.status !== "running") return;
-    const id = window.setInterval(() => setNow(Date.now()), 250);
+    const id = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(id);
   }, [session?.id, session?.status]);
 
@@ -251,7 +258,7 @@ export function BattleProvider({
   }, [session?.status, session?.id, dismissedId]);
 
   useEffect(() => {
-    if (!session || session.status !== "running" || !userId) return;
+    if (!session || session.status !== "running" || !mySide) return;
     const beat = () => {
       void battleHeartbeat(session.id);
     };
@@ -259,20 +266,22 @@ export function BattleProvider({
     const expired = remainingMs <= 0;
     const id = window.setInterval(beat, expired ? 2_000 : 10_000);
     return () => window.clearInterval(id);
-  }, [session?.id, session?.status, userId, remainingMs <= 0]);
+  }, [session?.id, session?.status, mySide, remainingMs <= 0]);
 
   useEffect(() => {
-    if (!session || session.status !== "running" || !userId) return;
+    if (!session || session.status !== "running" || !mySide) return;
     if (remainingMs > 0) return;
     void battleHeartbeat(session.id);
     const fallback = window.setTimeout(() => {
-      void battleEnd(
-        session.id,
-        session.suddenDeath ? "sudden_death" : "timeout",
-      );
+      if (session.suddenDeath) {
+        void battleEnd(session.id, "sudden_death");
+        return;
+      }
+      void battleHeartbeat(session.id);
+      void battleEnterSuddenDeath(session.id);
     }, 4_000);
     return () => window.clearTimeout(fallback);
-  }, [remainingMs, session?.id, session?.status, session?.suddenDeath, userId]);
+  }, [remainingMs, session?.id, session?.status, session?.suddenDeath, mySide]);
 
   const incoming: IncomingBattleInvite | null = pendingInvite
     ? {

@@ -112,6 +112,13 @@ export function payloadFromNotificationRow(row: {
     else if (/^chat_/.test(row.kind)) kind = "chat";
     else kind = "notif";
   }
+  const battleLiveId =
+    (typeof data.live_id === "string" && data.live_id.trim()) ||
+    (typeof data.from_live_id === "string" && data.from_live_id.trim()) ||
+    "";
+  if (row.kind === "battle" || kind === "battle" || kind.startsWith("battle_")) {
+    kind = battleLiveId ? "live" : "notif";
+  }
   const commentId =
     typeof data.comment_id === "string" && data.comment_id.trim()
       ? data.comment_id.trim()
@@ -121,7 +128,7 @@ export function payloadFromNotificationRow(row: {
   return {
     kind,
     order_id: row.order_id ?? (data.order_id as string | undefined),
-    live_id: data.live_id as string | undefined,
+    live_id: (typeof data.live_id === "string" && data.live_id) || battleLiveId || undefined,
     seller_handle: data.seller_handle as string | undefined,
     seller_id: data.seller_id as string | undefined,
     thread_id: data.thread_id as string | undefined,

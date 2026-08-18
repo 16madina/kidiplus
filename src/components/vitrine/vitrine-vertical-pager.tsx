@@ -20,6 +20,32 @@ import { TabVisibilityContext } from "@/components/app-shell";
 
 export const VITRINE_TOGGLE_PAUSE_EVENT = "kidi:vitrine-toggle-pause";
 
+/** Android WebView paints a giant Play triangle when poster is missing. */
+const TRANSPARENT_POSTER =
+  "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+
+function prepareFeedVideo(node: HTMLVideoElement) {
+  node.defaultMuted = true;
+  node.muted = true;
+  node.controls = false;
+  node.playsInline = true;
+  node.setAttribute("muted", "");
+  node.setAttribute("autoplay", "");
+  node.setAttribute("playsinline", "");
+  node.setAttribute("webkit-playsinline", "true");
+  node.setAttribute("x-webkit-airplay", "deny");
+  try {
+    node.disablePictureInPicture = true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    (node as HTMLVideoElement & { disableRemotePlayback?: boolean }).disableRemotePlayback = true;
+  } catch {
+    /* ignore */
+  }
+}
+
 export function VitrineVerticalPager({
   count,
   index,
@@ -190,18 +216,10 @@ function MediaSlide({
 }) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const explicitlyLoadedUrlRef = useRef<string | null>(null);
   const bindVideoRef = useCallback((node: HTMLVideoElement | null) => {
     videoRef.current = node;
     if (!node) return;
-    // WebKit checks the muted state at element creation time. Setting both the
-    // property and content attribute prevents its native Play overlay on first
-    // mount while still allowing imperative unmute after a real feed gesture.
-    node.defaultMuted = true;
-    node.muted = true;
-    node.setAttribute("muted", "");
-    node.setAttribute("playsinline", "");
-    node.setAttribute("webkit-playsinline", "");
+    prepareFeedVideo(node);
   }, []);
   const asVideo = forceVideo || isVideoUrl(url);
   const [suspended, setSuspended] = useState(() => isVitrinePlaybackSuspended());
@@ -265,11 +283,7 @@ function MediaSlide({
 
 
   const shouldPlay = playing && !suspended && eager;
-  const [blocked, setBlocked] = useState(false);
 
-  // Démarrage instantané façon TikTok : on démarre TOUJOURS en muet (seule
-  // façon d'obtenir l'autoplay sur Chrome/Firefox/iOS/Android), puis on
-  // réactive le son de façon impérative une fois la lecture lancée.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !asVideo) return;
@@ -285,34 +299,20 @@ function MediaSlide({
     }
 
     let cancelled = false;
-    let policyFailures = 0;
-    let blockedTimer: number | null = null;
     const wantsSound = !muted && volume > 0.001;
 
-    // Some iOS/Android WebViews ignore preload on an off-screen element and
-    // keep networkState=EMPTY after it becomes the active slide. Kick the
-    // resource loader once before play; never repeat it or playback resets.
-    if (
-      el.networkState === HTMLMediaElement.NETWORK_EMPTY &&
-      explicitlyLoadedUrlRef.current !== url
-    ) {
-      explicitlyLoadedUrlRef.current = url;
-      try {
-        el.load();
-      } catch {
-        /* ignore */
-      }
-    }
-
     const applySound = (v: HTMLVideoElement) => {
-      if (!wantsSound) return;
+      if (!wantsSound) {
+        v.muted = true;
+        v.volume = 0;
+        return;
+      }
       try {
         v.muted = false;
         v.volume = volume;
       } catch {
         /* ignore */
       }
-      // Certains navigateurs mettent la vidéo en pause en la démutant.
       if (v.paused) {
         void v.play().catch(() => {
           try {
@@ -330,54 +330,41 @@ function MediaSlide({
       if (cancelled) return;
       const v = videoRef.current;
       if (!v) return;
+      prepareFeedVideo(v);
       if (!v.paused) {
         applySound(v);
         return;
       }
-      // Toujours tenter muet d'abord : garanti par les politiques d'autoplay.
       v.muted = true;
       v.volume = 0;
       try {
         await v.play();
         if (cancelled) return;
-        setBlocked(false);
         applySound(v);
-      } catch (error) {
-        if (cancelled) return;
-        // AbortError/NotSupportedError while metadata is still arriving are
-        // transient. Only expose manual Play after repeated policy refusals.
-        const name = error instanceof DOMException ? error.name : "";
-        if (name === "NotAllowedError") {
-          policyFailures += 1;
-          if (policyFailures >= 2 && blockedTimer == null) {
-            blockedTimer = window.setTimeout(() => {
-              if (!cancelled && videoRef.current?.paused) setBlocked(true);
-            }, 1200);
-          }
-        }
+      } catch {
+        /* keep retrying — never surface a Play button */
       }
     };
 
     void attempt();
-    const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
+    const events = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"];
     const onReady = () => void attempt();
     events.forEach((e) => el.addEventListener(e, onReady));
-    const retry = window.setInterval(() => void attempt(), 300);
-    const stopRetry = window.setTimeout(() => window.clearInterval(retry), 10000);
+    const retry = window.setInterval(() => void attempt(), 400);
     const onVisible = () => {
       if (document.visibilityState === "visible") void attempt();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("pageshow", onReady);
+    window.addEventListener("focus", onReady);
 
     return () => {
       cancelled = true;
       events.forEach((e) => el.removeEventListener(e, onReady));
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onReady);
+      window.removeEventListener("focus", onReady);
       window.clearInterval(retry);
-      window.clearTimeout(stopRetry);
-      if (blockedTimer != null) window.clearTimeout(blockedTimer);
     };
   }, [url, asVideo, muted, shouldPlay, volume, reloadKey]);
 
@@ -485,23 +472,19 @@ function MediaSlide({
               ref={bindVideoRef}
               data-vitrine-feed
               src={url}
-              poster={poster ?? undefined}
+              poster={poster || TRANSPARENT_POSTER}
               className={mediaClass}
               autoPlay
-              // Toujours muet côté React : le son est réactivé en impératif
-              // après le démarrage, sinon l'autoplay est refusé.
               muted
               loop
               playsInline
               preload="auto"
               controls={false}
+              disablePictureInPicture
               onLoadedMetadata={() => setStatus("ready")}
               onLoadedData={() => setStatus("ready")}
               onCanPlay={() => setStatus("ready")}
-              onPlaying={() => {
-                setStatus("ready");
-                setBlocked(false);
-              }}
+              onPlaying={() => setStatus("ready")}
               onError={() => {
                 const code = videoRef.current?.error?.code;
                 const fatalFormat =
@@ -509,7 +492,6 @@ function MediaSlide({
                   code === 4 /* MEDIA_ERR_SRC_NOT_SUPPORTED */;
                 setErrorKind(fatalFormat ? "format" : "network");
                 setStatus("error");
-                // On ne condamne le média que lorsqu'il est réellement illisible.
                 if (fatalFormat) reportBrokenMedia(url);
               }}
               style={{ pointerEvents: "none", touchAction: "none" }}
@@ -517,30 +499,6 @@ function MediaSlide({
           )}
         </Fit916>
         {overlay}
-        {asVideo && blocked && shouldPlay && status === "ready" && (
-
-          <button
-            type="button"
-            data-no-pause
-            aria-label="Play"
-            onClick={(e) => {
-              e.stopPropagation();
-              const v = videoRef.current;
-              if (!v) return;
-              v.muted = muted || volume <= 0.001;
-              v.volume = v.muted ? 0 : volume;
-              void v.play().then(() => setBlocked(false)).catch(() => {
-                v.muted = true;
-                void v.play().then(() => setBlocked(false)).catch(() => undefined);
-              });
-            }}
-            className="absolute inset-0 z-[15] grid place-items-center"
-          >
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white">
-              <Play size={28} fill="white" />
-            </span>
-          </button>
-        )}
       </div>
 
     );
@@ -611,6 +569,7 @@ export function MediaCarousel({
   const [userPaused, setUserPaused] = useState(false);
   const [showPauseHint, setShowPauseHint] = useState(false);
   const hintTimer = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const tabVisible = useContext(TabVisibilityContext);
   const appActive = useAppActive();
   const [muted] = useVitrineSound();
@@ -625,14 +584,31 @@ export function MediaCarousel({
 
   useEffect(() => {
     const onToggle = () => {
-      if (!hasVideo) return;
-      setUserPaused((p) => {
-        const next = !p;
+      if (!hasVideo || !active) return;
+      const v = rootRef.current?.querySelector<HTMLVideoElement>("video[data-vitrine-feed]");
+      setUserPaused((paused) => {
+        if (paused) {
+          haptic.light();
+          setShowPauseHint(true);
+          if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
+          hintTimer.current = window.setTimeout(() => setShowPauseHint(false), 700);
+          return false;
+        }
+        const rolling = !!v && !v.paused && !v.ended;
+        if (!rolling) {
+          // Tap on the native play overlay: this gesture UNBLOCKS autoplay.
+          // Do not latch "user paused" or the feed stays frozen until a 2nd tap.
+          if (v) {
+            prepareFeedVideo(v);
+            void v.play().catch(() => undefined);
+          }
+          return false;
+        }
         haptic.light();
         setShowPauseHint(true);
         if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
         hintTimer.current = window.setTimeout(() => setShowPauseHint(false), 700);
-        return next;
+        return true;
       });
     };
     window.addEventListener(VITRINE_TOGGLE_PAUSE_EVENT, onToggle);
@@ -640,7 +616,7 @@ export function MediaCarousel({
       window.removeEventListener(VITRINE_TOGGLE_PAUSE_EVENT, onToggle);
       if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
     };
-  }, [hasVideo]);
+  }, [hasVideo, active]);
 
   // Leaving Vitrine / backgrounding: hard-stop audio (does not clear Publish suspend).
   useEffect(() => {
@@ -717,7 +693,7 @@ export function MediaCarousel({
     );
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={rootRef} className="relative h-full w-full">
       {body}
       {music?.url && (
         <MusicTrack music={music} playing={playing && !muted} />

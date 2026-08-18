@@ -28,6 +28,7 @@ import {
   disconnectRoom,
   switchHostCameraFacing,
   syncFrontCameraMirror,
+  type LocalAudioTrack,
   type LocalVideoTrack,
   type RemoteTrack,
   type CameraFacing,
@@ -104,6 +105,7 @@ export type BroadcastVideoHandle = {
    */
   switchCamera: (facing?: CameraFacing) => Promise<CameraFacing>;
   getCameraTrack: () => LocalVideoTrack | null;
+  getMicrophoneTrack: () => LocalAudioTrack | null;
 };
 
 export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoProps>(
@@ -306,6 +308,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
         return track ?? null;
       },
+      getMicrophoneTrack: () => {
+        const room = roomRef.current;
+        const pub = room?.localParticipant.getTrackPublication(Track.Source.Microphone);
+        return (pub?.track as LocalAudioTrack | undefined) ?? null;
+      },
       switchCamera: async (target?: CameraFacing) => {
         const room = roomRef.current;
         let track = localVideoTrackRef.current;
@@ -495,14 +502,20 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const list: { identity: string; track: RemoteTrack }[] = [];
             for (const p of room.remoteParticipants.values()) {
               for (const pub of p.trackPublications.values()) {
-                if (pub.kind === Track.Kind.Video && !pub.isSubscribed) {
+                if (
+                  (pub.kind === Track.Kind.Video || pub.kind === Track.Kind.Audio) &&
+                  !pub.isSubscribed
+                ) {
                   try {
                     pub.setSubscribed(true);
                   } catch {
                     /* ignore */
                   }
                 }
-                if (pub.track && pub.track.kind === Track.Kind.Video) {
+                if (
+                  pub.track &&
+                  (pub.track.kind === Track.Kind.Video || pub.track.kind === Track.Kind.Audio)
+                ) {
                   list.push({ identity: p.identity, track: pub.track as RemoteTrack });
                 }
               }

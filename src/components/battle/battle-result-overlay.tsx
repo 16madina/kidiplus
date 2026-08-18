@@ -12,7 +12,11 @@ import type { BattleFighter, BattleSession } from "@/lib/battle-context";
 
 type Phase = "logo" | "card";
 
-function isAbandon(reason: BattleSession["endReason"]) {
+function fighterHasSales(fighter: BattleFighter | null) {
+  return !!fighter && (fighter.scoreAmountLive > 0 || fighter.scoreItems > 0);
+}
+
+function isLeaveReason(reason: BattleSession["endReason"]) {
   return reason === "forfeit" || reason === "disconnected" || reason === "cancelled";
 }
 
@@ -57,7 +61,8 @@ export function BattleResultOverlay({
       : session.liveWinnerSide === "b"
         ? session.sideB
         : null;
-  const abandon = isAbandon(session.endReason);
+  const leftMidFight = isLeaveReason(session.endReason);
+  const abandon = leftMidFight && !fighterHasSales(winner);
   const left: BattleFighter | null = session.forfeitSellerId
     ? session.forfeitSellerId === session.sideA.sellerId
       ? session.sideA
@@ -69,7 +74,7 @@ export function BattleResultOverlay({
       : null;
   const leftName = left?.displayName ?? t("battle.result.opponentFallback");
   const youWon = !!winner && !!selfSellerId && winner.sellerId === selfSellerId;
-  const showRematch = !!onRematch && !abandon;
+  const showRematch = !!onRematch && !leftMidFight;
   const brand = t(BATTLE_BRAND_I18N_KEY);
 
   return (

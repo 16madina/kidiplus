@@ -26,6 +26,7 @@ import { useFilter } from "@/lib/filters/filter-context";
 import { useLiveEffects } from "@/lib/filters/live-effects-context";
 import { useBattle } from "@/lib/battle-context";
 import { isBattleGuestIdentity, useOpponentBattleProducts } from "@/lib/battles-db";
+import { Track } from "livekit-client";
 import { useBattleGuestPublish } from "@/lib/battle-guest-publish";
 import { BattleInviteSheet } from "@/components/battle/battle-invite-sheet";
 import { BattleIncomingInviteSheet } from "@/components/battle/battle-incoming-invite-sheet";
@@ -148,6 +149,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     () => videoHandleRef.current?.getCameraTrack() ?? null,
     [],
   );
+  const getBattleSourceAudioTrack = useCallback(
+    () => videoHandleRef.current?.getMicrophoneTrack() ?? null,
+    [],
+  );
   const opponentFighter = useMemo(() => {
     if (!battle.session || !user?.id) return null;
     return battle.session.sideA.sellerId === user.id
@@ -174,16 +179,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     { identity: string; track: import("livekit-client").RemoteTrack }[]
   >([]);
   const guestTrack =
-    remoteBattleTracks.find((x) => isBattleGuestIdentity(x.identity))?.track ??
-    remoteBattleTracks[0]?.track ??
-    null;
+    remoteBattleTracks.find(
+      (x) => isBattleGuestIdentity(x.identity) && x.track.kind === Track.Kind.Video,
+    )?.track ?? null;
+  const guestAudio =
+    remoteBattleTracks.find(
+      (x) => isBattleGuestIdentity(x.identity) && x.track.kind === Track.Kind.Audio,
+    )?.track ?? null;
   const remoteBattleStatus = useBattleGuestPublish({
     enabled: !!battle.isRunning && !isRtmp,
     userId: user?.id ?? null,
     displayName: profile?.display_name || b.hostName || "Host",
     remoteRoomName: opponentRoomName,
     getSourceTrack: getBattleSourceTrack,
-    facingKey: facing,
+    getSourceAudioTrack: getBattleSourceAudioTrack,
   });
   const { moderators } = useModerators(b.liveId);
   const chatMutes = useLiveChatMutes(b.liveId);
@@ -283,11 +292,24 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   // Featured auto-advances FORWARD only when a next article exists.
   // If the current one finishes and there is no next, keep it on the star
   // card so the host can relaunch without re-adding from the shop.
-  const isFeaturedDone = (p: { id: string; status: string }) =>
-    retiredFeaturedIds.includes(p.id) ||
-    p.status === "sold" ||
-    p.status === "out" ||
-    p.status === "unsold";
+  const endedProductId = room.lastAuctionEnd?.productId ?? null;
+  const isFeaturedDone = (p: LiveProductRow) => {
+    if (retiredFeaturedIds.includes(p.id)) return true;
+    if (p.status === "sold" || p.status === "out" || p.status === "unsold") return true;
+    if (endedProductId && p.id === endedProductId && room.auctionStart?.productId !== p.id) {
+      return true;
+    }
+    if (
+      p.status === "active" &&
+      p.mode === "auction" &&
+      p.auction_deadline_at &&
+      Date.parse(p.auction_deadline_at) <= Date.now() &&
+      room.auctionStart?.productId !== p.id
+    ) {
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (room.products.length === 0) {
@@ -302,13 +324,18 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     const next = sorted.slice(Math.max(curIdx, -1) + 1).find((p) => !isFeaturedDone(p));
     const fallback = sorted.find((p) => !isFeaturedDone(p));
     if (next || fallback) {
+      if (cur) {
+        setRetiredFeaturedIds((prev) =>
+          prev.includes(cur.id) ? prev : [...prev, cur.id],
+        );
+      }
       setFeaturedId(next?.id ?? fallback!.id);
       return;
     }
     // No next article — keep the finished one featured for relaunch.
     if (cur) return;
     setFeaturedId(sorted[sorted.length - 1]?.id ?? "");
-  }, [room.products, featuredId, retiredFeaturedIds]);
+  }, [room.products, featuredId, retiredFeaturedIds, endedProductId, room.auctionStart?.productId]);
 
   // ---- Auction countdown, derived from server-broadcast deadline ----
   // Poll often for accuracy, re-render only when the second flips.
@@ -549,12 +576,13 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // Only dedupe by unique endId — never by product/winner/price/order.
     // Same buyer can win the same item N times in one live.
     const endId = evt.endId ?? `fallback-${evt.ts}-${evt.productId}-${evt.auctionRound}-${evt.orderId}`;
-    const chatKey = `${evt.productId}:${evt.auctionRound ?? 1}:${evt.winnerId ? "sold" : "unsold"}`;
-    if (seenEndIdsRef.current.has(endId) || seenEndIdsRef.current.has(chatKey)) return;
+    const chatKey = `chat:${evt.productId}:${evt.auctionRound ?? 1}:${evt.winnerId ? "sold" : "unsold"}`;
+    if (seenEndIdsRef.current.has(endId)) return;
     const ts = evt.ts ?? 0;
     if (ts > 0 && ts < joinedAtRef.current - 2500) return;
     seenEndIdsRef.current.add(endId);
-    seenEndIdsRef.current.add(chatKey);
+    const skipChat = seenEndIdsRef.current.has(chatKey);
+    if (!skipChat) seenEndIdsRef.current.add(chatKey);
     // Bound memory across a long live.
     if (seenEndIdsRef.current.size > 200) {
       const first = seenEndIdsRef.current.values().next().value;
@@ -587,7 +615,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // No winner → UNSOLD: no confetti, but show the central unsold reveal.
     if (!evt.winnerName || !evt.winnerId) {
       const label = t("live.unsoldFlash", { name: prod?.name ?? "produit" });
-      systemMessageRef.current(label);
+      if (!skipChat) systemMessageRef.current(label);
       setWinnerReveal({
         key: endId,
         name: null,
@@ -602,7 +630,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     setLastSaleFlash(label);
     setConfettiTrigger((n) => n + 1);
     haptic.success();
-    systemMessageRef.current(label + (prod ? ` — ${prod.name}` : ""));
+    if (!skipChat) systemMessageRef.current(label + (prod ? ` — ${prod.name}` : ""));
     setWinnerReveal({
       key: endId,
       name: evt.winnerName,
@@ -758,25 +786,31 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   }, [room.lastGift, cur]);
 
   const featured = useMemo(() => {
-    const playable = (p: LiveProductRow) =>
-      !retiredFeaturedIds.includes(p.id) &&
-      p.status !== "sold" &&
-      p.status !== "out" &&
-      p.status !== "unsold";
+    if (activeAuction?.productId) {
+      return room.products.find((p) => p.id === activeAuction.productId) ?? null;
+    }
+    const playable = (p: LiveProductRow) => !isFeaturedDone(p);
     const sorted = [...room.products].sort((a, b) => a.position - b.position);
+    if (endedProductId) {
+      const idx = sorted.findIndex((p) => p.id === endedProductId);
+      const after = sorted.slice(idx + 1).find(playable);
+      if (after) return after;
+    }
     const byId = featuredId
       ? room.products.find((p) => p.id === featuredId)
       : undefined;
     if (byId && playable(byId)) return byId;
-    const nextPlayable = sorted.find(playable) ?? null;
+    const nextPlayable =
+      sorted.find((p) => p.status === "upcoming" && playable(p)) ??
+      sorted.find(playable) ??
+      null;
     if (nextPlayable) return nextPlayable;
-    // No upcoming article left — keep the finished featured item for relaunch.
     if (byId) return byId;
-    return sorted[sorted.length - 1] ?? null;
-  }, [room.products, featuredId, retiredFeaturedIds]);
+    return pickBattleFeatured(room.products, endedProductId) ?? sorted[sorted.length - 1] ?? null;
+  }, [room.products, featuredId, retiredFeaturedIds, endedProductId, activeAuction?.productId]);
 
   const opponentFeatured = useMemo(
-    () => pickBattleFeatured(opponentProducts),
+    () => pickBattleFeatured(opponentProducts, null),
     [opponentProducts],
   );
 
@@ -793,9 +827,6 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     }
     haptic.medium();
     startingAuctionRef.current = true;
-    setFeaturedId(p.id);
-    // Relaunch / rejouer — allow this product back onto the star card.
-    setRetiredFeaturedIds((prev) => prev.filter((id) => id !== p.id));
     endingRef.current = null;
     // Ask the server to flip the row to active AND persist the deadline. We
     // then broadcast the SAME absolute epoch ms to every viewer, and the
@@ -808,6 +839,10 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     // stay on waiting-for-seller" desync. Retry once, then surface the error.
     try {
     let res = await startAuctionInDb(p.id);
+    if (!res.ok && res.error === "auction_already_running" && b.liveId) {
+      await supabase.rpc("settle_expired_auctions", { _live_id: b.liveId });
+      res = await startAuctionInDb(p.id);
+    }
     if (!res.ok || !res.deadlineMs) res = await startAuctionInDb(p.id);
     if (!res.ok || !res.deadlineMs) {
       const err = res.error ?? "";
@@ -820,6 +855,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       );
       return;
     }
+    setFeaturedId(p.id);
+    setRetiredFeaturedIds((prev) => prev.filter((id) => id !== p.id));
     room.broadcastAuctionStart({
       productId: p.id,
       deadlineMs: res.deadlineMs,
@@ -1250,6 +1287,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         session={battle.session}
         selfSide={battle.mySide ?? "a"}
         guestTrack={guestTrack}
+        guestAudio={guestAudio}
         guestStatus={remoteBattleStatus}
         hostVideo={
           <BroadcastVideo
@@ -1627,10 +1665,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           queued; swaps in the next upcoming one automatically after a sale. */}
       <AnimatePresence mode="wait">
         {featured && !battle.isRunning ? (
-          <motion.button
+          <motion.div
             key={featured.id}
-            type="button"
-            onClick={() => { haptic.selection(); setProductsOpen(true); }}
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
@@ -1642,26 +1678,32 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             }}
           >
             <div
-              className="w-[6.75rem] rounded-2xl p-1.5 text-white"
+              className="relative isolate w-[6.75rem] overflow-hidden rounded-2xl p-1.5 text-white"
               style={{
                 backgroundColor: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
               }}
             >
-              <div className="relative mb-1">
-                <LiveProductImage
-                  src={imgFor(featured)}
-                  className="h-14 w-full rounded-lg object-cover"
-                  iconClassName="text-white/60"
-                />
-                <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
-                  {t("live.featured")}
-                </span>
-              </div>
-              <div className="truncate text-[10.5px] font-semibold leading-tight">
-                {featured.name}
-              </div>
+              <button
+                type="button"
+                onClick={() => { haptic.selection(); setProductsOpen(true); }}
+                className="block w-full text-left"
+              >
+                <div className="relative mb-1 overflow-hidden rounded-lg">
+                  <LiveProductImage
+                    src={imgFor(featured)}
+                    className="h-14 w-full object-cover"
+                    iconClassName="text-white/60"
+                  />
+                  <span className="absolute left-1 top-1 rounded-full bg-white px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#10162B]">
+                    {t("live.featured")}
+                  </span>
+                </div>
+                <div className="truncate text-[10.5px] font-semibold leading-tight">
+                  {featured.name}
+                </div>
+              </button>
               {activeAuction && activeAuction.productId === featured.id ? (
                 <>
                   <div className="mt-0.5 text-[8.5px] font-semibold uppercase tracking-wide text-white/60">
@@ -1693,13 +1735,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                       : `${fmt(featured.price)} · stock ${Math.max(0, featured.stock)}`}
                   </div>
                   <Press
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       if (featured.mode === "auction") void startAuction(featured);
                       else void toggleFixedSale(featured);
                     }}
                     hapticOnTap={false}
-                    className="!min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10px] font-bold text-[#10162B]"
+                    className="relative z-20 !min-h-7 mt-1 h-7 w-full rounded-full bg-white px-2 text-[10px] font-bold text-[#10162B]"
                   >
                     {featured.mode === "auction"
                       ? (featured.status === "sold" || featured.status === "unsold"
@@ -1710,7 +1751,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 </>
               )}
             </div>
-          </motion.button>
+          </motion.div>
         ) : null}
       </AnimatePresence>
 
@@ -2044,12 +2085,14 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
                 const imgUrl = imgFor(p);
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ borderColor: "var(--border)" }}>
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
                     <LiveProductImage
                       src={imgUrl}
-                      className="h-14 w-14 rounded-xl object-cover"
+                      className="h-full w-full object-cover"
                       placeholderClassName="bg-muted"
                       iconClassName="text-muted-foreground"
                     />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{p.name}</p>
                       <p className="text-[11px] text-muted-foreground">

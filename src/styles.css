@@ -246,15 +246,23 @@ html {
   min-height: 44px;
 }
 
-/* Splash video: never show media controls or play button (Android WebView). */
+/* Native WebView play overlays (iOS WKWebView + Android Chrome).
+   Vitrine is a TikTok feed, not a media player — never show a play button. */
 .splash-video::-webkit-media-controls,
 .splash-video::-webkit-media-controls-panel,
 .splash-video::-webkit-media-controls-play-button,
 .splash-video::-webkit-media-controls-start-playback-button,
-.splash-video::-webkit-media-controls-overlay-play-button {
+.splash-video::-webkit-media-controls-overlay-play-button,
+video[data-vitrine-feed]::-webkit-media-controls,
+video[data-vitrine-feed]::-webkit-media-controls-panel,
+video[data-vitrine-feed]::-webkit-media-controls-play-button,
+video[data-vitrine-feed]::-webkit-media-controls-start-playback-button,
+video[data-vitrine-feed]::-webkit-media-controls-overlay-play-button,
+video[data-vitrine-feed]::-webkit-media-controls-enclosure {
   display: none !important;
   -webkit-appearance: none !important;
   opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Android system PiP: hide app chrome so the bubble is video-only.

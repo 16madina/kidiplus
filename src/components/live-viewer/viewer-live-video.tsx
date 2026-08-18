@@ -61,6 +61,7 @@ function kickPlayback(
 function pickRemoteVideoTrack(room: Room): RemoteTrack | null {
   let fallback: RemoteTrack | null = null;
   for (const p of room.remoteParticipants.values()) {
+    if (p.identity.startsWith("battle_")) continue;
     for (const pub of p.trackPublications.values()) {
       const track = pub.track;
       if (!track || track.kind !== Track.Kind.Video) continue;
@@ -71,19 +72,57 @@ function pickRemoteVideoTrack(room: Room): RemoteTrack | null {
   return fallback;
 }
 
-function pickHostVideos(room: Room): RemoteTrack[] {
-  const host: RemoteTrack[] = [];
-  const guests: RemoteTrack[] = [];
+type SplitMedia = {
+  hostVideo: RemoteTrack | null;
+  guestVideo: RemoteTrack | null;
+  hostAudio: RemoteTrack | null;
+  guestAudio: RemoteTrack | null;
+};
+
+function pickBattleMedia(room: Room): SplitMedia {
+  const out: SplitMedia = {
+    hostVideo: null,
+    guestVideo: null,
+    hostAudio: null,
+    guestAudio: null,
+  };
   for (const p of room.remoteParticipants.values()) {
+    const battle = p.identity.startsWith("battle_");
+    const rtmp = p.identity.startsWith("rtmp-host-");
     for (const pub of p.trackPublications.values()) {
       const track = pub.track;
-      if (!track || track.kind !== Track.Kind.Video) continue;
-      if (p.identity.startsWith("rtmp-host-")) return [track];
-      if (p.identity.startsWith("battle_")) guests.push(track);
-      else host.push(track);
+      if (!track) continue;
+      if (track.kind === Track.Kind.Video) {
+        if (rtmp) out.hostVideo = track;
+        else if (battle) out.guestVideo = track;
+        else if (!out.hostVideo) out.hostVideo = track;
+      } else if (track.kind === Track.Kind.Audio) {
+        if (battle) out.guestAudio = track;
+        else if (!out.hostAudio) out.hostAudio = track;
+      }
     }
   }
-  return [...host, ...guests];
+  return out;
+}
+
+function attachMedia(
+  track: RemoteTrack | null,
+  el: HTMLMediaElement | null,
+  hard: boolean,
+) {
+  if (!track || !el) return;
+  try {
+    if (hard) {
+      try {
+        track.detach(el);
+      } catch {
+        /* ignore */
+      }
+    }
+    track.attach(el);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Hard recover — re-bind tracks + nudge WKWebView decoder (same as PiP return). */
@@ -92,8 +131,12 @@ function reattachRemoteMedia(
   video: HTMLVideoElement | null,
   audio: HTMLAudioElement | null,
   hard = true,
+  opts?: {
+    layout?: "single" | "split";
+    videoB?: HTMLVideoElement | null;
+    audioB?: HTMLAudioElement | null;
+  },
 ): boolean {
-  let gotVideo = false;
   room.remoteParticipants.forEach((p) => {
     p.trackPublications.forEach((pub) => {
       try {
@@ -101,15 +144,47 @@ function reattachRemoteMedia(
       } catch {
         /* ignore */
       }
+    });
+  });
+
+  if (opts?.layout === "split") {
+    const media = pickBattleMedia(room);
+    if (media.guestVideo && video) {
+      try { media.guestVideo.detach(video); } catch { /* ignore */ }
+    }
+    if (media.hostVideo && opts.videoB) {
+      try { media.hostVideo.detach(opts.videoB); } catch { /* ignore */ }
+    }
+    attachMedia(media.hostVideo, video, hard);
+    attachMedia(media.guestVideo, opts.videoB ?? null, hard);
+    attachMedia(media.hostAudio, audio, hard);
+    attachMedia(media.guestAudio, opts.audioB ?? null, hard);
+    if (hard && video?.srcObject) {
+      const stream = video.srcObject;
+      video.srcObject = null;
+      video.srcObject = stream;
+    }
+    if (hard && opts.videoB?.srcObject) {
+      const stream = opts.videoB.srcObject;
+      opts.videoB.srcObject = null;
+      opts.videoB.srcObject = stream;
+    }
+    kickPlayback(video, audio);
+    kickPlayback(opts.videoB ?? null, opts.audioB ?? null);
+    return !!(media.hostVideo || media.guestVideo);
+  }
+
+  let gotVideo = false;
+  room.remoteParticipants.forEach((p) => {
+    if (p.identity.startsWith("battle_")) return;
+    p.trackPublications.forEach((pub) => {
       const track = pub.track;
-      if (!track) return;
+      if (!track || track.kind !== Track.Kind.Audio || !audio) return;
       try {
-        if (track.kind === Track.Kind.Audio && audio) {
-          if (hard) {
-            try { track.detach(audio); } catch { /* ignore */ }
-          }
-          track.attach(audio);
+        if (hard) {
+          try { track.detach(audio); } catch { /* ignore */ }
         }
+        track.attach(audio);
       } catch {
         /* ignore */
       }
@@ -150,6 +225,14 @@ export function ViewerLiveVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioBRef = useRef<HTMLAudioElement>(null);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const liveAttachOpts = () => ({
+    layout: layoutRef.current,
+    videoB: videoBRef.current,
+    audioB: audioBRef.current,
+  });
   const roomRef = useRef<Room | null>(null);
   const hadLiveRef = useRef(false);
   const pollRef = useRef<number | null>(null);
@@ -192,7 +275,13 @@ export function ViewerLiveVideo({
       /* ignore */
     }
     try {
-      if (r) reattachRemoteMedia(r, videoRef.current, el, false);
+      if (r) {
+        reattachRemoteMedia(r, videoRef.current, el, false, {
+          layout: layoutRef.current,
+          videoB: videoBRef.current,
+          audioB: audioBRef.current,
+        });
+      }
       await el?.play();
       setAudioBlocked(false);
     } catch {
@@ -276,11 +365,33 @@ export function ViewerLiveVideo({
         void r.startAudio().catch(() => {});
 
 
+        const mediaOpts = () => ({
+          layout: layoutRef.current,
+          videoB: videoBRef.current,
+          audioB: audioBRef.current,
+        });
+
         const attachTrack = (
           track: RemoteTrack,
           participant?: RemoteParticipant,
         ) => {
-          if (cancelled) return;
+          if (cancelled || !roomRef.current) return;
+          if (layoutRef.current === "split") {
+            const got = reattachRemoteMedia(
+              roomRef.current,
+              videoRef.current,
+              audioRef.current,
+              false,
+              mediaOpts(),
+            );
+            if (track.kind === Track.Kind.Video && got) {
+              hadVideo = true;
+              clearEndTimer();
+              setStatus("live");
+            }
+            return;
+          }
+          if (participant?.identity.startsWith("battle_")) return;
           if (track.kind === Track.Kind.Video && videoRef.current) {
             // Prefer RTMP Ingress publisher over other remote cameras.
             if (
@@ -313,6 +424,7 @@ export function ViewerLiveVideo({
                 videoRef.current,
                 audioRef.current,
                 false,
+                mediaOpts(),
               );
             });
             hadVideo = true;
@@ -340,7 +452,7 @@ export function ViewerLiveVideo({
 
         r.on(
           RoomEvent.TrackUnsubscribed,
-          (track: RemoteTrack, _pub: RemoteTrackPublication) => {
+          (track: RemoteTrack, _pub: RemoteTrackPublication, participant?: RemoteParticipant) => {
             try {
               track.detach();
             } catch {}
@@ -352,6 +464,7 @@ export function ViewerLiveVideo({
             // While system PiP / background hold is active, WKWebView often
             // briefly drops tracks — treat that as noise, not host leave.
             if (getPipHold() || getInSystemPip()) return;
+            if (participant?.identity.startsWith("battle_")) return;
             if (track.kind === Track.Kind.Video) {
               scheduleEnd("TrackUnsubscribed(video)");
             }
@@ -384,6 +497,8 @@ export function ViewerLiveVideo({
             r,
             videoRef.current,
             audioRef.current,
+            true,
+            mediaOpts(),
           );
           if (gotVideo) hadVideo = true;
           setStatus(gotVideo || hadVideo ? "live" : "waiting");
@@ -467,7 +582,9 @@ export function ViewerLiveVideo({
       roomRef.current = null;
       void disconnectRoom(r);
       if (videoRef.current) videoRef.current.srcObject = null;
+      if (videoBRef.current) videoBRef.current.srcObject = null;
       if (audioRef.current) audioRef.current.srcObject = null;
+      if (audioBRef.current) audioBRef.current.srcObject = null;
     };
   }, [room, identity, name, sessionActive]);
 
@@ -477,7 +594,11 @@ export function ViewerLiveVideo({
     if (!appActive) return;
     const r = roomRef.current;
     if (!r) return;
-    if (reattachRemoteMedia(r, videoRef.current, audioRef.current)) {
+    if (reattachRemoteMedia(r, videoRef.current, audioRef.current, true, {
+      layout: layoutRef.current,
+      videoB: videoBRef.current,
+      audioB: audioBRef.current,
+    })) {
       setStatus("live");
     }
   }, [appActive]);
@@ -488,24 +609,38 @@ export function ViewerLiveVideo({
   // connecting / waiting for its first frame.
   useEffect(() => {
     const audio = audioRef.current;
+    const audioB = audioBRef.current;
     const video = videoRef.current;
+    const videoB = videoBRef.current;
     const nativeOwnsAv = isIosNative && inSystemPip;
     if (nativeOwnsAv) {
       if (audio) {
         audio.muted = true;
         try { audio.pause(); } catch { /* ignore */ }
       }
+      if (audioB) {
+        audioB.muted = true;
+        try { audioB.pause(); } catch { /* ignore */ }
+      }
       if (video) {
         try { video.pause(); } catch { /* ignore */ }
+      }
+      if (videoB) {
+        try { videoB.pause(); } catch { /* ignore */ }
       }
       return;
     }
     if (audio) audio.muted = false;
+    if (audioB) audioB.muted = false;
     // App backgrounded but native PiP not up yet — keep WebView playing so
     // there's no black gap; iOS may still freeze WKWebView, native takes over.
     const r = roomRef.current;
     if (!r) return;
-    if (reattachRemoteMedia(r, video, audio, true) || hadLiveRef.current) {
+    if (reattachRemoteMedia(r, video, audio, true, {
+      layout: layoutRef.current,
+      videoB: videoBRef.current,
+      audioB: audioBRef.current,
+    }) || hadLiveRef.current) {
       setStatus("live");
     }
   }, [isIosNative, inSystemPip, appActive, pipHold]);
@@ -517,7 +652,7 @@ export function ViewerLiveVideo({
     if (isIosNative) return;
     const kick = () => {
       const r = roomRef.current;
-      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, false, liveAttachOpts());
       else kickPlayback(videoRef.current, audioRef.current);
     };
     kick();
@@ -539,7 +674,7 @@ export function ViewerLiveVideo({
     const soft = () => {
       const r = roomRef.current;
       if (r) {
-        reattachRemoteMedia(r, videoRef.current, audioRef.current, false);
+        reattachRemoteMedia(r, videoRef.current, audioRef.current, false, liveAttachOpts());
         return;
       }
       kickPlayback(videoRef.current, audioRef.current);
@@ -549,7 +684,7 @@ export function ViewerLiveVideo({
     const t2 = window.setTimeout(soft, 400);
     const t3 = window.setTimeout(() => {
       const r = roomRef.current;
-      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, true);
+      if (r) reattachRemoteMedia(r, videoRef.current, audioRef.current, true, liveAttachOpts());
     }, 1000);
 
     // If currentTime stops advancing while "live", force the same hard recovery
@@ -567,7 +702,7 @@ export function ViewerLiveVideo({
         stallTicks += 1;
         if (stallTicks >= 2) {
           console.warn("[livekit viewer] frozen frame watchdog — hard reattach");
-          reattachRemoteMedia(r, v, audioRef.current, true);
+          reattachRemoteMedia(r, v, audioRef.current, true, liveAttachOpts());
           stallTicks = 0;
         }
       } else {
@@ -586,23 +721,8 @@ export function ViewerLiveVideo({
 
   useEffect(() => {
     const r = roomRef.current;
-    if (!r || layout !== "split") return;
-    const tracks = pickHostVideos(r);
-    if (videoRef.current && tracks[0]) {
-      try {
-        tracks[0].attach(videoRef.current);
-      } catch {
-        /* ignore */
-      }
-    }
-    if (videoBRef.current && tracks[1]) {
-      try {
-        tracks[1].attach(videoBRef.current);
-        void videoBRef.current.play().catch(() => {});
-      } catch {
-        /* ignore */
-      }
-    }
+    if (!r) return;
+    reattachRemoteMedia(r, videoRef.current, audioRef.current, true, liveAttachOpts());
   }, [layout, status]);
 
   const showPoster = status !== "live";
@@ -622,51 +742,54 @@ export function ViewerLiveVideo({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-          {layout === "split" ? (
-            <div
-              className={`absolute inset-x-1 z-[12] flex gap-1 flex-row`}
-              style={BATTLE_VIDEO_DOCK_STYLE}
-            >
-              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-black">
-                <video
-                  ref={videoRef}
-                  playsInline
-                  autoPlay
-                  muted
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                {splitHostName ? (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
-                    <p className="truncate text-[11px] font-bold text-white">{splitHostName}</p>
-                  </div>
-                ) : null}
-              </div>
-              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[18px] bg-[#0c0c10]">
-                <video
-                  ref={videoBRef}
-                  playsInline
-                  autoPlay
-                  muted
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                {splitGuestName ? (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
-                    <p className="truncate text-[11px] font-bold text-white">{splitGuestName}</p>
-                  </div>
-                ) : null}
-              </div>
-              <BattleSplitDivider />
+      <div
+        className={
+          layout === "split"
+            ? "absolute inset-x-1 z-[12] flex flex-row gap-1"
+            : "absolute inset-0"
+        }
+        style={layout === "split" ? BATTLE_VIDEO_DOCK_STYLE : undefined}
+      >
+        <div
+          className={
+            layout === "split"
+              ? "relative min-h-0 min-w-0 flex-1 isolate overflow-hidden rounded-[18px] bg-black"
+              : "absolute inset-0 overflow-hidden bg-black"
+          }
+        >
+          <video
+            ref={videoRef}
+            playsInline
+            autoPlay
+            muted
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {layout === "split" && splitHostName ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
+              <p className="truncate text-[11px] font-bold text-white">{splitHostName}</p>
             </div>
-          ) : (
-        <video
-          ref={videoRef}
-          playsInline
-          autoPlay
-          muted
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
+          ) : null}
+        </div>
+        {layout === "split" ? (
+          <div className="relative min-h-0 min-w-0 flex-1 isolate overflow-hidden rounded-[18px] bg-[#0c0c10]">
+            <video
+              ref={videoBRef}
+              playsInline
+              autoPlay
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            {splitGuestName ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
+                <p className="truncate text-[11px] font-bold text-white">{splitGuestName}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {layout === "split" ? <BattleSplitDivider /> : null}
+      </div>
       <audio ref={audioRef} autoPlay playsInline />
+      <audio ref={audioBRef} autoPlay playsInline />
       {audioBlocked && status === "live" && (
         <button
           type="button"
