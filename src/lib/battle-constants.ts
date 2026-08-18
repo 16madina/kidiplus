@@ -6,8 +6,8 @@ export const BATTLE_BRAND_I18N_KEY = "battle.brand";
 export const BATTLE_DURATIONS_SEC = [600, 900, 1200, 1800] as const;
 export const BATTLE_DEFAULT_DURATION_SEC = 900;
 export const BATTLE_INVITE_TTL_SEC = 60;
-/** Intro overlay 10→0 plus “C’EST PARTI!” — then the match clock starts. */
-export const BATTLE_COUNTDOWN_SEC = 12;
+/** Intro overlay 10→0, names hold, then “C’EST PARTI!” — then the match clock starts. */
+export const BATTLE_COUNTDOWN_SEC = 15;
 export const BATTLE_TURN_SEC = 120;
 export const BATTLE_SUDDEN_DEATH_SEC = 60;
 export const BATTLE_SUDDEN_DEATH_MAX_SEC = 60;

@@ -4,6 +4,8 @@ import { BATTLE_COUNTDOWN_SEC } from "@/lib/battle-constants";
 
 export const DEFI_PLUS_COUNT_FROM = 10;
 export const DEFI_PLUS_HIT_S = 10;
+/** Extra seconds the two names stay on screen after the circle splits. */
+export const DEFI_PLUS_NAME_HOLD_S = 3;
 /** Same window as the live battle intro (`startedAt` → match clock). */
 export const DEFI_PLUS_DURATION_MS = BATTLE_COUNTDOWN_SEC * 1000;
 

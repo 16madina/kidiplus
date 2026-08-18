@@ -8,6 +8,7 @@ import {
   range,
   smootherstep,
   DEFI_PLUS_HIT_S,
+  DEFI_PLUS_NAME_HOLD_S,
   PHASE,
 } from "@/lib/defi-plus";
 
@@ -466,13 +467,85 @@ function drawMedallion(
   const split = easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.08, DEFI_PLUS_HIT_S + 0.95));
   const beat = t >= PHASE.beatStart && t < DEFI_PLUS_HIT_S ? heartbeat(t) : 0;
   const pulse = 1 + beat * 0.14;
-  const fade = 1 - range(t, DEFI_PLUS_HIT_S + 1.15, DEFI_PLUS_HIT_S + 1.85);
+  const fade = 1 - range(t, DEFI_PLUS_HIT_S + 1.15 + DEFI_PLUS_NAME_HOLD_S, DEFI_PLUS_HIT_S + 1.85 + DEFI_PLUS_NAME_HOLD_S);
   const dx = lerp(0, w * 0.48, split);
   const dy = lerp(0, w * 0.04, split);
   if (on * fade < 0.02) return;
 
   paintMedalHalf(ctx, cx - dx, cy + dy, on * pulse, fade, w, -1);
   paintMedalHalf(ctx, cx + dx, cy + dy, on * pulse, fade, w, 1);
+  if (split < 0.06) {
+    drawChargeRing(ctx, t, cx, cy, w * 0.205 * 0.92 * pulse, on * fade);
+  }
+}
+
+function drawChargeRing(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  cx: number,
+  cy: number,
+  r: number,
+  alpha: number,
+) {
+  const startT = PHASE.medalReady + 0.2;
+  const endT = DEFI_PLUS_HIT_S - 0.1;
+  const u = range(t, startT, endT);
+  if (alpha < 0.02 || u < 0.01 || t >= DEFI_PLUS_HIT_S) return;
+
+  const rad = r * 1.07;
+  const from = -Math.PI / 2;
+  const to = from + u * Math.PI * 2;
+  const headX = cx + Math.cos(to) * rad;
+  const headY = cy + Math.sin(to) * rad;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineCap = "round";
+
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.lineWidth = r * 0.075;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = "#7ee8ff";
+  ctx.strokeStyle = "#9cefff";
+  ctx.lineWidth = r * 0.09;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rad, from, to);
+  ctx.stroke();
+
+  ctx.shadowColor = "#ffe08a";
+  ctx.strokeStyle = "#fff4c2";
+  ctx.lineWidth = r * 0.042;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rad, from, to);
+  ctx.stroke();
+
+  const sparkR = r * (0.12 + u * 0.05);
+  const spark = ctx.createRadialGradient(headX, headY, 0, headX, headY, sparkR);
+  spark.addColorStop(0, "rgba(255,255,255,0.95)");
+  spark.addColorStop(0.28, "rgba(255,230,120,0.8)");
+  spark.addColorStop(0.62, "rgba(80,230,255,0.35)");
+  spark.addColorStop(1, "rgba(80,230,255,0)");
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = spark;
+  ctx.beginPath();
+  ctx.arc(headX, headY, sparkR, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (u > 0.97) {
+    ctx.strokeStyle = `rgba(255,255,255,${(u - 0.97) / 0.03})`;
+    ctx.lineWidth = r * 0.1;
+    ctx.shadowBlur = 22;
+    ctx.shadowColor = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function paintMedalHalf(

@@ -3,6 +3,7 @@ import { DefiPlusMotionCanvas } from "./defi-plus-motion-canvas";
 import {
   DEFI_PLUS_DURATION_MS,
   DEFI_PLUS_HIT_S,
+  DEFI_PLUS_NAME_HOLD_S,
   defiPlusRemaining,
   easeOutCubic,
   heartbeat,
@@ -75,10 +76,11 @@ export function DefiPlusIntroOverlay({ active, startsAt, leftName, rightName, on
   const numberPop = remaining > 0 && frac < 0.18 ? 1 + (1 - frac / 0.18) * 0.18 : 1;
   const countOut = 1 - range(t, DEFI_PLUS_HIT_S + 0.35, DEFI_PLUS_HIT_S + 0.7);
   const versusIn = easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.18, DEFI_PLUS_HIT_S + 0.55));
-  const versusOut = 1 - range(t, DEFI_PLUS_HIT_S + 1.15, DEFI_PLUS_HIT_S + 1.7);
+  const versusOut = 1 - range(t, DEFI_PLUS_HIT_S + 1.15 + DEFI_PLUS_NAME_HOLD_S, DEFI_PLUS_HIT_S + 1.7 + DEFI_PLUS_NAME_HOLD_S);
   const versus = versusIn * versusOut;
   const nameSlide = lerp(0, 1, split);
   const hasNames = Boolean(leftName?.trim() && rightName?.trim());
+  const partiAt = hasNames ? DEFI_PLUS_HIT_S + 1.22 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 0.45;
 
   return (
     <div
@@ -132,16 +134,7 @@ export function DefiPlusIntroOverlay({ active, startsAt, leftName, rightName, on
           >
             {leftName}
           </p>
-          <p
-            className="shrink-0 px-1 text-[15px] font-black italic tracking-[0.22em] text-[#ffe08a]"
-            style={{
-              opacity: versus * easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.38, DEFI_PLUS_HIT_S + 0.62)),
-              transform: `scale(${lerp(0.6, 1, range(t, DEFI_PLUS_HIT_S + 0.38, DEFI_PLUS_HIT_S + 0.62))})`,
-              textShadow: "0 0 16px rgba(255,200,70,0.85)",
-            }}
-          >
-            VS
-          </p>
+          <VsMark t={t} fade={versus} />
           <p
             className="w-[42%] truncate text-right text-[22px] font-black uppercase leading-none tracking-wide text-white"
             style={{
@@ -155,7 +148,7 @@ export function DefiPlusIntroOverlay({ active, startsAt, leftName, rightName, on
         </div>
       )}
 
-      {t >= DEFI_PLUS_HIT_S + (hasNames ? 1.15 : 0.45) && (
+      {t >= partiAt && (
         <div className="absolute inset-x-0 top-[56%] z-[8] flex flex-col items-center gap-2 px-4 text-center">
           {!hasNames && (
             <p
@@ -177,17 +170,23 @@ export function DefiPlusIntroOverlay({ active, startsAt, leftName, rightName, on
                 easeOutCubic(
                   range(
                     t,
-                    DEFI_PLUS_HIT_S + (hasNames ? 1.22 : 0.55),
-                    DEFI_PLUS_HIT_S + (hasNames ? 1.48 : 0.82),
+                    hasNames ? DEFI_PLUS_HIT_S + 1.22 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 0.55,
+                    hasNames ? DEFI_PLUS_HIT_S + 1.48 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 0.82,
                   ),
-                ) * (1 - range(t, DEFI_PLUS_HIT_S + 1.7, DEFI_PLUS_HIT_S + 1.95)),
+                ) *
+                (1 -
+                  range(
+                    t,
+                    hasNames ? DEFI_PLUS_HIT_S + 1.7 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 1.7,
+                    hasNames ? DEFI_PLUS_HIT_S + 1.95 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 1.95,
+                  )),
               transform: `scale(${lerp(
                 0.84,
                 1,
                 range(
                   t,
-                  DEFI_PLUS_HIT_S + (hasNames ? 1.22 : 0.55),
-                  DEFI_PLUS_HIT_S + (hasNames ? 1.48 : 0.82),
+                  hasNames ? DEFI_PLUS_HIT_S + 1.22 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 0.55,
+                  hasNames ? DEFI_PLUS_HIT_S + 1.48 + DEFI_PLUS_NAME_HOLD_S : DEFI_PLUS_HIT_S + 0.82,
                 ),
               )})`,
               background: "linear-gradient(180deg, #ffe9a0 0%, #f5c542 45%, #c48912 100%)",
@@ -200,6 +199,48 @@ export function DefiPlusIntroOverlay({ active, startsAt, leftName, rightName, on
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function VsMark({ t, fade }: { t: number; fade: number }) {
+  const vIn = easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.32, DEFI_PLUS_HIT_S + 0.54));
+  const lineIn = easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.5, DEFI_PLUS_HIT_S + 0.74));
+  const sIn = easeOutCubic(range(t, DEFI_PLUS_HIT_S + 0.68, DEFI_PLUS_HIT_S + 0.92));
+
+  return (
+    <div className="relative h-[48px] w-[54px] shrink-0">
+      <span
+        className="absolute left-0 top-0 text-[24px] font-black leading-none"
+        style={{
+          opacity: fade * vIn,
+          transform: `scale(${lerp(0.7, 1, vIn)})`,
+          color: "#7dd8ff",
+          textShadow: "0 0 12px rgba(80, 220, 255, 0.95)",
+        }}
+      >
+        V
+      </span>
+      <span
+        className="absolute left-1/2 top-1/2 h-[46px] w-[2px] origin-center"
+        style={{
+          opacity: fade * lineIn,
+          transform: `translate(-50%, -50%) rotate(28deg) scaleY(${lineIn})`,
+          background: "#ffffff",
+          boxShadow: "0 0 10px rgba(255,255,255,0.9)",
+        }}
+      />
+      <span
+        className="absolute bottom-0 right-0 text-[24px] font-black leading-none"
+        style={{
+          opacity: fade * sIn,
+          transform: `scale(${lerp(0.7, 1, sIn)})`,
+          color: "#f5c542",
+          textShadow: "0 0 12px rgba(255, 200, 70, 0.95)",
+        }}
+      >
+        S
+      </span>
     </div>
   );
 }
