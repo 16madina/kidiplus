@@ -24,6 +24,7 @@ import {
   normalizeLiveProductRow,
   type LiveProductRow,
 } from "@/lib/lives-db";
+import { isSimBidderId } from "@/lib/prelaunch-live-sim";
 
 /** Resolve the stored image_url path (bucket path) into a signed/absolute URL.
  *  Signing can transiently fail (auth not yet attached / network warmup); we
@@ -219,6 +220,16 @@ export type LiveRoomState = {
   } | null;
   lastGift: GiftEvt | null;
   sendChat: (text: string, replyTo?: ChatReplyTo) => void;
+  /** Pre-launch crowd: overlay viewer pill (host broadcasts, all clients apply). */
+  broadcastSimViewers: (count: number) => void;
+  /** Pre-launch crowd: visual-only bid (not written to live_bids). */
+  broadcastSimBid: (evt: {
+    productId: string;
+    bidderId: string;
+    bidderName: string;
+    amount: number;
+    auctionRound: number;
+  }) => void;
   /**
    * Inject a repatriated YouTube/Facebook comment into the room chat
    * (host bridge). Dedupes by `id` / `externalId`.
@@ -278,7 +289,9 @@ export function useLiveRoom(params: {
     silent = false,
   } = params;
   const [ready, setReady] = useState(false);
-  const [viewerCount, setViewerCount] = useState(1);
+  const [presenceCount, setPresenceCount] = useState(1);
+  const [simViewerCount, setSimViewerCount] = useState<number | null>(null);
+  const viewerCount = simViewerCount ?? presenceCount;
   const [presentViewers, setPresentViewers] = useState<LivePresenceViewer[]>([]);
   const [chat, setChat] = useState<ChatEvt[]>([]);
   const [products, setProducts] = useState<LiveProductRow[]>([]);
@@ -290,6 +303,41 @@ export function useLiveRoom(params: {
   const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
   const productsRef = useRef<LiveProductRow[]>([]);
   productsRef.current = products;
+
+  const applySimBid = (evt: {
+    productId: string;
+    bidderId: string;
+    bidderName: string;
+    amount: number;
+    auctionRound: number;
+  }) => {
+    setLastBid((cur) => {
+      if (
+        cur &&
+        cur.productId === evt.productId &&
+        !isSimBidderId(cur.bidderId)
+      ) {
+        return cur;
+      }
+      return {
+        productId: evt.productId,
+        bidderId: evt.bidderId,
+        bidderName: evt.bidderName,
+        amount: evt.amount,
+        ts: Date.now(),
+        auctionRound: evt.auctionRound,
+      };
+    });
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === evt.productId
+          ? { ...p, price: Math.max(Number(p.price) || 0, evt.amount) }
+          : p,
+      ),
+    );
+  };
+  const applySimBidRef = useRef(applySimBid);
+  applySimBidRef.current = applySimBid;
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const readyRef = useRef(false);
@@ -386,7 +434,8 @@ export function useLiveRoom(params: {
     readyRef.current = false;
     joinAnnouncedRef.current = false;
     seenGiftIdsRef.current = new Set();
-    setViewerCount(1);
+    setPresenceCount(1);
+    setSimViewerCount(null);
     setPresentViewers([]);
     setChat([]);
     setProducts([]);
@@ -785,6 +834,31 @@ export function useLiveRoom(params: {
     ch.on("broadcast", { event: "heart" }, () => {
       bumpHeart();
     });
+    ch.on("broadcast", { event: "sim:viewers" }, ({ payload }) => {
+      const n = Number((payload as { count?: unknown })?.count);
+      if (!Number.isFinite(n)) return;
+      const clamped = Math.max(50, Math.min(160, Math.round(n)));
+      setSimViewerCount((prev) => (prev === clamped ? prev : clamped));
+    });
+    ch.on("broadcast", { event: "sim:bid" }, ({ payload }) => {
+      const evt = payload as {
+        productId?: string;
+        bidderId?: string;
+        bidderName?: string;
+        amount?: number;
+        auctionRound?: number;
+      };
+      if (!evt?.productId || !evt.bidderId || !evt.bidderName) return;
+      const amount = Number(evt.amount);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      applySimBidRef.current({
+        productId: evt.productId,
+        bidderId: evt.bidderId,
+        bidderName: evt.bidderName,
+        amount,
+        auctionRound: Number(evt.auctionRound ?? 1),
+      });
+    });
     ch.on("broadcast", { event: "auction:start" }, ({ payload }) => {
       const evt = payload as AuctionStartEvt;
       if (!evt?.productId || !Number.isFinite(Number(evt.deadlineMs))) return;
@@ -920,7 +994,7 @@ export function useLiveRoom(params: {
     ch.on("presence", { event: "sync" }, () => {
       const state = ch.presenceState();
       const count = Math.max(1, Object.keys(state).length);
-      setViewerCount((prev) => (prev === count ? prev : count));
+      setPresenceCount((prev) => (prev === count ? prev : count));
       const people: LivePresenceViewer[] = [];
       const seen = new Set<string>();
       for (const [key, metas] of Object.entries(state)) {
@@ -1054,6 +1128,23 @@ export function useLiveRoom(params: {
       lastExtension,
       lastBid,
       lastGift,
+      broadcastSimViewers: (count) => {
+        const clamped = Math.max(50, Math.min(160, Math.round(Number(count) || 50)));
+        setSimViewerCount(clamped);
+        void channelRef.current?.send({
+          type: "broadcast",
+          event: "sim:viewers",
+          payload: { count: clamped },
+        });
+      },
+      broadcastSimBid: (evt) => {
+        applySimBidRef.current(evt);
+        void channelRef.current?.send({
+          type: "broadcast",
+          event: "sim:bid",
+          payload: evt,
+        });
+      },
       broadcastGift: (evt) => {
         const full: GiftEvt = {
           giftKey: evt.giftKey,

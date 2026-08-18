@@ -93,6 +93,8 @@ import {
   replyOnSocialPlatforms,
   useSocialChatBridge,
 } from "@/lib/social-chat-bridge";
+import { usePrelaunchLiveSim } from "@/lib/use-prelaunch-live-sim";
+import { isSimBidderId, simAvatarUrl } from "@/lib/prelaunch-live-sim";
 
 export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const { t, i18n } = useTranslation();
@@ -265,6 +267,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     displayName: b.hostName,
     isHost: true,
   });
+  usePrelaunchLiveSim({ room, currency: cur, appActive });
 
   // Force light status bar during broadcast.
   useEffect(() => {
@@ -433,18 +436,23 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       !!room.lastBid &&
       room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
-    const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
-    const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
+    const displayWinnerName = lastBidMatches ? room.lastBid!.bidderName : null;
+    const displayWinnerId = lastBidMatches ? room.lastBid!.bidderId : null;
+    const simWin = isSimBidderId(displayWinnerId);
+    const winnerName = simWin ? null : displayWinnerName;
+    const winnerId = simWin ? null : displayWinnerId;
     const finalPrice = product?.price ?? 0;
+    const simAvatar =
+      simWin && displayWinnerName ? simAvatarUrl(displayWinnerName) : null;
     // Stable endId across optimistic UI end + post-finalize settlement frame.
     const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
     // End UI immediately at 00s — never wait on RPC/avatar (that was the
     // multi-second "stuck at zero" gap before the winner popup).
     room.broadcastAuctionEnd({
       productId,
-      winnerId,
-      winnerName,
-      winnerAvatarUrl: null,
+      winnerId: displayWinnerId,
+      winnerName: displayWinnerName,
+      winnerAvatarUrl: simAvatar,
       finalPrice: Number(finalPrice ?? 0),
       orderId: null,
       autoPaid: false,
@@ -460,10 +468,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
             liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
           });
           if (res.ok) {
-            const resolvedWinnerId = res.winnerId ?? winnerId;
-            const resolvedWinnerName = res.winnerName ?? winnerName;
+            const resolvedWinnerId = simWin ? displayWinnerId : (res.winnerId ?? winnerId);
+            const resolvedWinnerName = simWin ? displayWinnerName : (res.winnerName ?? winnerName);
             const resolvedPrice = res.finalPrice ?? finalPrice;
-            const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+            const winnerAvatarUrl = simWin
+              ? simAvatar
+              : await resolveWinnerAvatar(resolvedWinnerId);
             // Same endId → viewers skip a second confetti, but apply wallet/order.
             room.broadcastAuctionEnd({
               productId,
@@ -471,8 +481,8 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
               winnerName: resolvedWinnerName,
               winnerAvatarUrl,
               finalPrice: Number(resolvedPrice ?? 0),
-              orderId: res.orderId ?? null,
-              autoPaid: !!res.autoPaid,
+              orderId: simWin ? null : (res.orderId ?? null),
+              autoPaid: simWin ? false : !!res.autoPaid,
               auctionRound: round,
               endId,
               ts: Date.now(),
@@ -514,6 +524,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     if (seenExtendBidRef.current === bid.ts) return;
     seenExtendBidRef.current = bid.ts;
     if (!activeAuction || bid.productId !== activeAuction.productId) return;
+    if (isSimBidderId(bid.bidderId)) return;
     const activeRound = activeProduct?.auction_round ?? 1;
     if (bid.auctionRound !== activeRound) return;
     const msLeft = activeAuction.deadlineMs - Date.now();
@@ -882,17 +893,22 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       !!room.lastBid &&
       room.lastBid.productId === productId &&
       room.lastBid.auctionRound === round;
-    const winnerName = lastBidMatches ? room.lastBid!.bidderName : null;
-    const winnerId = lastBidMatches ? room.lastBid!.bidderId : null;
+    const displayWinnerName = lastBidMatches ? room.lastBid!.bidderName : null;
+    const displayWinnerId = lastBidMatches ? room.lastBid!.bidderId : null;
+    const simWin = isSimBidderId(displayWinnerId);
+    const winnerName = simWin ? null : displayWinnerName;
+    const winnerId = simWin ? null : displayWinnerId;
     const finalPrice = product?.price ?? 0;
+    const simAvatar =
+      simWin && displayWinnerName ? simAvatarUrl(displayWinnerName) : null;
     endingRef.current = `${productId}:${round}:${activeAuction.deadlineMs}`;
     const endId = `end-${productId}-${round}-${activeAuction.deadlineMs}`;
     // Clear countdown / show reveal immediately; persist in the background.
     room.broadcastAuctionEnd({
       productId,
-      winnerId,
-      winnerName,
-      winnerAvatarUrl: null,
+      winnerId: displayWinnerId,
+      winnerName: displayWinnerName,
+      winnerAvatarUrl: simAvatar,
       finalPrice: Number(finalPrice ?? 0),
       orderId: null,
       autoPaid: false,
@@ -910,18 +926,20 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       liveId: b.liveId!, productId, winnerId, winnerName, finalPrice,
     });
     if (res.ok) {
-      const resolvedWinnerId = res.winnerId ?? winnerId;
-      const resolvedWinnerName = res.winnerName ?? winnerName;
+      const resolvedWinnerId = simWin ? displayWinnerId : (res.winnerId ?? winnerId);
+      const resolvedWinnerName = simWin ? displayWinnerName : (res.winnerName ?? winnerName);
       const resolvedPrice = res.finalPrice ?? finalPrice;
-      const winnerAvatarUrl = await resolveWinnerAvatar(resolvedWinnerId);
+      const winnerAvatarUrl = simWin
+        ? simAvatar
+        : await resolveWinnerAvatar(resolvedWinnerId);
       room.broadcastAuctionEnd({
         productId,
         winnerId: resolvedWinnerId,
         winnerName: resolvedWinnerName,
         winnerAvatarUrl,
         finalPrice: Number(resolvedPrice ?? 0),
-        orderId: res.orderId ?? null,
-        autoPaid: !!res.autoPaid,
+        orderId: simWin ? null : (res.orderId ?? null),
+        autoPaid: simWin ? false : !!res.autoPaid,
         auctionRound: round,
         endId,
         ts: Date.now(),
