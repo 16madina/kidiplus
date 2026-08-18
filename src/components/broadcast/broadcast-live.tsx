@@ -2300,7 +2300,11 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         }}
       />
       {battle.isRunning && (
-        <BattleCountdownOverlay startsAt={battle.session?.startedAt} />
+        <BattleCountdownOverlay
+          startsAt={battle.session?.startedAt}
+          leftName={battle.session ? battleLayoutSides(battle.session, { sellerId: user?.id }).left.displayName : undefined}
+          rightName={battle.session ? battleLayoutSides(battle.session, { sellerId: user?.id }).right.displayName : undefined}
+        />
       )}
       <BattleSuddenDeathOverlay
         active={!!battle.session?.suddenDeath && battle.isRunning}

@@ -24,6 +24,8 @@ export function DefiPlusPreviewStage() {
         <DefiPlusIntroOverlay
           key={playId}
           active
+          leftName="DINASTAR"
+          rightName="DEENA"
           onComplete={() => setDone(true)}
         />
         {done && (

@@ -9,8 +9,8 @@ export const DEFI_PLUS_DURATION_MS = BATTLE_COUNTDOWN_SEC * 1000;
 
 /** Seconds on the clock when each visual beat happens. */
 export const PHASE = {
-  /** 10–9: DÉFI and + enter */
-  enterEnd: 2,
+  /** 10–8: DÉFI and + meet in the middle */
+  enterEnd: 2.2,
   /** 8–7: threads braid */
   braidEnd: 4,
   /** 6: threads become the DÉFI + circle */
@@ -42,6 +42,19 @@ export function easeInOutCubic(u: number) {
 
 export function lerp(a: number, b: number, u: number) {
   return a + (b - a) * u;
+}
+
+/** Continuous ease — no hard stop between phases. */
+export function smootherstep(u: number) {
+  const x = clamp01(u);
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+/** Ease in, then constant speed — never parks before the end. */
+export function cruise(u: number) {
+  const x = clamp01(u);
+  if (x < 0.12) return easeInCubic(x / 0.12) * 0.12;
+  return x;
 }
 
 /** Double beat: boom… boom — 1 second cycle. */

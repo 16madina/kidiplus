@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import {
+  cruise,
   easeInOutCubic,
   easeOutCubic,
   heartbeat,
   lerp,
   range,
+  smootherstep,
   DEFI_PLUS_HIT_S,
   PHASE,
 } from "@/lib/defi-plus";
@@ -25,11 +27,11 @@ function hash(n: number) {
   return s - Math.floor(s);
 }
 
-export function DefiPlusMotionCanvas({ elapsedMs }: { elapsedMs: number }) {
+export function DefiPlusMotionCanvas({ clockStart }: { clockStart: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
-  const elapsedRef = useRef(elapsedMs);
-  elapsedRef.current = elapsedMs;
+  const startRef = useRef(clockStart);
+  startRef.current = clockStart;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,7 +56,7 @@ export function DefiPlusMotionCanvas({ elapsedMs }: { elapsedMs: number }) {
     const tick = () => {
       const { width: w, height: h } = canvas.getBoundingClientRect();
       if (!particlesRef.current.length) seed(particlesRef.current, w, h);
-      const t = elapsedRef.current / 1000;
+      const t = Math.max(0, (Date.now() - startRef.current) / 1000);
       ctx.clearRect(0, 0, w, h);
       drawScene(ctx, t, w, h);
       burst = stepParticles(ctx, particlesRef.current, t, w, h, burst);
@@ -71,7 +73,7 @@ export function DefiPlusMotionCanvas({ elapsedMs }: { elapsedMs: number }) {
 }
 
 function seed(list: Particle[], w: number, h: number) {
-  for (let i = 0; i < 70; i++) list.push(spawn(w, h, i < 35 ? 0 : 1));
+  for (let i = 0; i < 36; i++) list.push(spawn(w, h, i < 18 ? 0 : 1));
 }
 
 function spawn(w: number, h: number, side: 0 | 1): Particle {
@@ -88,6 +90,19 @@ function spawn(w: number, h: number, side: 0 | 1): Particle {
   };
 }
 
+function meetingPair(t: number, w: number, cx: number) {
+  // Arrive on-screen, then close the gap until DÉFI and + sit side by side.
+  const meet = cruise(range(t, 0.06, PHASE.enterEnd));
+  const nest = smootherstep(range(t, PHASE.enterEnd, PHASE.medalReady));
+  const gap = lerp(w * 0.17, w * 0.1, nest);
+  return {
+    meet,
+    nest,
+    defiX: lerp(cx - w * 0.42, cx - gap, meet),
+    plusX: lerp(cx + w * 0.42, cx + gap, meet),
+  };
+}
+
 function drawScene(
   ctx: CanvasRenderingContext2D,
   t: number,
@@ -96,25 +111,25 @@ function drawScene(
 ) {
   const cx = w / 2;
   const cy = h * 0.33;
-  const grow = easeOutCubic(range(t, 0.05, PHASE.enterEnd - 0.15));
-  const braid = easeInOutCubic(range(t, PHASE.enterEnd - 0.15, PHASE.braidEnd - 0.05));
-  const coil = easeInOutCubic(range(t, PHASE.braidEnd - 0.15, PHASE.medalReady));
-  const medal = easeOutCubic(range(t, PHASE.braidEnd + 0.15, PHASE.medalReady + 0.15));
-  const titleFade = 1 - range(t, PHASE.medalReady - 0.5, PHASE.medalReady + 0.15);
+  const pair = meetingPair(t, w, cx);
+  const grow = smootherstep(range(t, 0.04, 0.95));
+  const coil = smootherstep(range(t, 2.45, PHASE.medalReady));
+  const medal = smootherstep(range(t, 4.35, PHASE.medalReady + 0.4));
+  const titleFade = 1 - smootherstep(range(t, PHASE.medalReady - 0.28, PHASE.medalReady + 0.28));
+  const threadFade = 1 - smootherstep(range(t, PHASE.medalReady + 0.05, PHASE.medalReady + 0.6));
   const impact = range(t, DEFI_PLUS_HIT_S - 0.05, DEFI_PLUS_HIT_S + 0.6);
   const shardsOn =
     lerp(0, 0.4, range(t, PHASE.medalReady - 0.2, PHASE.medalReady + 0.5)) *
     (1 - range(t, DEFI_PLUS_HIT_S - 0.1, DEFI_PLUS_HIT_S + 0.15) * 0.35);
 
   drawCenterBeam(ctx, t, w, h);
-  drawEnergyThreads(ctx, t, w, h, cx, cy, grow, braid, coil, titleFade);
-  if (medal > 0.35)
-    drawOrbitThreads(ctx, t, cx, cy, w, medal * 0.55 * (1 - range(t, DEFI_PLUS_HIT_S + 0.05, DEFI_PLUS_HIT_S + 0.35)));
-  if (braid > 0.08 && medal < 0.92) drawGoldRings(ctx, t, cx, cy, w, braid, coil, medal);
+  drawEnergyThreads(ctx, t, w, cx, cy, pair, grow, coil, threadFade);
+  if (medal > 0.72)
+    drawOrbitThreads(ctx, t, cx, cy, w, medal * 0.4 * (1 - range(t, DEFI_PLUS_HIT_S + 0.05, DEFI_PLUS_HIT_S + 0.35)));
   if (shardsOn > 0.04) drawRadialShards(ctx, t, cx, cy, w, shardsOn);
   if (impact > 0) drawImpact(ctx, t, cx, cy, w, h);
   if (medal > 0.02) drawMedallion(ctx, t, cx, cy, medal, w);
-  if (titleFade > 0.02) drawFlyingTitles(ctx, t, w, cx, cy, braid, coil, titleFade);
+  if (titleFade > 0.02) drawFlyingTitles(ctx, w, cy, pair, coil, titleFade);
 }
 
 function drawCenterBeam(ctx: CanvasRenderingContext2D, t: number, w: number, h: number) {
@@ -146,31 +161,29 @@ function energyPoint(
   t: number,
   side: number,
   w: number,
-  h: number,
   cx: number,
   cy: number,
-  braid: number,
+  homeX: number,
   coil: number,
   phase: number,
+  spread: number,
 ) {
-  const enterX = side < 0 ? lerp(-w * 0.12, w * 0.24, u) : lerp(w * 1.12, w * 0.76, u);
-  const enterY = cy + Math.sin(u * Math.PI * 1.2 + t * 10 + phase) * 18;
+  // u=1 at the letter, u=0 at the trailing beard.
+  const trail = lerp(w * 0.4, w * 0.04, coil);
+  const followX = homeX + side * lerp(trail, 0, u);
+  const wave = Math.sin(u * Math.PI * 2.15 + t * 4.6 + phase) * lerp(spread, 5, coil);
+  const frizz = Math.sin(u * Math.PI * 5.4 + t * 7.2 + phase * 1.8) * lerp(spread * 0.32, 2, coil);
+  const followY = cy + wave + frizz;
 
-  const braidX =
-    cx +
-    side * lerp(w * 0.46, -w * 0.08, u) +
-    Math.sin(u * Math.PI * 2.6 + t * 3.4 + phase) * 36 * side;
-  const braidY = lerp(h * 0.15, h * 0.52, u) + Math.sin(u * Math.PI * 3.4 + t * 4.8 + phase) * 26;
-
-  const turns = 2.2 + coil * 1.25;
-  const ang = (u * Math.PI * turns + t * 2.6 + phase) * side;
-  const r = lerp(w * 0.3, w * 0.175, coil) + Math.sin(u * 16 + t * 8 + phase) * 8;
+  const turns = 1.7 + coil * 1.05;
+  const ang = -side * u * Math.PI * 2 * turns + t * (1.7 + coil * 1.6) + phase;
+  const r = lerp(w * 0.15, w * 0.195, coil);
   const coilX = cx + Math.cos(ang) * r;
-  const coilY = cy + Math.sin(ang) * r * 0.88;
+  const coilY = cy + Math.sin(ang) * r * 0.93;
 
   return {
-    x: lerp(lerp(enterX, braidX, braid), coilX, coil),
-    y: lerp(lerp(enterY, braidY, braid), coilY, coil),
+    x: lerp(followX, coilX, coil),
+    y: lerp(followY, coilY, coil),
   };
 }
 
@@ -178,49 +191,90 @@ function drawEnergyThreads(
   ctx: CanvasRenderingContext2D,
   t: number,
   w: number,
-  h: number,
   cx: number,
   cy: number,
+  pair: ReturnType<typeof meetingPair>,
   grow: number,
-  braid: number,
   coil: number,
-  titleFade: number,
+  fade: number,
 ) {
-  const fade = Math.max(titleFade * 0.85, (1 - range(t, PHASE.medalReady - 0.3, PHASE.medalReady + 0.35)) * 0.35);
   if (grow * fade < 0.03) return;
 
   const drawFilament = (
     side: number,
+    homeX: number,
     phase: number,
+    spread: number,
     core: string,
     glow: string,
     width: number,
     alpha: number,
   ) => {
-    const steps = 34;
+    const steps = 22;
     const pts: { x: number; y: number }[] = [];
     for (let i = 0; i <= steps; i++) {
-      const u = (i / steps) * grow;
-      const p = energyPoint(u, t, side, w, h, cx, cy, braid, coil, phase);
-      const nse = Math.sin(u * 42 + t * 13 + phase * 4) * lerp(10, 2.2, coil);
-      const nse2 = Math.cos(u * 27 + t * 9 + phase) * lerp(6, 1.4, coil);
-      pts.push({ x: p.x + nse * side * 0.35, y: p.y + nse2 });
+      const s = i / steps;
+      const u = lerp(1 - s * grow, s, coil);
+      const p = energyPoint(u, t, side, w, cx, cy, homeX, coil, phase, spread);
+      pts.push(p);
     }
-    strokeTapered(ctx, pts, width, width * 0.18, glow, alpha * grow * fade * 0.45);
-    strokeTapered(ctx, pts, width * 0.38, 0.6, core, alpha * grow * fade);
+    strokeSimple(ctx, pts, width * 1.15, glow, alpha * fade * 0.35);
+    strokeTapered(ctx, pts, width * 0.46, 0.5, core, alpha * fade);
   };
 
-  for (let k = 0; k < 8; k++) {
-    drawFilament(-1, k * 0.31, "rgba(180,250,255,0.95)", "rgba(40,170,255,0.7)", 7.5 - k * 0.28, 0.55);
-    drawFilament(1, Math.PI + k * 0.31, "rgba(255,245,190,0.95)", "rgba(255,170,40,0.7)", 7.5 - k * 0.28, 0.55);
-  }
+  const beards = [
+    { phase: 0.05, spread: 26, width: 7.2, alpha: 0.62 },
+    { phase: 0.55, spread: 17, width: 5.4, alpha: 0.5 },
+    { phase: 1.1, spread: 31, width: 4.6, alpha: 0.4 },
+    { phase: 1.7, spread: 21, width: 5.8, alpha: 0.48 },
+  ];
 
-  if (titleFade > 0.12) {
-    const defiX = lerp(-w * 0.05, w * 0.27, grow) + lerp(0, w * 0.1, braid);
-    const plusX = lerp(w * 1.05, w * 0.73, grow) + lerp(0, -w * 0.1, braid);
-    drawSplash(ctx, defiX, cy, -1, t, titleFade * grow);
-    drawSplash(ctx, plusX, cy, 1, t, titleFade * grow);
+  for (const b of beards) {
+    drawFilament(
+      -1,
+      pair.defiX,
+      b.phase,
+      b.spread,
+      "rgba(190,252,255,0.95)",
+      "rgba(50,180,255,0.75)",
+      b.width,
+      b.alpha,
+    );
+    drawFilament(
+      1,
+      pair.plusX,
+      Math.PI + b.phase,
+      b.spread,
+      "rgba(255,246,200,0.95)",
+      "rgba(255,176,45,0.75)",
+      b.width,
+      b.alpha,
+    );
   }
+}
+
+function strokeSimple(
+  ctx: CanvasRenderingContext2D,
+  pts: { x: number; y: number }[],
+  width: number,
+  color: string,
+  alpha: number,
+) {
+  if (pts.length < 2 || alpha < 0.02) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = color;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 12;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function strokeTapered(
@@ -231,101 +285,23 @@ function strokeTapered(
   color: string,
   alpha: number,
 ) {
+  if (pts.length < 2 || alpha < 0.02) return;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.strokeStyle = color;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
+  ctx.globalAlpha = alpha;
   for (let i = 1; i < pts.length; i++) {
     const u = i / (pts.length - 1);
-    ctx.lineWidth = lerp(w0, w1, u);
-    ctx.globalAlpha = alpha * (0.75 + 0.25 * (1 - u));
     ctx.beginPath();
     ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
     ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.lineWidth = lerp(w0, w1, u);
     ctx.stroke();
   }
-  ctx.restore();
-}
-
-function drawSplash(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  side: number,
-  t: number,
-  alpha: number,
-) {
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  ctx.lineCap = "round";
-  const color = side < 0 ? "rgba(70,230,255,0.9)" : "rgba(255,205,70,0.9)";
-  ctx.strokeStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 12;
-  for (let i = 0; i < 26; i++) {
-    const a = side * (0.05 + (i / 25) * 0.95) + Math.sin(t * 16 + i) * 0.14;
-    const len = 22 + hash(i + 4) * 54 + Math.sin(t * 12 + i * 2) * 10;
-    ctx.globalAlpha = alpha * (0.18 + hash(i) * 0.35);
-    ctx.lineWidth = 0.7 + hash(i + 9) * 2.4;
-    ctx.beginPath();
-    ctx.moveTo(x, y + Math.sin(i * 1.7 + t * 9) * 10);
-    ctx.lineTo(x + Math.cos(a) * len * side, y + Math.sin(a) * len * 0.42);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawGoldRings(
-  ctx: CanvasRenderingContext2D,
-  t: number,
-  cx: number,
-  cy: number,
-  w: number,
-  braid: number,
-  coil: number,
-  medal: number,
-) {
-  const on = braid * (1 - medal * 0.85);
-  if (on < 0.04) return;
-  const r = lerp(w * 0.13, w * 0.19, coil);
-  drawTorus(ctx, cx, cy, r, r * 0.42, t * 1.15, on);
-  drawTorus(ctx, cx, cy, r * 0.42, r, Math.PI / 2 + t * 0.95, on * 0.92);
-}
-
-function drawTorus(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  rot: number,
-  alpha: number,
-) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rot);
-  ctx.globalAlpha = alpha;
-  ctx.strokeStyle = "#8a6410";
-  ctx.lineWidth = 13;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = "#f0c14b";
-  ctx.lineWidth = 8;
-  ctx.shadowColor = "#ffe08a";
-  ctx.shadowBlur = 14;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = "rgba(255,255,230,0.9)";
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, rx, ry, 0, -0.9, 0.55);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -403,24 +379,39 @@ function drawRadialShards(
 
 function drawFlyingTitles(
   ctx: CanvasRenderingContext2D,
-  t: number,
   w: number,
-  cx: number,
   cy: number,
-  braid: number,
+  pair: ReturnType<typeof meetingPair>,
   coil: number,
   fade: number,
 ) {
-  const defiEnter = easeOutCubic(range(t, 0.06, 1.55));
-  const plusEnter = easeOutCubic(range(t, 0.22, 1.7));
-  const defiX =
-    lerp(cx - w * 0.62, cx - w * 0.22, defiEnter) + lerp(0, w * 0.14, braid) + lerp(0, w * 0.06, coil);
-  const plusX =
-    lerp(cx + w * 0.62, cx + w * 0.22, plusEnter) + lerp(0, -w * 0.14, braid) + lerp(0, -w * 0.06, coil);
-  const defiRot = lerp(-0.32, -0.08, defiEnter) + lerp(0, 0.38, braid);
-  const plusRot = lerp(0.32, 0.08, plusEnter) + lerp(0, -0.38, braid);
-  metallicText(ctx, "DÉFI", defiX, cy, defiRot, Math.max(38, w * 0.14), fade, "#7dd8ff", "#163d9c", 0.18);
-  metallicText(ctx, "+", plusX, cy, plusRot, Math.max(62, w * 0.22), fade, "#ffe08a", "#9a6b0c", 0.18);
+  const defiRot = lerp(-0.08, 0, pair.meet);
+  const plusRot = lerp(0.08, 0, pair.meet);
+  const shrink = lerp(1, 0.88, coil);
+  metallicText(
+    ctx,
+    "DÉFI",
+    pair.defiX,
+    cy,
+    defiRot,
+    Math.max(42, w * 0.145) * shrink,
+    fade,
+    "#7dd8ff",
+    "#163d9c",
+    0.06,
+  );
+  metallicText(
+    ctx,
+    "+",
+    pair.plusX,
+    cy,
+    plusRot,
+    Math.max(78, w * 0.28) * shrink,
+    fade,
+    "#fff4c4",
+    "#b8860b",
+    0,
+  );
 }
 
 function metallicText(
@@ -444,8 +435,8 @@ function metallicText(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.shadowColor = hi;
-  ctx.shadowBlur = 26;
-  for (let i = 11; i >= 1; i--) {
+  ctx.shadowBlur = 18;
+  for (let i = 5; i >= 1; i--) {
     ctx.fillStyle = i > 6 ? "#050814" : lo;
     ctx.fillText(text, -i * 0.85, i * 1.25);
   }
@@ -455,6 +446,11 @@ function metallicText(
   g.addColorStop(0.72, lo);
   g.addColorStop(1, "#1a1204");
   ctx.fillStyle = g;
+  ctx.lineJoin = "round";
+  ctx.miterLimit = 2;
+  ctx.lineWidth = Math.max(3, size * 0.06);
+  ctx.strokeStyle = "rgba(8,10,18,0.55)";
+  ctx.strokeText(text, 0, 0);
   ctx.fillText(text, 0, 0);
   ctx.restore();
 }

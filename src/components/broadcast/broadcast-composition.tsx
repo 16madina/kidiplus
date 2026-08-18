@@ -492,7 +492,11 @@ function BroadcastCompositionInner({
           />
         </div>
       ) : null}
-      <BattleCountdownOverlay startsAt={battle.session?.startedAt} />
+      <BattleCountdownOverlay
+        startsAt={battle.session?.startedAt}
+        leftName={layoutSides?.left.displayName}
+        rightName={layoutSides?.right.displayName}
+      />
       <BattleSuddenDeathOverlay
         active={!!battle.session?.suddenDeath && battle.isRunning}
       />
