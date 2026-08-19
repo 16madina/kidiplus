@@ -510,19 +510,40 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           // iOS/Android + Snap : une seule connexion LiveKit (native) pour éviter
           // le conflit d'identité avec la WebView, et zéro WASM pour les filtres.
-          const useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
+          // Si le plugin natif ne répond pas (build sans implémentation), on
+          // retombe sur le chemin WebRTC classique au lieu de rester bloqué.
+          let useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
           if (useNativeVideo) {
             phase = "camera";
-            await setNativePublishEnabled({ enabled: true, roomUrl: url, token });
-            if (cancelled) {
-              await setNativePublishEnabled({ enabled: false });
-              return;
+            const withTimeout = <T,>(p: Promise<T>, ms = 8000) =>
+              Promise.race([
+                p,
+                new Promise<never>((_, rej) =>
+                  setTimeout(() => rej(new Error("native camera kit timeout")), ms),
+                ),
+              ]);
+            try {
+              await withTimeout(
+                setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
+              );
+              if (cancelled) {
+                await setNativePublishEnabled({ enabled: false }).catch(() => {});
+                return;
+              }
+              await withTimeout(
+                setNativePreview({
+                  active: true,
+                  mirrored: facingRef.current === "user",
+                  facing: facingRef.current,
+                }),
+              );
+            } catch (e) {
+              console.warn("[native-camera-kit] fallback to web pipeline", e);
+              await setNativePublishEnabled({ enabled: false }).catch(() => {});
+              useNativeVideo = false;
             }
-            await setNativePreview({
-              active: true,
-              mirrored: facingRef.current === "user",
-              facing: facingRef.current,
-            });
+          }
+          if (useNativeVideo) {
             const lens = activeLensRef.current;
             if (lens?.isSnapLens) {
               void applyBridgeLens(lens).catch((e) => {
@@ -534,6 +555,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             setState("granted");
             return;
           }
+          phase = "connect";
+
 
           const room = await connectRoom(url, token);
           if (cancelled) {
