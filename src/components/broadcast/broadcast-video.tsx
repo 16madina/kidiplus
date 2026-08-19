@@ -205,6 +205,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
 
         if (wantSnap) {
+          // Sur iOS/Android natif, on signale aussi au plugin natif la lens
+          // choisie (même si la publication vidéo reste gérée par le web SDK
+          // en attendant la finalisation du pipeline natif LiveKit).
+          void applyBridgeLens(lens).catch((e) => {
+            console.warn("[native-camera-kit] applyBridgeLens failed", e);
+          });
+
           if (isCameraKit) {
             // Session AR déjà en place : on change juste la lens (aucun blink).
             await (current as CameraKitVideoProcessor).setLens(lens.lensId, lens.groupId);
