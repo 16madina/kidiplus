@@ -9,6 +9,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+type AnySb = { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> };
+const sb = supabase as unknown as AnySb;
+
 export const PRELAUNCH_LIVE_SIM_CONFIG_KEY = "prelaunch_live_sim";
 
 export type PrelaunchLiveSimConfig = {
