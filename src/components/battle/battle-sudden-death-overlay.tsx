@@ -14,19 +14,18 @@ export function BattleSuddenDeathOverlay({ active }: { active: boolean }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.28, ease: EASE_IOS }}
-          className="pointer-events-none absolute inset-x-3 z-[67]"
-          style={{ top: "calc(env(safe-area-inset-top) + 118px)" }}
+          className="pointer-events-none absolute inset-x-0 z-[67] flex justify-center px-3"
+          style={{ top: "calc(env(safe-area-inset-top) + 104px)" }}
         >
           <div
-            className="rounded-[20px] px-4 py-3 text-center"
+            className="max-w-[86%] truncate rounded-full px-3 py-1 text-center"
             style={{
               background: "linear-gradient(135deg, oklch(0.9 0.15 85), oklch(0.72 0.17 70))",
               color: "#10162B",
-              boxShadow: "0 16px 40px oklch(0.78 0.14 85 / 0.45)",
+              boxShadow: "0 6px 18px oklch(0.78 0.14 85 / 0.35)",
             }}
           >
-            <p className="text-[15px] font-black tracking-tight">{t("battle.sudden.title")}</p>
-            <p className="mt-0.5 text-[12px] font-semibold opacity-80">{t("battle.sudden.body")}</p>
+            <span className="text-[11px] font-black tracking-tight">⚡ {t("battle.sudden.title")}</span>
           </div>
         </motion.div>
       )}
