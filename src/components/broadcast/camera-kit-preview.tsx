@@ -7,10 +7,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { Lens } from "@/lib/filters/lenses-catalog";
 import {
-  createCameraKitPipeline,
+  createBridgeWebPipeline,
   isCameraKitSupported,
   type CameraKitPipeline,
-} from "@/lib/filters/camera-kit";
+} from "@/lib/filters/native-camera-kit-bridge";
 
 export function CameraKitPreview({
   stream,
