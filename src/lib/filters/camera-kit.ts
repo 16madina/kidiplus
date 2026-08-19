@@ -161,17 +161,24 @@ export type CameraKitPipeline = {
   destroy: () => Promise<void>;
 };
 
-/** Appareil "modeste" : peu de cœurs CPU → on rend le filtre plus petit.
- * Le moteur AR (WASM + GPU) est le poste le plus lourd du live ; sans plafond
- * il sature le thread principal et provoque des saccades audio/vidéo. */
+/** Appareil "modeste" : très peu de cœurs CPU → on rend le filtre plus petit.
+ * Attention : iOS (iPhone 13→16) expose souvent 6 cœurs tout en étant très
+ * puissant ; on ne les dégrade donc PAS d'office, une mesure de FPS réelle
+ * (voir plus bas) décide d'un éventuel repli. */
 function lowPowerDevice(): boolean {
   try {
+    const ua = navigator.userAgent || "";
+    const isApple = /iPhone|iPad|Macintosh/.test(ua);
+    const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory;
     const cores = navigator.hardwareConcurrency ?? 4;
-    return cores <= 6;
+    if (isApple) return cores <= 4; // A9/A10 et plus anciens uniquement
+    if (typeof mem === "number" && mem <= 3) return true;
+    return cores <= 4;
   } catch {
     return false;
   }
 }
+
 
 export async function createCameraKitPipeline(args: {
   source: MediaStreamTrack;
