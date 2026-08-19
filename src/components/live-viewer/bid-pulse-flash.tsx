@@ -30,11 +30,11 @@ export function BidPulseFlash({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="pointer-events-none absolute left-1/2 top-[22%] z-[47] -translate-x-1/2 rounded-full px-5 py-2.5 text-[15px] font-black text-white"
+          className="pointer-events-none absolute left-1/2 top-[34%] z-[47] max-w-[80%] -translate-x-1/2 truncate rounded-full px-3 py-1.5 text-[12px] font-bold text-white"
           style={{
             background:
               "linear-gradient(135deg, oklch(0.72 0.2 55), oklch(0.58 0.2 35))",
-            boxShadow: "0 12px 32px oklch(0.65 0.18 45 / 0.45)",
+            boxShadow: "0 6px 18px oklch(0.65 0.18 45 / 0.35)",
           }}
         >
           {text}
