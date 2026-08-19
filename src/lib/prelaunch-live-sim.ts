@@ -355,28 +355,44 @@ export function nextSimViewerCount(
 ): { count: number; dir: 1 | -1 } {
   const lo = Math.min(viewersMin, viewersMax);
   const hi = Math.max(viewersMin, viewersMax);
+  const span = Math.max(1, hi - lo);
+
+  // Small natural steps: usually 1–3, occasional 4–8 “burst”.
+  const roll = Math.random();
+  let step: number;
+  if (roll < 0.5) step = 1;
+  else if (roll < 0.78) step = 2;
+  else if (roll < 0.9) step = 3;
+  else step = 4 + rand(5); // 4–8
+
   let nextDir: 1 | -1 = dir;
-  if (Math.random() < 0.14) nextDir = dir === 1 ? -1 : 1;
-  const step = 1 + rand(Math.max(1, Math.ceil((hi - lo) / 20)));
+  // Flip more often near the edges, rarely in the middle — creates
+  // 50 → 47 → 45 → 48 → 52 style waves instead of a straight climb.
+  const nearLow = (prev - lo) / span < 0.18;
+  const nearHigh = (hi - prev) / span < 0.18;
+  const flipChance = nearLow || nearHigh ? 0.28 : 0.12;
+  if (Math.random() < flipChance) nextDir = dir === 1 ? -1 : 1;
+  // Prefer climbing when stuck on the floor, descending on the ceiling.
+  if (prev <= lo + 1) nextDir = 1;
+  if (prev >= hi - 1) nextDir = -1;
+
   let count = prev + nextDir * step;
-  if (count >= hi) {
-    count = hi - rand(Math.min(4, Math.max(1, hi - lo)));
+  if (count > hi) {
+    count = hi - rand(3); // soft bounce, stay near the top
     nextDir = -1;
   }
-  if (count <= lo) {
-    count = lo + rand(Math.min(5, Math.max(1, hi - lo)));
+  if (count < lo) {
+    count = lo + rand(3); // soft bounce, stay near the floor
     nextDir = 1;
   }
   return { count, dir: nextDir };
 }
 
+/** Start at the admin minimum (plus 0–2) so the crowd fills in gradually. */
 export function initialSimViewerCount(viewersMin: number, viewersMax: number): number {
   const lo = Math.min(viewersMin, viewersMax);
   const hi = Math.max(viewersMin, viewersMax);
-  const span = Math.max(0, hi - lo);
-  // Start in the lower third of the range for a natural ramp.
-  const startHi = lo + Math.max(0, Math.floor(span / 3));
-  return lo + rand(Math.max(1, startHi - lo + 1));
+  return Math.min(hi, lo + rand(3));
 }
 
 export function nextCommentDelayMs(cfg: PrelaunchLiveSimConfig): number {
@@ -387,6 +403,7 @@ export function nextBidDelayMs(cfg: PrelaunchLiveSimConfig): number {
   return randBetweenSec(cfg.bidEverySecMin, cfg.bidEverySecMax);
 }
 
+/** Slightly calmer cadence so each +1 / +2 is readable on camera. */
 export function nextViewerTickMs(): number {
-  return 1600 + Math.random() * 2400;
+  return 1800 + Math.random() * 2200;
 }
