@@ -1392,6 +1392,8 @@ export async function fetchSellerLives(
       "id, title, status, cover_url, started_at, scheduled_at, ended_at, viewer_count, room_name, category, currency, replay_url, replay_status, replay_expires_at",
     )
     .eq("seller_id", sellerId)
+    // Prefer ended_at so just-finished lives surface before older ones.
+    .order("ended_at", { ascending: false, nullsFirst: false })
     .order("started_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   const rows = (data as SellerLiveEntry[] | null) ?? [];
@@ -1401,15 +1403,21 @@ export async function fetchSellerLives(
       cover_url: (await resolveLiveImage("live-covers", r.cover_url, "card")),
     })),
   );
-  // Sort: live first, then scheduled (upcoming), then ended.
+  // Sort: live first, then scheduled (upcoming), then ended — newest first.
   const rank = (s: string) => (s === "live" ? 0 : s === "scheduled" ? 1 : 2);
+  const recencyKey = (r: SellerLiveEntry) =>
+    r.status === "scheduled"
+      ? (r.scheduled_at ?? "")
+      : (r.ended_at ?? r.started_at ?? r.scheduled_at ?? "");
   resolved.sort((a, b) => {
     const r = rank(a.status) - rank(b.status);
     if (r !== 0) return r;
     if (a.status === "scheduled" && b.status === "scheduled") {
+      // Upcoming soonest first.
       return (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "");
     }
-    return (b.started_at ?? b.scheduled_at ?? "").localeCompare(a.started_at ?? a.scheduled_at ?? "");
+    // Newest → oldest for live / ended.
+    return recencyKey(b).localeCompare(recencyKey(a));
   });
   return resolved;
 }

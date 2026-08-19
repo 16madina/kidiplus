@@ -16,6 +16,7 @@ import { LiveReplayPlayer } from "@/components/live-viewer/live-replay-player";
 import {
   fetchLiveReplayMeta,
   isReplayPlayable,
+  resolvePlayableReplayUrl,
   type LiveReplayMeta,
 } from "@/lib/live-replay-client";
 
@@ -30,6 +31,7 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
   const [giftsTotal, setGiftsTotal] = useState<{ count: number; sellerNet: number } | null>(null);
   const [replayMeta, setReplayMeta] = useState<LiveReplayMeta | null>(null);
   const [replayOpen, setReplayOpen] = useState(false);
+  const [replayPlayUrl, setReplayPlayUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!liveId) return;
@@ -196,9 +198,25 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
             <Press
               disabled={!replayReady}
               onClick={() => {
-                if (!replayReady || !replayMeta?.replay_url) return;
+                if (!replayReady || !liveId) return;
                 haptic.light();
-                setReplayOpen(true);
+                void (async () => {
+                  let url = replayMeta?.replay_url ?? null;
+                  if (!url || /r2\.cloudflarestorage\.com|amazonaws\.com/i.test(url)) {
+                    url = await resolvePlayableReplayUrl(liveId);
+                  }
+                  if (!url) {
+                    toast.error(
+                      t(
+                        "broadcast.replay.openFailed",
+                        "Impossible d’ouvrir ce replay — réessaie dans un instant.",
+                      ),
+                    );
+                    return;
+                  }
+                  setReplayPlayUrl(url);
+                  setReplayOpen(true);
+                })();
               }}
               className="!min-h-12 h-12 w-full rounded-2xl text-[15px] font-semibold text-white disabled:opacity-60"
               style={{
@@ -231,14 +249,18 @@ export function BroadcastSummary({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      {replayOpen && replayMeta?.replay_url && liveId && (
+      {replayOpen && replayPlayUrl && liveId && (
         <LiveReplayPlayer
-          url={replayMeta.replay_url}
+          url={replayPlayUrl}
           title={session.title}
           liveId={liveId}
-          onClose={() => setReplayOpen(false)}
+          onClose={() => {
+            setReplayOpen(false);
+            setReplayPlayUrl(null);
+          }}
           onDeleted={() => {
             setReplayOpen(false);
+            setReplayPlayUrl(null);
             setReplayMeta((m) =>
               m
                 ? {

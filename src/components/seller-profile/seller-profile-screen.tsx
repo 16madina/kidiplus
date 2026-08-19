@@ -965,11 +965,35 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
 
   useEffect(() => {
     let alive = true;
-    void fetchSellerLives(sellerId).then((r) => {
-      if (alive) setRows(r);
-    });
+    const load = () => {
+      void fetchSellerLives(sellerId).then((r) => {
+        if (alive) setRows(r);
+      });
+    };
+    load();
+    // Replay finalizes async (egress webhook) — refresh when lives rows change
+    // and poll while any replay is still recording/processing.
+    const channel = supabase
+      .channel(`seller-lives-replays-${sellerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "lives",
+          filter: `seller_id=eq.${sellerId}`,
+        },
+        () => load(),
+      )
+      .subscribe();
+    const iv = setInterval(() => {
+      if (!alive) return;
+      load();
+    }, 8000);
     return () => {
       alive = false;
+      clearInterval(iv);
+      void supabase.removeChannel(channel);
     };
   }, [sellerId]);
 
@@ -1008,13 +1032,23 @@ function LivesTab({ sellerId, onBack }: { sellerId: string; onBack: () => void }
       replay_url: row.replay_url,
       replay_expires_at: row.replay_expires_at,
     };
-    if (!isReplayPlayable(meta) && row.replay_status !== "ready") return;
+    if (!isReplayPlayable(meta)) return;
     haptic.light();
     let url = row.replay_url;
     if (!url || /r2\.cloudflarestorage\.com|amazonaws\.com/i.test(url)) {
       url = await resolvePlayableReplayUrl(row.id);
     }
-    if (url) setReplay({ url, title: row.title, liveId: row.id });
+    if (!url) {
+      toast.error(
+        t(
+          "broadcast.replay.openFailed",
+          "Impossible d’ouvrir ce replay — réessaie dans un instant.",
+        ),
+      );
+      void reload();
+      return;
+    }
+    setReplay({ url, title: row.title, liveId: row.id });
   };
 
   const removeReplay = async (liveId: string) => {

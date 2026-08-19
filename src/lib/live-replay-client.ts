@@ -174,14 +174,14 @@ export async function resolvePlayableReplayUrl(
 }
 
 export function isReplayPlayable(meta: LiveReplayMeta | null | undefined): boolean {
-  if (!meta?.replay_url) return false;
-  if (meta.replay_status !== "ready") return false;
+  if (meta?.replay_status !== "ready") return false;
   if (
     meta.replay_expires_at &&
     new Date(meta.replay_expires_at).getTime() <= Date.now()
   ) {
     return false;
   }
+  // URL may be missing or private — play-url endpoint repairs it on open.
   return true;
 }
 

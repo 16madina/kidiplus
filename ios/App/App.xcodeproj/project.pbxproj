@@ -20,6 +20,9 @@
 		A10000021FED79650016851F /* LivePipPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000031FED79650016851F /* LivePipPlugin.swift */; };
 		A10000041FED79650016851F /* LivePipSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000051FED79650016851F /* LivePipSession.swift */; };
 		A10000061FED79650016851F /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000071FED79650016851F /* LiveKit */; };
+		A10000091FED79650016851F /* KidiCameraKitPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000A1FED79650016851F /* KidiCameraKitPlugin.swift */; };
+		A100000B1FED79650016851F /* KidiCameraKitLiveKitOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C1FED79650016851F /* KidiCameraKitLiveKitOutput.swift */; };
+		A100000D1FED79650016851F /* SCSDKCameraKit in Frameworks */ = {isa = PBXBuildFile; productRef = A100000E1FED79650016851F /* SCSDKCameraKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +41,8 @@
 		A10000011FED79650016851F /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		A10000031FED79650016851F /* LivePipPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePipPlugin.swift; sourceTree = "<group>"; };
 		A10000051FED79650016851F /* LivePipSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePipSession.swift; sourceTree = "<group>"; };
+		A100000A1FED79650016851F /* KidiCameraKitPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidiCameraKitPlugin.swift; sourceTree = "<group>"; };
+		A100000C1FED79650016851F /* KidiCameraKitLiveKitOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidiCameraKitLiveKitOutput.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +52,7 @@
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
 				A10000061FED79650016851F /* LiveKit in Frameworks */,
+				A100000D1FED79650016851F /* SCSDKCameraKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +85,8 @@
 				A10000011FED79650016851F /* MainViewController.swift */,
 				A10000031FED79650016851F /* LivePipPlugin.swift */,
 				A10000051FED79650016851F /* LivePipSession.swift */,
+				A100000A1FED79650016851F /* KidiCameraKitPlugin.swift */,
+				A100000C1FED79650016851F /* KidiCameraKitLiveKitOutput.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -109,6 +117,7 @@
 			packageProductDependencies = (
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
 				A10000071FED79650016851F /* LiveKit */,
+				A100000E1FED79650016851F /* SCSDKCameraKit */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -143,6 +152,7 @@
 			packageReferences = (
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
 				A10000081FED79650016851F /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
+				A100000F1FED79650016851F /* XCRemoteSwiftPackageReference "camera-kit-ios-sdk" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -179,6 +189,8 @@
 				A10000001FED79650016851F /* MainViewController.swift in Sources */,
 				A10000021FED79650016851F /* LivePipPlugin.swift in Sources */,
 				A10000041FED79650016851F /* LivePipSession.swift in Sources */,
+				A10000091FED79650016851F /* KidiCameraKitPlugin.swift in Sources */,
+				A100000B1FED79650016851F /* KidiCameraKitLiveKitOutput.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -410,6 +422,14 @@
 				minimumVersion = 2.6.0;
 			};
 		};
+		A100000F1FED79650016851F /* XCRemoteSwiftPackageReference "camera-kit-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Snapchat/camera-kit-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.40.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -422,6 +442,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A10000081FED79650016851F /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
 			productName = LiveKit;
+		};
+		A100000E1FED79650016851F /* SCSDKCameraKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A100000F1FED79650016851F /* XCRemoteSwiftPackageReference "camera-kit-ios-sdk" */;
+			productName = SCSDKCameraKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

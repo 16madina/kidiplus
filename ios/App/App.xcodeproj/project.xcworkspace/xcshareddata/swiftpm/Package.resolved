@@ -1,5 +1,5 @@
 {
-  "originHash" : "cafb11788da3fcab806aeb3883b39b479a813d4c5ef94c2f7408a7fb2259c701",
+  "originHash" : "b1d1a276c77df886d4ba9926b170c431b12d4ce8e4b50f84120ce8b604fbcd3c",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "3e33dd27dd4c69bd81c7c81fe61d8ccf58846902",
         "version" : "11.3.1"
+      }
+    },
+    {
+      "identity" : "camera-kit-ios-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Snapchat/camera-kit-ios-sdk.git",
+      "state" : {
+        "revision" : "61c4afd490a72131c0399ca0f84ebfc7667e1a28",
+        "version" : "1.50.0"
       }
     },
     {
@@ -152,6 +161,15 @@
       "state" : {
         "revision" : "f4a19a3c313dc2616c70bb49d29a799fb16be837",
         "version" : "2.4.1"
+      }
+    },
+    {
+      "identity" : "snap-kit-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Snapchat/snap-kit-spm",
+      "state" : {
+        "revision" : "b4593a1ec3813af844806fef319ef68888611fba",
+        "version" : "2.6.0"
       }
     },
     {

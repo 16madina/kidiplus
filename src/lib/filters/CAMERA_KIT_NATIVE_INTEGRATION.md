@@ -51,66 +51,23 @@ VITE_SNAP_LENS_GROUP_IDS=9dd9798c-cef5-443b-a494-af0cc480059e,...
 
 ## iOS — étapes de finalisation côté Xcode
 
-### 1. Ajouter le SDK Snap Camera Kit
+### 1. SDK Snap Camera Kit (fait)
 
-Le plugin `KidiCameraKitPlugin.swift` est déjà créé dans `ios/App/App/`. Il faut maintenant ajouter la dépendance Snap Camera Kit au projet iOS.
+Le package SPM `https://github.com/Snapchat/camera-kit-ios-sdk` (produit `SCSDKCameraKit`) est ajouté au target `App`, avec :
 
-**Option A — CocoaPods (recommandée par Snap)**
+- `KidiCameraKitPlugin.swift` — Session, lenses, apply/clear, preview, LiveKit publish
+- `KidiCameraKitLiveKitOutput.swift` — frames filtrées → `BufferCapturer`
+- enregistrement dans `MainViewController` via `registerPluginInstance`
 
-Créer ou mettre à jour `ios/App/Podfile` :
+Ouvrir `ios/App/App.xcodeproj` (ou le workspace) dans Xcode, laisser SPM résoudre les packages, puis build sur un **appareil physique** (pas le simulateur).
 
-```ruby
-platform :ios, '15.0'
-use_frameworks!
+### 2. Token API
 
-target 'App' do
-  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
-  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
-  pod 'SCSDKCameraKit', '~> 1.35'
-  pod 'SCSDKCameraKitReferenceUI'
-  # ... autres pods existants
-end
-```
+Le token est passé dynamiquement depuis le JS (`VITE_SNAP_CAMERA_KIT_API_TOKEN`) via `SessionConfig(apiToken:)`. Optionnel : ajouter `SCCameraKitAPIToken` dans `Info.plist`.
 
-Puis :
+### 3. Cycle live natif
 
-```bash
-cd ios/App && pod install
-```
-
-**Option B — Swift Package Manager (si Snap fournit un package)**
-
-Ajouter le package SCSDKCameraKit dans Xcode → `File → Add Package Dependencies`.
-
-### 2. Ajouter le fichier au target Xcode
-
-Si `KidiCameraKitPlugin.swift` n'apparaît pas dans le navigateur Xcode :
-
-1. Ouvrir `ios/App/App.xcworkspace` (ou `.xcodeproj` si pas de CocoaPods).
-2. Faire glisser `KidiCameraKitPlugin.swift` dans le dossier `App` du navigateur.
-3. Cocher `Copy items if needed` et s'assurer que le target `App` est sélectionné.
-
-### 3. Remplacer les placeholders `TODO` dans le plugin
-
-Les méthodes Swift contiennent des `TODO` marquant l'endroit où appeler le vrai SDK Snap Camera Kit :
-
-- `initialize(...)` → créer la `Session` SCSDKCameraKit et observer le(s) groupe(s).
-- `loadLenses(...)` → récupérer les lenses via `session.lenses.repository`.
-- `applyLens(...)` / `clearLens()` → appliquer/retirer la lens.
-- `startPreview(...)` / `stopPreview()` → démarrer/arrêter la preview caméra native.
-- `setPublishEnabled(...)` → connecter au room LiveKit iOS natif et publier une `LocalVideoTrack` alimentée par la sortie Camera Kit.
-
-### 4. Permissions Info.plist
-
-Vérifier que les clés suivantes sont présentes dans `ios/App/App/Info.plist` :
-
-```xml
-<key>NSCameraUsageDescription</key>
-<string>KiDi+ utilise la caméra pour les lives et les filtres AR.</string>
-<key>NSMicrophoneUsageDescription</key>
-<string>KiDi+ utilise le micro pour diffuser le son du live.</string>
-```
-
+Sur Capacitor iOS, le host **ne connecte pas** LiveKit depuis la WebView pour la caméra : le plugin publie vidéo + micro en natif (évite le conflit d’identité et le WASM).
 ## Android — étapes de finalisation
 
 1. Ajouter dans `android/app/build.gradle` :

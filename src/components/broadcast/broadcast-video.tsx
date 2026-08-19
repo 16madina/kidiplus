@@ -12,6 +12,8 @@ import {
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import {
   applyBridgeLens,
+  isNativeCameraKitAvailable,
+  setNativePreview,
   setNativePublishEnabled,
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
@@ -205,12 +207,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
 
         if (wantSnap) {
-          // Sur iOS/Android natif, on signale aussi au plugin natif la lens
-          // choisie (même si la publication vidéo reste gérée par le web SDK
-          // en attendant la finalisation du pipeline natif LiveKit).
-          void applyBridgeLens(lens).catch((e) => {
-            console.warn("[native-camera-kit] applyBridgeLens failed", e);
-          });
+          // iOS/Android : SDK Snap natif (GPU) — pas de TrackProcessor WASM.
+          if (isNativeCameraKitAvailable()) {
+            if (isCameraKit || isEffects) {
+              try { await track.stopProcessor(); } catch { /* none */ }
+            }
+            void applyBridgeLens(lens).catch((e) => {
+              console.warn("[native-camera-kit] applyBridgeLens failed", e);
+            });
+            return;
+          }
 
           if (isCameraKit) {
             // Session AR déjà en place : on change juste la lens (aucun blink).
@@ -501,15 +507,40 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           );
           if (cancelled) return;
           phase = "connect";
+
+          // iOS/Android + Snap : une seule connexion LiveKit (native) pour éviter
+          // le conflit d'identité avec la WebView, et zéro WASM pour les filtres.
+          const useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
+          if (useNativeVideo) {
+            phase = "camera";
+            await setNativePublishEnabled({ enabled: true, roomUrl: url, token });
+            if (cancelled) {
+              await setNativePublishEnabled({ enabled: false });
+              return;
+            }
+            await setNativePreview({
+              active: true,
+              mirrored: facingRef.current === "user",
+              facing: facingRef.current,
+            });
+            const lens = activeLensRef.current;
+            if (lens?.isSnapLens) {
+              void applyBridgeLens(lens).catch((e) => {
+                console.warn("[native-camera-kit] applyBridgeLens failed", e);
+              });
+            }
+            localVideoTrackRef.current = null;
+            roomRef.current = null;
+            setState("granted");
+            return;
+          }
+
           const room = await connectRoom(url, token);
           if (cancelled) {
             await disconnectRoom(room);
             return;
           }
           roomRef.current = room;
-          // Signale au plugin natif (iOS/Android) qu'on est connecté au live.
-          // Sur web, c'est un no-op.
-          void setNativePublishEnabled({ enabled: true, roomUrl: url, token });
 
           const emitRemotes = () => {
             if (cancelled || !onRemoteVideosChange) return;
@@ -677,8 +708,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await disconnectRoom(roomRef.current);
         roomRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
-        // Signale au plugin natif qu'on quitte le live.
         void setNativePublishEnabled({ enabled: false });
+        void setNativePreview({ active: false });
       }
 
       void start();

@@ -1,14 +1,17 @@
 // Aperçu Camera Kit (mode setup, avant le live).
 //
-// Quand une vraie lens Snap est active, ce composant fait passer le flux
-// caméra local par le moteur AR et affiche le canvas de rendu par-dessus le
-// <video> brut. Le miroir selfie est appliqué en CSS (comme le <video>).
+// Web : pipeline WASM canvas. iOS/Android natif : preview SCSDKCameraKit
+// derrière la WebView transparente (pas de double capture caméra).
 
 import { useEffect, useRef, useState } from "react";
 import type { Lens } from "@/lib/filters/lenses-catalog";
 import {
+  applyBridgeLens,
+  clearBridgeLens,
   createBridgeWebPipeline,
   isCameraKitSupported,
+  isNativeCameraKitAvailable,
+  setNativePreview,
   type CameraKitPipeline,
 } from "@/lib/filters/native-camera-kit-bridge";
 
@@ -27,9 +30,52 @@ export function CameraKitPreview({
 
   const track = stream?.getVideoTracks()[0] ?? null;
   const active = !!track && lens.isSnapLens === true && isCameraKitSupported();
+  const useNative = isNativeCameraKitAvailable();
 
-  // Crée/détruit le pipeline quand le flux change.
+  // Natif : preview GPU + apply/clear lens (pas de getUserMedia WASM).
   useEffect(() => {
+    if (!useNative) return;
+    if (!active) {
+      void setNativePreview({ active: false });
+      void clearBridgeLens().catch(() => {});
+      setReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    setReady(false);
+    void (async () => {
+      try {
+        await setNativePreview({
+          active: true,
+          mirrored,
+          facing: mirrored ? "user" : "environment",
+        });
+        await applyBridgeLens(lens);
+        if (!cancelled) setReady(true);
+      } catch (e) {
+        console.warn("[camera-kit] native preview failed", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      void setNativePreview({ active: false });
+      setReady(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useNative, active, mirrored]);
+
+  useEffect(() => {
+    if (!useNative || !active) return;
+    void applyBridgeLens(lens).catch((e: unknown) => {
+      console.warn("[camera-kit] native setLens failed", e);
+    });
+  }, [useNative, active, lens.lensId, lens.groupId, lens]);
+
+  // Web : pipeline canvas.
+  useEffect(() => {
+    if (useNative) return;
     if (!active || !track) return;
     let cancelled = false;
     setReady(false);
@@ -38,9 +84,8 @@ export function CameraKitPreview({
       try {
         const pipeline = await createBridgeWebPipeline({
           source: track,
-          mirror: false, // miroir géré en CSS pour l'aperçu
+          mirror: false,
           cameraType: mirrored ? "user" : "environment",
-          // L'aperçu est petit : rendu allégé pour garder l'UI fluide.
           fps: 24,
           maxLongSide: 960,
         });
@@ -72,18 +117,28 @@ export function CameraKitPreview({
       setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, track]);
+  }, [useNative, active, track]);
 
-  // Changement de lens à chaud sur le pipeline existant.
   useEffect(() => {
+    if (useNative) return;
     const p = pipelineRef.current;
     if (!p || !active) return;
     void p.setLens(lens.lensId, lens.groupId).catch((e: unknown) => {
       console.warn("[camera-kit] preview setLens failed", e);
     });
-  }, [lens.lensId, lens.groupId, active]);
+  }, [useNative, lens.lensId, lens.groupId, active]);
 
   if (!active) return null;
+  if (useNative) {
+    // Preview dessinée nativement sous la WebView.
+    return (
+      <div
+        className="absolute inset-0 bg-transparent"
+        style={{ opacity: ready ? 1 : 0, transition: "opacity 0.2s ease" }}
+        aria-hidden
+      />
+    );
+  }
 
   return (
     <div
