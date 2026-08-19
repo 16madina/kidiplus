@@ -9,9 +9,9 @@
 
 import type { Track, TrackProcessor, VideoProcessorOptions } from "livekit-client";
 import {
-  createCameraKitPipeline,
+  createBridgeWebPipeline,
   type CameraKitPipeline,
-} from "@/lib/filters/camera-kit";
+} from "@/lib/filters/native-camera-kit-bridge";
 
 export class CameraKitVideoProcessor
   implements TrackProcessor<Track.Kind.Video, VideoProcessorOptions>
