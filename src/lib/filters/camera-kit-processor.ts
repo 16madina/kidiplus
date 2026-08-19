@@ -54,7 +54,7 @@ export class CameraKitVideoProcessor
   }
 
   private async start(source: MediaStreamTrack): Promise<void> {
-    const pipeline = await createCameraKitPipeline({
+    const pipeline = await createBridgeWebPipeline({
       source,
       mirror: this.mirror,
       cameraType: this.mirror ? "user" : "environment",
