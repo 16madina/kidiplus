@@ -18,6 +18,7 @@ import { Route as DownloadRouteImport } from './routes/download'
 import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as EgressTemplateRouteImport } from './routes/egress-template'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OpenRouteImport } from './routes/open'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaypalReturnRouteImport } from './routes/paypal-return'
@@ -29,8 +30,10 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known.apple-app-site-association'
 import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known.assetlinks[.]json'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiBroadcastEgressSessionRouteImport } from './routes/api/broadcast-egress-session'
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
@@ -47,6 +50,7 @@ import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as PreviewDefiPlusRouteImport } from './routes/preview.defi-plus'
 import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/payments-mode'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
@@ -139,6 +143,11 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpenRoute = OpenRouteImport.update({
   id: '/open',
   path: '/open',
@@ -194,6 +203,12 @@ const WalletRoute = WalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DotwellKnownAppleAppSiteAssociationRoute =
   DotwellKnownAppleAppSiteAssociationRouteImport.update({
     id: '/.well-known/apple-app-site-association',
@@ -204,6 +219,12 @@ const DotwellKnownAssetlinksDotjsonRoute =
   DotwellKnownAssetlinksDotjsonRouteImport.update({
     id: '/.well-known/assetlinks.json',
     path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiBroadcastEgressSessionRoute =
@@ -288,6 +309,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
   id: '/api/account/delete',
   path: '/api/account/delete',
@@ -535,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
   '/help': typeof HelpRoute
+  '/mcp': typeof McpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/paypal-return': typeof PaypalReturnRoute
@@ -546,8 +574,10 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/broadcast-egress-session': typeof ApiBroadcastEgressSessionRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
@@ -564,6 +594,7 @@ export interface FileRoutesByFullPath {
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -621,6 +652,7 @@ export interface FileRoutesByTo {
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
   '/help': typeof HelpRoute
+  '/mcp': typeof McpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/paypal-return': typeof PaypalReturnRoute
@@ -632,8 +664,10 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/broadcast-egress-session': typeof ApiBroadcastEgressSessionRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
@@ -650,6 +684,7 @@ export interface FileRoutesByTo {
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -708,6 +743,7 @@ export interface FileRoutesById {
   '/earnings': typeof EarningsRoute
   '/egress-template': typeof EgressTemplateRoute
   '/help': typeof HelpRoute
+  '/mcp': typeof McpRoute
   '/open': typeof OpenRoute
   '/orders': typeof OrdersRoute
   '/paypal-return': typeof PaypalReturnRoute
@@ -719,8 +755,10 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/wallet': typeof WalletRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/apple-app-site-association': typeof DotwellKnownAppleAppSiteAssociationRoute
   '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/broadcast-egress-session': typeof ApiBroadcastEgressSessionRoute
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
@@ -737,6 +775,7 @@ export interface FileRoutesById {
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -796,6 +835,7 @@ export interface FileRouteTypes {
     | '/earnings'
     | '/egress-template'
     | '/help'
+    | '/mcp'
     | '/open'
     | '/orders'
     | '/paypal-return'
@@ -807,8 +847,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
+    | '/.mcp/list-tools'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
+    | '/.well-known/oauth-protected-resource'
     | '/api/broadcast-egress-session'
     | '/api/checkout'
     | '/api/livekit-ingress'
@@ -825,6 +867,7 @@ export interface FileRouteTypes {
     | '/preview/defi-plus'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -882,6 +925,7 @@ export interface FileRouteTypes {
     | '/earnings'
     | '/egress-template'
     | '/help'
+    | '/mcp'
     | '/open'
     | '/orders'
     | '/paypal-return'
@@ -893,8 +937,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
+    | '/.mcp/list-tools'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
+    | '/.well-known/oauth-protected-resource'
     | '/api/broadcast-egress-session'
     | '/api/checkout'
     | '/api/livekit-ingress'
@@ -911,6 +957,7 @@ export interface FileRouteTypes {
     | '/preview/defi-plus'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -968,6 +1015,7 @@ export interface FileRouteTypes {
     | '/earnings'
     | '/egress-template'
     | '/help'
+    | '/mcp'
     | '/open'
     | '/orders'
     | '/paypal-return'
@@ -979,8 +1027,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/unsubscribe'
     | '/wallet'
+    | '/.mcp/list-tools'
     | '/.well-known/apple-app-site-association'
     | '/.well-known/assetlinks.json'
+    | '/.well-known/oauth-protected-resource'
     | '/api/broadcast-egress-session'
     | '/api/checkout'
     | '/api/livekit-ingress'
@@ -997,6 +1047,7 @@ export interface FileRouteTypes {
     | '/preview/defi-plus'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -1055,6 +1106,7 @@ export interface RootRouteChildren {
   EarningsRoute: typeof EarningsRoute
   EgressTemplateRoute: typeof EgressTemplateRoute
   HelpRoute: typeof HelpRoute
+  McpRoute: typeof McpRoute
   OpenRoute: typeof OpenRoute
   OrdersRoute: typeof OrdersRoute
   PaypalReturnRoute: typeof PaypalReturnRoute
@@ -1066,8 +1118,10 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   WalletRoute: typeof WalletRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   DotwellKnownAppleAppSiteAssociationRoute: typeof DotwellKnownAppleAppSiteAssociationRoute
   DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiBroadcastEgressSessionRoute: typeof ApiBroadcastEgressSessionRoute
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitIngressRoute: typeof ApiLivekitIngressRoute
@@ -1084,6 +1138,7 @@ export interface RootRouteChildren {
   PreviewDefiPlusRoute: typeof PreviewDefiPlusRoute
   SellOnboardingRoute: typeof SellOnboardingRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminPaymentsModeRoute: typeof ApiAdminPaymentsModeRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
@@ -1192,6 +1247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/open': {
       id: '/open'
       path: '/open'
@@ -1269,6 +1331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/apple-app-site-association': {
       id: '/.well-known/apple-app-site-association'
       path: '/.well-known/apple-app-site-association'
@@ -1281,6 +1350,13 @@ declare module '@tanstack/react-router' {
       path: '/.well-known/assetlinks.json'
       fullPath: '/.well-known/assetlinks.json'
       preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/broadcast-egress-session': {
@@ -1393,6 +1469,13 @@ declare module '@tanstack/react-router' {
       path: '/.lovable/oauth/consent'
       fullPath: '/.lovable/oauth/consent'
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/account/delete': {
@@ -1770,6 +1853,7 @@ const rootRouteChildren: RootRouteChildren = {
   EarningsRoute: EarningsRoute,
   EgressTemplateRoute: EgressTemplateRoute,
   HelpRoute: HelpRoute,
+  McpRoute: McpRoute,
   OpenRoute: OpenRoute,
   OrdersRoute: OrdersRoute,
   PaypalReturnRoute: PaypalReturnRoute,
@@ -1781,9 +1865,12 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   WalletRoute: WalletRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   DotwellKnownAppleAppSiteAssociationRoute:
     DotwellKnownAppleAppSiteAssociationRoute,
   DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiBroadcastEgressSessionRoute: ApiBroadcastEgressSessionRoute,
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitIngressRoute: ApiLivekitIngressRoute,
@@ -1800,6 +1887,7 @@ const rootRouteChildren: RootRouteChildren = {
   PreviewDefiPlusRoute: PreviewDefiPlusRoute,
   SellOnboardingRoute: SellOnboardingRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminPaymentsModeRoute: ApiAdminPaymentsModeRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
