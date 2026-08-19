@@ -52,9 +52,24 @@ type KidiCameraKitPlugin = {
   }): Promise<void>;
 };
 
+/**
+ * Le plugin natif n'existe que si l'implémentation iOS/Android est réellement
+ * embarquée dans le build. `registerPlugin()` réussit toujours (proxy JS), donc
+ * il FAUT vérifier `isPluginAvailable` : sinon, sur un build natif sans le
+ * plugin compilé, on bascule sur un chemin natif fantôme et la caméra reste
+ * bloquée sur « Connexion au live… ».
+ */
+function hasNativePluginImpl(): boolean {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("KidiCameraKit");
+  } catch {
+    return false;
+  }
+}
+
 async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
   if (nativePlugin) return nativePlugin;
-  if (!Capacitor.isNativePlatform()) return null;
+  if (!hasNativePluginImpl()) return null;
   try {
     const { registerPlugin } = await import("@capacitor/core");
     nativePlugin = registerPlugin<KidiCameraKitPlugin>("KidiCameraKit");
@@ -66,11 +81,11 @@ async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
 }
 
 export function isNativeCameraKitAvailable(): boolean {
-  return Capacitor.isNativePlatform();
+  return hasNativePluginImpl();
 }
 
 export function isCameraKitSupported(): boolean {
-  if (Capacitor.isNativePlatform()) return true; // le plugin natif fournit le support
+  if (hasNativePluginImpl()) return true; // le plugin natif fournit le support
   return isWebCameraKitSupported();
 }
 

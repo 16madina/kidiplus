@@ -1,6 +1,7 @@
 // POST /api/youtube/restream
 // Orchestrates YouTube Live create + LiveKit Web Egress (full KiDi+ UI → RTMP).
 
+import { egressErrorMessage } from "@/lib/egress-error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
@@ -283,10 +284,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
           return youtubeJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,

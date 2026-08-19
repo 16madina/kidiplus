@@ -2,6 +2,7 @@
 // Manual TikTok RTMP + LiveKit Web Egress (full KiDi+ UI → TikTok).
 // No OAuth — host pastes LIVE Studio server URL + stream key.
 
+import { egressErrorMessage } from "@/lib/egress-error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
@@ -203,10 +204,7 @@ export const Route = createFileRoute("/api/tiktok/restream")({
           return youtubeJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,

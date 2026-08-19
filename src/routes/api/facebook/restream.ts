@@ -1,6 +1,7 @@
 // POST /api/facebook/restream
 // Facebook Live + LiveKit Web Egress (full KiDi+ UI → RTMP), same path as YouTube.
 
+import { egressErrorMessage } from "@/lib/egress-error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
@@ -286,10 +287,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
           return facebookJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,
