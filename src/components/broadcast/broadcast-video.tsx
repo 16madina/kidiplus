@@ -507,6 +507,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           roomRef.current = room;
+          // Signale au plugin natif (iOS/Android) qu'on est connecté au live.
+          // Sur web, c'est un no-op.
+          void setNativePublishEnabled({ enabled: true, roomUrl: url, token });
 
           const emitRemotes = () => {
             if (cancelled || !onRemoteVideosChange) return;
