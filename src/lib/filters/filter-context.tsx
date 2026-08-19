@@ -62,15 +62,15 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     loadStartedRef.current = true;
     setLensesLoading(true);
     setLensesError(null);
-    loadSnapLenses(force)
+    loadBridgeLenses(force)
       .then((lenses) => {
         setSnapLenses(
           lenses.map((l) => ({
-            lensId: l.id,
+            lensId: l.lensId,
             groupId: l.groupId || SNAP_LENS_GROUP_ID,
             name: l.name || "Lens",
             icon: "✨",
-            iconUrl: l.iconUrl || l.preview?.imageUrl || undefined,
+            iconUrl: l.iconUrl || l.previewUrl || undefined,
             category: "snap" as const,
             webPreview: "none",
             isSnapLens: true,
@@ -90,7 +90,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadLenses = useCallback(() => runLoad(false), [runLoad]);
-  const refreshLenses = useCallback(() => runLoad(true), [runLoad]);
+  const refreshLenses = useCallback(() => {
+    clearBridgeLensesCache();
+    runLoad(true);
+  }, [runLoad]);
 
   const value = useMemo<FilterContextValue>(
     () => ({
