@@ -272,21 +272,30 @@ export function LiveChat({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto fixed inset-0 z-[80] flex items-end justify-center bg-black/40 px-4 pb-8"
+            className="pointer-events-auto fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3"
+            style={{
+              // Sit clearly above the live message composer + home indicator.
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)",
+            }}
             onClick={() => setMenuMsg(null)}
           >
             <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 16, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-black shadow-xl"
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 12, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+              className="mb-2 w-full max-w-sm overflow-hidden rounded-[20px] bg-white text-black shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="border-b px-4 py-3 text-[13px] text-muted-foreground">
-                <span className="font-semibold text-foreground">{menuMsg.user}</span>
-                {" · "}
-                <span className="line-clamp-1">{menuMsg.text}</span>
+              <div className="border-b border-black/8 px-4 py-3.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("live.commentAction", "Commentaire")}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[14px] leading-snug">
+                  <span className="font-semibold text-foreground">{menuMsg.user}</span>
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="text-foreground/85">{menuMsg.text}</span>
+                </p>
               </div>
               {canReplyMsg(menuMsg) && (
                 <button
@@ -349,7 +358,7 @@ export function LiveChat({
               )}
               <button
                 type="button"
-                className="w-full border-t px-4 py-3.5 text-[15px] font-semibold text-muted-foreground active:bg-black/5"
+                className="w-full border-t border-black/8 px-4 py-3.5 text-[15px] font-semibold text-muted-foreground active:bg-black/5"
                 onClick={() => setMenuMsg(null)}
               >
                 {t("common.cancel", "Annuler")}

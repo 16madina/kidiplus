@@ -1809,24 +1809,29 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
       >
         {hostReplyTo && (
           <div
-            className="flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[12px] text-white"
+            className="flex items-center gap-2 rounded-[14px] px-3 py-2 text-[12px] text-white"
             style={{
-              backgroundColor: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.12)",
+              backgroundColor: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              border: "1px solid rgba(255,255,255,0.14)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
             }}
           >
-            <div className="min-w-0 flex-1 truncate">
-              <span className="font-semibold">
-                {t("live.replyingTo", { name: hostReplyTo.user, defaultValue: "Réponse à {{name}}" })}
-              </span>
-              <span className="text-white/65"> · {hostReplyTo.text}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
+                {t("live.replyingLabel", "Réponse")}
+              </p>
+              <p className="truncate leading-snug">
+                <span className="font-semibold">{hostReplyTo.user}</span>
+                <span className="text-white/65"> · {hostReplyTo.text}</span>
+              </p>
             </div>
             <Press
               onClick={() => setHostReplyTo(null)}
               aria-label={t("common.cancel", "Annuler")}
-              className="!min-h-7 h-7 w-7 shrink-0 rounded-full text-white/80"
+              className="!min-h-8 h-8 w-8 shrink-0 rounded-full text-white/80"
+              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
               <X size={14} />
             </Press>
