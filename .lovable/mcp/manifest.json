@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://djwuvxpmvrwfjwjamjno.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "kidi",
+      "version": "0.1.0",
+      "title": "Kidi+"
+    },
+    "tools": [
+      {
+        "name": "get_my_profile",
+        "title": "Get my KiDi+ profile",
+        "description": "Return the signed-in KiDi+ user's profile: handle, display name, country, currency, seller and verification status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_lives",
+        "title": "List my live shows",
+        "description": "List the signed-in seller's KiDi+ live shows (scheduled, live or ended), newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filter by live status. Omit to include every status.",
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "live",
+                "ended"
+              ]
+            },
+            "limit": {
+              "default": 10,
+              "description": "Maximum number of lives to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_orders",
+        "title": "List my orders",
+        "description": "List KiDi+ orders for the signed-in user, either as seller (sales) or as buyer (purchases), newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "role": {
+              "default": "seller",
+              "description": "Whether to list sales (seller) or purchases (buyer).",
+              "type": "string",
+              "enum": [
+                "seller",
+                "buyer"
+              ]
+            },
+            "fulfillment_status": {
+              "description": "Optional fulfillment status filter, e.g. pending, shipped, delivered.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Maximum number of orders to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_products",
+        "title": "List my shop products",
+        "description": "List the signed-in seller's KiDi+ shop products with price, currency and stock.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "active_only": {
+              "default": true,
+              "description": "Only return products currently visible in the shop.",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of products to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_my_balances",
+        "title": "Get my wallet and earnings balances",
+        "description": "Return the signed-in user's KiDi+ wallet balance (buying power) and, for sellers, the earnings balance (available and pending).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_earnings",
+        "title": "List my earnings entries",
+        "description": "List the signed-in seller's recent KiDi+ earnings entries (sales, gifts, adjustments), newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of entries to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
