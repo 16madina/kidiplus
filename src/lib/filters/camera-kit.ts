@@ -161,12 +161,26 @@ export type CameraKitPipeline = {
   destroy: () => Promise<void>;
 };
 
+/** Appareil "modeste" : peu de cœurs CPU → on rend le filtre plus petit.
+ * Le moteur AR (WASM + GPU) est le poste le plus lourd du live ; sans plafond
+ * il sature le thread principal et provoque des saccades audio/vidéo. */
+function lowPowerDevice(): boolean {
+  try {
+    const cores = navigator.hardwareConcurrency ?? 4;
+    return cores <= 6;
+  } catch {
+    return false;
+  }
+}
+
 export async function createCameraKitPipeline(args: {
   source: MediaStreamTrack;
   /** Miroir selfie horizontal appliqué au rendu (caméra avant publiée). */
   mirror: boolean;
   cameraType: "user" | "environment";
   fps?: number;
+  /** Plafond du plus grand côté du rendu AR (défaut : 1280, 960 si mobile modeste). */
+  maxLongSide?: number;
 }): Promise<CameraKitPipeline> {
   const [cameraKit, mod] = await Promise.all([
     getCameraKit(),
@@ -186,15 +200,35 @@ export async function createCameraKitPipeline(args: {
     ...(args.mirror ? { transform: Transform2D.MirrorX } : {}),
   });
   await session.setSource(source);
+
+  const fps = args.fps ?? (lowPowerDevice() ? 24 : 30);
+  await session.setFPSLimit(fps).catch(() => {});
+
   await session.play("live");
 
+  // Plafonne la résolution de rendu AR (après play, requis par le SDK).
+  try {
+    const s = args.source.getSettings();
+    const sw = s.width ?? 720;
+    const sh = s.height ?? 1280;
+    const cap = args.maxLongSide ?? (lowPowerDevice() ? 960 : 1280);
+    const long = Math.max(sw, sh);
+    if (long > cap) {
+      const k = cap / long;
+      await source.setRenderSize(Math.round(sw * k), Math.round(sh * k));
+    }
+  } catch (e) {
+    console.warn("[camera-kit] setRenderSize failed", e);
+  }
+
   const canvas = session.output.live;
-  const out = canvas.captureStream(args.fps ?? 30);
+  const out = canvas.captureStream(fps);
   const outputTrack = out.getVideoTracks()[0];
   if (!outputTrack) {
     await session.destroy().catch(() => {});
     throw new Error("camera-kit: no output track");
   }
+
 
   let destroyed = false;
   return {
