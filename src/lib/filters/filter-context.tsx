@@ -21,9 +21,12 @@ import {
 import { LENSES, NONE_LENS, type Lens } from "./lenses-catalog";
 import {
   isCameraKitSupported,
-  loadSnapLenses,
   SNAP_LENS_GROUP_ID,
 } from "./camera-kit";
+import {
+  loadBridgeLenses,
+  clearBridgeLensesCache,
+} from "./native-camera-kit-bridge";
 
 type FilterContextValue = {
   activeLens: Lens;
