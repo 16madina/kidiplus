@@ -141,7 +141,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const [flipBusy, setFlipBusy] = useState(false);
   const [moderatorsSheetOpen, setModeratorsSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const { activeLens, clearLens } = useFilter();
+  const { activeLens } = useFilter();
   const liveEffects = useLiveEffects();
   const battle = useBattle();
   const [viewersSheetOpen, setViewersSheetOpen] = useState(false);
@@ -249,12 +249,15 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
     };
   }, [localImageMap]);
 
+  // Au démarrage d'un Défi Plus, on conserve le filtre Snap actif (le vendeur
+  // garde son look) mais on coupe les effets lourds (fond vert / poster
+  // MediaPipe), qui doublent la charge CPU/GPU pendant le split-screen.
   useEffect(() => {
     if (!battle.isRunning) return;
-    clearLens();
     liveEffects.clearAll();
     setFiltersOpen(false);
-  }, [battle.isRunning, clearLens, liveEffects.clearAll]);
+  }, [battle.isRunning, liveEffects.clearAll]);
+
 
   const imgFor = useCallback(
     (p: LiveProductRow) => p.image_url || localImageMap.get(p.id) || null,
