@@ -40,7 +40,11 @@ export function CameraKitPreview({
           source: track,
           mirror: false, // miroir géré en CSS pour l'aperçu
           cameraType: mirrored ? "user" : "environment",
+          // L'aperçu est petit : rendu allégé pour garder l'UI fluide.
+          fps: 24,
+          maxLongSide: 960,
         });
+
         if (cancelled) {
           await pipeline.destroy();
           return;
