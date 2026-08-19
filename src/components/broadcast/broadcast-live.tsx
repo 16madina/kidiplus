@@ -1802,7 +1802,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         style={{
           bottom: "calc(env(safe-area-inset-bottom) + 10px)",
           paddingRight: battle.isRunning
-            ? "max(12px, env(safe-area-inset-right, 0px))"
+            ? "max(64px, calc(env(safe-area-inset-right, 0px) + 56px))"
             : "max(72px, calc(env(safe-area-inset-right, 0px) + 64px))",
           maxWidth: "min(100%, 42rem)",
         }}
@@ -1881,6 +1881,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           camOn={cameraOn}
           canFlip={!isRtmp && canFlip && cameraOn}
           flipBusy={flipBusy}
+          filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
           onToggleMic={isRtmp ? undefined : () => setMicOn((m) => !m)}
           onToggleCam={isRtmp ? undefined : () => setCameraOn((c) => !c)}
           onFlip={
