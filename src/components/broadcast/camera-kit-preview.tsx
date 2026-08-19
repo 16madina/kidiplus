@@ -7,10 +7,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { Lens } from "@/lib/filters/lenses-catalog";
 import {
-  createCameraKitPipeline,
+  createBridgeWebPipeline,
   isCameraKitSupported,
   type CameraKitPipeline,
-} from "@/lib/filters/camera-kit";
+} from "@/lib/filters/native-camera-kit-bridge";
 
 export function CameraKitPreview({
   stream,
@@ -36,7 +36,7 @@ export function CameraKitPreview({
 
     void (async () => {
       try {
-        const pipeline = await createCameraKitPipeline({
+        const pipeline = await createBridgeWebPipeline({
           source: track,
           mirror: false, // miroir géré en CSS pour l'aperçu
           cameraType: mirrored ? "user" : "environment",
@@ -78,7 +78,7 @@ export function CameraKitPreview({
   useEffect(() => {
     const p = pipelineRef.current;
     if (!p || !active) return;
-    void p.setLens(lens.lensId, lens.groupId).catch((e) => {
+    void p.setLens(lens.lensId, lens.groupId).catch((e: unknown) => {
       console.warn("[camera-kit] preview setLens failed", e);
     });
   }, [lens.lensId, lens.groupId, active]);

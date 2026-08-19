@@ -10,6 +10,10 @@ import {
   ensureCameraMicPermission,
 } from "@/lib/media-permissions";
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
+import {
+  applyBridgeLens,
+  setNativePublishEnabled,
+} from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
 import { LiveEffectsPreview } from "@/components/broadcast/live-effects-preview";
@@ -201,6 +205,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
 
         if (wantSnap) {
+          // Sur iOS/Android natif, on signale aussi au plugin natif la lens
+          // choisie (même si la publication vidéo reste gérée par le web SDK
+          // en attendant la finalisation du pipeline natif LiveKit).
+          void applyBridgeLens(lens).catch((e) => {
+            console.warn("[native-camera-kit] applyBridgeLens failed", e);
+          });
+
           if (isCameraKit) {
             // Session AR déjà en place : on change juste la lens (aucun blink).
             await (current as CameraKitVideoProcessor).setLens(lens.lensId, lens.groupId);
@@ -496,6 +507,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           roomRef.current = room;
+          // Signale au plugin natif (iOS/Android) qu'on est connecté au live.
+          // Sur web, c'est un no-op.
+          void setNativePublishEnabled({ enabled: true, roomUrl: url, token });
 
           const emitRemotes = () => {
             if (cancelled || !onRemoteVideosChange) return;
@@ -663,6 +677,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await disconnectRoom(roomRef.current);
         roomRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
+        // Signale au plugin natif qu'on quitte le live.
+        void setNativePublishEnabled({ enabled: false });
       }
 
       void start();

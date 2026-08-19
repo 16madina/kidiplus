@@ -1,178 +1,143 @@
-# Intégration Snap Camera Kit
+# Intégration Snap Camera Kit — web + natif
 
-> **OBSOLÈTE (juillet 2026)** : ce plan prévoyait des plugins natifs
-> Swift/Kotlin. Entre-temps, Snap a publié le **SDK Web** (`@snap/camera-kit`,
-> moteur AR en WebAssembly) qui fonctionne directement dans la WebView
-> Capacitor — l'intégration est faite SANS plugin natif. Voir :
-> - `src/lib/filters/camera-kit.ts` — bootstrap, chargement des lenses, pipeline
-> - `src/lib/filters/camera-kit-processor.ts` — TrackProcessor LiveKit (live)
-> - `src/components/broadcast/camera-kit-preview.tsx` — aperçu setup
-> - Lens Group branché : "test 1" (`df287f43-6646-4b01-a711-1a0e632c211a`) —
->   gérer les lenses sur my-lenses.snapchat.com, elles apparaissent dans l'app
->   sans changement de code.
-> - Token PRODUCTION ACTIF (approuvé par Snap en août 2026) — plus de
->   filigrane "Camera Kit Staging". Configuré dans `.env` et `.env.production`
->   via `VITE_SNAP_CAMERA_KIT_API_TOKEN` (jeton client public, identique
->   iOS/Android/Web) :
->   `eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4`
-> - Si les lenses ne chargent pas : vérifier sur kit.snapchat.com/manage que
->   le "Staging Camera Kit Status" de la version Initial Version est Enabled.
->
-> Le contenu ci-dessous est conservé pour référence si un jour on veut la
-> variante 100% native (performances supérieures sur vieux téléphones).
+## Résumé
 
-## Résumé rapide (ancien plan natif)
+KiDi+ utilise maintenant un **pont unifié** (`src/lib/filters/native-camera-kit-bridge.ts`) qui choisit automatiquement entre :
 
-## Ce qu'on a déjà côté portail Snap
+- **Web / PWA** : SDK `@snap/camera-kit` en WebAssembly/WASM — rendu AR dans la WebView, publié via un `TrackProcessor` LiveKit web.
+- **iOS / Android natif** : plugin Capacitor `KidiCameraKit` qui fait tourner le SDK natif Snap Camera Kit sur le GPU du téléphone.
 
-- App name : **KIDI+**
-- Bundle ID iOS/Android : `com.kidiplus.app`
-- Demo Lens Group ID : `5b22f85d-3308-452f-8bcc-058a5c9dc34b`
-- Staging API Token : env `SNAP_CAMERA_KIT_STAGING_TOKEN`
-- Production API Token : env `SNAP_CAMERA_KIT_PRODUCTION_TOKEN`
-  (validation Snap requise avant utilisation en prod, ~3–10 jours ouvrés)
+Les filtres (Lens ID / Lens Group) restent **exactement les mêmes** ; seul le moteur de rendu change.
 
-## Ce qu'on a déjà côté code web
+## Pourquoi le natif ?
 
-- `src/lib/filters/lenses-catalog.ts` — structure `Lens { lensId, groupId, ... }`
-  alignée sur `cameraKit.lenses.repository.get(lensID:groupID:)`.
-- `src/lib/filters/filter-context.tsx` — `useFilter()` retourne `activeLens`.
-  Le natif lira `activeLens.lensId` + `activeLens.groupId`.
-- `src/components/broadcast/filters-carousel.tsx` — UI carrousel Snap-style,
-  la même sur web et sur mobile (pas de rewrite).
-- Bouton "Filtres" (Sparkles) dans `broadcast-setup` et `HostToolRail`.
+Le rendu WASM dans la WebView sature le CPU sur certains appareils, ce qui provoque des micro-blocages et un décalage audio pendant le live — constaté même sur iPhone 15 Pro Max. Le SDK natif Snap Camera Kit délègue le rendu AR au GPU natif et permet une intégration directe avec le SDK LiveKit natif pour la publication vidéo.
 
-## Ce qu'il restera à faire pour l'app native
+## Fichiers clés
 
-### 1. Packager en Capacitor
+| Fichier | Rôle |
+|---|---|
+| `src/lib/filters/native-camera-kit-bridge.ts` | Pont JS unifié : détection natif/web, chargement des lenses, application/retrait, contrôle de la publication. |
+| `src/lib/filters/camera-kit.ts` | SDK web uniquement (bootstrap, chargement lenses, pipeline canvas). Appelé par le bridge en fallback web. |
+| `src/lib/filters/filter-context.tsx` | Charge les lenses via le pont unifié. |
+| `src/components/broadcast/broadcast-video.tsx` | Applique la lens via le pont ; signale au plugin natif quand on entre/sort du live. |
+| `src/components/broadcast/camera-kit-preview.tsx` | Aperçu setup : utilise le pipeline web (le plugin natif gère sa propre preview). |
+| `ios/App/App/KidiCameraKitPlugin.swift` | Plugin Capacitor iOS (bridge vers SCSDKCameraKit + LiveKit iOS natif). |
+
+## Configuration
+
+### Token API
+
+Le même jeton client public est utilisé pour web et natif :
+
+```env
+VITE_SNAP_CAMERA_KIT_API_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0...
+```
+
+### Groupe de lenses
+
+Par défaut, un seul groupe est chargé :
+
+```ts
+// src/lib/filters/camera-kit.ts
+export const SNAP_LENS_GROUP_ID = "df287f43-6646-4b01-a711-1a0e632c211a";
+```
+
+Pour charger des groupes additionnels (web comme natif) :
+
+```env
+VITE_SNAP_LENS_GROUP_IDS=9dd9798c-cef5-443b-a494-af0cc480059e,...
+```
+
+## iOS — étapes de finalisation côté Xcode
+
+### 1. Ajouter le SDK Snap Camera Kit
+
+Le plugin `KidiCameraKitPlugin.swift` est déjà créé dans `ios/App/App/`. Il faut maintenant ajouter la dépendance Snap Camera Kit au projet iOS.
+
+**Option A — CocoaPods (recommandée par Snap)**
+
+Créer ou mettre à jour `ios/App/Podfile` :
+
+```ruby
+platform :ios, '15.0'
+use_frameworks!
+
+target 'App' do
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'SCSDKCameraKit', '~> 1.35'
+  pod 'SCSDKCameraKitReferenceUI'
+  # ... autres pods existants
+end
+```
+
+Puis :
 
 ```bash
-bun add @capacitor/core @capacitor/ios @capacitor/android
-bunx cap init KIDI+ com.kidiplus.app
-bunx cap add ios
-bunx cap add android
+cd ios/App && pod install
 ```
 
-### 2. Créer un plugin Capacitor `snap-camera-kit`
+**Option B — Swift Package Manager (si Snap fournit un package)**
 
-```
-plugins/snap-camera-kit/
-├── ios/Plugin/SnapCameraKitPlugin.swift
-├── android/src/main/java/com/kidiplus/snapck/SnapCameraKitPlugin.kt
-└── src/index.ts    // API JS : loadLens(lensId, groupId), clearLens()
-```
+Ajouter le package SCSDKCameraKit dans Xcode → `File → Add Package Dependencies`.
 
-### 3. iOS — Swift
+### 2. Ajouter le fichier au target Xcode
 
-`Podfile` :
-```ruby
-pod 'SCSDKCameraKit', '~> 1.35'
-pod 'SCSDKCameraKitReferenceUI'
-```
+Si `KidiCameraKitPlugin.swift` n'apparaît pas dans le navigateur Xcode :
 
-`Info.plist` :
+1. Ouvrir `ios/App/App.xcworkspace` (ou `.xcodeproj` si pas de CocoaPods).
+2. Faire glisser `KidiCameraKitPlugin.swift` dans le dossier `App` du navigateur.
+3. Cocher `Copy items if needed` et s'assurer que le target `App` est sélectionné.
+
+### 3. Remplacer les placeholders `TODO` dans le plugin
+
+Les méthodes Swift contiennent des `TODO` marquant l'endroit où appeler le vrai SDK Snap Camera Kit :
+
+- `initialize(...)` → créer la `Session` SCSDKCameraKit et observer le(s) groupe(s).
+- `loadLenses(...)` → récupérer les lenses via `session.lenses.repository`.
+- `applyLens(...)` / `clearLens()` → appliquer/retirer la lens.
+- `startPreview(...)` / `stopPreview()` → démarrer/arrêter la preview caméra native.
+- `setPublishEnabled(...)` → connecter au room LiveKit iOS natif et publier une `LocalVideoTrack` alimentée par la sortie Camera Kit.
+
+### 4. Permissions Info.plist
+
+Vérifier que les clés suivantes sont présentes dans `ios/App/App/Info.plist` :
+
 ```xml
-<key>SCCameraKitAPIToken</key>
-<string>$(SC_CAMERAKIT_TOKEN)</string>  <!-- Staging ou Production -->
 <key>NSCameraUsageDescription</key>
-<string>KIDI+ utilise la caméra pour les lives et les filtres</string>
+<string>KiDi+ utilise la caméra pour les lives et les filtres AR.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>KiDi+ utilise le micro pour diffuser le son du live.</string>
 ```
 
-Implémentation clé :
-```swift
-import SCSDKCameraKit
+## Android — étapes de finalisation
 
-let session = Session(sessionConfig: nil, lensesConfig: nil, errorHandler: nil)
-session.lenses.repository.addObserver(self, groupID: "5b22f85d-...")
+1. Ajouter dans `android/app/build.gradle` :
 
-// Sur applyLens(lensId):
-if let lens = session.lenses.repository.lens(id: lensId, groupID: groupId) {
-    session.lenses.processor?.apply(lens: lens, launchData: nil) { success in ... }
-}
-
-// Piper la sortie AVCaptureSession → LiveKit LocalVideoTrack
-// via un CustomVideoCapturer LiveKit (LiveKitClient.LocalVideoTrack.create(...))
-```
-
-### 4. Android — Kotlin
-
-`build.gradle` :
 ```kotlin
 implementation "com.snap.camerakit:camerakit:1.35.0"
 implementation "com.snap.camerakit:support-camerax:1.35.0"
 ```
 
-`AndroidManifest.xml` :
-```xml
-<meta-data
-    android:name="com.snap.camerakit.app.id"
-    android:value="@string/snap_camera_kit_api_token" />
-```
+2. Créer `android/app/src/main/java/com/kidiplus/app/KidiCameraKitPlugin.kt` en miroir du plugin iOS.
+3. Enregistrer le plugin dans `MainActivity.java` ou via `capacitor.config.ts`.
 
-Implémentation clé :
-```kotlin
-val cameraKitSession = Session(context) {
-    apiToken(BuildConfig.SC_CAMERAKIT_TOKEN)
-    imageProcessorSource(imageProcessorSource)
-    attachTo(surfaceView.holder)
-}
-cameraKitSession.lenses.repository.get(
-    LensesComponent.Repository.QueryCriteria.ById(lensId, groupId)
-) { result -> cameraKitSession.lenses.processor.apply(result.whenHasFirst(...)) }
-```
+## Cycle de vie attendu
 
-### 5. Bridge JS → natif dans le React web
+1. **Setup / preview** : le host ouvre le carrousel → `loadBridgeLenses()` charge les lenses via le pont (natif ou web). Une lens sélectionnée est appliquée via `applyBridgeLens()`.
+2. **Démarrage du live** : `broadcast-video.tsx` connecte le room LiveKit web et appelle `setNativePublishEnabled({ enabled: true, roomUrl, token })`. Sur iOS/Android natif, le plugin prendra le relais pour la publication vidéo filtrée.
+3. **Changement de lens en live** : `applyHostPipeline()` appelle `applyBridgeLens()` pour mettre à jour le filtre côté natif (et met à jour le `TrackProcessor` web en fallback).
+4. **Fin du live** : `setNativePublishEnabled({ enabled: false })` arrête la publication native.
 
-Modifier `broadcast-video.tsx` :
+## Tests recommandés
 
-```ts
-import { Capacitor } from "@capacitor/core";
-import { SnapCameraKit } from "snap-camera-kit"; // notre plugin
+1. **Web** : s'assurer que les filtres Snap continuent de charger et de s'appliquer (pas de régression).
+2. **iOS natif** : après intégration du SDK Snap, vérifier que `KidiCameraKit.initialize()` et `loadLenses()` retournent les vraies lenses.
+3. **Performance** : comparer la charge CPU/GPU entre le rendu web et le rendu natif sur iPhone 15 Pro Max, iPhone SE et un Android milieu de gamme.
 
-useEffect(() => {
-  if (!Capacitor.isNativePlatform()) return;
-  if (activeLens.lensId === "none") {
-    SnapCameraKit.clearLens();
-  } else {
-    SnapCameraKit.loadLens({
-      lensId: activeLens.lensId,
-      groupId: activeLens.groupId,
-    });
-  }
-}, [activeLens]);
-```
+## Notes
 
-Le plugin natif :
-1. Remplace la piste caméra LiveKit locale par la piste filtrée Camera Kit.
-2. LiveKit publie normalement la piste filtrée aux viewers.
-3. Aucun changement côté viewer / autres composants.
-
-### 6. Récupérer les vraies lenses
-
-Une fois le plugin en place, remplacer les `demo-*` de `lenses-catalog.ts`
-par un snapshot dynamique :
-
-```ts
-const lenses = await SnapCameraKit.getLenses({ groupId: SNAP_DEMO_LENS_GROUP_ID });
-// [{ lensId, name, iconUrl, snapcode, ... }]
-```
-
-Snap fournit `iconUrl` par lens — on remplace nos emojis par les vraies
-vignettes dans `<LensTile>`.
-
-## Ordre de travail recommandé
-
-1. Finaliser la UI web (déjà fait) ✅
-2. Publier l'app web + valider le flow avec les filtres CSS de démo
-3. Packager en Capacitor (une fois la version web stable)
-4. Créer le plugin natif iOS
-5. Répliquer le plugin natif Android
-6. Soumettre à Snap pour Production Token
-7. Publier sur App Store + Play Store
-
-## Coût
-
-- Snap Camera Kit : **gratuit** (staging + prod)
-- Développement plugin natif : ~2–4 semaines pour iOS + Android
-- Frais Apple Developer : 99 $/an
-- Frais Google Play : 25 $ (une seule fois)
+- Le token API Camera Kit est un **jeton client public** — il est embarqué dans l'app mobile et dans le web.
+- Le SDK web reste le fallback pour les utilisateurs qui n'installent pas l'app native (PWA, navigateur).
+- Le plugin iOS actuel est un squelette fonctionnel : le bridge JS est opérationnel, mais les appels au SDK Snap natif doivent être décommentés/implémentés une fois la dépendance ajoutée dans Xcode.
