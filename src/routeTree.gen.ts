@@ -46,6 +46,7 @@ import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as PreviewDefiPlusRouteImport } from './routes/preview.defi-plus'
 import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
 import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/payments-mode'
 import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
@@ -280,6 +281,11 @@ const PreviewDefiPlusRoute = PreviewDefiPlusRouteImport.update({
 const SellOnboardingRoute = SellOnboardingRouteImport.update({
   id: '/sell/onboarding',
   path: '/sell/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
@@ -557,6 +563,7 @@ export interface FileRoutesByFullPath {
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -642,6 +649,7 @@ export interface FileRoutesByTo {
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -728,6 +736,7 @@ export interface FileRoutesById {
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
   '/sell/onboarding': typeof SellOnboardingRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
@@ -815,6 +824,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/preview/defi-plus'
     | '/sell/onboarding'
+    | '/.lovable/oauth/consent'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -900,6 +910,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/preview/defi-plus'
     | '/sell/onboarding'
+    | '/.lovable/oauth/consent'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/live/$id'
     | '/preview/defi-plus'
     | '/sell/onboarding'
+    | '/.lovable/oauth/consent'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
     | '/api/admin/test-push'
@@ -1071,6 +1083,7 @@ export interface RootRouteChildren {
   LiveIdRoute: typeof LiveIdRoute
   PreviewDefiPlusRoute: typeof PreviewDefiPlusRoute
   SellOnboardingRoute: typeof SellOnboardingRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminPaymentsModeRoute: typeof ApiAdminPaymentsModeRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
@@ -1373,6 +1386,13 @@ declare module '@tanstack/react-router' {
       path: '/sell/onboarding'
       fullPath: '/sell/onboarding'
       preLoaderRoute: typeof SellOnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/account/delete': {
@@ -1779,6 +1799,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveIdRoute: LiveIdRoute,
   PreviewDefiPlusRoute: PreviewDefiPlusRoute,
   SellOnboardingRoute: SellOnboardingRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminPaymentsModeRoute: ApiAdminPaymentsModeRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
