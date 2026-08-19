@@ -22,6 +22,8 @@ import {
   type CameraKitPipeline,
 } from "./camera-kit";
 
+export type { CameraKitPipeline };
+
 // ---------------------------------------------------------------------------
 // Détection du plugin natif
 // ---------------------------------------------------------------------------
