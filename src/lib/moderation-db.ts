@@ -15,23 +15,43 @@ const sb = supabase as unknown as AnySb;
 export type ReportTargetType = "live" | "message" | "user";
 export type ReportReason = "inappropriate" | "fraud" | "counterfeit" | "harassment" | "other";
 
-export async function submitReport(target_type: ReportTargetType, target_id: string, reason: ReportReason, note?: string) {
-  const { data, error } = await sb.rpc("submit_report", {
-    _target_type: target_type, _target_id: target_id, _reason: reason, _note: note ?? null,
+export async function submitReport(
+  target_type: ReportTargetType,
+  target_id: string,
+  reason: ReportReason,
+  note?: string,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const cleanedId = target_id.trim();
+  if (!cleanedId) return { ok: false, error: "missing_target" };
+
+  // Prefer typed RPC — jsonb comes back as a parsed object.
+  const { data, error } = await supabase.rpc("submit_report", {
+    _target_type: target_type,
+    _target_id: cleanedId,
+    _reason: reason,
+    _note: note ?? null,
   });
-  if (!error && data && (data as { ok?: boolean }).ok) {
-    return data as { ok: boolean; id?: string; error?: string };
+
+  const parsed = parseReportRpcPayload(data);
+  if (!error && parsed?.ok) {
+    return { ok: true, id: typeof parsed.id === "string" ? parsed.id : undefined };
+  }
+  if (!error && parsed && parsed.ok === false) {
+    // RPC ran but rejected (unauthorized / invalid_input) — don't mask with insert.
+    return { ok: false, error: parsed.error || "rejected" };
   }
 
-  // Fallback if the RPC is missing or rejected after a dump restore.
+  // Fallback if the RPC is missing after a dump restore.
   const uid = (await supabase.auth.getUser()).data.user?.id;
-  if (!uid) return { ok: false, error: error?.message || "unauthorized" };
+  if (!uid) {
+    return { ok: false, error: error?.message || "unauthorized" };
+  }
   const { data: row, error: ins } = await supabase
     .from("reports")
     .insert({
       reporter_id: uid,
       target_type,
-      target_id,
+      target_id: cleanedId,
       reason,
       note: note?.trim() || null,
     })
@@ -39,9 +59,29 @@ export async function submitReport(target_type: ReportTargetType, target_id: str
     .maybeSingle();
   if (ins || !row) {
     console.warn("[report] submit failed", error?.message, ins?.message);
-    return { ok: false, error: ins?.message || error?.message || "unknown" };
+    return {
+      ok: false,
+      error: ins?.message || error?.message || "unknown",
+    };
   }
   return { ok: true, id: row.id };
+}
+
+function parseReportRpcPayload(
+  data: unknown,
+): { ok?: boolean; id?: string; error?: string } | null {
+  if (data == null) return null;
+  if (typeof data === "string") {
+    try {
+      return parseReportRpcPayload(JSON.parse(data));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof data === "object" && !Array.isArray(data)) {
+    return data as { ok?: boolean; id?: string; error?: string };
+  }
+  return null;
 }
 
 export async function blockUser(blocked_id: string) {

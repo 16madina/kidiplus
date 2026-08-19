@@ -1270,7 +1270,8 @@
       "reports": "Signalements",
       "risk": "Risque",
       "verify": "Certifs",
-      "referral": "Parrainage"
+      "referral": "Parrainage",
+      "sim": "Simu"
     },
     "risk": {
       "title": "Alertes risque",
@@ -1310,6 +1311,34 @@
       "livesTotal": "Lives (total)",
       "ordersPaid": "Commandes payées",
       "orders14d": "Commandes / GMV — 14 j"
+    },
+    "prelaunchSim": {
+      "title": "Simulation pré-lancement",
+      "hint": "Faux viewers, commentaires et enchères pendant le tournage. Désactive avant l’envoi App Store, réactive après validation.",
+      "panelHint": "Réglages globaux pour les lives promo / tournage. Quand c’est On, les hôtes voient de faux viewers, commentaires et enchères. Mets Off avant l’envoi App Store.",
+      "master": "Simulation",
+      "loading": "Chargement…",
+      "statusOn": "Activée — les lives hôtes simulent la foule",
+      "statusOff": "Désactivée — aucun faux engagement",
+      "turnOn": "On",
+      "turnOff": "Off",
+      "onToast": "Simulation activée et enregistrée",
+      "offToast": "Simulation désactivée et enregistrée",
+      "saveFail": "Impossible d’enregistrer",
+      "save": "Enregistrer",
+      "viewersTitle": "Nombre de personnes",
+      "viewersHint": "Le compteur oscille entre le minimum et le maximum.",
+      "viewersMin": "Min",
+      "viewersMax": "Max",
+      "commentsTitle": "Fréquence des commentaires",
+      "commentsHint": "Délai aléatoire entre deux faux commentaires (en secondes).",
+      "commentMin": "Toutes les… (min)",
+      "commentMax": "…à (max)",
+      "heartChance": "Chance de cœur (%)",
+      "bidsTitle": "Fausses enchères",
+      "bidsHint": "Pendant une enchère active (aucun paiement réel).",
+      "bidMin": "Toutes les… (min)",
+      "bidMax": "…à (max)"
     },
     "users": {
       "searchPh": "Rechercher (nom, @handle, email)",
@@ -1519,6 +1548,7 @@
     "submit": "Envoyer le signalement",
     "sent": "Signalement envoyé, merci.",
     "failed": "Échec du signalement. Réessaie.",
+    "pickReason": "Choisis une raison avant d’envoyer.",
     "notePh": "Détails (optionnel)",
     "reasons": {
       "inappropriate": "Contenu inapproprié",

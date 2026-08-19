@@ -1026,12 +1026,13 @@ export function RealLiveViewerScreen() {
 
   // Drop open sheets when shrinking to mini / system PiP — they would block the tabs / bubble.
   useEffect(() => {
+    // Don't dismiss an in-progress report when chrome hides — the user would
+    // think "Envoyer" failed. Other sheets still close for mini / system PiP.
     if (!chromeHidden) return;
     setShowProducts(false);
     setMoreOpen(false);
     setGiftTrayOpen(false);
     setTopupOpen(false);
-    setReportOpen(false);
     setCustomOpen(false);
     setPendingOrder(null);
     setViewersSheetOpen(false);
@@ -1593,8 +1594,9 @@ export function RealLiveViewerScreen() {
           open={reportOpen}
           onClose={() => setReportOpen(false)}
           targetType="live"
-          targetId={active.liveId}
+          targetId={active.liveId ?? active.id.replace(/^db-/, "")}
           defaultReason="inappropriate"
+          zIndex={130}
         />
       )}
       {/* Per-chat-message report (Apple 1.2). Any signed-in viewer can flag. */}
@@ -1604,6 +1606,7 @@ export function RealLiveViewerScreen() {
         targetType="message"
         targetId={reportMessageId ?? ""}
         defaultReason="inappropriate"
+        zIndex={130}
       />
       <AnimatePresence>
         {liveEnded && (

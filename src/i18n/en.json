@@ -1270,7 +1270,8 @@
       "reports": "Reports",
       "risk": "Risk",
       "verify": "Verify",
-      "referral": "Referrals"
+      "referral": "Referrals",
+      "sim": "Sim"
     },
     "risk": {
       "title": "Risk alerts",
@@ -1310,6 +1311,34 @@
       "livesTotal": "Lives (total)",
       "ordersPaid": "Paid orders",
       "orders14d": "Orders / GMV — 14d"
+    },
+    "prelaunchSim": {
+      "title": "Pre-launch simulation",
+      "hint": "Fake viewers, comments and bids while filming. Turn off before App Store submit, turn on again after approval.",
+      "panelHint": "Global settings for promo / filming lives. When On, hosts get fake viewers, comments and bids. Turn Off before App Store submit.",
+      "master": "Simulation",
+      "loading": "Loading…",
+      "statusOn": "On — host lives simulate the crowd",
+      "statusOff": "Off — no fake engagement",
+      "turnOn": "On",
+      "turnOff": "Off",
+      "onToast": "Simulation enabled and saved",
+      "offToast": "Simulation disabled and saved",
+      "saveFail": "Could not save",
+      "save": "Save",
+      "viewersTitle": "Number of people",
+      "viewersHint": "The counter oscillates between min and max.",
+      "viewersMin": "Min",
+      "viewersMax": "Max",
+      "commentsTitle": "Comment frequency",
+      "commentsHint": "Random delay between two fake comments (seconds).",
+      "commentMin": "Every… (min)",
+      "commentMax": "…to (max)",
+      "heartChance": "Heart chance (%)",
+      "bidsTitle": "Fake bids",
+      "bidsHint": "During an active auction (no real payments).",
+      "bidMin": "Every… (min)",
+      "bidMax": "…to (max)"
     },
     "users": {
       "searchPh": "Search (name, @handle, email)",
@@ -1519,6 +1548,7 @@
     "submit": "Send report",
     "sent": "Report sent, thank you.",
     "failed": "Could not send the report. Try again.",
+    "pickReason": "Pick a reason before sending.",
     "notePh": "Details (optional)",
     "reasons": {
       "inappropriate": "Inappropriate content",

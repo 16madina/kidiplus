@@ -1,23 +1,211 @@
 // Pre-launch live crowd simulation (comments + viewer count + fake bids).
 //
-// Host generates activity; everyone else just sees the existing realtime
-// events. No fake Stripe/PayPal charges — simulated bidders never hit RPCs.
+// Config lives in admin → tab « Simu » (`app_config.prelaunch_live_sim` JSON).
+// Hosts poll it; no per-live controls. Reviewers never see the admin panel.
 //
-// Turn OFF for production:
-//   1. Set VITE_PRELAUNCH_LIVE_SIM=0, or
-//   2. Wait until after PRELAUNCH_SIM_UNTIL (auto-expires Monday 24 Aug 2026).
-// Force ON after that date: VITE_PRELAUNCH_LIVE_SIM=1
+// Emergency build override (optional):
+//   VITE_PRELAUNCH_LIVE_SIM=0 → force off
+//   VITE_PRELAUNCH_LIVE_SIM=1 → force on (settings still from remote / defaults)
 
-/** Inclusive end of the filming window (Monday 24 Aug 2026, America/New_York). */
-export const PRELAUNCH_SIM_UNTIL = new Date("2026-08-25T03:59:59.000Z");
+import { supabase } from "@/integrations/supabase/client";
+
+export const PRELAUNCH_LIVE_SIM_CONFIG_KEY = "prelaunch_live_sim";
+
+export type PrelaunchLiveSimConfig = {
+  enabled: boolean;
+  /** Fake viewer count floor. */
+  viewersMin: number;
+  /** Fake viewer count ceiling. */
+  viewersMax: number;
+  /** Seconds between comments (min). */
+  commentEverySecMin: number;
+  /** Seconds between comments (max). */
+  commentEverySecMax: number;
+  /** Inject fake auction bids. */
+  fakeBids: boolean;
+  /** Seconds between fake bids (min). */
+  bidEverySecMin: number;
+  /** Seconds between fake bids (max). */
+  bidEverySecMax: number;
+  /** Chance (0–100) that a comment tick also sends a heart. */
+  heartChancePct: number;
+};
+
+export const DEFAULT_PRELAUNCH_LIVE_SIM: PrelaunchLiveSimConfig = {
+  enabled: false,
+  viewersMin: 50,
+  viewersMax: 160,
+  commentEverySecMin: 1,
+  commentEverySecMax: 3,
+  fakeBids: true,
+  bidEverySecMin: 1,
+  bidEverySecMax: 3,
+  heartChancePct: 18,
+};
 
 const SIM_PREFIX = "sim:";
 
-export function isPrelaunchLiveSimEnabled(): boolean {
+type Listener = (cfg: PrelaunchLiveSimConfig) => void;
+
+let remoteCache: PrelaunchLiveSimConfig | null = null;
+const listeners = new Set<Listener>();
+
+function envOverride(): boolean | null {
   const env = String(import.meta.env.VITE_PRELAUNCH_LIVE_SIM ?? "").trim();
   if (env === "0" || env.toLowerCase() === "false") return false;
   if (env === "1" || env.toLowerCase() === "true") return true;
-  return Date.now() <= PRELAUNCH_SIM_UNTIL.getTime();
+  return null;
+}
+
+function clampInt(n: unknown, min: number, max: number, fallback: number): number {
+  const v = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(v)));
+}
+
+function clampBool(n: unknown, fallback: boolean): boolean {
+  if (typeof n === "boolean") return n;
+  if (n === 1 || n === "1" || n === "true" || n === "on") return true;
+  if (n === 0 || n === "0" || n === "false" || n === "off") return false;
+  return fallback;
+}
+
+/** Normalize any stored payload (legacy "0"/"1" or partial JSON). */
+export function parsePrelaunchLiveSimConfig(raw: string | null | undefined): PrelaunchLiveSimConfig {
+  const d = DEFAULT_PRELAUNCH_LIVE_SIM;
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return { ...d };
+
+  // Legacy flat flag
+  if (trimmed === "0" || trimmed.toLowerCase() === "false" || trimmed === "off") {
+    return { ...d, enabled: false };
+  }
+  if (trimmed === "1" || trimmed.toLowerCase() === "true" || trimmed === "on") {
+    return { ...d, enabled: true };
+  }
+
+  try {
+    const j = JSON.parse(trimmed) as Partial<PrelaunchLiveSimConfig>;
+    let viewersMin = clampInt(j.viewersMin, 1, 5000, d.viewersMin);
+    let viewersMax = clampInt(j.viewersMax, 1, 5000, d.viewersMax);
+    if (viewersMax < viewersMin) {
+      const t = viewersMin;
+      viewersMin = viewersMax;
+      viewersMax = t;
+    }
+    let commentEverySecMin = clampInt(j.commentEverySecMin, 1, 120, d.commentEverySecMin);
+    let commentEverySecMax = clampInt(j.commentEverySecMax, 1, 120, d.commentEverySecMax);
+    if (commentEverySecMax < commentEverySecMin) {
+      const t = commentEverySecMin;
+      commentEverySecMin = commentEverySecMax;
+      commentEverySecMax = t;
+    }
+    let bidEverySecMin = clampInt(j.bidEverySecMin, 1, 120, d.bidEverySecMin);
+    let bidEverySecMax = clampInt(j.bidEverySecMax, 1, 120, d.bidEverySecMax);
+    if (bidEverySecMax < bidEverySecMin) {
+      const t = bidEverySecMin;
+      bidEverySecMin = bidEverySecMax;
+      bidEverySecMax = t;
+    }
+    return {
+      enabled: clampBool(j.enabled, d.enabled),
+      viewersMin,
+      viewersMax,
+      commentEverySecMin,
+      commentEverySecMax,
+      fakeBids: clampBool(j.fakeBids, d.fakeBids),
+      bidEverySecMin,
+      bidEverySecMax,
+      heartChancePct: clampInt(j.heartChancePct, 0, 100, d.heartChancePct),
+    };
+  } catch {
+    return { ...d };
+  }
+}
+
+function withEnvOverride(cfg: PrelaunchLiveSimConfig): PrelaunchLiveSimConfig {
+  const forced = envOverride();
+  if (forced === null) return cfg;
+  return { ...cfg, enabled: forced };
+}
+
+function notify(cfg: PrelaunchLiveSimConfig) {
+  remoteCache = cfg;
+  listeners.forEach((cb) => {
+    try {
+      cb(cfg);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+export function getCachedPrelaunchLiveSimConfig(): PrelaunchLiveSimConfig {
+  return withEnvOverride(remoteCache ?? { ...DEFAULT_PRELAUNCH_LIVE_SIM });
+}
+
+/** Sync read — uses env override, then last fetched remote value (default off). */
+export function isPrelaunchLiveSimEnabled(): boolean {
+  return getCachedPrelaunchLiveSimConfig().enabled;
+}
+
+async function fetchStoredPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimConfig> {
+  try {
+    const { data, error } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", PRELAUNCH_LIVE_SIM_CONFIG_KEY)
+      .maybeSingle();
+    if (error) throw error;
+    return parsePrelaunchLiveSimConfig(data?.value);
+  } catch {
+    return { ...DEFAULT_PRELAUNCH_LIVE_SIM, enabled: false };
+  }
+}
+
+export async function fetchPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimConfig> {
+  const stored = await fetchStoredPrelaunchLiveSimConfig();
+  const cfg = withEnvOverride(stored);
+  notify(cfg);
+  return cfg;
+}
+
+/** Admin read: stored values without env override (so the panel shows the real DB flag). */
+export async function fetchPrelaunchLiveSimConfigForAdmin(): Promise<PrelaunchLiveSimConfig> {
+  const stored = await fetchStoredPrelaunchLiveSimConfig();
+  notify(withEnvOverride(stored));
+  return stored;
+}
+
+/** @deprecated Prefer fetchPrelaunchLiveSimConfig */
+export async function fetchPrelaunchLiveSimEnabled(): Promise<boolean> {
+  return (await fetchPrelaunchLiveSimConfig()).enabled;
+}
+
+/** Admin-only write of full config. */
+export async function savePrelaunchLiveSimConfig(
+  input: PrelaunchLiveSimConfig,
+): Promise<PrelaunchLiveSimConfig> {
+  const toStore = parsePrelaunchLiveSimConfig(JSON.stringify(input));
+  const { error } = await supabase.from("app_config").upsert(
+    {
+      key: PRELAUNCH_LIVE_SIM_CONFIG_KEY,
+      value: JSON.stringify(toStore),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw error;
+  notify(withEnvOverride(toStore));
+  return toStore;
+}
+
+export function subscribePrelaunchLiveSim(listener: Listener): () => void {
+  listeners.add(listener);
+  if (remoteCache !== null) listener(getCachedPrelaunchLiveSimConfig());
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function isSimBidderId(id: string | null | undefined): boolean {
@@ -82,6 +270,12 @@ const COLORS = [
 const rand = (n: number) => Math.floor(Math.random() * n);
 const pick = <T,>(arr: readonly T[]): T => arr[rand(arr.length)]!;
 
+function randBetweenSec(minSec: number, maxSec: number): number {
+  const a = Math.min(minSec, maxSec);
+  const b = Math.max(minSec, maxSec);
+  return (a + Math.random() * (b - a)) * 1000;
+}
+
 export function simColorFor(seed: string): string {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
@@ -102,21 +296,46 @@ export function randomSimChat(auctionHot: boolean): { name: string; text: string
   return { name, text: pick(pool), join: false };
 }
 
-export function nextSimViewerCount(prev: number, dir: 1 | -1): { count: number; dir: 1 | -1 } {
+export function nextSimViewerCount(
+  prev: number,
+  dir: 1 | -1,
+  viewersMin: number,
+  viewersMax: number,
+): { count: number; dir: 1 | -1 } {
+  const lo = Math.min(viewersMin, viewersMax);
+  const hi = Math.max(viewersMin, viewersMax);
   let nextDir: 1 | -1 = dir;
   if (Math.random() < 0.14) nextDir = dir === 1 ? -1 : 1;
-  let count = prev + nextDir * (1 + rand(8));
-  if (count >= 160) {
-    count = 160 - rand(4);
+  const step = 1 + rand(Math.max(1, Math.ceil((hi - lo) / 20)));
+  let count = prev + nextDir * step;
+  if (count >= hi) {
+    count = hi - rand(Math.min(4, Math.max(1, hi - lo)));
     nextDir = -1;
   }
-  if (count <= 50) {
-    count = 50 + rand(5);
+  if (count <= lo) {
+    count = lo + rand(Math.min(5, Math.max(1, hi - lo)));
     nextDir = 1;
   }
   return { count, dir: nextDir };
 }
 
-export function initialSimViewerCount(): number {
-  return 50 + rand(41); // 50–90
+export function initialSimViewerCount(viewersMin: number, viewersMax: number): number {
+  const lo = Math.min(viewersMin, viewersMax);
+  const hi = Math.max(viewersMin, viewersMax);
+  const span = Math.max(0, hi - lo);
+  // Start in the lower third of the range for a natural ramp.
+  const startHi = lo + Math.max(0, Math.floor(span / 3));
+  return lo + rand(Math.max(1, startHi - lo + 1));
+}
+
+export function nextCommentDelayMs(cfg: PrelaunchLiveSimConfig): number {
+  return randBetweenSec(cfg.commentEverySecMin, cfg.commentEverySecMax);
+}
+
+export function nextBidDelayMs(cfg: PrelaunchLiveSimConfig): number {
+  return randBetweenSec(cfg.bidEverySecMin, cfg.bidEverySecMax);
+}
+
+export function nextViewerTickMs(): number {
+  return 1600 + Math.random() * 2400;
 }

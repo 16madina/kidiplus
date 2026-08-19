@@ -926,7 +926,9 @@ function MockLiveViewerScreen() {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         targetType="live"
-        targetId={active.id}
+        targetId={active.liveId ?? active.id.replace(/^db-/, "")}
+        defaultReason="inappropriate"
+        zIndex={130}
       />
 
       {/* Winner reveal — Whatnot-style flip; same component as real lives. */}

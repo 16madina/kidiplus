@@ -10,7 +10,7 @@ import {
   Copy, Check, X, Loader2, LayoutDashboard, Users as UsersIcon,
   CreditCard, Radio, Search, ChevronRight, Upload, ImageIcon,
   Flag, MessageSquare, ShieldAlert, AlertTriangle, BadgeCheck, Bell,
-  HeartHandshake, Shield, Send, RefreshCw,
+  HeartHandshake, Shield, Send, RefreshCw, Clapperboard,
 } from "lucide-react";
 import { fetchPaypalConfig, sendPaypalPayout, checkPaypalPayoutStatus } from "@/lib/paypal-payout-client";
 import { AdminPushPanel } from "./admin-push-panel";
@@ -39,6 +39,7 @@ import {
 } from "./moderation-pieces";
 import { SanctionSheet } from "./sanction-sheet";
 import { AdminDemoVideoCard } from "./admin-demo-video";
+import { AdminPrelaunchSimPanel } from "./admin-prelaunch-sim";
 import { OrderItemImage } from "@/components/orders/order-item-image";
 import { PayoutRiskBadge } from "./payout-risk-badge";
 import { PaymentsModeBadge } from "./payments-mode-badge";
@@ -46,7 +47,7 @@ import { PaymentsModeBadge } from "./payments-mode-badge";
 
 
 
-type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk" | "media";
+type Tab = "overview" | "users" | "payments" | "lives" | "reports" | "verify" | "push" | "referral" | "risk" | "media" | "sim";
 
 export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -74,6 +75,7 @@ export function AdminDashboardScreen({ open, onClose }: { open: boolean; onClose
             {tab === "verify" && open && <VerificationsTab />}
             {tab === "referral" && open && <AdminReferralPanel />}
             {tab === "media" && open && <AdminVideoRepairPanel />}
+            {tab === "sim" && open && <AdminPrelaunchSimPanel />}
           </div>
         </>
       )}
@@ -97,6 +99,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     { id: "verify",   icon: <BadgeCheck size={14} />,      label: t("admin.tabs.verify", "Certifs") },
     { id: "payments", icon: <CreditCard size={14} />,      label: t("admin.tabs.payments") },
     { id: "lives",    icon: <Radio size={14} />,           label: t("admin.tabs.lives") },
+    { id: "sim",      icon: <Clapperboard size={14} />,    label: t("admin.tabs.sim", "Simu") },
     { id: "referral", icon: <HeartHandshake size={14} />,  label: t("admin.tabs.referral", "Parrainage") },
     { id: "media",    icon: <RefreshCw size={14} />,       label: t("admin.tabs.media", "Vidéos") },
   ];
