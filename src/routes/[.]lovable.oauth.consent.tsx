@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
 function Consent() {
   const details = Route.useLoaderData();
   const { authorization_id } = Route.useSearch();
-  const router = Route.useRouter();
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
