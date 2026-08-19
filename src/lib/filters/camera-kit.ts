@@ -58,7 +58,8 @@ export const SNAP_LENS_GROUP_ID =
   readEnv("VITE_SNAP_LENS_GROUP_ID") || "df287f43-6646-4b01-a711-1a0e632c211a";
 
 /** Groupes supplémentaires chargés en plus du groupe principal.
- * Configurable via VITE_SNAP_LENS_GROUP_IDS (liste séparée par des virgules). */
+ * Configurable via VITE_SNAP_LENS_GROUP_IDS (liste séparée par des virgules).
+ * Groupes chargés : KiDi+ Web "test 1", "kidi 3", "KIDI+2". */
 export const SNAP_LENS_GROUP_IDS: string[] = Array.from(
   new Set(
     [
@@ -68,6 +69,7 @@ export const SNAP_LENS_GROUP_IDS: string[] = Array.from(
         .map((s) => s.trim())
         .filter(Boolean),
       "2a4e2449-ebd0-4c81-8a6f-d01c603fbe8c",
+      "9dd9798c-cef5-443b-a494-af0cc480059e",
     ].filter(Boolean),
   ),
 );
