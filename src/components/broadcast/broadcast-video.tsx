@@ -10,6 +10,10 @@ import {
   ensureCameraMicPermission,
 } from "@/lib/media-permissions";
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
+import {
+  applyBridgeLens,
+  setNativePublishEnabled,
+} from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
 import { LiveEffectsPreview } from "@/components/broadcast/live-effects-preview";
