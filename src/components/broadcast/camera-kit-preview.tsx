@@ -78,7 +78,7 @@ export function CameraKitPreview({
   useEffect(() => {
     const p = pipelineRef.current;
     if (!p || !active) return;
-    void p.setLens(lens.lensId, lens.groupId).catch((e) => {
+    void p.setLens(lens.lensId, lens.groupId).catch((e: unknown) => {
       console.warn("[camera-kit] preview setLens failed", e);
     });
   }, [lens.lensId, lens.groupId, active]);
