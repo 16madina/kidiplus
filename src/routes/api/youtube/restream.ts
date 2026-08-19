@@ -16,6 +16,7 @@ import {
   youtubeJson,
 } from "@/lib/youtube-api-auth";
 import {
+import { egressErrorMessage } from "@/lib/egress-error-message";
   completeYoutubeBroadcast,
   createYoutubeLiveBroadcast,
   getValidYoutubeAccessToken,
@@ -283,10 +284,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
           return youtubeJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,

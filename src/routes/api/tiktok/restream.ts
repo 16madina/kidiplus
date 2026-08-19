@@ -13,6 +13,7 @@ import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
 import { socialRestreamEncodingOptions } from "@/lib/social-egress-encoding";
 import { buildTiktokRtmpUrl } from "@/lib/tiktok-rtmp";
 import {
+import { egressErrorMessage } from "@/lib/egress-error-message";
   requireYoutubeApiUser,
   youtubeCorsHeaders,
   youtubeJson,
@@ -203,10 +204,7 @@ export const Route = createFileRoute("/api/tiktok/restream")({
           return youtubeJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,

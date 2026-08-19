@@ -16,6 +16,7 @@ import {
   requireFacebookApiUser,
 } from "@/lib/facebook-api-auth";
 import {
+import { egressErrorMessage } from "@/lib/egress-error-message";
   createFacebookLiveVideo,
   endFacebookLiveVideo,
   fetchFacebookTokenPermissions,
@@ -286,10 +287,7 @@ export const Route = createFileRoute("/api/facebook/restream")({
           return facebookJson(
             {
               error: "egress_failed",
-              message:
-                msg.includes("egress") || msg.includes("Egress")
-                  ? msg
-                  : "Impossible de démarrer le Web Egress LiveKit — Egress est-il activé ?",
+              message: egressErrorMessage(msg),
             },
             502,
             origin,
