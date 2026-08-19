@@ -677,6 +677,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await disconnectRoom(roomRef.current);
         roomRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
+        // Signale au plugin natif qu'on quitte le live.
+        void setNativePublishEnabled({ enabled: false });
       }
 
       void start();
