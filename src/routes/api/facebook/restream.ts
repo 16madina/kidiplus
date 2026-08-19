@@ -1,6 +1,7 @@
 // POST /api/facebook/restream
 // Facebook Live + LiveKit Web Egress (full KiDi+ UI → RTMP), same path as YouTube.
 
+import { egressErrorMessage } from "@/lib/egress-error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
@@ -16,7 +17,6 @@ import {
   requireFacebookApiUser,
 } from "@/lib/facebook-api-auth";
 import {
-import { egressErrorMessage } from "@/lib/egress-error-message";
   createFacebookLiveVideo,
   endFacebookLiveVideo,
   fetchFacebookTokenPermissions,

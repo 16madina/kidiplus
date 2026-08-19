@@ -2,6 +2,7 @@
 // Manual TikTok RTMP + LiveKit Web Egress (full KiDi+ UI → TikTok).
 // No OAuth — host pastes LIVE Studio server URL + stream key.
 
+import { egressErrorMessage } from "@/lib/egress-error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   EgressClient,
@@ -13,7 +14,6 @@ import { broadcastEgressOrigin } from "@/lib/broadcast-egress-origin";
 import { socialRestreamEncodingOptions } from "@/lib/social-egress-encoding";
 import { buildTiktokRtmpUrl } from "@/lib/tiktok-rtmp";
 import {
-import { egressErrorMessage } from "@/lib/egress-error-message";
   requireYoutubeApiUser,
   youtubeCorsHeaders,
   youtubeJson,
