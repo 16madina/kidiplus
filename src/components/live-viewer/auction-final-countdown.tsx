@@ -32,7 +32,7 @@ export function AuctionFinalCountdown({
           style={
             social
               ? { top: "20%", bottom: "38%" }
-              : { top: "18%", bottom: "auto" }
+              : { top: "24%", bottom: "auto" }
           }
         >
           {social && (
