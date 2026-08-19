@@ -3091,6 +3091,18 @@ export type Database = {
         Args: { _user: string; _verified: boolean }
         Returns: Json
       }
+      admin_get_prelaunch_live_sim: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      admin_set_prelaunch_live_sim: {
+        Args: { _value: string }
+        Returns: string
+      }
+      get_prelaunch_live_sim: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       admin_unfreeze_user: { Args: { _user_id: string }; Returns: Json }
       admin_user_detail: { Args: { _user_id: string }; Returns: Json }
       anonymize_my_account: { Args: never; Returns: Json }

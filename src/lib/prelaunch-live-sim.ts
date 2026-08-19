@@ -150,6 +150,15 @@ export function isPrelaunchLiveSimEnabled(): boolean {
 }
 
 async function fetchStoredPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimConfig> {
+  // Prefer SECURITY DEFINER RPC (works even if table RLS is tight).
+  try {
+    const { data, error } = await supabase.rpc("get_prelaunch_live_sim");
+    if (!error && data != null) {
+      return parsePrelaunchLiveSimConfig(typeof data === "string" ? data : String(data));
+    }
+  } catch {
+    /* fall through */
+  }
   try {
     const { data, error } = await supabase
       .from("app_config")
@@ -172,6 +181,16 @@ export async function fetchPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimCon
 
 /** Admin read: stored values without env override (so the panel shows the real DB flag). */
 export async function fetchPrelaunchLiveSimConfigForAdmin(): Promise<PrelaunchLiveSimConfig> {
+  try {
+    const { data, error } = await supabase.rpc("admin_get_prelaunch_live_sim");
+    if (!error && data != null) {
+      const stored = parsePrelaunchLiveSimConfig(typeof data === "string" ? data : String(data));
+      notify(withEnvOverride(stored));
+      return stored;
+    }
+  } catch {
+    /* fall through to table / public RPC */
+  }
   const stored = await fetchStoredPrelaunchLiveSimConfig();
   notify(withEnvOverride(stored));
   return stored;
@@ -182,22 +201,51 @@ export async function fetchPrelaunchLiveSimEnabled(): Promise<boolean> {
   return (await fetchPrelaunchLiveSimConfig()).enabled;
 }
 
-/** Admin-only write of full config. */
+/** Admin-only write of full config. Verifies the value round-trips from the DB. */
 export async function savePrelaunchLiveSimConfig(
   input: PrelaunchLiveSimConfig,
 ): Promise<PrelaunchLiveSimConfig> {
   const toStore = parsePrelaunchLiveSimConfig(JSON.stringify(input));
-  const { error } = await supabase.from("app_config").upsert(
-    {
-      key: PRELAUNCH_LIVE_SIM_CONFIG_KEY,
-      value: JSON.stringify(toStore),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "key" },
-  );
-  if (error) throw error;
-  notify(withEnvOverride(toStore));
-  return toStore;
+  const payload = JSON.stringify(toStore);
+
+  let savedRaw: string | null = null;
+
+  const rpc = await supabase.rpc("admin_set_prelaunch_live_sim", { _value: payload });
+  if (!rpc.error && rpc.data != null) {
+    savedRaw = typeof rpc.data === "string" ? rpc.data : String(rpc.data);
+  } else {
+    // Fallback: direct upsert (works if admin write RLS is in place).
+    const up = await supabase.from("app_config").upsert(
+      {
+        key: PRELAUNCH_LIVE_SIM_CONFIG_KEY,
+        value: payload,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" },
+    );
+    if (up.error) {
+      throw new Error(
+        rpc.error?.message ||
+          up.error.message ||
+          "Échec d’enregistrement (migration Simu manquante ?)",
+      );
+    }
+    const verify = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", PRELAUNCH_LIVE_SIM_CONFIG_KEY)
+      .maybeSingle();
+    if (verify.error) throw new Error(verify.error.message);
+    savedRaw = verify.data?.value ?? null;
+  }
+
+  if (savedRaw == null) {
+    throw new Error("La base n’a pas renvoyé la config enregistrée.");
+  }
+
+  const confirmed = parsePrelaunchLiveSimConfig(savedRaw);
+  notify(withEnvOverride(confirmed));
+  return confirmed;
 }
 
 export function subscribePrelaunchLiveSim(listener: Listener): () => void {
