@@ -236,8 +236,38 @@ export async function createCameraKitPipeline(args: {
     throw new Error("camera-kit: no output track");
   }
 
+  // Qualité adaptative : on démarre en haute qualité, et on ne dégrade que si
+  // l'appareil n'y arrive pas réellement (mesure du rafraîchissement pendant 5 s).
+  let degraded = false;
+  const measureAndAdapt = () => {
+    let frames = 0;
+    const t0 = performance.now();
+    const tick = () => {
+      if (destroyed || degraded) return;
+      frames++;
+      const dt = performance.now() - t0;
+      if (dt < 5000) { requestAnimationFrame(tick); return; }
+      const real = (frames * 1000) / dt;
+      if (real < 22) {
+        degraded = true;
+        console.warn("[camera-kit] rendu dégradé (", Math.round(real), "fps )");
+        session.setFPSLimit(24).catch(() => {});
+        try {
+          const s = args.source.getSettings();
+          const sw = s.width ?? 720;
+          const sh = s.height ?? 1280;
+          const long = Math.max(sw, sh);
+          const k = 960 / long;
+          if (k < 1) source.setRenderSize(Math.round(sw * k), Math.round(sh * k));
+        } catch { /* ignore */ }
+      }
+    };
+    requestAnimationFrame(tick);
+  };
 
   let destroyed = false;
+  setTimeout(() => { if (!destroyed) measureAndAdapt(); }, 3000);
+
   return {
     canvas,
     outputTrack,
