@@ -9,6 +9,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+type AnySb = { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> };
+const sb = supabase as unknown as AnySb;
+
 export const PRELAUNCH_LIVE_SIM_CONFIG_KEY = "prelaunch_live_sim";
 
 export type PrelaunchLiveSimConfig = {
@@ -152,7 +155,7 @@ export function isPrelaunchLiveSimEnabled(): boolean {
 async function fetchStoredPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimConfig> {
   // Prefer SECURITY DEFINER RPC (works even if table RLS is tight).
   try {
-    const { data, error } = await supabase.rpc("get_prelaunch_live_sim");
+    const { data, error } = await sb.rpc("get_prelaunch_live_sim");
     if (!error && data != null) {
       return parsePrelaunchLiveSimConfig(typeof data === "string" ? data : String(data));
     }
@@ -182,7 +185,7 @@ export async function fetchPrelaunchLiveSimConfig(): Promise<PrelaunchLiveSimCon
 /** Admin read: stored values without env override (so the panel shows the real DB flag). */
 export async function fetchPrelaunchLiveSimConfigForAdmin(): Promise<PrelaunchLiveSimConfig> {
   try {
-    const { data, error } = await supabase.rpc("admin_get_prelaunch_live_sim");
+    const { data, error } = await sb.rpc("admin_get_prelaunch_live_sim");
     if (!error && data != null) {
       const stored = parsePrelaunchLiveSimConfig(typeof data === "string" ? data : String(data));
       notify(withEnvOverride(stored));
@@ -210,7 +213,7 @@ export async function savePrelaunchLiveSimConfig(
 
   let savedRaw: string | null = null;
 
-  const rpc = await supabase.rpc("admin_set_prelaunch_live_sim", { _value: payload });
+  const rpc = await sb.rpc("admin_set_prelaunch_live_sim", { _value: payload });
   if (!rpc.error && rpc.data != null) {
     savedRaw = typeof rpc.data === "string" ? rpc.data : String(rpc.data);
   } else {

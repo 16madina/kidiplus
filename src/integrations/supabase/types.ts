@@ -2971,6 +2971,7 @@ export type Database = {
         Args: { _reason: string; _user_id: string }
         Returns: Json
       }
+      admin_get_prelaunch_live_sim: { Args: never; Returns: string }
       admin_issue_sanction: {
         Args: {
           _expires_at?: string
@@ -3079,6 +3080,10 @@ export type Database = {
         Args: { _user_id: string; _verified: boolean }
         Returns: Json
       }
+      admin_set_prelaunch_live_sim: {
+        Args: { _value: string }
+        Returns: string
+      }
       admin_set_promo_code_active: {
         Args: { _active: boolean; _id: string }
         Returns: Json
@@ -3180,6 +3185,7 @@ export type Database = {
       find_dm_thread: { Args: { _other: string }; Returns: string }
       fx_rate: { Args: { _from: string; _to: string }; Returns: number }
       get_my_email: { Args: never; Returns: string }
+      get_prelaunch_live_sim: { Args: never; Returns: string }
       get_seller_delivery_settings: {
         Args: { _seller_id: string }
         Returns: {

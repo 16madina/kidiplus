@@ -29,7 +29,7 @@ export async function submitReport(
     _target_type: target_type,
     _target_id: cleanedId,
     _reason: reason,
-    _note: note ?? null,
+    _note: note || undefined,
   });
 
   const parsed = parseReportRpcPayload(data);
