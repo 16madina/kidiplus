@@ -1533,6 +1533,10 @@ export type Database = {
           currency: string
           display_name: string
           email: string
+          email_confirm_code_hash: string | null
+          email_confirm_expires_at: string | null
+          email_confirm_sent_at: string | null
+          email_verified_at: string | null
           followers_count: number
           following_count: number
           frozen_at: string | null
@@ -1548,6 +1552,7 @@ export type Database = {
           kyc_verified: boolean
           language: string
           moderation_status: string
+          phone: string | null
           rating_avg: number
           rating_count: number
           risk_restricted: boolean
@@ -1570,6 +1575,10 @@ export type Database = {
           currency?: string
           display_name: string
           email: string
+          email_confirm_code_hash?: string | null
+          email_confirm_expires_at?: string | null
+          email_confirm_sent_at?: string | null
+          email_verified_at?: string | null
           followers_count?: number
           following_count?: number
           frozen_at?: string | null
@@ -1585,6 +1594,7 @@ export type Database = {
           kyc_verified?: boolean
           language?: string
           moderation_status?: string
+          phone?: string | null
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
@@ -1607,6 +1617,10 @@ export type Database = {
           currency?: string
           display_name?: string
           email?: string
+          email_confirm_code_hash?: string | null
+          email_confirm_expires_at?: string | null
+          email_confirm_sent_at?: string | null
+          email_verified_at?: string | null
           followers_count?: number
           following_count?: number
           frozen_at?: string | null
@@ -1622,6 +1636,7 @@ export type Database = {
           kyc_verified?: boolean
           language?: string
           moderation_status?: string
+          phone?: string | null
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
