@@ -54,7 +54,7 @@
         "@radix-ui/react-tooltip": "^1.2.8",
         "@react-email/components": "^1.0.12",
         "@react-email/render": "^2.0.10",
-        "@snap/camera-kit": "^1.18.0",
+        "@snap/camera-kit": "1.20.0",
         "@stripe/react-stripe-js": "^6.7.0",
         "@stripe/stripe-js": "^9.9.0",
         "@supabase/supabase-js": "^2.112.3",
@@ -674,9 +674,9 @@
 
     "@smithy/types": ["@smithy/types@4.16.1", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@smithy/types/-/types-4.16.1.tgz", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-0JFs3V2y2M9tKW5na/qxe69Zv+uxLMO7QBbhxF/FHu/Gp2NFZAAL9tWl9PU02xxo07pb3G9FTyjNc6D5uZrJIg=="],
 
-    "@snap/camera-kit": ["@snap/camera-kit@1.18.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@snap/camera-kit/-/camera-kit-1.18.0.tgz", { "dependencies": { "@bufbuild/protobuf": "^2.0.0", "@improbable-eng/grpc-web": "^0.15.0", "@snap/state-management": "^1.18.0", "@snap/ts-inject": "^0.3.1", "@types/trusted-types": "^2.0.7", "browser-fs-access": "^0.38.0", "browser-headers": "^0.4.1", "rxjs": "^7.5.7", "tslib": "^2.5.0", "uuid": "^10.0.0", "wasm-feature-detect": "^1.8.0" } }, "sha512-zqM2SUvq9nnLsI3Er4bA2CQruRMUkvJdt8NplLhPEaoOXwoEA21ov2TNIAHFuFSJpySC88ItVqRuKDJ4rIfFSw=="],
+    "@snap/camera-kit": ["@snap/camera-kit@1.20.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@snap/camera-kit/-/camera-kit-1.20.0.tgz", { "dependencies": { "@bufbuild/protobuf": "^2.0.0", "@improbable-eng/grpc-web": "^0.15.0", "@snap/state-management": "^1.20.0", "@snap/ts-inject": "^0.3.1", "@types/trusted-types": "^2.0.7", "browser-fs-access": "^0.38.0", "browser-headers": "^0.4.1", "rxjs": "^7.5.7", "tslib": "^2.5.0", "uuid": "^10.0.0", "wasm-feature-detect": "^1.8.0" } }, "sha512-h3kFKjpXNQ9Wkq8ifF6/1fzd95DU7ApnkVKZ6mNcC7ci7FBkEuLQ9rFeDlLMB9bZrP8vgh991EDeSvcBPWjCtQ=="],
 
-    "@snap/state-management": ["@snap/state-management@1.18.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@snap/state-management/-/state-management-1.18.0.tgz", { "peerDependencies": { "rxjs": "^7.5.7" } }, "sha512-HTDhOAOvI4EC3Q6AaiJB7AOyHMPegbhBpFsd7FmcRfRXnwzngdchlftrmaer4f1NfGXPh6AbpRx6w/7DYUKbkA=="],
+    "@snap/state-management": ["@snap/state-management@1.20.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@snap/state-management/-/state-management-1.20.0.tgz", { "peerDependencies": { "rxjs": "^7.5.7" } }, "sha512-9esiGzBPwht6qUG8AsOKfCicr3sT3IfnbRKax+GevTMVZKqn0n72JD59jdFLKFChkRthatB58hK9OgX6VZR9kA=="],
 
     "@snap/ts-inject": ["@snap/ts-inject@0.3.2", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@snap/ts-inject/-/ts-inject-0.3.2.tgz", {}, "sha512-qfJeleX3vhyPaQcwmtxZVr9tLQsm0/yZcSHAdJIX+f7CUP+kmf2K+XxBCUrUBVfPQci2Mai3CNZG7Rnk5J2G7w=="],
 
