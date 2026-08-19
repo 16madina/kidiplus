@@ -36,7 +36,7 @@ export function CameraKitPreview({
 
     void (async () => {
       try {
-        const pipeline = await createCameraKitPipeline({
+        const pipeline = await createBridgeWebPipeline({
           source: track,
           mirror: false, // miroir géré en CSS pour l'aperçu
           cameraType: mirrored ? "user" : "environment",
