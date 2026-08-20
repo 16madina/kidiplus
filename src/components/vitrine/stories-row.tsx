@@ -97,13 +97,12 @@ export function StoriesRow({
                 className="block h-full w-full overflow-hidden rounded-full"
                 style={{ border: `2px solid ${avatarBorder}` }}
               >
-                <img
-                  src={s.seller?.avatar_url || s.media_url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
+                <StoryThumb
+                  srcs={[s.seller?.avatar_url, s.poster_url, s.media_url]}
+                  name={name}
                 />
               </span>
+
             </span>
             <span
               className="w-full truncate text-center text-[10px] font-medium"
