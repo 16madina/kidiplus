@@ -311,22 +311,11 @@ private extension KidiCameraKitPlugin {
             let arInput = ARSessionInput()
 
             if !self.sessionStarted {
-                cameraKit.start(
-                    input: input,
-                    arInput: arInput,
-                    cameraPosition: self.cameraPosition,
-                    videoOrientation: .portrait,
-                    dataProvider: DataProviderComponent(
-                        deviceMotion: nil,
-                        userData: nil,
-                        lensHint: nil,
-                        location: nil,
-                        mediaPicker: nil
-                    ),
-                    hintDelegate: nil,
-                    textInputContextProvider: nil,
-                    agreementsPresentationContextProvider: nil
-                )
+                // Prefer Snap's default start (front + portrait). Avoids passing
+                // AVCaptureVideoOrientation, which Apple deprecated in iOS 17 —
+                // Snap's longer overloads still require that type in their headers.
+                cameraKit.start(input: input, arInput: arInput)
+                cameraKit.cameraPosition = self.cameraPosition
                 self.sessionStarted = true
             } else {
                 cameraKit.cameraPosition = self.cameraPosition

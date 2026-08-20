@@ -352,7 +352,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.2;
-				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\" -Xcc -Wno-deprecated-declarations";
+				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.kidiplus.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -375,7 +375,6 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.2;
-				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -Wno-deprecated-declarations";
 				PRODUCT_BUNDLE_IDENTIFIER = com.kidiplus.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
