@@ -56,6 +56,44 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
         });
 
+        // ---- Idempotency ---------------------------------------------------
+        // Stripe delivers each event at-least-once (and retries for 3 days on
+        // non-2xx). Claim the event id in a ledger BEFORE doing any crediting:
+        //  - 'claimed' / 'retry'  → we own it, process now
+        //  - 'duplicate'          → already processed, ack 200 and do nothing
+        //  - 'in_flight'          → another delivery is mid-processing, ack 200
+        // On failure we mark the row 'failed' and return 500 so Stripe retries;
+        // the next delivery re-claims it as 'retry'.
+        let claim: string | null = null;
+        try {
+          const { data, error } = await admin.rpc("claim_stripe_webhook_event", {
+            _event_id: event.id,
+            _event_type: event.type,
+          });
+          if (error) throw error;
+          claim = typeof data === "string" ? data : null;
+        } catch {
+          // Ledger unavailable → ask Stripe to retry rather than risk a
+          // double credit or a silently dropped event.
+          return new Response("idempotency_unavailable", { status: 500 });
+        }
+
+        if (claim === "duplicate" || claim === "in_flight") {
+          return new Response("ok", { status: 200 });
+        }
+
+        const finish = async (ok: boolean, err?: string) => {
+          try {
+            await admin.rpc("complete_stripe_webhook_event", {
+              _event_id: event.id,
+              _ok: ok,
+              _error: err ?? null,
+            });
+          } catch {
+            /* best-effort bookkeeping */
+          }
+        };
+
         try {
           if (event.type === "payment_intent.succeeded") {
             const intent = event.data.object as Stripe.PaymentIntent;
