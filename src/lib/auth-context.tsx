@@ -217,8 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ...(phone ? { phone } : {}),
           })
           .eq("id", uid)
-          .then(() => undefined)
-          .catch(() => undefined);
+          .then(() => undefined, () => undefined);
       }
       return { needsEmailConfirmation };
     },

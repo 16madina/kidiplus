@@ -220,7 +220,7 @@ export function SignUpScreen({
             className="flex h-12 w-full items-center justify-between rounded-2xl border border-border bg-background px-3 text-left text-[14px] font-medium"
           >
             <span className="inline-flex items-center gap-2 truncate">
-              {selected?.code ? <CountryFlag code={selected.code} size={18} /> : null}
+              {selected?.code ? <CountryFlag code={selected.code} className="text-[18px]" /> : null}
               {country || t("auth.signUp.countryPlaceholder", "Choisir un pays")}
             </span>
             <ChevronDown size={16} className="shrink-0 text-muted-foreground" />
@@ -237,7 +237,7 @@ export function SignUpScreen({
                     setCountryOpen(false);
                   }}
                 >
-                  {c.code ? <CountryFlag code={c.code} size={18} /> : <span>🌍</span>}
+                  {c.code ? <CountryFlag code={c.code} className="text-[18px]" /> : <span>🌍</span>}
                   {c.name}
                 </button>
               ))}
