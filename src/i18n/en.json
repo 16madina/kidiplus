@@ -925,6 +925,11 @@
       "displayName": "Display name",
       "displayNamePlaceholder": "What should we call you?",
       "email": "Email",
+      "emailConfirm": "Confirm your email",
+      "country": "Country",
+      "countryPlaceholder": "Choose a country",
+      "phone": "Phone",
+      "phonePlaceholder": "+225 07 00 00 00 00",
       "password": "Password",
       "passwordHint": "At least 8 characters.",
       "submit": "Create account",
@@ -938,7 +943,26 @@
       "resendSending": "Sending…",
       "resendWait": "Resend in {{seconds}}s",
       "resendSent": "Link sent again. Check your inbox.",
-      "terms": "By continuing, you agree to our terms and privacy policy."
+      "supabaseConfirmHint": "Account created, but no session yet. Turn off “Confirm email” in Supabase Auth (KiDi+ uses its own confirmation).",
+      "terms": "By continuing, you agree to our terms and privacy policy.",
+      "promoCode": "Promo code (optional)"
+    },
+    "emailConfirm": {
+      "banner": "Confirm your email address",
+      "bannerRestricted": "Confirm your email to sell and withdraw",
+      "graceLeft": "{{hours}} h left before restriction",
+      "cta": "Confirm",
+      "gateTitle": "Confirm your email",
+      "gateBody": "To sell, go live, or request a payout, confirm that this email belongs to you.",
+      "sheetTitle": "Confirm my email",
+      "sheetBody": "We send a KiDi+ code (not a generic mail). Enter it below.",
+      "codeLabel": "6-digit code",
+      "codeInvalid": "Enter the 6-digit code",
+      "codeSent": "Code sent — check your inbox",
+      "verify": "Validate code",
+      "resend": "Resend code",
+      "resendWait": "Resend in {{seconds}}s",
+      "success": "Email confirmed ✓"
     },
     "forgot": {
       "title": "Forgot password",
@@ -961,6 +985,9 @@
     "validation": {
       "emailRequired": "Email is required.",
       "emailInvalid": "Invalid email address.",
+      "emailMismatch": "The two emails don’t match.",
+      "countryRequired": "Choose your country.",
+      "phoneRequired": "Enter a valid phone number.",
       "passwordRequired": "Password is required.",
       "passwordShort": "Password must be at least 6 characters.",
       "nameRequired": "Name is required."

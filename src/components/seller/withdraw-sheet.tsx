@@ -26,12 +26,14 @@ import {
   type ConnectStatus,
 } from "@/lib/stripe-connect-client";
 import { useAuth } from "@/lib/auth-context";
+import { useEmailConfirmGate } from "@/components/auth/email-confirm-banner";
 import {
   payoutDailyCap,
   payoutWeeklyCap,
   riskTierFromProfile,
 } from "@/lib/risk-limits";
 import { BrandBadge } from "@/components/brand/brand-badge";
+import { isEmailConfirmRestricted } from "@/lib/email-confirm";
 
 const PAYPAL_BLUE = "#003087";
 const PAYPAL_BLUE_LIGHT = "#0070BA";
@@ -87,6 +89,7 @@ export function WithdrawSheet({
 }) {
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
+  const emailGate = useEmailConfirmGate();
   const riskTier = riskTierFromProfile(profile);
   const dayCap = payoutDailyCap(riskTier, currency);
   const weekCap = payoutWeeklyCap(riskTier, currency);
@@ -227,6 +230,10 @@ export function WithdrawSheet({
 
 
   const submit = async () => {
+    if (isEmailConfirmRestricted(profile) || emailGate.isRestricted) {
+      emailGate.guard(() => undefined);
+      return;
+    }
     setBusy(true);
     haptic.medium();
     const r = await requestPayout(amount, method, destination, source);
@@ -294,6 +301,7 @@ export function WithdrawSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} heightPercent={82}>
+      {emailGate.gate}
       <div className="flex h-full flex-col px-5 pb-5 pt-2">
         <AnimatePresence mode="wait">
           {step === "success" ? (

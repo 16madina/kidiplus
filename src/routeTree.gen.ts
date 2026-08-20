@@ -48,6 +48,7 @@ import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as LiveIdRouteImport } from './routes/live.$id'
 import { Route as PreviewDefiPlusRouteImport } from './routes/preview.defi-plus'
+import { Route as PreviewGiftBaobabRouteImport } from './routes/preview.gift-baobab'
 import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -60,6 +61,8 @@ import { Route as ApiConnectLoginLinkRouteImport } from './routes/api/connect.lo
 import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
 import { Route as ApiConnectPayoutRouteImport } from './routes/api/connect.payout'
 import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
+import { Route as ApiEmailConfirmSendRouteImport } from './routes/api/email-confirm.send'
+import { Route as ApiEmailConfirmVerifyRouteImport } from './routes/api/email-confirm.verify'
 import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
 import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
 import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
@@ -299,6 +302,11 @@ const PreviewDefiPlusRoute = PreviewDefiPlusRouteImport.update({
   path: '/preview/defi-plus',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviewGiftBaobabRoute = PreviewGiftBaobabRouteImport.update({
+  id: '/preview/gift-baobab',
+  path: '/preview/gift-baobab',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SellOnboardingRoute = SellOnboardingRouteImport.update({
   id: '/sell/onboarding',
   path: '/sell/onboarding',
@@ -358,6 +366,16 @@ const ApiConnectPayoutRoute = ApiConnectPayoutRouteImport.update({
 const ApiConnectStatusRoute = ApiConnectStatusRouteImport.update({
   id: '/api/connect/status',
   path: '/api/connect/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEmailConfirmSendRoute = ApiEmailConfirmSendRouteImport.update({
+  id: '/api/email-confirm/send',
+  path: '/api/email-confirm/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEmailConfirmVerifyRoute = ApiEmailConfirmVerifyRouteImport.update({
+  id: '/api/email-confirm/verify',
+  path: '/api/email-confirm/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
@@ -592,6 +610,7 @@ export interface FileRoutesByFullPath {
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
+  '/preview/gift-baobab': typeof PreviewGiftBaobabRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -604,6 +623,8 @@ export interface FileRoutesByFullPath {
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
+  '/api/email-confirm/send': typeof ApiEmailConfirmSendRoute
+  '/api/email-confirm/verify': typeof ApiEmailConfirmVerifyRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -682,6 +703,7 @@ export interface FileRoutesByTo {
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
+  '/preview/gift-baobab': typeof PreviewGiftBaobabRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -694,6 +716,8 @@ export interface FileRoutesByTo {
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
+  '/api/email-confirm/send': typeof ApiEmailConfirmSendRoute
+  '/api/email-confirm/verify': typeof ApiEmailConfirmVerifyRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -773,6 +797,7 @@ export interface FileRoutesById {
   '/join/$code': typeof JoinCodeRoute
   '/live/$id': typeof LiveIdRoute
   '/preview/defi-plus': typeof PreviewDefiPlusRoute
+  '/preview/gift-baobab': typeof PreviewGiftBaobabRoute
   '/sell/onboarding': typeof SellOnboardingRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -785,6 +810,8 @@ export interface FileRoutesById {
   '/api/connect/onboard': typeof ApiConnectOnboardRoute
   '/api/connect/payout': typeof ApiConnectPayoutRoute
   '/api/connect/status': typeof ApiConnectStatusRoute
+  '/api/email-confirm/send': typeof ApiEmailConfirmSendRoute
+  '/api/email-confirm/verify': typeof ApiEmailConfirmVerifyRoute
   '/api/facebook/disconnect': typeof ApiFacebookDisconnectRoute
   '/api/facebook/pages': typeof ApiFacebookPagesRoute
   '/api/facebook/restream': typeof ApiFacebookRestreamRoute
@@ -865,6 +892,7 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/live/$id'
     | '/preview/defi-plus'
+    | '/preview/gift-baobab'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -877,6 +905,8 @@ export interface FileRouteTypes {
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
+    | '/api/email-confirm/send'
+    | '/api/email-confirm/verify'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -955,6 +985,7 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/live/$id'
     | '/preview/defi-plus'
+    | '/preview/gift-baobab'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -967,6 +998,8 @@ export interface FileRouteTypes {
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
+    | '/api/email-confirm/send'
+    | '/api/email-confirm/verify'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -1045,6 +1078,7 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/live/$id'
     | '/preview/defi-plus'
+    | '/preview/gift-baobab'
     | '/sell/onboarding'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -1057,6 +1091,8 @@ export interface FileRouteTypes {
     | '/api/connect/onboard'
     | '/api/connect/payout'
     | '/api/connect/status'
+    | '/api/email-confirm/send'
+    | '/api/email-confirm/verify'
     | '/api/facebook/disconnect'
     | '/api/facebook/pages'
     | '/api/facebook/restream'
@@ -1136,6 +1172,7 @@ export interface RootRouteChildren {
   JoinCodeRoute: typeof JoinCodeRoute
   LiveIdRoute: typeof LiveIdRoute
   PreviewDefiPlusRoute: typeof PreviewDefiPlusRoute
+  PreviewGiftBaobabRoute: typeof PreviewGiftBaobabRoute
   SellOnboardingRoute: typeof SellOnboardingRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -1146,6 +1183,8 @@ export interface RootRouteChildren {
   ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
   ApiConnectPayoutRoute: typeof ApiConnectPayoutRoute
   ApiConnectStatusRoute: typeof ApiConnectStatusRoute
+  ApiEmailConfirmSendRoute: typeof ApiEmailConfirmSendRoute
+  ApiEmailConfirmVerifyRoute: typeof ApiEmailConfirmVerifyRoute
   ApiFacebookDisconnectRoute: typeof ApiFacebookDisconnectRoute
   ApiFacebookPagesRoute: typeof ApiFacebookPagesRoute
   ApiFacebookRestreamRoute: typeof ApiFacebookRestreamRoute
@@ -1457,6 +1496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreviewDefiPlusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/preview/gift-baobab': {
+      id: '/preview/gift-baobab'
+      path: '/preview/gift-baobab'
+      fullPath: '/preview/gift-baobab'
+      preLoaderRoute: typeof PreviewGiftBaobabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sell/onboarding': {
       id: '/sell/onboarding'
       path: '/sell/onboarding'
@@ -1539,6 +1585,20 @@ declare module '@tanstack/react-router' {
       path: '/api/connect/status'
       fullPath: '/api/connect/status'
       preLoaderRoute: typeof ApiConnectStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/email-confirm/send': {
+      id: '/api/email-confirm/send'
+      path: '/api/email-confirm/send'
+      fullPath: '/api/email-confirm/send'
+      preLoaderRoute: typeof ApiEmailConfirmSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/email-confirm/verify': {
+      id: '/api/email-confirm/verify'
+      path: '/api/email-confirm/verify'
+      fullPath: '/api/email-confirm/verify'
+      preLoaderRoute: typeof ApiEmailConfirmVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/facebook/disconnect': {
@@ -1885,6 +1945,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinCodeRoute: JoinCodeRoute,
   LiveIdRoute: LiveIdRoute,
   PreviewDefiPlusRoute: PreviewDefiPlusRoute,
+  PreviewGiftBaobabRoute: PreviewGiftBaobabRoute,
   SellOnboardingRoute: SellOnboardingRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
@@ -1895,6 +1956,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiConnectOnboardRoute: ApiConnectOnboardRoute,
   ApiConnectPayoutRoute: ApiConnectPayoutRoute,
   ApiConnectStatusRoute: ApiConnectStatusRoute,
+  ApiEmailConfirmSendRoute: ApiEmailConfirmSendRoute,
+  ApiEmailConfirmVerifyRoute: ApiEmailConfirmVerifyRoute,
   ApiFacebookDisconnectRoute: ApiFacebookDisconnectRoute,
   ApiFacebookPagesRoute: ApiFacebookPagesRoute,
   ApiFacebookRestreamRoute: ApiFacebookRestreamRoute,
@@ -1933,13 +1996,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

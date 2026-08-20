@@ -13,6 +13,7 @@ import { BroadcastLive } from "@/components/broadcast/broadcast-live";
 import { BroadcastSummary } from "@/components/broadcast/broadcast-summary";
 import { GoLiveEntryScreen } from "@/screens/golive-entry-screen";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
+import { useEmailConfirmGate } from "@/components/auth/email-confirm-banner";
 import { useAuthPrompt } from "@/lib/auth-prompt-context";
 import { EASE_IOS } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
@@ -175,8 +176,13 @@ function LiveScreenAuthed() {
   const [flipping, setFlipping] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const emailGate = useEmailConfirmGate();
 
   const activateSeller = async () => {
+    if (emailGate.isRestricted) {
+      emailGate.guard(() => undefined);
+      return;
+    }
     setConfirmOpen(false);
     setFlipping(true);
     try {
@@ -347,12 +353,13 @@ function LiveScreenAuthed() {
               <AlertDialogCancel>
                 {t("common.no", { defaultValue: "Non" })}
               </AlertDialogCancel>
-              <AlertDialogAction onClick={() => { void activateSeller(); }}>
+              <AlertDialogAction onClick={() => { emailGate.guard(() => { void activateSeller(); }); }}>
                 {t("broadcast.createShopConfirm", { defaultValue: "Oui, créer ma boutique" })}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        {emailGate.gate}
       </motion.div>
     );
   }

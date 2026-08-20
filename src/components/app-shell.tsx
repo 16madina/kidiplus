@@ -28,6 +28,7 @@ import {
   type OpenActivityPayload,
 } from "@/lib/push-router";
 import { ActivityOverlayProvider } from "@/lib/activity-overlay-context";
+import { EmailConfirmBanner } from "@/components/auth/email-confirm-banner";
 import { fetchLiveById } from "@/lib/lives-db";
 import { SettingsProvider } from "@/lib/settings-context";
 import { PushProvider } from "@/lib/push";
@@ -471,6 +472,11 @@ function AppShellInner() {
       }
       style={{ isolation: "isolate" }}
     >
+      {!immersive && !hideTabs ? (
+        <div data-kp-shell-chrome>
+          <EmailConfirmBanner />
+        </div>
+      ) : null}
       <div data-kp-shell-chrome>
       <TabPane visible={active === "home"}>
         <ErrorBoundary boundary="tab_home"><HomeScreen /></ErrorBoundary>

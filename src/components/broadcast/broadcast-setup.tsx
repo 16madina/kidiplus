@@ -33,6 +33,7 @@ import { useImmersiveScope } from "@/lib/immersive-context";
 import { TabVisibilityContext } from "@/components/app-shell";
 import { ScheduleLiveSetup } from "./schedule-live-setup";
 import { useAuth } from "@/lib/auth-context";
+import { useEmailConfirmGate } from "@/components/auth/email-confirm-banner";
 import { resolveAvatarUrl } from "@/lib/avatar-url";
 import { CoverCropperSheet } from "./cover-cropper-sheet";
 import { YoutubeConnectCard } from "./youtube-connect-card";
@@ -70,6 +71,8 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     loadLenses();
   }, [loadLenses]);
+  const { profile } = useAuth();
+  const emailGate = useEmailConfirmGate();
   const [showMoreCats, setShowMoreCats] = useState(false);
 
   // Full-screen immersive flow: hide the app's bottom tab bar while the setup
@@ -91,7 +94,6 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   // so the user can launch a live without extra taps. They can still tap the
   // cover or edit the title to override. avatar_url is a storage path — we
   // must resolve it to a signed URL before it can be shown/uploaded.
-  const { profile } = useAuth();
   useEffect(() => {
     if (!profile) return;
     if (!b.title.trim() && profile.display_name) {
@@ -217,6 +219,10 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
 
   const launch = async () => {
     if (launching) return;
+    if (emailGate.isRestricted) {
+      emailGate.guard(() => undefined);
+      return;
+    }
     // Explicit, user-visible validation so the disabled button doesn't feel
     // silently broken.
     const trimmed = b.title.trim();
@@ -900,6 +906,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
           void runLaunch();
         }}
       />
+      {emailGate.gate}
       <SellerDeliverySettingsScreen
         open={deliverySettingsOpen}
         onClose={() => {

@@ -23,6 +23,8 @@ export type Profile = {
   is_seller: boolean;
   is_admin: boolean;
   country: string | null;
+  phone?: string | null;
+  email_verified_at?: string | null;
   currency: "XOF" | "EUR" | "CAD" | "USD" | "GBP";
   language: "fr" | "en";
   moderation_status?: "active" | "suspended" | "banned";
@@ -52,6 +54,8 @@ type AuthCtx = {
     email: string;
     password: string;
     displayName: string;
+    country?: string;
+    phone?: string;
   }) => Promise<{ needsEmailConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -74,7 +78,7 @@ const GUEST_STORAGE_KEY = "kidi:guestMode";
  * and fail, leaving profile=null (Live tab infinite spinner, profile updates broken).
  */
 export const PROFILE_SAFE_SELECT =
-  "id, display_name, handle, avatar_url, bio, is_seller, country, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_at";
+  "id, display_name, handle, avatar_url, bio, is_seller, country, phone, email_verified_at, created_at, language, currency, is_admin, terms_accepted_at, terms_version, age_confirmed_at, moderation_status, followers_count, following_count, rating_avg, rating_count, banner_url, is_verified, welcome_email_sent, is_referred, is_frozen, frozen_at";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -187,19 +191,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchProfile]);
 
   const signUp = useCallback<AuthCtx["signUp"]>(
-    async ({ email, password, displayName }) => {
-      const redirectTo =
-        typeof window !== "undefined" ? window.location.origin : undefined;
+    async ({ email, password, displayName, country, phone }) => {
+      // Soft email confirm is handled by KiDi+ OTP emails — keep Supabase
+      // "Confirm email" OFF so the user gets a session immediately.
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectTo,
-          data: { display_name: displayName },
+          data: {
+            display_name: displayName,
+            country: country ?? null,
+            phone: phone ?? null,
+          },
         },
       });
       if (error) throw error;
       const needsEmailConfirmation = !data.session;
+      // Persist country / phone as soon as we have a user row.
+      const uid = data.user?.id ?? data.session?.user?.id;
+      if (uid && (country || phone)) {
+        void supabase
+          .from("profiles")
+          .update({
+            ...(country ? { country } : {}),
+            ...(phone ? { phone } : {}),
+          })
+          .eq("id", uid)
+          .then(() => undefined)
+          .catch(() => undefined);
+      }
       return { needsEmailConfirmation };
     },
     [],

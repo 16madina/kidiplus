@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Loader2, Mail, Check, X as XIcon } from "lucide-react";
+import { Eye, EyeOff, Loader2, Check, X as XIcon, ChevronDown } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
@@ -9,6 +9,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { TERMS_VERSION } from "@/lib/legal-content";
 import { validatePromoCode, applyPromoCode } from "@/lib/referrals-db";
+import { CountryFlag } from "@/components/country-flag";
+
+type CountryChoice = { code: string; name: string; value: string };
+const COUNTRIES: CountryChoice[] = [
+  { code: "FR", name: "France", value: "🇫🇷 France" },
+  { code: "BE", name: "Belgique", value: "🇧🇪 Belgique" },
+  { code: "CH", name: "Suisse", value: "🇨🇭 Suisse" },
+  { code: "CA", name: "Canada", value: "🇨🇦 Canada" },
+  { code: "CI", name: "Côte d'Ivoire", value: "🇨🇮 Côte d'Ivoire" },
+  { code: "SN", name: "Sénégal", value: "🇸🇳 Sénégal" },
+  { code: "MA", name: "Maroc", value: "🇲🇦 Maroc" },
+  { code: "DZ", name: "Algérie", value: "🇩🇿 Algérie" },
+  { code: "TN", name: "Tunisie", value: "🇹🇳 Tunisie" },
+  { code: "CM", name: "Cameroun", value: "🇨🇲 Cameroun" },
+  { code: "CD", name: "RD Congo", value: "🇨🇩 RD Congo" },
+  { code: "GA", name: "Gabon", value: "🇬🇦 Gabon" },
+  { code: "ML", name: "Mali", value: "🇲🇱 Mali" },
+  { code: "BF", name: "Burkina Faso", value: "🇧🇫 Burkina Faso" },
+  { code: "", name: "Autre", value: "🌍 Autre" },
+];
 
 export function SignUpScreen({
   onBack,
@@ -18,23 +38,23 @@ export function SignUpScreen({
   onGoSignIn: () => void;
 }) {
   const { t } = useTranslation();
-  const { signUp, resendConfirmationEmail } = useAuth();
-  const [resendBusy, setResendBusy] = useState(false);
-  const [resendWait, setResendWait] = useState(0);
+  const { signUp } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [emailConfirm, setEmailConfirm] = useState("");
+  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("");
+  const [countryOpen, setCountryOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [needsConfirm, setNeedsConfirm] = useState<string | null>(null);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [confirmAge, setConfirmAge] = useState(false);
   const [openLegal, setOpenLegal] = useState<null | "terms" | "privacy">(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoValid, setPromoValid] = useState<null | boolean>(null);
 
-  // Prefill from /join/CODE or /download?ref= (Universal Link / store fallback).
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem("kidi.referral_code")?.trim();
@@ -46,13 +66,19 @@ export function SignUpScreen({
 
   useEffect(() => {
     const c = promoCode.trim();
-    if (!c) { setPromoValid(null); return; }
+    if (!c) {
+      setPromoValid(null);
+      return;
+    }
     let alive = true;
     const id = setTimeout(async () => {
       const ok = await validatePromoCode(c);
       if (alive) setPromoValid(ok);
     }, 350);
-    return () => { alive = false; clearTimeout(id); };
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
   }, [promoCode]);
 
   const validate = () => {
@@ -61,6 +87,16 @@ export function SignUpScreen({
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return t("auth.validation.emailInvalid");
+    }
+    if (email.trim().toLowerCase() !== emailConfirm.trim().toLowerCase()) {
+      return t("auth.validation.emailMismatch", "Les deux emails ne correspondent pas.");
+    }
+    if (!country.trim()) {
+      return t("auth.validation.countryRequired", "Choisis ton pays.");
+    }
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 8) {
+      return t("auth.validation.phoneRequired", "Entre un numéro de téléphone valide.");
     }
     if (password.length < 8) {
       return t("auth.errors.passwordWeak");
@@ -85,27 +121,44 @@ export function SignUpScreen({
         email: email.trim(),
         password,
         displayName: displayName.trim(),
+        country: country.trim(),
+        phone: phone.trim(),
       });
       haptic.success();
-      // Best-effort: persist acceptance timestamps on the profile.
       const now = new Date().toISOString();
       void (async () => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
           await (supabase as any).from("profiles").update({
             terms_accepted_at: now,
             terms_version: TERMS_VERSION,
             age_confirmed_at: now,
+            country: country.trim(),
+            phone: phone.trim(),
+            // Soft confirm: leave email_verified_at null for new accounts.
+            email_verified_at: null,
           }).eq("id", user.id);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       })();
-      // Apply promo code if provided and valid (best-effort, non-blocking).
       if (promoCode.trim() && promoValid) {
-        void applyPromoCode(promoCode).catch(() => { /* ignore */ });
+        void applyPromoCode(promoCode).catch(() => {
+          /* ignore */
+        });
       }
+      // Soft confirm: user continues in-app. If Supabase still requires
+      // confirm-email, there is no session — surface a clear hint.
       if (needsEmailConfirmation) {
-        setNeedsConfirm(email.trim());
+        setError(
+          t(
+            "auth.signUp.supabaseConfirmHint",
+            "Compte créé, mais la session n’est pas ouverte. Désactive « Confirm email » dans Supabase Auth pour KiDi+ (on utilise notre propre confirmation).",
+          ),
+        );
       }
     } catch (err) {
       haptic.error();
@@ -115,78 +168,7 @@ export function SignUpScreen({
     }
   };
 
-  if (needsConfirm) {
-    return (
-      <AuthScreenShell title="" onBack={onBack}>
-        <div className="flex h-full flex-col items-center justify-center px-2 text-center">
-          <div
-            className="mb-4 grid h-16 w-16 place-items-center rounded-2xl"
-            style={{
-              background:
-                "linear-gradient(135deg, oklch(0.9 0.05 15), oklch(0.85 0.08 25))",
-            }}
-          >
-            <Mail size={28} color="oklch(0.5 0.24 20)" />
-          </div>
-          <h2 className="text-[24px] font-bold">{t("auth.signUp.checkEmail")} 📩</h2>
-          <p className="mt-2 max-w-xs text-[14px] text-muted-foreground">
-            {t("auth.signUp.checkEmailBody")}
-            <br />
-            <span className="font-semibold text-foreground">{needsConfirm}</span>
-          </p>
-          <p className="mt-3 max-w-xs text-[13px] text-muted-foreground">
-            {t("auth.signUp.checkEmailHint")}
-          </p>
-          {error && (
-            <p className="mt-3 max-w-xs text-[13px] text-destructive">{error}</p>
-          )}
-          <Press
-            disabled={resendBusy || resendWait > 0}
-            onClick={async () => {
-              if (!needsConfirm || resendBusy || resendWait > 0) return;
-              setResendBusy(true);
-              try {
-                await resendConfirmationEmail(needsConfirm);
-                haptic.success();
-                setResendWait(30);
-                const id = window.setInterval(() => {
-                  setResendWait((s) => {
-                    if (s <= 1) {
-                      window.clearInterval(id);
-                      return 0;
-                    }
-                    return s - 1;
-                  });
-                }, 1000);
-              } catch (err) {
-                haptic.error();
-                setError(frenchAuthError(err));
-              } finally {
-                setResendBusy(false);
-              }
-            }}
-            className="!min-h-12 mt-6 h-12 w-full rounded-2xl border border-border text-[15px] font-semibold text-foreground disabled:opacity-60"
-          >
-            {resendBusy
-              ? t("auth.signUp.resendSending")
-              : resendWait > 0
-                ? t("auth.signUp.resendWait", { seconds: resendWait })
-                : t("auth.signUp.resend")}
-          </Press>
-          <Press
-            onClick={onGoSignIn}
-            className="!min-h-12 mt-3 h-12 w-full rounded-2xl text-[15px] font-bold text-white"
-            style={{
-              background:
-                "linear-gradient(135deg, oklch(0.7 0.26 15), oklch(0.62 0.24 20))",
-            }}
-          >
-            {t("auth.welcome.signIn")}
-          </Press>
-        </div>
-      </AuthScreenShell>
-    );
-  }
+  const selected = COUNTRIES.find((c) => c.value === country);
 
   return (
     <AuthScreenShell title={t("auth.welcome.signUp")} onBack={onBack}>
@@ -199,9 +181,7 @@ export function SignUpScreen({
         </p>
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-3">
-
-
+      <form onSubmit={submit} className="flex flex-col gap-3 pb-6">
         <AuthInput
           label={t("auth.signUp.displayName")}
           type="text"
@@ -219,6 +199,60 @@ export function SignUpScreen({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="toi@exemple.com"
+        />
+        <AuthInput
+          label={t("auth.signUp.emailConfirm", "Confirme ton email")}
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          value={emailConfirm}
+          onChange={(e) => setEmailConfirm(e.target.value)}
+          placeholder="toi@exemple.com"
+        />
+
+        <div>
+          <p className="mb-1.5 text-[12px] font-semibold text-muted-foreground">
+            {t("auth.signUp.country", "Pays")}
+          </p>
+          <Press
+            type="button"
+            onClick={() => setCountryOpen((o) => !o)}
+            className="flex h-12 w-full items-center justify-between rounded-2xl border border-border bg-background px-3 text-left text-[14px] font-medium"
+          >
+            <span className="inline-flex items-center gap-2 truncate">
+              {selected?.code ? <CountryFlag code={selected.code} size={18} /> : null}
+              {country || t("auth.signUp.countryPlaceholder", "Choisir un pays")}
+            </span>
+            <ChevronDown size={16} className="shrink-0 text-muted-foreground" />
+          </Press>
+          {countryOpen ? (
+            <div className="mt-1 max-h-48 overflow-y-auto rounded-2xl border border-border bg-background shadow-sm">
+              {COUNTRIES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] active:bg-muted"
+                  onClick={() => {
+                    setCountry(c.value);
+                    setCountryOpen(false);
+                  }}
+                >
+                  {c.code ? <CountryFlag code={c.code} size={18} /> : <span>🌍</span>}
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <AuthInput
+          label={t("auth.signUp.phone", "Téléphone")}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder={t("auth.signUp.phonePlaceholder", "+225 07 00 00 00 00")}
         />
 
         <div className="relative">
@@ -246,7 +280,9 @@ export function SignUpScreen({
             type="text"
             autoCapitalize="characters"
             value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+            onChange={(e) =>
+              setPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))
+            }
             placeholder="KIDIPLUS"
             maxLength={20}
           />
@@ -261,8 +297,6 @@ export function SignUpScreen({
           )}
         </div>
 
-
-
         <label className="mt-2 flex items-start gap-2 text-[12.5px] leading-snug text-foreground/90">
           <input
             type="checkbox"
@@ -274,8 +308,20 @@ export function SignUpScreen({
             <Trans
               i18nKey="consent.checkbox"
               components={{
-                t: <button type="button" onClick={() => setOpenLegal("terms")} className="font-bold underline underline-offset-2" />,
-                p: <button type="button" onClick={() => setOpenLegal("privacy")} className="font-bold underline underline-offset-2" />,
+                t: (
+                  <button
+                    type="button"
+                    onClick={() => setOpenLegal("terms")}
+                    className="font-bold underline underline-offset-2"
+                  />
+                ),
+                p: (
+                  <button
+                    type="button"
+                    onClick={() => setOpenLegal("privacy")}
+                    className="font-bold underline underline-offset-2"
+                  />
+                ),
               }}
             />
           </span>
@@ -329,7 +375,7 @@ export function SignUpScreen({
         </p>
       </form>
 
-      <LegalScreen open={openLegal === "terms"}   onClose={() => setOpenLegal(null)} kind="terms" />
+      <LegalScreen open={openLegal === "terms"} onClose={() => setOpenLegal(null)} kind="terms" />
       <LegalScreen open={openLegal === "privacy"} onClose={() => setOpenLegal(null)} kind="privacy" />
     </AuthScreenShell>
   );

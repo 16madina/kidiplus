@@ -925,6 +925,11 @@
       "displayName": "Nom affiché",
       "displayNamePlaceholder": "Comment on t'appelle ?",
       "email": "Email",
+      "emailConfirm": "Confirme ton email",
+      "country": "Pays",
+      "countryPlaceholder": "Choisir un pays",
+      "phone": "Téléphone",
+      "phonePlaceholder": "+225 07 00 00 00 00",
       "password": "Mot de passe",
       "passwordHint": "Au moins 8 caractères.",
       "submit": "Créer mon compte",
@@ -938,7 +943,26 @@
       "resendSending": "Envoi…",
       "resendWait": "Renvoyer dans {{seconds}}s",
       "resendSent": "Lien renvoyé. Vérifie ta boîte mail.",
-      "terms": "En continuant, tu acceptes nos conditions et notre politique de confidentialité."
+      "supabaseConfirmHint": "Compte créé, mais la session n’est pas ouverte. Désactive « Confirm email » dans Supabase Auth (KiDi+ utilise sa propre confirmation).",
+      "terms": "En continuant, tu acceptes nos conditions et notre politique de confidentialité.",
+      "promoCode": "Code promo (optionnel)"
+    },
+    "emailConfirm": {
+      "banner": "Confirme ton adresse email",
+      "bannerRestricted": "Confirme ton email pour vendre et retirer",
+      "graceLeft": "{{hours}} h restantes avant restriction",
+      "cta": "Confirmer",
+      "gateTitle": "Confirme ton email",
+      "gateBody": "Pour vendre, lancer un live ou demander un retrait, confirme que cette adresse email t’appartient.",
+      "sheetTitle": "Confirmer mon email",
+      "sheetBody": "On t’envoie un code KiDi+ (pas un mail générique). Entre-le ci-dessous.",
+      "codeLabel": "Code à 6 chiffres",
+      "codeInvalid": "Entre le code à 6 chiffres",
+      "codeSent": "Code envoyé — regarde ta boîte mail",
+      "verify": "Valider le code",
+      "resend": "Renvoyer le code",
+      "resendWait": "Renvoyer dans {{seconds}}s",
+      "success": "Email confirmé ✓"
     },
     "forgot": {
       "title": "Mot de passe oublié",
@@ -961,6 +985,9 @@
     "validation": {
       "emailRequired": "Email requis.",
       "emailInvalid": "Adresse email invalide.",
+      "emailMismatch": "Les deux emails ne correspondent pas.",
+      "countryRequired": "Choisis ton pays.",
+      "phoneRequired": "Entre un numéro de téléphone valide.",
       "passwordRequired": "Mot de passe requis.",
       "passwordShort": "Le mot de passe doit contenir au moins 6 caractères.",
       "nameRequired": "Nom requis."

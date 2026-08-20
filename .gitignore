@@ -47,3 +47,4 @@ migration-data/*.backup
 migration-data/backup-*/
 migration-data/*.saved.sql
 migration-data/storage-report/
+public/defi-plus/blender/seq
