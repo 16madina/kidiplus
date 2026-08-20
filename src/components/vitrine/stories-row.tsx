@@ -124,3 +124,39 @@ export function StoriesRow({
     </div>
   );
 }
+
+/** Vignette de story avec repli en cascade puis initiale (jamais d'image cassée). */
+function StoryThumb({
+  srcs,
+  name,
+}: {
+  srcs: (string | null | undefined)[];
+  name: string;
+}) {
+  const list = srcs.filter(
+    (u): u is string => !!u && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(u),
+  );
+  const [idx, setIdx] = useState(0);
+  const src = list[idx];
+
+  if (!src) {
+    return (
+      <span
+        className="grid h-full w-full place-items-center text-[16px] font-semibold text-white"
+        style={{ background: NAVY }}
+      >
+        {name.trim().charAt(0).toUpperCase() || "?"}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover"
+      draggable={false}
+      onError={() => setIdx((i) => i + 1)}
+    />
+  );
+}
