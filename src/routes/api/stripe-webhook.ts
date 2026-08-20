@@ -110,11 +110,15 @@ export const Route = createFileRoute("/api/stripe-webhook")({
                 ? Number(amountStr)
                 : intent.amount_received / divisor;
               if (userId && Number.isFinite(amount) && amount > 0) {
-                await admin.rpc("credit_wallet_topup", {
+                // credit_wallet_topup is itself idempotent on the PaymentIntent
+                // id; surface DB errors so the event is retried instead of
+                // being marked done with the wallet never credited.
+                const { error } = await admin.rpc("credit_wallet_topup", {
                   _user_id: userId,
                   _amount: amount,
                   _payment_intent_id: intent.id,
                 });
+                if (error) throw new Error(`credit_wallet_topup: ${error.message}`);
               }
             } else {
               // Regular order payment
