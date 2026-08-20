@@ -458,7 +458,8 @@ private extension KidiCameraKitPlugin {
         }
 
         try await room.localParticipant.publish(videoTrack: videoTrack)
-        try? await room.localParticipant.setMicrophone(enabled: true)
+        // Best-effort mic — failure must not abort video publish.
+        _ = try? await room.localParticipant.setMicrophone(enabled: true)
 
         print("[KidiCameraKit] LiveKit video published")
     }
