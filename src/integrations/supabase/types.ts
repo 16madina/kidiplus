@@ -2420,6 +2420,39 @@ export type Database = {
           },
         ]
       }
+      stripe_webhook_events: {
+        Row: {
+          attempts: number
+          claimed_at: string
+          event_id: string
+          event_type: string
+          first_seen_at: string
+          last_error: string | null
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string
+          event_id: string
+          event_type: string
+          first_seen_at?: string
+          last_error?: string | null
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string
+          event_id?: string
+          event_type?: string
+          first_seen_at?: string
+          last_error?: string | null
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -3147,6 +3180,14 @@ export type Database = {
       }
       block_user: { Args: { _blocked_id: string }; Returns: Json }
       claim_promo_code: { Args: { _token: string }; Returns: Json }
+      claim_stripe_webhook_event: {
+        Args: { _event_id: string; _event_type: string; _stale_after?: string }
+        Returns: string
+      }
+      complete_stripe_webhook_event: {
+        Args: { _error?: string; _event_id: string; _ok: boolean }
+        Returns: undefined
+      }
       confirm_order_delivered: { Args: { _order_id: string }; Returns: Json }
       convert_money: {
         Args: { _amount: number; _from: string; _to: string }
