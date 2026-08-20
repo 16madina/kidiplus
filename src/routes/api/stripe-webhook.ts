@@ -229,12 +229,15 @@ export const Route = createFileRoute("/api/stripe-webhook")({
           }
 
           // Other event types are silently acknowledged.
-        } catch {
-          // Never throw back to Stripe — return 200 so it doesn't retry
-          // indefinitely on transient DB blips; production would log this.
-          return new Response("handled_with_errors", { status: 200 });
+        } catch (err) {
+          // Release the claim as 'failed' and let Stripe retry with backoff.
+          // The ledger keeps the attempt count and last error for diagnosis.
+          const msg = err instanceof Error ? err.message : String(err);
+          await finish(false, msg.slice(0, 500));
+          return new Response("handled_with_errors", { status: 500 });
         }
 
+        await finish(true);
         return new Response("ok", { status: 200 });
       },
     },
