@@ -462,16 +462,27 @@ export async function fetchVitrineStories(limit = 30): Promise<VitrineStory[]> {
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error || !data || data.length === 0) return DEMO_STORIES;
-    return data.map((r: any) => ({
-      id: r.id,
-      user_id: r.user_id,
-      media_url: r.media_url ? resolveVitrinePublicUrl(r.media_url) : r.media_url,
-      poster_url: r.poster_url ? resolveVitrinePublicUrl(r.poster_url) : null,
-      expires_at: r.expires_at,
-      created_at: r.created_at,
-      unread: true,
-      seller: r.seller ?? null,
-    }));
+    const { resolveAvatarUrl } = await import("@/lib/avatar-url");
+    return await Promise.all(
+      data.map(async (r: any) => {
+        let seller = r.seller ?? null;
+        if (seller?.avatar_url) {
+          const resolved = await resolveAvatarUrl(seller.avatar_url).catch(() => null);
+          seller = { ...seller, avatar_url: resolved };
+        }
+        return {
+          id: r.id,
+          user_id: r.user_id,
+          media_url: r.media_url ? resolveVitrinePublicUrl(r.media_url) : r.media_url,
+          poster_url: r.poster_url ? resolveVitrinePublicUrl(r.poster_url) : null,
+          expires_at: r.expires_at,
+          created_at: r.created_at,
+          unread: true,
+          seller,
+        };
+      }),
+    );
+
   } catch {
     return DEMO_STORIES;
   }
