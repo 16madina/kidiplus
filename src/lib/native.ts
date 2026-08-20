@@ -29,13 +29,14 @@ export function isNative(): boolean {
 
 /**
  * Hide the Capacitor native splash. Called from the React <SplashScreen>
- * as soon as the video's first frame is painted (event: `playing`) so the
- * user never sees the WebView's default white background between the two.
+ * on mount (navy shell already covers the WebView) and again when the intro
+ * video starts — so the static native splash cannot sit on top of a playing
+ * HTML video (audio only, no animation).
  */
 export async function hideNativeSplash(): Promise<void> {
   if (!isNative()) return;
   try {
-    await SplashScreen.hide({ fadeOutDuration: 200 });
+    await SplashScreen.hide({ fadeOutDuration: 150 });
   } catch {}
 }
 
@@ -53,11 +54,8 @@ export async function bootstrapNative(): Promise<void> {
     await syncStatusBarWithTheme();
   } catch {}
 
-  // If the React <SplashScreen> is going to mount (first time this session)
-  // it will call hideNativeSplash() itself when the intro video paints its
-  // first frame — that's the seamless path. Otherwise (splash already
-  // shown this session, or video failed), hide after a short delay so the
-  // app never gets stuck behind the native splash.
+  // React <SplashScreen> hides the native splash on mount (matching navy).
+  // Ceiling hide so a failed/slow intro never leaves the user stuck.
   const splashAlreadyShown = (() => {
     try { return window.sessionStorage.getItem("kp:splashShown") === "1"; }
     catch { return false; }
@@ -65,10 +63,7 @@ export async function bootstrapNative(): Promise<void> {
   if (splashAlreadyShown) {
     void hideNativeSplash();
   } else {
-    // Keep native splash until the React intro paints (or this ceiling).
-    // Was 2.5s — too short on App Store cold start / cellular, so the
-    // navy shell vanished before the video could show.
-    window.setTimeout(() => { void hideNativeSplash(); }, 10_000);
+    window.setTimeout(() => { void hideNativeSplash(); }, 8_000);
   }
 
 

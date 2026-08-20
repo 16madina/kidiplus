@@ -49,10 +49,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      // Keep the native navy splash until React calls hideNativeSplash()
-      // when the intro video's first frame paints. Do not auto-hide early —
-      // that revealed a white AuthGate on slow iOS cold starts. bootstrapNative
-      // still has a 10s ceiling hide so users are never stuck forever.
+      // Keep native navy until React SplashScreen mounts and calls
+      // hideNativeSplash(). Do not auto-hide early (white AuthGate flash).
+      // React splash uses the same #10162B so the handoff stays seamless.
       launchShowDuration: 0,
       launchAutoHide: false,
       launchFadeOutDuration: 250,

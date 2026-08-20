@@ -11,7 +11,10 @@ import { hideNativeSplash, isNative } from "@/lib/native";
  * 1. Prefer same-origin `/splash.mp4` (bundled in `public/`, reliable on App Store).
  * 2. Fall back to the Lovable CDN absolute URL.
  * 3. Prefer unmuted autoplay in Capacitor; if blocked, muted fallback.
- * 4. Generous watchdogs — cold start + cellular must not skip the intro.
+ * 4. Reveal the video as soon as playback starts — never keep opacity 0 while
+ *    audio is already playing (WKWebView often skips painting invisible videos).
+ * 5. Hide the native Capacitor splash on mount (navy shell matches) so it
+ *    cannot cover the HTML video while sound plays underneath.
  */
 function splashSources(): string[] {
   const cdnPath = splashAsset.url;
@@ -25,7 +28,6 @@ function splashSources(): string[] {
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [exiting, setExiting] = useState(false);
-  const [videoVisible, setVideoVisible] = useState(false);
   const videoVisibleRef = useRef(false);
   const sourceIdxRef = useRef(0);
   const sources = useRef(splashSources()).current;
@@ -33,6 +35,10 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+
+    // Native splash must not sit on top of the React intro — users would hear
+    // "qui dit plus" while still seeing the static Capacitor splash / navy.
+    void hideNativeSplash();
 
     let finished = false;
     const finish = () => {
@@ -44,6 +50,12 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       void hideNativeSplash();
       setExiting(true);
       window.setTimeout(onDone, 260);
+    };
+
+    const revealVideo = () => {
+      if (videoVisibleRef.current) return;
+      videoVisibleRef.current = true;
+      void hideNativeSplash();
     };
 
     const applyInlinePlaybackFlags = () => {
@@ -90,14 +102,22 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       if (p && typeof p.then === "function") {
         p.then(() => {
           console.debug("[splash] playing with sound", { native: isNative() });
+          // play() resolved ⇒ audio (and usually video) is running. Reveal
+          // immediately — do not wait only for "playing", which can lag or
+          // never paint when opacity was 0.
+          revealVideo();
         }).catch(() => {
           console.debug("[splash] audible autoplay blocked → muted fallback");
           setMuted(true);
           const mutedPlay = v.play();
           if (mutedPlay && typeof mutedPlay.then === "function") {
-            mutedPlay.catch(() => {
-              skipTimeout = window.setTimeout(finish, 900);
-            });
+            mutedPlay
+              .then(() => {
+                revealVideo();
+              })
+              .catch(() => {
+                skipTimeout = window.setTimeout(finish, 900);
+              });
           }
         });
       }
@@ -128,15 +148,15 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     tryPlay();
     window.requestAnimationFrame(tryPlay);
 
-    const onPlaying = () => {
-      videoVisibleRef.current = true;
-      setVideoVisible(true);
-      void hideNativeSplash();
+    const onTimeUpdate = () => {
+      if (v.currentTime > 0) revealVideo();
     };
 
     v.addEventListener("loadedmetadata", tryPlay);
     v.addEventListener("canplay", tryPlay);
-    v.addEventListener("playing", onPlaying);
+    v.addEventListener("playing", revealVideo);
+    v.addEventListener("loadeddata", revealVideo);
+    v.addEventListener("timeupdate", onTimeUpdate);
     v.addEventListener("ended", finish);
     v.addEventListener("error", onError);
     return () => {
@@ -145,7 +165,9 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       window.clearTimeout(playingWatchdog);
       v.removeEventListener("loadedmetadata", tryPlay);
       v.removeEventListener("canplay", tryPlay);
-      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("playing", revealVideo);
+      v.removeEventListener("loadeddata", revealVideo);
+      v.removeEventListener("timeupdate", onTimeUpdate);
       v.removeEventListener("ended", finish);
       v.removeEventListener("error", onError);
     };
@@ -178,8 +200,9 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         className="splash-video absolute inset-0 h-full w-full object-cover"
         style={{
           pointerEvents: "none",
-          opacity: videoVisible ? 1 : 0,
-          transition: "opacity 150ms linear",
+          // Always paintable: opacity 0 while audio plays is a known WKWebView
+          // bug (sound on, black screen). Navy underlay covers any pre-frame gap.
+          opacity: 1,
           backgroundColor: "#10162B",
         }}
       />
