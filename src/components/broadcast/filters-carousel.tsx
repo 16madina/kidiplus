@@ -357,22 +357,6 @@ function PosterFullArt() {
   );
 }
 
-function PosterSideArt() {
-  return (
-    <svg viewBox="0 0 62 62" className="h-full w-full">
-      <rect width="62" height="62" fill="#2b3350" />
-      <g transform="translate(-12,0) scale(0.82) translate(0,7)">
-        <Bust />
-      </g>
-      <rect x="34" y="14" width="22" height="34" rx="4" fill="#e9a23b" />
-      <path d="M37 44l6-7 5 4 5-5v8H37z" fill="#b9761f" />
-      <circle cx="42" cy="23" r="3.2" fill="#fff3d1" />
-    </svg>
-  );
-}
-
-
-
 function LensTile({
   lens,
   active,
