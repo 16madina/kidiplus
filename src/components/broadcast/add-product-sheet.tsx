@@ -312,6 +312,11 @@ export function AddProductSheet({
           className="mt-2 h-12 rounded-xl border bg-muted px-4 text-[15px] outline-none placeholder:text-muted-foreground/70"
           style={{ borderColor: nameError ? "oklch(0.62 0.24 20)" : "var(--border)" }}
         />
+        {nameError && (
+          <p className="mt-1.5 text-[12px] font-semibold" style={{ color: "oklch(0.62 0.24 20)" }}>
+            {t("broadcast.setup.productSheet.nameRequired", "Ajoute un nom de produit pour continuer")}
+          </p>
+        )}
 
         {/* Mode toggle */}
         <div className="mt-5 text-[14px] font-semibold text-foreground">
