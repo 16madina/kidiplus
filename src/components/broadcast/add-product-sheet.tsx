@@ -77,7 +77,10 @@ export function AddProductSheet({
   const [customColor, setCustomColor] = useState("");
   const [customSize, setCustomSize] = useState("");
 
+  const [nameError, setNameError] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const pickingSlotRef = useRef<number>(0);
   const urlTrackerRef = useRef(createObjectUrlTracker());
 
