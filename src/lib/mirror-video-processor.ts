@@ -76,27 +76,35 @@ export class MirrorVideoProcessor implements TrackProcessor<Track.Kind.Video, Vi
     this.video = video;
     this.canvas = canvas;
     this.ctx = ctx;
+    this.source = source;
     this.processedTrack = processed;
     this.running = true;
 
-    const tick = () => {
-      if (!this.running || !this.video || !this.canvas || !this.ctx) return;
-      const vw = this.video.videoWidth;
-      const vh = this.video.videoHeight;
-      if (vw > 0 && vh > 0 && (this.canvas.width !== vw || this.canvas.height !== vh)) {
-        this.canvas.width = vw;
-        this.canvas.height = vh;
-      }
-      const w = this.canvas.width;
-      const h = this.canvas.height;
-      this.ctx.clearRect(0, 0, w, h);
-      this.ctx.save();
-      this.ctx.translate(w, 0);
-      this.ctx.scale(-1, 1);
-      this.ctx.drawImage(this.video, 0, 0, w, h);
-      this.ctx.restore();
-      this.raf = requestAnimationFrame(tick);
-    };
-    this.raf = requestAnimationFrame(tick);
+    this.pump = startFramePump({
+      video,
+      fps: 30,
+      draw: () => {
+        if (!this.running || !this.video || !this.canvas || !this.ctx) return;
+        const vw = this.video.videoWidth;
+        const vh = this.video.videoHeight;
+        if (vw > 0 && vh > 0 && (this.canvas.width !== vw || this.canvas.height !== vh)) {
+          this.canvas.width = vw;
+          this.canvas.height = vh;
+        }
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        this.ctx.clearRect(0, 0, w, h);
+        this.ctx.save();
+        this.ctx.translate(w, 0);
+        this.ctx.scale(-1, 1);
+        this.ctx.drawImage(this.video, 0, 0, w, h);
+        this.ctx.restore();
+      },
+      onStall: () => {
+        if (!this.running || !this.video || !this.source) return;
+        rebindVideoSource(this.video, this.source);
+      },
+    });
   }
 }
+
