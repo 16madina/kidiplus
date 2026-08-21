@@ -268,6 +268,38 @@ export async function createCameraKitPipeline(args: {
   let destroyed = false;
   setTimeout(() => { if (!destroyed) measureAndAdapt(); }, 3000);
 
+  // Watchdog anti-image-figée : si la WebView a été throttlée (arrière-plan,
+  // appel entrant, mémoire basse), la session Camera Kit peut rester en pause
+  // et le canvas — donc la piste publiée — se fige sur la dernière image.
+  // On relance la session dès que l'app redevient visible, et périodiquement
+  // si le rAF ne tourne plus.
+  let lastFrame = performance.now();
+  const beat = () => {
+    if (destroyed) return;
+    lastFrame = performance.now();
+    requestAnimationFrame(beat);
+  };
+  requestAnimationFrame(beat);
+
+  const resume = () => {
+    if (destroyed) return;
+    session.play("live").catch(() => {});
+  };
+  const watchdog = setInterval(() => {
+    if (destroyed) return;
+    if (performance.now() - lastFrame > 1500) resume();
+  }, 2000);
+  document.addEventListener("visibilitychange", resume);
+  window.addEventListener("focus", resume);
+  window.addEventListener("pageshow", resume);
+  const stopWatchdog = () => {
+    clearInterval(watchdog);
+    document.removeEventListener("visibilitychange", resume);
+    window.removeEventListener("focus", resume);
+    window.removeEventListener("pageshow", resume);
+  };
+
+
   return {
     canvas,
     outputTrack,
