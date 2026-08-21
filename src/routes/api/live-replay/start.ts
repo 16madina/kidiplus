@@ -123,7 +123,7 @@ export const Route = createFileRoute("/api/live-replay/start")({
         }
 
         const appOrigin = broadcastEgressOrigin();
-        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}&wm=1`;
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}&wm=1&purpose=replay`;
         const storagePath = liveReplayObjectPath(liveId);
         const egress = new EgressClient(lk.host, lk.apiKey, lk.apiSecret);
 

@@ -1013,11 +1013,30 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         const started = await startYoutubeRestream(b.liveId);
         setYtRestreaming(true);
         setYtWatchUrl(started.watchUrl);
-        // Promote "À venir" → live quietly (no toast — keeps the host UI clean).
+        toast.success(
+          t("broadcast.youtube.started", "YouTube : diffusion démarrée"),
+        );
+        // Promote "À venir" → live (serverless often kills the background promote).
         ytPromoteAbortRef.current?.abort();
         const ac = new AbortController();
         ytPromoteAbortRef.current = ac;
-        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal });
+        void ensureYoutubeBroadcastLive(b.liveId, { signal: ac.signal }).then(
+          (r) => {
+            if (ac.signal.aborted) return;
+            if (r.ok) {
+              toast.success(
+                t("broadcast.youtube.isLive", "YouTube est maintenant en direct"),
+              );
+            } else {
+              toast.error(
+                t(
+                  "broadcast.youtube.stuckUpcoming",
+                  "YouTube reste sur « À venir ». Vérifie le quota LiveKit Egress, ton compte YouTube (live autorisé), puis relance. Le live KiDi+ continue.",
+                ),
+              );
+            }
+          },
+        );
       }
     } catch (e) {
       toast.error(

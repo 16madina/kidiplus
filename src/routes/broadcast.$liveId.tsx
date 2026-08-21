@@ -17,9 +17,10 @@ type SessionOk = {
 export const Route = createFileRoute("/broadcast/$liveId")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { k?: string; wm?: string } => ({
+  ): { k?: string; wm?: string; purpose?: string } => ({
     k: typeof search.k === "string" ? search.k : undefined,
     wm: typeof search.wm === "string" ? search.wm : undefined,
+    purpose: typeof search.purpose === "string" ? search.purpose : undefined,
   }),
   head: () => ({
     meta: [
@@ -32,7 +33,9 @@ export const Route = createFileRoute("/broadcast/$liveId")({
 
 function BroadcastEgressPage() {
   const { liveId } = Route.useParams();
-  const { k: ticket, wm } = Route.useSearch();
+  const { k: ticket, wm, purpose: purposeRaw } = Route.useSearch();
+  const purpose =
+    purposeRaw === "replay" ? ("replay" as const) : ("social" as const);
   const [session, setSession] = useState<SessionOk | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +116,7 @@ function BroadcastEgressPage() {
       coverUrl={session.coverUrl}
       currency={session.currency}
       showWatermark={wm !== "0"}
+      purpose={purpose}
       productImages={session.productImages}
     />
   );

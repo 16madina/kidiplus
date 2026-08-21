@@ -1,10 +1,13 @@
-// Social restream composition (YouTube / Facebook Web Egress).
+// Social restream + live-replay composition (YouTube / Facebook / MP4 replay).
 //
-// Social players crop / cover the frame:
-//   - top header ~12–16%
-//   - bottom native chat / reactions ~32–38%
-//   - Facebook right reaction column ~10%
-// Keep KiDi+ overlays inside a roomy safe band — large enough to read.
+// Layout mirrors in-app live / duel:
+//   - Top: compact LIVE host chip (left) + featured star card (right)
+//   - Middle: clear face / camera (watermark discreet)
+//   - Bottom: chat stacked above the lower safe edge
+//
+// `purpose=replay` (MP4 / promo) uses a tighter bottom inset so chat isn't
+// floating mid-frame. `purpose=social` keeps a larger bottom inset for
+// YouTube/Facebook native chrome.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Timer } from "lucide-react";
@@ -30,11 +33,16 @@ import {
   type BroadcastEgressVideoStatus,
 } from "./broadcast-egress-video";
 
-/** Wider safe band — previous 22%/46%/18% crushed UI into a tiny middle strip. */
-const SAFE_TOP = "12%";
-const SAFE_BOTTOM = "34%";
-const SAFE_LEFT = "5%";
-const SAFE_RIGHT = "11%";
+export type BroadcastCompositionPurpose = "social" | "replay";
+
+/** Safe insets — keep overlays out of platform UI / letterboxing. */
+function safeInsets(purpose: BroadcastCompositionPurpose) {
+  if (purpose === "replay") {
+    return { top: "5%", bottom: "8%", left: "4%", right: "4%" };
+  }
+  // Social players crop top ~10% and bottom ~28–35%.
+  return { top: "8%", bottom: "22%", left: "4%", right: "10%" };
+}
 
 export type BroadcastCompositionProps = {
   liveId: string;
@@ -48,6 +56,8 @@ export type BroadcastCompositionProps = {
   currency?: string | null;
   /** Large KiDi+ mark burned into the frame (replay / social egress). */
   showWatermark?: boolean;
+  /** `replay` = MP4 promo (chat lower); `social` = YT/FB restream. */
+  purpose?: BroadcastCompositionPurpose;
   /** Service-signed product photos (egress has no Supabase user session). */
   productImages?: Record<string, string>;
 };
@@ -66,14 +76,16 @@ function BroadcastCompositionInner({
   livekitToken,
   identity,
   hostName,
-  title,
+  title: _title,
   coverUrl,
   currency,
   showWatermark = true,
+  purpose = "social",
   productImages,
 }: BroadcastCompositionProps) {
   const { t, i18n } = useTranslation();
   const battle = useBattle();
+  const insets = safeInsets(purpose);
   const liveCurrency = normalizeCurrency(currency ?? "EUR");
   const fmt = (n: number) => formatMoney(n, liveCurrency, i18n.language);
 
@@ -146,7 +158,7 @@ function BroadcastCompositionInner({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  // Fewer lines, larger type — readable after Facebook/YouTube compression.
+  // Fewer lines — readable after compression; keep stack short so chat stays low.
   const chatLines = useMemo(() => {
     return room.chat
       .filter((c) => {
@@ -154,7 +166,7 @@ function BroadcastCompositionInner({
         if (!c.text?.trim()) return false;
         return true;
       })
-      .slice(-5);
+      .slice(-4);
   }, [room.chat]);
 
   const displayViewers = Math.max(1, room.viewerCount);
@@ -241,21 +253,19 @@ function BroadcastCompositionInner({
         splitGuestName={layoutSides?.right.displayName}
       />
 
-      {/* Brand mark — centered, slightly larger CSS wordmark */}
-      {showWatermark && !battle.isRunning ? (
+      {/* Discreet brand — corner, never covers the host face */}
+      {showWatermark ? (
         <div
           aria-hidden
           className="pointer-events-none absolute z-40"
           style={{
-            // Horizontally centered, upper third (not mid-screen).
-            top: "18%",
+            top: purpose === "replay" ? "2.5%" : "3.5%",
             left: "50%",
-            transform: "translate(-50%, -50%)",
-            padding: "14px 20px 14px 22px",
-            borderRadius: 16,
-            background: "rgba(16, 22, 43, 0.88)",
-            boxShadow: "0 10px 32px rgba(0,0,0,0.55)",
-            border: "1px solid rgba(255,255,255,0.2)",
+            transform: "translateX(-50%)",
+            padding: "6px 12px",
+            borderRadius: 10,
+            background: "rgba(16, 22, 43, 0.72)",
+            border: "1px solid rgba(255,255,255,0.16)",
           }}
         >
           <span
@@ -263,7 +273,7 @@ function BroadcastCompositionInner({
               display: "inline-flex",
               alignItems: "baseline",
               fontWeight: 900,
-              fontSize: 42,
+              fontSize: 18,
               letterSpacing: "-0.03em",
               lineHeight: 1,
               color: "#fff",
@@ -272,44 +282,56 @@ function BroadcastCompositionInner({
             }}
           >
             KiDi
-            <span style={{ color: "#E8B84A", marginLeft: 2 }}>+</span>
+            <span style={{ color: "#E8B84A", marginLeft: 1 }}>+</span>
           </span>
         </div>
       ) : null}
 
-      {/* ── Inner safe rectangle ── */}
+      {/* ── Same structure as in-app live: top HUD + bottom chat ── */}
       <div
         className="pointer-events-none absolute z-30 flex flex-col"
         style={{
-          top: SAFE_TOP,
-          bottom: SAFE_BOTTOM,
-          left: SAFE_LEFT,
-          right: SAFE_RIGHT,
+          top: insets.top,
+          bottom: insets.bottom,
+          left: insets.left,
+          right: insets.right,
         }}
       >
-        {/* Top: brand + description CTA | featured product */}
-        {!battle.isRunning ? (
+        {/* Top row: LIVE host (left) | featured star card (right) */}
         <div className="flex items-start justify-between gap-2.5">
-          <div
-            className="min-w-0 max-w-[52%] rounded-2xl px-3 py-2"
-            style={{ background: "rgba(0,0,0,0.62)" }}
-          >
-            <div className="flex items-center gap-1.5">
-              <span
-                className="rounded px-1.5 py-0.5 text-[11px] font-black uppercase tracking-wide"
-                style={{ background: "oklch(0.62 0.24 25)" }}
-              >
-                Live
-              </span>
-              <span className="truncate text-[14px] font-bold">{hostName}</span>
+          <div className="min-w-0 max-w-[48%] space-y-1.5">
+            <div
+              className="inline-flex max-w-full flex-col gap-1 rounded-2xl px-2.5 py-2"
+              style={{
+                background: "rgba(0,0,0,0.78)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-black uppercase tracking-wide text-white"
+                  style={{ background: "oklch(0.58 0.24 25)" }}
+                >
+                  Live
+                </span>
+                <span className="truncate text-[16px] font-black leading-tight">
+                  {hostName}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[13px] font-bold text-white">
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <Eye size={14} strokeWidth={2.5} />
+                  {displayViewers}
+                </span>
+                <span className="text-white/70">·</span>
+                <span style={{ color: "#E8B84A" }}>KiDi+</span>
+              </div>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-white/90">
-              <span className="inline-flex items-center gap-1 tabular-nums">
-                <Eye size={12} /> {displayViewers}
-              </span>
-              <span>KiDi+</span>
-            </div>
-            <p className="mt-1.5 text-[12px] font-bold leading-snug text-white">
+            <p
+              className="max-w-[14rem] rounded-xl px-2.5 py-1.5 text-[11px] font-bold leading-snug text-white"
+              style={{ background: "rgba(0,0,0,0.65)" }}
+            >
               {auctionOnFeatured
                 ? t(
                     "broadcast.egress.linkToBid",
@@ -324,12 +346,13 @@ function BroadcastCompositionInner({
 
           {featured && (
             <div
-              className="w-[9.75rem] shrink-0 rounded-2xl p-2"
+              className="w-[9.5rem] shrink-0 rounded-2xl p-2"
               style={{
-                background: "rgba(0,0,0,0.72)",
+                background: "rgba(0,0,0,0.82)",
                 border: auctionOnFeatured
                   ? "2px solid oklch(0.82 0.14 85)"
-                  : "1px solid rgba(255,255,255,0.2)",
+                  : "1px solid rgba(255,255,255,0.22)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
               }}
             >
               <div className="relative mb-1.5">
@@ -337,7 +360,7 @@ function BroadcastCompositionInner({
                   src={
                     productImages?.[featured.id] ?? featured.image_url
                   }
-                  className="h-[5.25rem] w-full rounded-xl object-cover"
+                  className="h-[5rem] w-full rounded-xl object-cover"
                   iconClassName="text-white/60"
                 />
                 <span className="absolute left-1.5 top-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#10162B]">
@@ -405,25 +428,30 @@ function BroadcastCompositionInner({
             </div>
           )}
         </div>
+
+        {/* Défi Plus score — under the top row, same band as in-app duel */}
+        {battle.isRunning && battle.session && layoutSides ? (
+          <div className="mt-2">
+            <BattleScoreHud
+              session={battle.session}
+              remainingMs={battle.remainingMs}
+              left={layoutSides.left}
+              right={layoutSides.right}
+            />
+          </div>
         ) : null}
 
-        {/* Spacer pushes chat toward lower safe band (above FB native chrome) */}
-        <div className="min-h-3 flex-1" />
+        {/* Spacer → chat sits at the bottom (like the live viewer) */}
+        <div className="min-h-4 flex-1" />
 
-        {/* Chat — high contrast for mobile Facebook viewers */}
-        <div className="max-w-[88%] space-y-2 self-start">
-          <div
-            className="inline-flex rounded-full px-3 py-1 text-[12px] font-black uppercase tracking-wide text-white"
-            style={{ background: "rgba(0,0,0,0.72)" }}
-          >
-            {t("broadcast.egress.kidiChat", "Chat KiDi+")}
-          </div>
+        {/* Chat */}
+        <div className="max-w-[86%] space-y-1.5 self-start">
           {chatLines.length === 0 ? (
             <div
-              className="rounded-2xl px-3.5 py-3 text-[17px] font-bold leading-snug text-white"
+              className="rounded-2xl px-3 py-2 text-[15px] font-bold leading-snug text-white/90"
               style={{
                 background: "rgba(0,0,0,0.72)",
-                border: "1px solid rgba(255,255,255,0.22)",
+                border: "1px solid rgba(255,255,255,0.16)",
               }}
             >
               {t("broadcast.egress.chatWaitingShort", "Chat KiDi+…")}
@@ -432,18 +460,18 @@ function BroadcastCompositionInner({
             chatLines.map((c) => (
               <div
                 key={c.id}
-                className="rounded-2xl px-3.5 py-2.5"
+                className="rounded-2xl px-3 py-2"
                 style={{
-                  background: "rgba(0,0,0,0.72)",
-                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "rgba(0,0,0,0.78)",
+                  border: "1px solid rgba(255,255,255,0.16)",
                 }}
               >
                 {c.system ? (
-                  <p className="text-[16px] font-bold leading-snug text-white">
+                  <p className="text-[15px] font-bold leading-snug text-white">
                     {c.text}
                   </p>
                 ) : (
-                  <p className="text-[17px] font-semibold leading-snug">
+                  <p className="text-[15px] font-semibold leading-snug">
                     <span
                       className="font-black"
                       style={{ color: c.color || "oklch(0.88 0.14 85)" }}
@@ -452,14 +480,14 @@ function BroadcastCompositionInner({
                     </span>
                     {c.source === "youtube" ? (
                       <span
-                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[11px] font-black text-white"
+                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[10px] font-black text-white"
                         style={{ background: "oklch(0.55 0.22 25)" }}
                       >
                         YT
                       </span>
                     ) : c.source === "facebook" ? (
                       <span
-                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[11px] font-black text-white"
+                        className="ml-1.5 inline-flex rounded px-1.5 py-px text-[10px] font-black text-white"
                         style={{ background: "oklch(0.5 0.14 260)" }}
                       >
                         FB
@@ -475,23 +503,6 @@ function BroadcastCompositionInner({
       </div>
 
       {/* No FloatingHearts — Facebook/YouTube already show native likes. */}
-      {battle.isRunning && battle.session && layoutSides ? (
-        <div
-          className="pointer-events-none absolute z-[36]"
-          style={{
-            top: SAFE_TOP,
-            left: SAFE_LEFT,
-            right: SAFE_RIGHT,
-          }}
-        >
-          <BattleScoreHud
-            session={battle.session}
-            remainingMs={battle.remainingMs}
-            left={layoutSides.left}
-            right={layoutSides.right}
-          />
-        </div>
-      ) : null}
       <BattleCountdownOverlay
         startsAt={battle.session?.startedAt}
         leftName={layoutSides?.left.displayName}

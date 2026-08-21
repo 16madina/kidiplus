@@ -179,7 +179,7 @@ export const Route = createFileRoute("/api/tiktok/restream")({
         }
 
         const appOrigin = broadcastEgressOrigin();
-        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}`;
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}&purpose=social`;
         console.info(
           "[tiktok-restream] web egress url",
           appOrigin + `/broadcast/${liveId}`,

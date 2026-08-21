@@ -256,7 +256,7 @@ export const Route = createFileRoute("/api/youtube/restream")({
         }
 
         const appOrigin = broadcastEgressOrigin();
-        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}`;
+        const compositionUrl = `${appOrigin}/broadcast/${encodeURIComponent(liveId)}?k=${encodeURIComponent(ticket)}&purpose=social`;
         console.info("[youtube-restream] web egress url", appOrigin + `/broadcast/${liveId}`);
 
         let egressInfo;
