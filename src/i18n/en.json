@@ -261,6 +261,12 @@
     },
     "livesNearYou": "Lives near you",
     "empty": "No lives in this category right now.",
+    "header": {
+      "notifications": "Notifications",
+      "lightMode": "Switch to light mode",
+      "darkMode": "Switch to dark mode",
+      "shop": "My shop"
+    },
     "demo": {
       "badge": "🎬 DEMO",
       "title": "How to use KiDi+",

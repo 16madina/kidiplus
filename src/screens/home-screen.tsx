@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
-import { Bell, Check, Moon, Share2, Sun, Loader2 } from "lucide-react";
+import { Bell, Check, Moon, Sun, Loader2, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
@@ -19,7 +19,14 @@ import {
 import { useLiveViewer } from "@/lib/live-viewer-context";
 import { useBlockedIds } from "@/lib/moderation-db";
 import { EASE_IOS } from "@/lib/motion";
-import { dismissKeyboard, nativeShare } from "@/lib/native";
+import { dismissKeyboard } from "@/lib/native";
+import { haptic } from "@/lib/haptics";
+import { useAuth } from "@/lib/auth-context";
+import { useAuthPrompt } from "@/lib/auth-prompt-context";
+import { fetchMyNotifications, subscribeMyNotifications } from "@/lib/notifications-db";
+import { listMyDmThreads, subscribeMyDmInbox } from "@/lib/dm-db";
+import { ACTIVITY_UNREAD_EVENT } from "@/lib/push-router";
+import { MyShopScreen } from "@/screens/my-shop-screen";
 import { fetchActiveLives, subscribeToLivesFeed } from "@/lib/lives-db";
 import { usePersonalizedRanking } from "@/lib/personalization";
 import { useSettings } from "@/lib/settings-context";
@@ -42,6 +49,10 @@ export function HomeScreen() {
   const { t } = useTranslation();
   const { dark, setDark } = useSettings();
   const { openActivity } = useActivityOverlay();
+  const { user } = useAuth();
+  const { requireAuth } = useAuthPrompt();
+  const [shopOpen, setShopOpen] = useState(false);
+  const [activityUnread, setActivityUnread] = useState(0);
   const appActive = useAppActive();
   const tabVisible = useContext(TabVisibilityContext);
   const [category, setCategory] = useState<HomeCategory>("Pour toi");
@@ -79,6 +90,47 @@ export function HomeScreen() {
     });
     return unsub;
   }, [refreshRealLives]);
+
+  // Bell badge: unread notifs + DMs, live via Realtime + push event + poll
+  // (Android WebViews often drop Realtime, same as the lives feed).
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setActivityUnread(0);
+      return;
+    }
+    let alive = true;
+    const load = async () => {
+      const [n, d] = await Promise.all([
+        fetchMyNotifications(1),
+        listMyDmThreads(20),
+      ]);
+      if (!alive) return;
+      setActivityUnread((n.unread || 0) + (d.unread || 0));
+    };
+    void load();
+    const unsubN = subscribeMyNotifications(userId, () => {
+      void load();
+    });
+    const unsubD = subscribeMyDmInbox(userId, () => {
+      void load();
+    });
+    const onUnread = () => {
+      void load();
+    };
+    window.addEventListener(ACTIVITY_UNREAD_EVENT, onUnread);
+    const iv = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void load();
+    }, 12_000);
+    return () => {
+      alive = false;
+      unsubN();
+      unsubD();
+      window.removeEventListener(ACTIVITY_UNREAD_EVENT, onUnread);
+      window.clearInterval(iv);
+    };
+  }, [user?.id, appActive, tabVisible]);
 
   // Refetch when the app returns to foreground or the Home tab is shown again.
   // Android often kills Realtime in the background; iOS is more forgiving.
@@ -237,20 +289,40 @@ export function HomeScreen() {
           </div>
           <div className="flex items-center gap-1">
             <Press
-              aria-label="Notifications"
-              className="h-11 w-11 rounded-full"
+              aria-label={t("home.header.notifications", "Notifications")}
+              className="relative h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
               onClick={() => {
+                haptic.light();
                 openActivity({ tab: "notifs" });
               }}
             >
               <Bell size={22} strokeWidth={1.9} />
+              {activityUnread > 0 && (
+                <span
+                  className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                  style={{
+                    background: "oklch(0.62 0.24 25)",
+                    boxShadow: "0 0 0 2px var(--background)",
+                  }}
+                  aria-hidden
+                >
+                  {activityUnread > 99 ? "99+" : activityUnread}
+                </span>
+              )}
             </Press>
             <Press
-              aria-label={dark ? "Passer en mode clair" : "Passer en mode sombre"}
+              aria-label={
+                dark
+                  ? t("home.header.lightMode", "Passer en mode clair")
+                  : t("home.header.darkMode", "Passer en mode sombre")
+              }
               className="h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
-              onClick={() => setDark(!dark)}
+              onClick={() => {
+                haptic.light();
+                setDark(!dark);
+              }}
             >
               {dark ? (
                 <Moon size={22} strokeWidth={1.9} />
@@ -259,22 +331,16 @@ export function HomeScreen() {
               )}
             </Press>
             <Press
-              aria-label="Share"
+              aria-label={t("home.header.shop", "Ma boutique")}
               className="h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
-              onClick={async () => {
-                const shareUrl =
-                  typeof window !== "undefined" ? window.location.origin : "";
-                await nativeShare({
-                  title: "KIDI+",
-                  text: "Découvre KIDI+, le live shopping où chaque offre peut tout changer.",
-                  url: shareUrl,
-                });
+              onClick={() => {
+                haptic.light();
+                requireAuth(() => setShopOpen(true));
               }}
             >
-              <Share2 size={20} strokeWidth={1.9} />
+              <Store size={20} strokeWidth={1.9} />
             </Press>
-
           </div>
 
         </div>
@@ -427,6 +493,7 @@ export function HomeScreen() {
           setLiveOnly(false);
         }}
       />
+      <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
     </div>
   );
 }

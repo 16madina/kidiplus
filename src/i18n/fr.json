@@ -261,6 +261,12 @@
     },
     "livesNearYou": "Lives près de chez toi",
     "empty": "Aucun live dans cette catégorie pour le moment.",
+    "header": {
+      "notifications": "Notifications",
+      "lightMode": "Passer en mode clair",
+      "darkMode": "Passer en mode sombre",
+      "shop": "Ma boutique"
+    },
     "demo": {
       "badge": "🎬 DÉMO",
       "title": "Comment utiliser KiDi+",

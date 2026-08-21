@@ -24,7 +24,11 @@ import { haptic } from "@/lib/haptics";
 import { isNative as isNativeShell } from "@/lib/native";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDeviceToken } from "@/lib/device-tokens.functions";
-import { normalizePushData, openFromPush } from "@/lib/push-router";
+import {
+  normalizePushData,
+  notifyActivityUnreadChanged,
+  openFromPush,
+} from "@/lib/push-router";
 
 export type PushStatus = "unknown" | "granted" | "denied" | "prompt";
 
@@ -175,6 +179,7 @@ export function PushProvider({ children }: { children: ReactNode }) {
 
       PushNotifications.addListener("pushNotificationReceived", (n) => {
         const data = normalizePushData((n as unknown as { data?: unknown }).data);
+        notifyActivityUnreadChanged();
         if (n.title) {
           toast(n.title, {
             description: n.body,
