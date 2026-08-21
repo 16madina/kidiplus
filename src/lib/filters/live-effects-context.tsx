@@ -100,9 +100,7 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
     posterRef.current = url;
     setPosterUrl(url);
     setPosterMode(mode);
-    setPosterTransformState(
-      mode === "side" ? DEFAULT_POSTER_TRANSFORM.side : DEFAULT_POSTER_TRANSFORM.cover,
-    );
+    setPosterTransformState(DEFAULT_POSTER_TRANSFORM);
   }, []);
 
   const setPosterTransform = useCallback((t: PosterTransform) => {
