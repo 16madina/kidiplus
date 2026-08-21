@@ -13,7 +13,10 @@ export class MirrorVideoProcessor implements TrackProcessor<Track.Kind.Video, Vi
   private canvas?: HTMLCanvasElement;
   private ctx?: CanvasRenderingContext2D | null;
   private raf = 0;
+  private pump: FramePump | null = null;
+  private source?: MediaStreamTrack;
   private running = false;
+
 
   async init(opts: VideoProcessorOptions): Promise<void> {
     await this.start(opts.track);
