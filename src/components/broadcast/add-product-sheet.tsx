@@ -153,6 +153,7 @@ export function AddProductSheet({
   const reset = () => {
     setMode("auction");
     setName("");
+    setNameError(false);
     setImages([]);
     setImageFiles([null, null, null]);
     setStartPrice(defaults.start);

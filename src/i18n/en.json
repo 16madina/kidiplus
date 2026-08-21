@@ -483,7 +483,8 @@
         "photo": "Photo",
         "addPhoto": "Add photo",
         "changePhoto": "Change",
-        "confirm": "Add"
+        "confirm": "Add",
+        "nameRequired": "Add a product name to continue"
       }
     },
     "live": {
