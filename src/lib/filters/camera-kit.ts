@@ -315,7 +315,9 @@ export async function createCameraKitPipeline(args: {
     destroy: async () => {
       if (destroyed) return;
       destroyed = true;
+      stopWatchdog();
       try { outputTrack.stop(); } catch { /* ignore */ }
+
       try { await session.pause("live"); } catch { /* ignore */ }
       try { await session.destroy(); } catch { /* ignore */ }
     },
