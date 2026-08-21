@@ -140,14 +140,22 @@ export class LiveEffectsVideoProcessor
 
     this.video = video;
     this.canvas = canvas;
+    this.source = source;
     this.processedTrack = processed;
     this.running = true;
 
-    const tick = () => {
-      if (!this.running || !this.video || !this.canvas) return;
-      void this.compositor.draw(this.video, this.canvas);
-      this.raf = requestAnimationFrame(tick);
-    };
-    this.raf = requestAnimationFrame(tick);
+    this.pump = startFramePump({
+      video,
+      fps: 30,
+      draw: () => {
+        if (!this.running || !this.video || !this.canvas) return;
+        void this.compositor.draw(this.video, this.canvas);
+      },
+      onStall: () => {
+        if (!this.running || !this.video || !this.source) return;
+        rebindVideoSource(this.video, this.source);
+      },
+    });
   }
 }
+
