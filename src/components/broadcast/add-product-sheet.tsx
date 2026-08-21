@@ -170,7 +170,15 @@ export function AddProductSheet({
   const canSave = name.trim().length > 0;
 
   const save = () => {
-    if (!canSave) return;
+    if (!canSave) {
+      // Android WebViews sometimes swallow the last IME keystroke, so instead of
+      // a dead disabled button we point the user at the missing field.
+      haptic.error();
+      setNameError(true);
+      nameInputRef.current?.focus();
+      nameInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     haptic.medium();
     const inc = Number(bidIncrement);
     const extraImages: string[] = [];
