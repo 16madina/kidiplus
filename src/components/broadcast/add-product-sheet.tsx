@@ -550,9 +550,9 @@ export function AddProductSheet({
 
         <Press
           onClick={save}
-          disabled={!canSave}
           hapticOnTap={false}
-          className="!min-h-14 mt-6 h-14 w-full rounded-2xl text-[16px] font-bold disabled:opacity-40"
+          className="!min-h-14 mt-6 mb-8 h-14 w-full rounded-2xl text-[16px] font-bold"
+          animate={{ opacity: canSave ? 1 : 0.55 }}
           style={{
             background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
             color: "#0a0a12",
