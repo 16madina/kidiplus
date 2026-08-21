@@ -29,8 +29,11 @@ export class MirrorVideoProcessor implements TrackProcessor<Track.Kind.Video, Vi
 
   async destroy(): Promise<void> {
     this.running = false;
+    this.pump?.stop();
+    this.pump = null;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
+
     try {
       this.processedTrack?.stop();
     } catch {
