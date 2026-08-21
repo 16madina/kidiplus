@@ -5,6 +5,8 @@ import {
   type BackgroundMode,
   type PosterMode,
 } from "@/lib/filters/live-effects-compositor";
+import { startFramePump, rebindVideoSource, type FramePump } from "@/lib/filters/frame-pump";
+
 
 export type LiveEffectsConfig = {
   backgroundUrl: string | null;
