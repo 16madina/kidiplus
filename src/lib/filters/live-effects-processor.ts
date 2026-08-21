@@ -29,9 +29,12 @@ export class LiveEffectsVideoProcessor
   private video?: HTMLVideoElement;
   private canvas?: HTMLCanvasElement;
   private raf = 0;
+  private pump: FramePump | null = null;
+  private source?: MediaStreamTrack;
   private running = false;
   private compositor = new LiveEffectsCompositor();
   private config: LiveEffectsConfig;
+
 
   constructor(config: LiveEffectsConfig) {
     this.config = config;
