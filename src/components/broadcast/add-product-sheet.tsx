@@ -298,11 +298,19 @@ export function AddProductSheet({
           {t("broadcast.setup.productSheet.name", "Nom du produit")}
         </label>
         <input
+          ref={nameInputRef}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); setNameError(false); }}
+          onInput={(e) => {
+            // Android IME (Gboard) can commit text without a change event.
+            const v = (e.target as HTMLInputElement).value;
+            setName((prev) => (prev === v ? prev : v));
+          }}
+          onBlur={(e) => setName(e.target.value)}
+          enterKeyHint="done"
           placeholder={t("broadcast.setup.productSheet.namePlaceholder", "ex : Nike Dunk Low")}
           className="mt-2 h-12 rounded-xl border bg-muted px-4 text-[15px] outline-none placeholder:text-muted-foreground/70"
-          style={{ borderColor: "var(--border)" }}
+          style={{ borderColor: nameError ? "oklch(0.62 0.24 20)" : "var(--border)" }}
         />
 
         {/* Mode toggle */}
