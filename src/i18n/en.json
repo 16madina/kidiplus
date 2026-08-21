@@ -436,12 +436,16 @@
     },
     "effects": {
       "title": "Background & poster",
-      "greenScreen": "Custom background",
-      "posterFace": "Poster",
-      "posterSide": "Beside",
+      "greenScreen": "Photo backdrop",
+      "posterFace": "Full poster",
+      "posterSide": "Side poster",
       "posterHint": "Drag to move · Pinch to zoom",
       "blur": "Background blur",
-      "unavailable": "Background effect unavailable on this device"
+      "unavailable": "Background effect unavailable on this device",
+      "blurDesc": "Blur your room",
+      "greenScreenDesc": "Replace your room",
+      "posterFaceDesc": "Fullscreen image",
+      "posterSideDesc": "Image next to you"
     },
     "setup": {
       "titlePlaceholder": "Live title…",
