@@ -153,7 +153,7 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               />
             )}
             <EffectTile
-              label={t("broadcast.effects.greenScreen", "Fond image")}
+              label={t("broadcast.effects.greenScreen", "Écran vert")}
               desc={t("broadcast.effects.greenScreenDesc", "Remplace ton décor")}
               active={effects.backgroundMode === "image"}
               thumb={effects.backgroundMode === "image" ? effects.backgroundUrl : null}
@@ -166,8 +166,8 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               }}
             />
             <EffectTile
-              label={t("broadcast.effects.posterFace", "Poster plein")}
-              desc={t("broadcast.effects.posterFaceDesc", "Image plein écran")}
+              label={t("broadcast.effects.posterFace", "Ajouter image")}
+              desc={t("broadcast.effects.posterFaceDesc", "Image sur ton live")}
               active={!!effects.posterUrl && effects.posterMode === "cover"}
               thumb={effects.posterMode === "cover" ? effects.posterUrl : null}
               illustration={<PosterFullArt />}
@@ -179,23 +179,6 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
                   return;
                 }
                 posterModeRef.current = "cover";
-                posterInputRef.current?.click();
-              }}
-            />
-            <EffectTile
-              label={t("broadcast.effects.posterSide", "Poster à côté")}
-              desc={t("broadcast.effects.posterSideDesc", "Image à côté de toi")}
-              active={!!effects.posterUrl && effects.posterMode === "side"}
-              thumb={effects.posterMode === "side" ? effects.posterUrl : null}
-              illustration={<PosterSideArt />}
-              icon={<PanelsTopLeft size={18} />}
-              onClick={() => {
-                haptic.selection();
-                if (effects.posterUrl && effects.posterMode === "side") {
-                  effects.clearPoster();
-                  return;
-                }
-                posterModeRef.current = "side";
                 posterInputRef.current?.click();
               }}
             />
