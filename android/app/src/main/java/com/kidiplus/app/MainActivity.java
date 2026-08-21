@@ -74,6 +74,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Local plugins must be registered before super.onCreate.
         registerPlugin(PipPlugin.class);
+        registerPlugin(KidiCameraKitPlugin.class);
         super.onCreate(savedInstanceState);
         createDefaultNotificationChannel();
         WebSettings settings = this.bridge.getWebView().getSettings();

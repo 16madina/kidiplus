@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">KiDi+</string>
+    <string name="title_activity_main">KiDi+</string>
+    <string name="package_name">com.kidiplus.app</string>
+    <string name="custom_url_scheme">com.kidiplus.app</string>
+</resources>

@@ -1,0 +1,441 @@
+package com.kidiplus.app
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.os.SystemClock
+import android.util.Log
+import android.view.Surface
+import android.view.ViewGroup
+import android.view.ViewStub
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
+import com.getcapacitor.JSArray
+import com.getcapacitor.JSObject
+import com.getcapacitor.Plugin
+import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.CapacitorPlugin
+import com.snap.camerakit.ImageProcessor
+import com.snap.camerakit.Session
+import com.snap.camerakit.invoke
+import com.snap.camerakit.lenses.LensesComponent
+import com.snap.camerakit.lenses.whenHasFirst
+import com.snap.camerakit.support.camerax.CameraXImageProcessorSource
+import com.snap.camerakit.supported
+import io.livekit.android.LiveKit
+import io.livekit.android.room.Room
+import io.livekit.android.room.track.LocalVideoTrack
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import livekit.org.webrtc.CapturerObserver
+import livekit.org.webrtc.SurfaceTextureHelper
+import livekit.org.webrtc.VideoCapturer
+import livekit.org.webrtc.VideoFrame
+import java.io.Closeable
+
+/**
+ * Native Snap Camera Kit + LiveKit publisher for Capacitor Android.
+ * Mirrors ios/App/App/KidiCameraKitPlugin.swift.
+ */
+@CapacitorPlugin(name = "KidiCameraKit")
+class KidiCameraKitPlugin : Plugin() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private var cameraKitSession: Session? = null
+    private var imageSource: CameraXImageProcessorSource? = null
+    private var groupIds: List<String> = emptyList()
+    private var initialized = false
+    private var previewStarted = false
+    private var facingFront = true
+
+    private var cachedLenses: List<JSObject> = emptyList()
+    private var lensByKey: MutableMap<String, LensesComponent.Lens> = mutableMapOf()
+    private var observeHandle: Closeable? = null
+
+    private var liveKitRoom: Room? = null
+    private var liveKitTrack: LocalVideoTrack? = null
+    private var publishOutput: Closeable? = null
+    private var publishEnabled = false
+
+    @PluginMethod
+    fun initialize(call: PluginCall) {
+        val apiToken = call.getString("apiToken").orEmpty()
+        if (apiToken.isEmpty()) {
+            call.reject("Missing apiToken")
+            return
+        }
+        val ids = call.getArray("groupIds")?.toStringList().orEmpty()
+        if (ids.isEmpty()) {
+            call.reject("Missing groupIds")
+            return
+        }
+
+        val activity = activity
+        if (activity == null) {
+            call.reject("Activity unavailable")
+            return
+        }
+        if (!supported(activity)) {
+            call.reject("Camera Kit is not supported on this device")
+            return
+        }
+
+        groupIds = ids
+        if (cameraKitSession == null) {
+            val source = CameraXImageProcessorSource(
+                context = activity,
+                lifecycleOwner = activity as LifecycleOwner,
+            )
+            imageSource = source
+            cameraKitSession = Session(context = activity) {
+                apiToken(apiToken)
+                imageProcessorSource(source)
+                attachTo(ensureStub())
+            }
+        }
+        initialized = true
+        Log.i(TAG, "initialized groups=${ids.joinToString(",")}")
+        call.resolve(JSObject().put("initialized", true))
+    }
+
+    @PluginMethod
+    fun loadLenses(call: PluginCall) {
+        val session = cameraKitSession
+        if (!initialized || session == null) {
+            call.reject("CameraKit not initialized — call initialize() first")
+            return
+        }
+        val ids = call.getArray("groupIds")?.toStringList() ?: groupIds
+        if (ids.isEmpty()) {
+            call.reject("Missing groupIds")
+            return
+        }
+        groupIds = ids
+        var resolved = false
+        fun finish(list: List<JSObject>) {
+            if (resolved) return
+            resolved = true
+            val payload = JSArray()
+            list.forEach { payload.put(it) }
+            if (!call.isReleased) {
+                call.resolve(JSObject().put("lenses", payload))
+            }
+        }
+        observeHandle?.close()
+        observeHandle = session.lenses.repository.observe(
+            LensesComponent.Repository.QueryCriteria.Available(ids.toSet()),
+        ) { result ->
+            if (result is LensesComponent.Repository.Result.Some) {
+                cachedLenses = result.lenses.map { lens ->
+                    lensByKey[lensKey(lens.id, lens.groupId)] = lens
+                    lens.toJs()
+                }
+                finish(cachedLenses)
+            }
+        }
+        activity?.window?.decorView?.postDelayed({
+            finish(cachedLenses)
+        }, 8_000)
+    }
+
+    @PluginMethod
+    fun applyLens(call: PluginCall) {
+        val session = cameraKitSession
+        if (!initialized || session == null) {
+            call.reject("CameraKit not initialized")
+            return
+        }
+        val lensId = call.getString("lensId").orEmpty()
+        if (lensId.isEmpty()) {
+            call.reject("Missing lensId")
+            return
+        }
+        val groupId = call.getString("groupId").orEmpty()
+        ensurePreviewStarted {
+            val cached = lensByKey[lensKey(lensId, groupId)]
+            if (cached != null) {
+                session.lenses.processor.apply(cached) { ok ->
+                    if (ok) call.resolve(JSObject().put("applied", true))
+                    else call.reject("Failed to apply lens")
+                }
+                return@ensurePreviewStarted
+            }
+            session.lenses.repository.observe(
+                LensesComponent.Repository.QueryCriteria.ById(lensId, groupId),
+            ) { result ->
+                result.whenHasFirst { lens ->
+                    lensByKey[lensKey(lens.id, lens.groupId)] = lens
+                    session.lenses.processor.apply(lens) { ok ->
+                        if (ok) call.resolve(JSObject().put("applied", true))
+                        else call.reject("Failed to apply lens")
+                    }
+                }
+            }
+        }
+    }
+
+    @PluginMethod
+    fun clearLens(call: PluginCall) {
+        cameraKitSession?.lenses?.processor?.clear { _ ->
+            call.resolve(JSObject().put("cleared", true))
+        } ?: call.resolve(JSObject().put("cleared", true))
+    }
+
+    @PluginMethod
+    fun startPreview(call: PluginCall) {
+        facingFront = (call.getString("facing") ?: "user") != "environment"
+        ensurePreviewStarted {
+            makeWebViewTransparent()
+            Log.i(TAG, "startPreview facingFront=$facingFront")
+            call.resolve(JSObject().put("started", true))
+        }
+    }
+
+    @PluginMethod
+    fun stopPreview(call: PluginCall) {
+        if (!publishEnabled) {
+            try {
+                imageSource?.stopPreview()
+            } catch (_: Throwable) {
+                /* older support-camerax may not expose stopPreview */
+            }
+            previewStarted = false
+        }
+        call.resolve(JSObject().put("stopped", true))
+    }
+
+    @PluginMethod
+    fun setPublishEnabled(call: PluginCall) {
+        val enabled = call.getBoolean("enabled", false) == true
+        if (!enabled) {
+            scope.launch {
+                stopPublishing()
+                call.resolve(JSObject().put("enabled", false))
+            }
+            return
+        }
+        val roomUrl = call.getString("roomUrl").orEmpty()
+        val token = call.getString("token").orEmpty()
+        if (roomUrl.isEmpty() || token.isEmpty()) {
+            call.reject("Missing roomUrl or token")
+            return
+        }
+        scope.launch {
+            try {
+                startPublishing(roomUrl, token)
+                call.resolve(JSObject().put("enabled", true))
+            } catch (e: Exception) {
+                Log.e(TAG, "setPublishEnabled failed", e)
+                call.reject("Publish failed: ${e.message}")
+            }
+        }
+    }
+
+    override fun handleOnDestroy() {
+        observeHandle?.close()
+        observeHandle = null
+        scope.launch { stopPublishing() }
+        cameraKitSession?.close()
+        cameraKitSession = null
+        imageSource = null
+        initialized = false
+        scope.cancel()
+        super.handleOnDestroy()
+    }
+
+    private fun ensurePreviewStarted(done: () -> Unit) {
+        val activity = activity
+        val source = imageSource
+        if (activity == null || source == null) {
+            done()
+            return
+        }
+        val start = {
+            try {
+                source.startPreview(facingFront)
+                previewStarted = true
+                makeWebViewTransparent()
+            } catch (e: Exception) {
+                Log.e(TAG, "startPreview failed", e)
+            }
+            done()
+        }
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            start()
+        } else {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
+                REQ_CAMERA,
+            )
+            activity.window.decorView.postDelayed({ start() }, 400)
+        }
+    }
+
+    private fun ensureStub(): ViewStub {
+        val activity = activity ?: throw IllegalStateException("no activity")
+        activity.findViewById<ViewStub>(R.id.camera_kit_stub)?.let { return it }
+        val parent = (bridge?.webView?.parent as? ViewGroup)
+            ?: activity.findViewById(android.R.id.content)
+        val stub = ViewStub(activity).apply {
+            id = R.id.camera_kit_stub
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        }
+        parent.addView(stub, 0)
+        return stub
+    }
+
+    private fun makeWebViewTransparent() {
+        val webView = bridge?.webView ?: return
+        webView.setBackgroundColor(Color.TRANSPARENT)
+        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+    }
+
+    private suspend fun startPublishing(url: String, token: String) {
+        publishEnabled = true
+        val activity = activity ?: throw IllegalStateException("no activity")
+        val session = cameraKitSession ?: throw IllegalStateException("Camera Kit session missing")
+
+        var started = false
+        ensurePreviewStarted { started = true }
+        var waits = 0
+        while (!started && waits < 50) {
+            kotlinx.coroutines.delay(50)
+            waits++
+        }
+
+        val room = liveKitRoom ?: LiveKit.create(activity.applicationContext)
+        liveKitRoom = room
+        room.connect(url, token)
+
+        val capturer = CameraKitSurfaceCapturer(session) { handle -> publishOutput = handle }
+        val track = room.localParticipant.createVideoTrack(
+            name = "camera",
+            capturer = capturer,
+        )
+        liveKitTrack = track
+        room.localParticipant.publishVideoTrack(track)
+        try {
+            room.localParticipant.setMicrophoneEnabled(true)
+        } catch (e: Exception) {
+            Log.w(TAG, "mic publish failed", e)
+        }
+        Log.i(TAG, "LiveKit video published")
+    }
+
+    private suspend fun stopPublishing() {
+        publishEnabled = false
+        publishOutput?.close()
+        publishOutput = null
+        try {
+            liveKitTrack?.stop()
+        } catch (_: Exception) {
+        }
+        liveKitTrack = null
+        try {
+            liveKitRoom?.disconnect()
+        } catch (_: Exception) {
+        }
+        liveKitRoom = null
+        Log.i(TAG, "LiveKit publish stopped")
+    }
+
+    private fun lensKey(id: String, groupId: String) = "$groupId|$id"
+
+    private fun LensesComponent.Lens.toJs(): JSObject {
+        val obj = JSObject()
+        obj.put("id", id)
+        obj.put("groupId", groupId)
+        obj.put("name", name.orEmpty().ifBlank { "Lens" })
+        val icon = icons.firstOrNull()?.uri?.toString()
+        if (!icon.isNullOrEmpty()) obj.put("iconUrl", icon)
+        return obj
+    }
+
+    private fun JSArray.toStringList(): List<String> {
+        val out = ArrayList<String>()
+        for (i in 0 until length()) {
+            val value = optString(i, "")
+            if (value.isNotEmpty()) out.add(value)
+        }
+        return out
+    }
+
+    companion object {
+        private const val TAG = "KidiCameraKit"
+        private const val REQ_CAMERA = 4921
+    }
+}
+
+/**
+ * Pushes Camera Kit's filtered frames into LiveKit via a SurfaceTexture.
+ */
+private class CameraKitSurfaceCapturer(
+    private val session: Session,
+    private val onConnected: (Closeable) -> Unit,
+) : VideoCapturer {
+    private var helper: SurfaceTextureHelper? = null
+    private var observer: CapturerObserver? = null
+    private var surface: Surface? = null
+    private var output: Closeable? = null
+
+    override fun initialize(
+        helper: SurfaceTextureHelper,
+        context: android.content.Context,
+        observer: CapturerObserver,
+    ) {
+        this.helper = helper
+        this.observer = observer
+    }
+
+    override fun startCapture(width: Int, height: Int, framerate: Int) {
+        val helper = this.helper ?: return
+        helper.setTextureSize(width.coerceAtLeast(720), height.coerceAtLeast(1280))
+        helper.startListening { frame: VideoFrame -> observer?.onFrameCaptured(frame) }
+        val surface = Surface(helper.surfaceTexture)
+        this.surface = surface
+        val connected = session.processor.connectOutput(
+            object : ImageProcessor.Output.BackedBySurface(
+                surface,
+                ImageProcessor.Output.Purpose.RECORDING,
+            ) {
+                override fun writeFrame(): ImageProcessor.Output.Frame {
+                    return object : ImageProcessor.Output.Frame {
+                        override val timestamp: Long = SystemClock.elapsedRealtimeNanos()
+                        override fun recycle() = Unit
+                    }
+                }
+            },
+        )
+        output = connected
+        onConnected(connected)
+        observer?.onCapturerStarted(true)
+    }
+
+    override fun stopCapture() {
+        output?.close()
+        output = null
+        surface?.release()
+        surface = null
+        helper?.stopListening()
+        observer?.onCapturerStopped()
+    }
+
+    override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) = Unit
+
+    override fun dispose() {
+        stopCapture()
+    }
+
+    override fun isScreencast(): Boolean = false
+}

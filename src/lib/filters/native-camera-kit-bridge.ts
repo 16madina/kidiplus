@@ -61,14 +61,9 @@ type KidiCameraKitPlugin = {
  */
 function hasNativePluginImpl(): boolean {
   try {
-    // Keep the proven WebRTC/WASM path as the production default until the
-    // native Camera Kit publisher has been validated end-to-end on a device.
-    // A plugin being registered only proves that the bridge exists; it does
-    // not prove that camera frames are actually reaching LiveKit.
-    const nativeCameraKitEnabled =
-      import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "true";
+    // Force-off: VITE_NATIVE_CAMERA_KIT_ENABLED=false
+    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
     return (
-      nativeCameraKitEnabled &&
       Capacitor.isNativePlatform() &&
       Capacitor.isPluginAvailable("KidiCameraKit")
     );

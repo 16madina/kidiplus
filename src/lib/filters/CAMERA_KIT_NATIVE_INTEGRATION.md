@@ -23,6 +23,7 @@ Le rendu WASM dans la WebView sature le CPU sur certains appareils, ce qui provo
 | `src/components/broadcast/broadcast-video.tsx` | Applique la lens via le pont ; signale au plugin natif quand on entre/sort du live. |
 | `src/components/broadcast/camera-kit-preview.tsx` | Aperçu setup : utilise le pipeline web (le plugin natif gère sa propre preview). |
 | `ios/App/App/KidiCameraKitPlugin.swift` | Plugin Capacitor iOS (bridge vers SCSDKCameraKit + LiveKit iOS natif). |
+| `android/app/src/main/java/com/kidiplus/app/KidiCameraKitPlugin.kt` | Plugin Capacitor Android (Camera Kit + CameraX + LiveKit). |
 
 ## Configuration
 
@@ -49,6 +50,12 @@ Pour charger des groupes additionnels (web comme natif) :
 VITE_SNAP_LENS_GROUP_IDS=9dd9798c-cef5-443b-a494-af0cc480059e,...
 ```
 
+Pour forcer le fallback WASM même si le plugin natif est compilé :
+
+```env
+VITE_NATIVE_CAMERA_KIT_ENABLED=false
+```
+
 ## iOS — étapes de finalisation côté Xcode
 
 ### 1. SDK Snap Camera Kit (fait)
@@ -68,17 +75,18 @@ Le token est passé dynamiquement depuis le JS (`VITE_SNAP_CAMERA_KIT_API_TOKEN`
 ### 3. Cycle live natif
 
 Sur Capacitor iOS, le host **ne connecte pas** LiveKit depuis la WebView pour la caméra : le plugin publie vidéo + micro en natif (évite le conflit d’identité et le WASM).
-## Android — étapes de finalisation
 
-1. Ajouter dans `android/app/build.gradle` :
+## Android — plugin Capacitor (fait)
 
-```kotlin
-implementation "com.snap.camerakit:camerakit:1.35.0"
-implementation "com.snap.camerakit:support-camerax:1.35.0"
-```
+Fichiers :
 
-2. Créer `android/app/src/main/java/com/kidiplus/app/KidiCameraKitPlugin.kt` en miroir du plugin iOS.
-3. Enregistrer le plugin dans `MainActivity.java` ou via `capacitor.config.ts`.
+- `android/app/src/main/java/com/kidiplus/app/KidiCameraKitPlugin.kt` — Session Snap + preview CameraX + publish LiveKit
+- Enregistrement dans `MainActivity.java` via `registerPlugin(KidiCameraKitPlugin.class)`
+- Deps Gradle : `com.snap.camerakit:camerakit` + `support-camerax` + `io.livekit:livekit-android`
+
+Ouvrir `android/` dans Android Studio, Sync Gradle, puis **Build > Generate Signed Bundle / APK** (appareil physique, pas l’émulateur x86).
+
+Le pont JS (`native-camera-kit-bridge.ts`) active le chemin natif dès que `KidiCameraKit` est disponible dans le build. Fallback WASM si le plugin n’est pas compilé.
 
 ## Cycle de vie attendu
 
@@ -91,10 +99,10 @@ implementation "com.snap.camerakit:support-camerax:1.35.0"
 
 1. **Web** : s'assurer que les filtres Snap continuent de charger et de s'appliquer (pas de régression).
 2. **iOS natif** : après intégration du SDK Snap, vérifier que `KidiCameraKit.initialize()` et `loadLenses()` retournent les vraies lenses.
-3. **Performance** : comparer la charge CPU/GPU entre le rendu web et le rendu natif sur iPhone 15 Pro Max, iPhone SE et un Android milieu de gamme.
+3. **Android natif** : installer l’APK 1.6+ sur un appareil physique, ouvrir un live avec un filtre Snap, vérifier preview + publication.
+4. **Performance** : comparer la charge CPU/GPU entre le rendu web et le rendu natif sur iPhone 15 Pro Max, iPhone SE et un Android milieu de gamme.
 
 ## Notes
 
 - Le token API Camera Kit est un **jeton client public** — il est embarqué dans l'app mobile et dans le web.
 - Le SDK web reste le fallback pour les utilisateurs qui n'installent pas l'app native (PWA, navigateur).
-- Le plugin iOS actuel est un squelette fonctionnel : le bridge JS est opérationnel, mais les appels au SDK Snap natif doivent être décommentés/implémentés une fois la dépendance ajoutée dans Xcode.
