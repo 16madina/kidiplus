@@ -12,7 +12,7 @@
 
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 
-export type PosterMode = "off" | "cover" | "side";
+export type PosterMode = "off" | "cover";
 export type BackgroundMode = "none" | "blur" | "image";
 
 const WASM_URL =
@@ -130,9 +130,10 @@ function drawRoundedImage(
 
 export type PosterTransform = { x: number; y: number; scale: number };
 
-export const DEFAULT_POSTER_TRANSFORM: Record<"cover" | "side", PosterTransform> = {
-  cover: { x: 0.5, y: 0.4, scale: 1 },
-  side: { x: 0.78, y: 0.5, scale: 1 },
+export const DEFAULT_POSTER_TRANSFORM: PosterTransform = {
+  x: 0.5,
+  y: 0.4,
+  scale: 1,
 };
 
 export function clampPosterTransform(t: PosterTransform): PosterTransform {
@@ -270,7 +271,7 @@ export class LiveEffectsCompositor {
     if (hasPoster && this.poster) {
       const iw = this.poster.naturalWidth || 1;
       const ih = this.poster.naturalHeight || 1;
-      const baseW = w * (this.posterMode === "side" ? 0.4 : 0.72) * this.posterScale;
+      const baseW = w * 0.72 * this.posterScale;
       const baseH = baseW * (ih / iw);
       const maxH = h * 0.88;
       const ph = Math.min(baseH, maxH);

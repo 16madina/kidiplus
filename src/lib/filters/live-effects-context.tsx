@@ -52,7 +52,7 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [posterMode, setPosterMode] = useState<PosterMode>("off");
   const [posterTransform, setPosterTransformState] = useState<PosterTransform>(
-    DEFAULT_POSTER_TRANSFORM.cover,
+    DEFAULT_POSTER_TRANSFORM,
   );
   const bgRef = useRef<string | null>(null);
   const posterRef = useRef<string | null>(null);
@@ -100,9 +100,7 @@ export function LiveEffectsProvider({ children }: { children: ReactNode }) {
     posterRef.current = url;
     setPosterUrl(url);
     setPosterMode(mode);
-    setPosterTransformState(
-      mode === "side" ? DEFAULT_POSTER_TRANSFORM.side : DEFAULT_POSTER_TRANSFORM.cover,
-    );
+    setPosterTransformState(DEFAULT_POSTER_TRANSFORM);
   }, []);
 
   const setPosterTransform = useCallback((t: PosterTransform) => {
@@ -165,7 +163,7 @@ const EMPTY: LiveEffectsState = {
   backgroundUnavailable: false,
   posterUrl: null,
   posterMode: "off",
-  posterTransform: DEFAULT_POSTER_TRANSFORM.cover,
+  posterTransform: DEFAULT_POSTER_TRANSFORM,
   hasEffects: false,
   setBackgroundFile: () => {},
   setBackgroundBlur: () => {},

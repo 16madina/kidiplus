@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Loader2, ImagePlus, PanelsTopLeft, UserRound, Aperture, RefreshCw } from "lucide-react";
+import { X, Check, Loader2, ImagePlus, UserRound, Aperture, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
@@ -153,7 +153,7 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               />
             )}
             <EffectTile
-              label={t("broadcast.effects.greenScreen", "Fond image")}
+              label={t("broadcast.effects.greenScreen", "Écran vert")}
               desc={t("broadcast.effects.greenScreenDesc", "Remplace ton décor")}
               active={effects.backgroundMode === "image"}
               thumb={effects.backgroundMode === "image" ? effects.backgroundUrl : null}
@@ -166,8 +166,8 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               }}
             />
             <EffectTile
-              label={t("broadcast.effects.posterFace", "Poster plein")}
-              desc={t("broadcast.effects.posterFaceDesc", "Image plein écran")}
+              label={t("broadcast.effects.posterFace", "Ajouter image")}
+              desc={t("broadcast.effects.posterFaceDesc", "Image sur ton live")}
               active={!!effects.posterUrl && effects.posterMode === "cover"}
               thumb={effects.posterMode === "cover" ? effects.posterUrl : null}
               illustration={<PosterFullArt />}
@@ -179,23 +179,6 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
                   return;
                 }
                 posterModeRef.current = "cover";
-                posterInputRef.current?.click();
-              }}
-            />
-            <EffectTile
-              label={t("broadcast.effects.posterSide", "Poster à côté")}
-              desc={t("broadcast.effects.posterSideDesc", "Image à côté de toi")}
-              active={!!effects.posterUrl && effects.posterMode === "side"}
-              thumb={effects.posterMode === "side" ? effects.posterUrl : null}
-              illustration={<PosterSideArt />}
-              icon={<PanelsTopLeft size={18} />}
-              onClick={() => {
-                haptic.selection();
-                if (effects.posterUrl && effects.posterMode === "side") {
-                  effects.clearPoster();
-                  return;
-                }
-                posterModeRef.current = "side";
                 posterInputRef.current?.click();
               }}
             />
@@ -373,22 +356,6 @@ function PosterFullArt() {
     </svg>
   );
 }
-
-function PosterSideArt() {
-  return (
-    <svg viewBox="0 0 62 62" className="h-full w-full">
-      <rect width="62" height="62" fill="#2b3350" />
-      <g transform="translate(-12,0) scale(0.82) translate(0,7)">
-        <Bust />
-      </g>
-      <rect x="34" y="14" width="22" height="34" rx="4" fill="#e9a23b" />
-      <path d="M37 44l6-7 5 4 5-5v8H37z" fill="#b9761f" />
-      <circle cx="42" cy="23" r="3.2" fill="#fff3d1" />
-    </svg>
-  );
-}
-
-
 
 function LensTile({
   lens,
