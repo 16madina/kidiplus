@@ -82,7 +82,7 @@ Fichiers :
 
 - `android/app/src/main/java/com/kidiplus/app/KidiCameraKitPlugin.kt` — Session Snap + preview CameraX + publish LiveKit
 - Enregistrement dans `MainActivity.java` via `registerPlugin(KidiCameraKitPlugin.class)`
-- Deps Gradle : `com.snap.camerakit:camerakit` + `support-camerax` + `io.livekit:livekit-android`
+- Deps Gradle : `com.snap.camerakit:camerakit` **1.50.0+** (support pages 16 Ko) + `support-camerax` + `io.livekit:livekit-android`
 
 Ouvrir `android/` dans Android Studio, Sync Gradle, puis **Build > Generate Signed Bundle / APK** (appareil physique, pas l’émulateur x86).
 

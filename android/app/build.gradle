@@ -9,8 +9,8 @@ android {
         applicationId "com.kidiplus.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
-        versionName "1.8"
+        versionCode 14
+        versionName "1.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {
@@ -36,7 +36,9 @@ android {
 
     packaging {
         jniLibs {
-            pickFirsts += ['**/libc++_shared.so', '**/libjingle_peerconnection_so.so']
+            // AGP 8.5.1+ zip-aligns uncompressed .so on 16 KB boundaries for Play.
+            useLegacyPackaging = false
+            pickFirsts += ['**/libc++_shared.so', '**/libjingle_peerconnection_so.so', '**/liblkjingle_peerconnection_so.so']
         }
     }
 }
@@ -58,7 +60,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
     implementation 'com.google.firebase:firebase-messaging'
 
-    def cameraKitVersion = "1.40.0"
+    def cameraKitVersion = "1.50.0"
     implementation "com.snap.camerakit:camerakit:$cameraKitVersion"
     implementation "com.snap.camerakit:support-camerax:$cameraKitVersion"
 
