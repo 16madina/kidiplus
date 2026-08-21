@@ -2,6 +2,8 @@
 // publishes match the on-screen preview. Without this, the host sees a CSS
 // mirrored preview while viewers receive the un-mirrored camera feed.
 import type { Track, TrackProcessor, VideoProcessorOptions } from "livekit-client";
+import { startFramePump, rebindVideoSource, type FramePump } from "@/lib/filters/frame-pump";
+
 
 export class MirrorVideoProcessor implements TrackProcessor<Track.Kind.Video, VideoProcessorOptions> {
   readonly name = "mirror-x";
