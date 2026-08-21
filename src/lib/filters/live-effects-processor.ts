@@ -5,6 +5,8 @@ import {
   type BackgroundMode,
   type PosterMode,
 } from "@/lib/filters/live-effects-compositor";
+import { startFramePump, rebindVideoSource, type FramePump } from "@/lib/filters/frame-pump";
+
 
 export type LiveEffectsConfig = {
   backgroundUrl: string | null;
@@ -27,9 +29,12 @@ export class LiveEffectsVideoProcessor
   private video?: HTMLVideoElement;
   private canvas?: HTMLCanvasElement;
   private raf = 0;
+  private pump: FramePump | null = null;
+  private source?: MediaStreamTrack;
   private running = false;
   private compositor = new LiveEffectsCompositor();
   private config: LiveEffectsConfig;
+
 
   constructor(config: LiveEffectsConfig) {
     this.config = config;
@@ -48,8 +53,11 @@ export class LiveEffectsVideoProcessor
 
   async destroy(): Promise<void> {
     this.running = false;
+    this.pump?.stop();
+    this.pump = null;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
+
     try {
       this.processedTrack?.stop();
     } catch {
@@ -132,14 +140,22 @@ export class LiveEffectsVideoProcessor
 
     this.video = video;
     this.canvas = canvas;
+    this.source = source;
     this.processedTrack = processed;
     this.running = true;
 
-    const tick = () => {
-      if (!this.running || !this.video || !this.canvas) return;
-      void this.compositor.draw(this.video, this.canvas);
-      this.raf = requestAnimationFrame(tick);
-    };
-    this.raf = requestAnimationFrame(tick);
+    this.pump = startFramePump({
+      video,
+      fps: 30,
+      draw: () => {
+        if (!this.running || !this.video || !this.canvas) return;
+        void this.compositor.draw(this.video, this.canvas);
+      },
+      onStall: () => {
+        if (!this.running || !this.video || !this.source) return;
+        rebindVideoSource(this.video, this.source);
+      },
+    });
   }
 }
+
