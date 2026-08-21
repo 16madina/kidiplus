@@ -140,9 +140,11 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
           <div className="mb-2 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
             {!effects.backgroundUnavailable && (
               <EffectTile
-                label={t("broadcast.effects.blur", "Flou d'arrière-plan")}
+                label={t("broadcast.effects.blur", "Flou du fond")}
+                desc={t("broadcast.effects.blurDesc", "Floute ton décor")}
                 active={effects.backgroundMode === "blur"}
                 thumb={null}
+                illustration={<BlurArt />}
                 icon={<Aperture size={18} />}
                 onClick={() => {
                   haptic.selection();
@@ -151,9 +153,11 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               />
             )}
             <EffectTile
-              label={t("broadcast.effects.greenScreen", "Fond personnalisé")}
+              label={t("broadcast.effects.greenScreen", "Fond image")}
+              desc={t("broadcast.effects.greenScreenDesc", "Remplace ton décor")}
               active={effects.backgroundMode === "image"}
               thumb={effects.backgroundMode === "image" ? effects.backgroundUrl : null}
+              illustration={<BackdropArt />}
               icon={<ImagePlus size={18} />}
               onClick={() => {
                 haptic.selection();
@@ -162,9 +166,11 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               }}
             />
             <EffectTile
-              label={t("broadcast.effects.posterFace", "Poster")}
+              label={t("broadcast.effects.posterFace", "Poster plein")}
+              desc={t("broadcast.effects.posterFaceDesc", "Image plein écran")}
               active={!!effects.posterUrl && effects.posterMode === "cover"}
               thumb={effects.posterMode === "cover" ? effects.posterUrl : null}
+              illustration={<PosterFullArt />}
               icon={<UserRound size={18} />}
               onClick={() => {
                 haptic.selection();
@@ -177,9 +183,11 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               }}
             />
             <EffectTile
-              label={t("broadcast.effects.posterSide", "À côté")}
+              label={t("broadcast.effects.posterSide", "Poster à côté")}
+              desc={t("broadcast.effects.posterSideDesc", "Image à côté de toi")}
               active={!!effects.posterUrl && effects.posterMode === "side"}
               thumb={effects.posterMode === "side" ? effects.posterUrl : null}
+              illustration={<PosterSideArt />}
               icon={<PanelsTopLeft size={18} />}
               onClick={() => {
                 haptic.selection();
@@ -192,6 +200,7 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
               }}
             />
           </div>
+
           <input
             ref={bgInputRef}
             type="file"
