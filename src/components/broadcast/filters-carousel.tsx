@@ -388,7 +388,7 @@ function PosterSideArt() {
   );
 }
 
-}
+
 
 function LensTile({
   lens,
