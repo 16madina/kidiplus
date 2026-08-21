@@ -259,70 +259,135 @@ export function FiltersCarousel({ open, onClose, doneLabel, hint }: FiltersCarou
 
 function EffectTile({
   label,
+  desc,
   active,
   thumb,
+  illustration,
   icon,
   onClick,
 }: {
   label: string;
+  desc?: string;
   active: boolean;
   thumb: string | null;
+  illustration?: ReactNode;
   icon: ReactNode;
   onClick: () => void;
 }) {
   return (
     <Press
       onClick={onClick}
-      aria-label={label}
-      className="!min-h-16 h-16 w-16 shrink-0 rounded-2xl grid place-items-center relative"
-      style={{
-        background: active ? "oklch(0.85 0.18 90 / 0.18)" : "rgba(0,0,0,0.55)",
-        border: `2px solid ${active ? GOLD : "rgba(255,255,255,0.14)"}`,
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-      }}
+      aria-label={desc ? `${label} — ${desc}` : label}
+      className="!min-h-0 w-[76px] shrink-0 flex flex-col items-center gap-1 !bg-transparent"
     >
-      {thumb && (
-        <img
-          src={thumb}
-          alt=""
-          className="absolute inset-0 h-full w-full rounded-2xl object-cover"
-          draggable={false}
-        />
-      )}
-      <div
-        className="relative flex flex-col items-center gap-0.5"
-        style={
-          thumb
-            ? {
-                position: "absolute",
-                inset: 0,
-                justifyContent: "flex-end",
-                paddingBottom: 3,
-                background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 50%)",
-                borderRadius: 14,
-              }
-            : undefined
-        }
+      <span
+        className="relative block h-[62px] w-[62px] overflow-hidden rounded-2xl"
+        style={{
+          background: "rgba(0,0,0,0.55)",
+          border: `2px solid ${active ? GOLD : "rgba(255,255,255,0.16)"}`,
+          transition: "border-color 0.15s",
+        }}
       >
-        {!thumb && <span className="text-white">{icon}</span>}
-        <span
-          className="max-w-[60px] truncate text-[9px] font-semibold leading-tight"
-          style={{ color: active ? GOLD : "white" }}
-        >
-          {label}
+        {thumb ? (
+          <img
+            src={thumb}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          illustration ?? <span className="grid h-full w-full place-items-center text-white">{icon}</span>
+        )}
+        {active && (
+          <span
+            className="absolute top-1 right-1 h-4 w-4 rounded-full grid place-items-center"
+            style={{ background: GOLD, color: "#10162B" }}
+          >
+            <Check size={10} strokeWidth={3} />
+          </span>
+        )}
+      </span>
+      <span
+        className="w-full truncate text-center text-[9.5px] font-bold leading-tight"
+        style={{ color: active ? GOLD : "white" }}
+      >
+        {label}
+      </span>
+      {desc && (
+        <span className="w-full text-center text-[8.5px] leading-tight text-white/55 line-clamp-2">
+          {desc}
         </span>
-      </div>
-      {active && (
-        <div
-          className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full grid place-items-center"
-          style={{ background: GOLD, color: "#10162B" }}
-        >
-          <Check size={10} strokeWidth={3} />
-        </div>
       )}
     </Press>
   );
+}
+
+/* --- Mini illustrations (silhouette + décor) pour expliquer chaque effet --- */
+
+function Bust({ fill = "rgba(255,255,255,0.92)" }: { fill?: string }) {
+  return (
+    <g fill={fill}>
+      <circle cx="31" cy="26" r="9" />
+      <path d="M14 62c0-9.4 7.6-17 17-17s17 7.6 17 17z" />
+    </g>
+  );
+}
+
+function BlurArt() {
+  return (
+    <svg viewBox="0 0 62 62" className="h-full w-full">
+      <defs>
+        <filter id="kb-blur">
+          <feGaussianBlur stdDeviation="3.2" />
+        </filter>
+      </defs>
+      <rect width="62" height="62" fill="#2b3350" />
+      <g filter="url(#kb-blur)" opacity="0.85">
+        <rect x="4" y="8" width="20" height="16" rx="3" fill="#7c8bbf" />
+        <rect x="38" y="14" width="18" height="26" rx="3" fill="#5d6a99" />
+        <circle cx="14" cy="46" r="9" fill="#8f9ccb" />
+      </g>
+      <Bust />
+    </svg>
+  );
+}
+
+function BackdropArt() {
+  return (
+    <svg viewBox="0 0 62 62" className="h-full w-full">
+      <rect width="62" height="62" fill="#1e6f4d" />
+      <circle cx="47" cy="14" r="6" fill="#ffd66b" />
+      <path d="M0 48l16-14 12 10 10-8 24 18v8H0z" fill="#12583c" />
+      <Bust />
+    </svg>
+  );
+}
+
+function PosterFullArt() {
+  return (
+    <svg viewBox="0 0 62 62" className="h-full w-full">
+      <rect width="62" height="62" fill="#141a30" />
+      <rect x="6" y="6" width="50" height="50" rx="5" fill="#e9a23b" />
+      <path d="M12 44l10-11 8 7 7-6 13 12v6H12z" fill="#b9761f" />
+      <circle cx="22" cy="20" r="5" fill="#fff3d1" />
+    </svg>
+  );
+}
+
+function PosterSideArt() {
+  return (
+    <svg viewBox="0 0 62 62" className="h-full w-full">
+      <rect width="62" height="62" fill="#2b3350" />
+      <g transform="translate(-12,0) scale(0.82) translate(0,7)">
+        <Bust />
+      </g>
+      <rect x="34" y="14" width="22" height="34" rx="4" fill="#e9a23b" />
+      <path d="M37 44l6-7 5 4 5-5v8H37z" fill="#b9761f" />
+      <circle cx="42" cy="23" r="3.2" fill="#fff3d1" />
+    </svg>
+  );
+}
+
 }
 
 function LensTile({
