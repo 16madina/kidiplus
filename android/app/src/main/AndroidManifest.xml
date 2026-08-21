@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -64,6 +65,12 @@
 
     <!-- Permissions reseau -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- LiveKit embeds screen-share; KiDi+ does not use MediaProjection. Strip so Play
+         Console does not require FOREGROUND_SERVICE_MEDIA_PROJECTION declaration. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+        tools:node="remove" />
 
     <!-- Notifications push (Android 13+ / API 33 : permission runtime obligatoire) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
