@@ -41,11 +41,11 @@ type ItemConfig = {
   optionsOpen: boolean;
 };
 
-function defaultConfig(p: ShopProduct): ItemConfig {
+function defaultConfig(p: ShopProduct, currency = "EUR"): ItemConfig {
   return {
-    mode: "fixed",
+    mode: "auction",
     price: String(Number(p.price)),
-    startPrice: String(Number(p.price)),
+    startPrice: currency === "XOF" ? "500" : "1",
     timerSec: "45",
     stock: String(Math.max(1, Number(p.stock) || 1)),
     colors: [...(p.colors ?? [])],
@@ -125,7 +125,7 @@ export function ShopPickerSheet({
     const defaults: Record<string, ItemConfig> = {};
     for (const p of items) {
       if (!selected.has(p.id)) continue;
-      defaults[p.id] = configs[p.id] ?? defaultConfig(p);
+      defaults[p.id] = configs[p.id] ?? defaultConfig(p, currency);
     }
     setConfigs(defaults);
     setStep("config");
@@ -331,7 +331,7 @@ export function ShopPickerSheet({
                           })}
                         </p>
                         <div className="mt-1 flex gap-1">
-                          {(["fixed", "auction"] as const).map((m) => {
+                          {(["auction", "fixed"] as const).map((m) => {
                             const on = c.mode === m;
                             return (
                               <Press
