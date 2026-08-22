@@ -12,10 +12,12 @@ import {
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import {
   applyBridgeLens,
+  errMsg,
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
   waitForNativeCameraKit,
+  warmupNativeCameraKit,
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
@@ -214,7 +216,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               try { await track.stopProcessor(); } catch { /* none */ }
             }
             void applyBridgeLens(lens).catch((e) => {
-              console.warn("[native-camera-kit] applyBridgeLens failed", e);
+              console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
             });
             return;
           }
@@ -264,10 +266,22 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
+    // Warm up the native Snap session as soon as the broadcast screen mounts.
+    // Waiting for the filter carousel meant `initialize()` was never called on
+    // iOS/Android, so the first lens tap or go-live had to pay the full SDK
+    // boot cost (and any failure surfaced only as a frozen camera).
+    useEffect(() => {
+      if (!isNativeCameraKitAvailable()) return;
+      void warmupNativeCameraKit().catch((e) => {
+        console.warn("[native-camera-kit] warmup failed", errMsg(e));
+      });
+    }, []);
+
     // Report status upward.
     useEffect(() => {
       onStatus?.(state);
     }, [state, onStatus]);
+
 
     // Probe device count to decide whether the flip button should show.
     // Re-probes on state changes because iOS/Android only expose the full
@@ -583,13 +597,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 return;
               }
             } catch (e) {
-              const msg =
-                e instanceof Error
-                  ? e.message
-                  : e && typeof e === "object" && "message" in e
-                    ? String((e as { message: unknown }).message)
-                    : String(e);
-              console.warn("[native-camera-kit] fallback to web pipeline", msg || e);
+              console.warn("[native-camera-kit] fallback to web pipeline:", errMsg(e));
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
               // Give iOS a beat to release the camera before getUserMedia.
@@ -601,7 +609,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const lens = activeLensRef.current;
             if (lens?.isSnapLens) {
               void applyBridgeLens(lens).catch((e) => {
-                console.warn("[native-camera-kit] applyBridgeLens failed", e);
+                console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
               });
             }
             localVideoTrackRef.current = null;
