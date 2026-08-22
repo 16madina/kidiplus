@@ -177,7 +177,11 @@ class KidiCameraKitPlugin : Plugin() {
             return
         }
         val groupId = call.getString("groupId").orEmpty()
-        ensurePreviewStarted {
+        ensurePreviewStarted { previewOk ->
+            if (!previewOk) {
+                call.reject("Camera preview failed to start")
+                return@ensurePreviewStarted
+            }
             val cached = lensByKey[lensKey(lensId, groupId)]
             if (cached != null) {
                 session.lenses.processor.apply(cached) { ok ->
@@ -210,8 +214,13 @@ class KidiCameraKitPlugin : Plugin() {
     @PluginMethod
     fun startPreview(call: PluginCall) {
         facingFront = (call.getString("facing") ?: "user") != "environment"
-        ensurePreviewStarted {
-            makeWebViewTransparent()
+        ensurePreviewStarted { ok ->
+            if (!ok) {
+                // Never resolve success without a running camera — that was the
+                // iOS black-screen pattern (UI thinks native works, no frames).
+                call.reject("Camera preview failed to start")
+                return@ensurePreviewStarted
+            }
             Log.i(TAG, "startPreview facingFront=$facingFront")
             emitStatus("previewStarted", JSObject().put("facingFront", facingFront))
             notifyListeners("captureState", JSObject().put("running", previewStarted))
@@ -228,6 +237,7 @@ class KidiCameraKitPlugin : Plugin() {
                 /* older support-camerax may not expose stopPreview */
             }
             previewStarted = false
+            restoreWebViewBackground()
         }
         call.resolve(JSObject().put("stopped", true))
     }
@@ -262,20 +272,30 @@ class KidiCameraKitPlugin : Plugin() {
     override fun handleOnDestroy() {
         observeHandle?.close()
         observeHandle = null
-        scope.launch { stopPublishing() }
+        // Run cleanup synchronously: scope.launch then scope.cancel() cancelled
+        // the coroutine before it ran, leaking the LiveKit room + camera.
+        try {
+            kotlinx.coroutines.runBlocking { stopPublishing() }
+        } catch (_: Exception) {
+        }
         cameraKitSession?.close()
         cameraKitSession = null
         imageSource = null
         initialized = false
+        previewStarted = false
         scope.cancel()
         super.handleOnDestroy()
     }
 
-    private fun ensurePreviewStarted(done: () -> Unit) {
+    private fun ensurePreviewStarted(done: (ok: Boolean) -> Unit) {
         val activity = activity
         val source = imageSource
         if (activity == null || source == null) {
-            done()
+            done(false)
+            return
+        }
+        if (previewStarted) {
+            done(true)
             return
         }
         val start = {
@@ -283,10 +303,11 @@ class KidiCameraKitPlugin : Plugin() {
                 source.startPreview(facingFront)
                 previewStarted = true
                 makeWebViewTransparent()
+                done(true)
             } catch (e: Exception) {
                 Log.e(TAG, "startPreview failed", e)
+                done(false)
             }
-            done()
         }
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
@@ -324,17 +345,30 @@ class KidiCameraKitPlugin : Plugin() {
         (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
     }
 
+    private fun restoreWebViewBackground() {
+        // Undo makeWebViewTransparent() so a gap in web content shows the app
+        // navy instead of a void behind the WebView.
+        val webView = bridge?.webView ?: return
+        webView.setBackgroundColor(Color.parseColor("#10162B"))
+        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
+    }
+
     private suspend fun startPublishing(url: String, token: String) {
         publishEnabled = true
         val activity = activity ?: throw IllegalStateException("no activity")
         val session = cameraKitSession ?: throw IllegalStateException("Camera Kit session missing")
 
         var started = false
-        ensurePreviewStarted { started = true }
+        var previewOk = false
+        ensurePreviewStarted { ok -> started = true; previewOk = ok }
         var waits = 0
         while (!started && waits < 50) {
             kotlinx.coroutines.delay(50)
             waits++
+        }
+        if (!previewOk) {
+            publishEnabled = false
+            throw IllegalStateException("Camera preview failed to start — refusing to publish black frames")
         }
 
         val room = liveKitRoom ?: LiveKit.create(activity.applicationContext)
