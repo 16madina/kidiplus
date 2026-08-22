@@ -165,7 +165,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 
   const plugin = await getNativePlugin();
   if (plugin) {
-    nativeLensesPromise = loadNativeLenses(plugin);
+    nativeLensesPromise = loadNativeLenses(plugin).catch(async (e) => {
+      // Native SDK missing/erroring → never leave the carousel empty.
+      disableNative(e);
+      return loadWebLenses();
+    });
   } else {
     nativeLensesPromise = loadWebLenses();
   }
@@ -184,9 +188,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens[]> {
   const token = snapApiToken();
   if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+  console.info("[native-camera-kit] initialize()", SNAP_LENS_GROUP_IDS.join(","));
   await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
   const res = await plugin.loadLenses({ groupIds: SNAP_LENS_GROUP_IDS });
-  console.info(`[native-camera-kit] ${res.lenses.length} lens(es) loaded`);
+  console.info(`[native-camera-kit] ${res.lenses?.length ?? 0} lens(es) loaded`);
+  if (!res.lenses?.length) throw new Error("native returned 0 lenses");
   return res.lenses.map((l) => ({
     lensId: l.id,
     groupId: l.groupId || SNAP_LENS_GROUP_ID,
@@ -195,6 +201,7 @@ async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens
     previewUrl: l.previewUrl,
   }));
 }
+
 
 async function loadWebLenses(): Promise<BridgeLens[]> {
   const lenses = await loadWebSnapLenses(false);
