@@ -134,6 +134,37 @@ export function isNativeCameraKitAvailable(): boolean {
   return hasNativePluginImpl();
 }
 
+/**
+ * Boots the native Snap session ahead of time (plugin registration +
+ * `initialize` + lens list). Called when the broadcast screen mounts so the
+ * Xcode/Logcat trace shows `KidiCameraKit initialize` immediately and any
+ * failure disables the native path BEFORE the host taps "go live".
+ */
+export async function warmupNativeCameraKit(): Promise<boolean> {
+  const plugin = await getNativePlugin();
+  if (!plugin) {
+    console.info("[native-camera-kit] warmup skipped (no native plugin)");
+    return false;
+  }
+  const token = snapApiToken();
+  if (!token) {
+    disableNative("missing VITE_SNAP_CAMERA_KIT_API_TOKEN");
+    return false;
+  }
+  try {
+    console.info("[native-camera-kit] warmup initialize()", SNAP_LENS_GROUP_IDS.join(","));
+    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    const lenses = await loadBridgeLenses();
+    console.info(`[native-camera-kit] warmup ok, ${lenses.length} lens(es)`);
+    return !nativeDisabled;
+  } catch (e) {
+    console.warn("[native-camera-kit] warmup error", e);
+    disableNative(e);
+    return false;
+  }
+}
+
+
 export function isCameraKitSupported(): boolean {
   if (hasNativePluginImpl()) return true; // le plugin natif fournit le support
   return isWebCameraKitSupported();
