@@ -9,6 +9,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Firebase must be configured before any FCM/push work.
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+
         // Playback so splash + live audio work with Silent switch on.
         // Native LiveKit PiP also relies on background audio (Info.plist).
         do {
