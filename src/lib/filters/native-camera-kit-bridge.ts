@@ -59,14 +59,43 @@ type KidiCameraKitPlugin = {
  * plugin compilé, on bascule sur un chemin natif fantôme et la caméra reste
  * bloquée sur « Connexion au live… ».
  */
+let nativeDisabled = false; // set when the native path proves unusable
+let detectionLogged = false;
+
+function pluginFromWindow(): unknown {
+  try {
+    const cap = (globalThis as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } })
+      .Capacitor;
+    return cap?.Plugins?.["KidiCameraKit"] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function hasNativePluginImpl(): boolean {
   try {
     // Force-off only: VITE_NATIVE_CAMERA_KIT_ENABLED=false
     if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
-    return (
-      Capacitor.isNativePlatform() &&
-      Capacitor.isPluginAvailable("KidiCameraKit")
-    );
+    if (nativeDisabled) return false;
+    if (!Capacitor.isNativePlatform()) return false;
+    // `isPluginAvailable` only knows about plugins listed in the Capacitor
+    // registry; our app-level plugin is registered manually, so also look it
+    // up directly on `window.Capacitor.Plugins`.
+    const available =
+      Capacitor.isPluginAvailable("KidiCameraKit") || !!pluginFromWindow();
+    if (!detectionLogged) {
+      detectionLogged = true;
+      console.info(
+        "[native-camera-kit] detection",
+        JSON.stringify({
+          platform: Capacitor.getPlatform(),
+          isPluginAvailable: Capacitor.isPluginAvailable("KidiCameraKit"),
+          onWindow: !!pluginFromWindow(),
+          available,
+        }),
+      );
+    }
+    return available;
   } catch {
     return false;
   }
@@ -84,6 +113,22 @@ async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
     return null;
   }
 }
+
+/** A missing/broken native implementation must not strand the host on a black
+ * screen: disable the native path for the rest of the session and let the web
+ * pipeline take over. */
+function disableNative(reason: unknown): void {
+  if (nativeDisabled) return;
+  nativeDisabled = true;
+  nativePlugin = null;
+  console.warn("[native-camera-kit] disabled, falling back to web:", reason);
+}
+
+function isUnimplemented(e: unknown): boolean {
+  const msg = String((e as { message?: string } | null)?.message ?? e ?? "");
+  return /not implemented|unimplemented|not available|UNIMPLEMENTED/i.test(msg);
+}
+
 
 export function isNativeCameraKitAvailable(): boolean {
   return hasNativePluginImpl();
@@ -120,7 +165,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 
   const plugin = await getNativePlugin();
   if (plugin) {
-    nativeLensesPromise = loadNativeLenses(plugin);
+    nativeLensesPromise = loadNativeLenses(plugin).catch(async (e) => {
+      // Native SDK missing/erroring → never leave the carousel empty.
+      disableNative(e);
+      return loadWebLenses();
+    });
   } else {
     nativeLensesPromise = loadWebLenses();
   }
@@ -139,9 +188,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens[]> {
   const token = snapApiToken();
   if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+  console.info("[native-camera-kit] initialize()", SNAP_LENS_GROUP_IDS.join(","));
   await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
   const res = await plugin.loadLenses({ groupIds: SNAP_LENS_GROUP_IDS });
-  console.info(`[native-camera-kit] ${res.lenses.length} lens(es) loaded`);
+  console.info(`[native-camera-kit] ${res.lenses?.length ?? 0} lens(es) loaded`);
+  if (!res.lenses?.length) throw new Error("native returned 0 lenses");
   return res.lenses.map((l) => ({
     lensId: l.id,
     groupId: l.groupId || SNAP_LENS_GROUP_ID,
@@ -150,6 +201,7 @@ async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens
     previewUrl: l.previewUrl,
   }));
 }
+
 
 async function loadWebLenses(): Promise<BridgeLens[]> {
   const lenses = await loadWebSnapLenses(false);
@@ -178,7 +230,12 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
   }
   const plugin = await getNativePlugin();
   if (plugin) {
-    await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    try {
+      await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    } catch (e) {
+      if (isUnimplemented(e)) disableNative(e);
+      else throw e;
+    }
     return;
   }
   // Web : la lens est appliquée par le pipeline en cours (voir broadcast-video).
@@ -186,10 +243,14 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
 
 export async function clearBridgeLens(): Promise<void> {
   const plugin = await getNativePlugin();
-  if (plugin) {
+  if (!plugin) return;
+  try {
     await plugin.clearLens();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Preview / pipeline web
@@ -220,13 +281,19 @@ export async function setNativePublishEnabled(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return; // web : la publication est gérée par broadcast-video
-  if (args.enabled) {
-    // Live can start before the filter carousel — always warm the Snap session.
-    const token = snapApiToken();
-    if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
-    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.enabled) {
+      // Live can start before the filter carousel — always warm the Snap session.
+      const token = snapApiToken();
+      if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    }
+    console.info("[native-camera-kit] setPublishEnabled", args.enabled);
+    await plugin.setPublishEnabled(args);
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
-  await plugin.setPublishEnabled(args);
 }
 
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
@@ -237,16 +304,23 @@ export async function setNativePreview(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return;
-  if (args.active) {
-    const token = snapApiToken();
-    if (token) {
-      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.active) {
+      const token = snapApiToken();
+      if (token) {
+        await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+      }
+      console.info("[native-camera-kit] startPreview", args.facing ?? "user");
+      await plugin.startPreview({
+        mirrored: args.mirrored ?? false,
+        facing: args.facing ?? "user",
+      });
+    } else {
+      await plugin.stopPreview();
     }
-    await plugin.startPreview({
-      mirrored: args.mirrored ?? false,
-      facing: args.facing ?? "user",
-    });
-  } else {
-    await plugin.stopPreview();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
+
 }
