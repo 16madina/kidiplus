@@ -74,11 +74,13 @@ function pluginFromWindow(): unknown {
 
 function hasNativePluginImpl(): boolean {
   try {
-    // OPT-IN only. The manually registered iOS plugin resolves its bridge calls
-    // but never renders a preview layer, so trusting it left the host on a
-    // black screen with no way back. Until the native view is verified, the
-    // native path requires VITE_NATIVE_CAMERA_KIT_ENABLED=true.
-    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED !== "true") return false;
+    // Emergency safety gate: the current native publisher can resolve before
+    // it has emitted/published a real frame. That makes the UI report success
+    // while both the host and viewers receive black video. Keep this path
+    // completely disabled (regardless of a stale production env flag) until
+    // native first-frame + publish acknowledgement is implemented end-to-end.
+    return false;
+    /* istanbul ignore next -- retained native implementation for later validation */
     if (nativeDisabled) return false;
     if (!Capacitor.isNativePlatform()) return false;
     // `isPluginAvailable` only knows about plugins listed in the Capacitor
@@ -239,6 +241,11 @@ export async function warmupNativeCameraKit(_reason?: string): Promise<boolean> 
 
 
 export function isCameraKitSupported(): boolean {
+  // Never run the Web Camera Kit WASM TrackProcessor inside a native WebView.
+  // On iOS it can output an all-black processed track even though the raw
+  // getUserMedia camera is healthy. Native builds therefore publish the raw
+  // LiveKit camera while the native integration is safety-gated above.
+  if (Capacitor.isNativePlatform()) return hasNativePluginImpl();
   if (hasNativePluginImpl()) return true; // le plugin natif fournit le support
   return isWebCameraKitSupported();
 }
