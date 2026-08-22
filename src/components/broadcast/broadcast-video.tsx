@@ -1021,7 +1021,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           videoRef={videoRef}
           // Effects canvas is already composed (camera selfie-flipped,
           // images not). Never CSS-flip that result or viewers/host diverge.
-          mirrored={mirrored && !effects.hasEffects}
+          // Same for the Camera Kit processor: its output is already mirrored.
+          mirrored={mirrored && !effects.hasEffects && !snapProcessorMirrors}
           showVideo={showVideo && !nativeCam}
         />
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
