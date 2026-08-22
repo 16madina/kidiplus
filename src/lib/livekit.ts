@@ -12,6 +12,7 @@ import {
   type RemoteTrackPublication,
   type RemoteParticipant,
 } from "livekit-client";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Role = "host" | "viewer";
@@ -285,6 +286,10 @@ export async function syncFrontCameraMirror(
   } catch {
     /* no processor yet */
   }
+  // Canvas/TrackProcessor output is unreliable in iOS WKWebView and can turn
+  // an otherwise healthy camera into a black published track. Native viewers
+  // should receive the raw camera; selfie mirroring is local presentation only.
+  if (Capacitor.isNativePlatform()) return;
   if (facing !== "user") return;
   try {
     const { MirrorVideoProcessor } = await import("@/lib/mirror-video-processor");

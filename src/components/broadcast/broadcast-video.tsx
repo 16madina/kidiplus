@@ -3,6 +3,7 @@ import { useFilter } from "@/lib/filters/filter-context";
 import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
 import {
@@ -990,7 +991,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       (videoSource === "rtmp" || enabled);
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
-    const mirrored = !livekit && facing === "user";
+    const mirrored = facing === "user" && (!livekit || Capacitor.isNativePlatform());
     const nativeCam = isNativeCameraKitAvailable();
 
     return (
