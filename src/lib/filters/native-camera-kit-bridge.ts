@@ -230,7 +230,12 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
   }
   const plugin = await getNativePlugin();
   if (plugin) {
-    await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    try {
+      await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    } catch (e) {
+      if (isUnimplemented(e)) disableNative(e);
+      else throw e;
+    }
     return;
   }
   // Web : la lens est appliquée par le pipeline en cours (voir broadcast-video).
@@ -238,10 +243,14 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
 
 export async function clearBridgeLens(): Promise<void> {
   const plugin = await getNativePlugin();
-  if (plugin) {
+  if (!plugin) return;
+  try {
     await plugin.clearLens();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Preview / pipeline web
