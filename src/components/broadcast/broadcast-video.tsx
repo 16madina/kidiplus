@@ -992,6 +992,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
     const mirrored = facing === "user" && (!livekit || Capacitor.isNativePlatform());
+    // En live, le processeur Camera Kit miroire déjà la piste publiée
+    // (Transform2D.MirrorX) et LiveKit l'affiche localement telle quelle :
+    // un flip CSS en plus inverserait l'image une seconde fois (main à gauche
+    // au lieu de droite).
+    const snapProcessorMirrors =
+      !!livekit && activeLens.isSnapLens === true && isCameraKitSupported();
     const nativeCam = isNativeCameraKitAvailable();
 
     return (
@@ -1015,7 +1021,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           videoRef={videoRef}
           // Effects canvas is already composed (camera selfie-flipped,
           // images not). Never CSS-flip that result or viewers/host diverge.
-          mirrored={mirrored && !effects.hasEffects}
+          // Same for the Camera Kit processor: its output is already mirrored.
+          mirrored={mirrored && !effects.hasEffects && !snapProcessorMirrors}
           showVideo={showVideo && !nativeCam}
         />
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
