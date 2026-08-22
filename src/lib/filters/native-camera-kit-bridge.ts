@@ -101,19 +101,59 @@ function hasNativePluginImpl(): boolean {
   }
 }
 
+const NATIVE_METHODS = [
+  "initialize",
+  "loadLenses",
+  "applyLens",
+  "clearLens",
+  "startPreview",
+  "stopPreview",
+  "setPublishEnabled",
+] as const;
+
+/** Direct bridge call. `registerPlugin()` only routes to native when the plugin
+ * appears in `Capacitor.PluginHeaders`; KidiCameraKit is registered manually on
+ * the bridge (capacitorDidLoad), so its header is missing and the generated
+ * proxy rejects with "not implemented on ios" WITHOUT ever reaching Swift —
+ * exactly the silent fallback seen in Xcode. `Capacitor.nativePromise` talks to
+ * the bridge directly and always reaches the Swift method. */
+function nativePromiseBridge(): KidiCameraKitPlugin | null {
+  const cap = (globalThis as unknown as {
+    Capacitor?: { nativePromise?: (p: string, m: string, o?: unknown) => Promise<unknown> };
+  }).Capacitor;
+  if (typeof cap?.nativePromise !== "function") return null;
+  const call = cap.nativePromise.bind(cap);
+  const obj = {} as Record<string, (o?: unknown) => Promise<unknown>>;
+  for (const m of NATIVE_METHODS) {
+    obj[m] = (o?: unknown) => call("KidiCameraKit", m, o ?? {});
+  }
+  return obj as unknown as KidiCameraKitPlugin;
+}
+
 async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
   if (nativePlugin) return nativePlugin;
   if (!hasNativePluginImpl()) return null;
-  // The plugin is registered manually on the bridge, so it is already exposed
-  // on `window.Capacitor.Plugins`. Reuse it instead of calling registerPlugin()
-  // again (which warns "already registered" and can hand back a stale proxy).
-  const fromWindow = pluginFromWindow();
-  if (fromWindow) {
-    nativePlugin = fromWindow as KidiCameraKitPlugin;
+
+  // 1) Plugin object injected by the native bridge (routes straight to Swift).
+  const fromWindow = pluginFromWindow() as KidiCameraKitPlugin | null;
+  if (fromWindow && typeof fromWindow.initialize === "function") {
+    console.info("[native-camera-kit] using window.Capacitor.Plugins.KidiCameraKit");
+    nativePlugin = fromWindow;
     return nativePlugin;
   }
+
+  // 2) Low-level bridge call (works even without a PluginHeader entry).
+  const bridged = nativePromiseBridge();
+  if (bridged) {
+    console.info("[native-camera-kit] using Capacitor.nativePromise bridge");
+    nativePlugin = bridged;
+    return nativePlugin;
+  }
+
+  // 3) Last resort: standard registration.
   try {
     const { registerPlugin } = await import("@capacitor/core");
+    console.info("[native-camera-kit] using registerPlugin proxy");
     nativePlugin = registerPlugin<KidiCameraKitPlugin>("KidiCameraKit");
     return nativePlugin;
   } catch (e) {
@@ -121,6 +161,7 @@ async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
     return null;
   }
 }
+
 
 /** Capacitor's console proxy stringifies Errors as `{}` — always log a string
  * so Xcode/Logcat show the real reason instead of an empty object. */
