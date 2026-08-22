@@ -74,8 +74,11 @@ function pluginFromWindow(): unknown {
 
 function hasNativePluginImpl(): boolean {
   try {
-    // Force-off only: VITE_NATIVE_CAMERA_KIT_ENABLED=false
-    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
+    // OPT-IN only. The manually registered iOS plugin resolves its bridge calls
+    // but never renders a preview layer, so trusting it left the host on a
+    // black screen with no way back. Until the native view is verified, the
+    // native path requires VITE_NATIVE_CAMERA_KIT_ENABLED=true.
+    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED !== "true") return false;
     if (nativeDisabled) return false;
     if (!Capacitor.isNativePlatform()) return false;
     // `isPluginAvailable` only knows about plugins listed in the Capacitor
