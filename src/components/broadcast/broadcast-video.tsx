@@ -508,13 +508,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           if (cancelled) return;
           phase = "connect";
 
-          // Native Snap Camera Kit is opt-in (VITE_NATIVE_CAMERA_KIT_ENABLED=true).
-          // If the native publisher hangs or fails, fall back to the proven
-          // WebRTC path instead of staying on « Connexion au live… ».
+          // Native Snap Camera Kit: initialize + preview first so frames flow,
+          // then publish to LiveKit. On failure, fall back to WebRTC.
           let useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
           if (useNativeVideo) {
             phase = "camera";
-            const withTimeout = <T,>(p: Promise<T>, ms = 6000) =>
+            const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
               Promise.race([
                 p,
                 new Promise<never>((_, rej) =>
@@ -523,19 +522,24 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               ]);
             try {
               await withTimeout(
-                setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
-              );
-              if (cancelled) {
-                await setNativePublishEnabled({ enabled: false }).catch(() => {});
-                return;
-              }
-              await withTimeout(
                 setNativePreview({
                   active: true,
                   mirrored: facingRef.current === "user",
                   facing: facingRef.current,
                 }),
               );
+              if (cancelled) {
+                await setNativePreview({ active: false }).catch(() => {});
+                return;
+              }
+              await withTimeout(
+                setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
+              );
+              if (cancelled) {
+                await setNativePublishEnabled({ enabled: false }).catch(() => {});
+                await setNativePreview({ active: false }).catch(() => {});
+                return;
+              }
             } catch (e) {
               console.warn("[native-camera-kit] fallback to web pipeline", e);
               await setNativePublishEnabled({ enabled: false }).catch(() => {});

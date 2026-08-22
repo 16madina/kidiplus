@@ -50,16 +50,12 @@ Pour charger des groupes additionnels (web comme natif) :
 VITE_SNAP_LENS_GROUP_IDS=9dd9798c-cef5-443b-a494-af0cc480059e,...
 ```
 
+Le pont JS (`native-camera-kit-bridge.ts`) active le chemin natif dès que `KidiCameraKit` est disponible dans le build. Fallback WASM si le plugin n’est pas compilé.
+
 Pour forcer le fallback WASM même si le plugin natif est compilé :
 
 ```env
 VITE_NATIVE_CAMERA_KIT_ENABLED=false
-```
-
-Le chemin natif est **désactivé par défaut**. Pour l’activer (après validation appareil) :
-
-```env
-VITE_NATIVE_CAMERA_KIT_ENABLED=true
 ```
 
 ## iOS — étapes de finalisation côté Xcode

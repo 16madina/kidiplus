@@ -61,14 +61,9 @@ type KidiCameraKitPlugin = {
  */
 function hasNativePluginImpl(): boolean {
   try {
-    // Production default: WebRTC/WASM in the WebView. The native Camera Kit
-    // publisher is opt-in until end-to-end publish is proven on device —
-    // otherwise iOS stays stuck on « Connexion au live… » when the plugin
-    // is registered but frames never reach LiveKit.
-    const nativeCameraKitEnabled =
-      import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "true";
+    // Force-off only: VITE_NATIVE_CAMERA_KIT_ENABLED=false
+    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
     return (
-      nativeCameraKitEnabled &&
       Capacitor.isNativePlatform() &&
       Capacitor.isPluginAvailable("KidiCameraKit")
     );
@@ -225,6 +220,12 @@ export async function setNativePublishEnabled(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return; // web : la publication est gérée par broadcast-video
+  if (args.enabled) {
+    // Live can start before the filter carousel — always warm the Snap session.
+    const token = snapApiToken();
+    if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  }
   await plugin.setPublishEnabled(args);
 }
 
@@ -237,6 +238,10 @@ export async function setNativePreview(args: {
   const plugin = await getNativePlugin();
   if (!plugin) return;
   if (args.active) {
+    const token = snapApiToken();
+    if (token) {
+      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    }
     await plugin.startPreview({
       mirrored: args.mirrored ?? false,
       facing: args.facing ?? "user",

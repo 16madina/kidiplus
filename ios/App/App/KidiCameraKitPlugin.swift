@@ -262,14 +262,8 @@ private extension KidiCameraKitPlugin {
     func ensureSessionStarted(facing: String, completion: @escaping () -> Void) {
         cameraPosition = facing == "environment" ? .back : .front
 
-        if sessionStarted, let previewView {
-            attachPreview(previewView)
-            makeWebViewTransparent()
-            completion()
-            return
-        }
-
         guard let cameraKit else {
+            print("[KidiCameraKit] ensureSessionStarted: session missing (call initialize first)")
             completion()
             return
         }
@@ -332,6 +326,9 @@ private extension KidiCameraKitPlugin {
             self.attachPreview(preview)
             self.makeWebViewTransparent()
 
+            // Always (re)start capture — stopPreview may have stopped the session
+            // while sessionStarted stayed true, which previously left LiveKit
+            // waiting forever for frames (« Connexion au live… »).
             DispatchQueue.global(qos: .userInitiated).async {
                 input.startRunning()
                 DispatchQueue.main.async {
@@ -395,18 +392,20 @@ private extension KidiCameraKitPlugin {
             }
         }
 
-        guard let cameraKit else {
+        guard isInitialized, let cameraKit else {
             throw NSError(
                 domain: "KidiCameraKit",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Camera Kit session missing"]
+                userInfo: [NSLocalizedDescriptionKey: "Camera Kit session missing — call initialize() first"]
             )
         }
 
         let room = liveKitRoom ?? Room()
         liveKitRoom = room
         if room.connectionState != .connected {
-            try await room.connect(url: url, token: token)
+            try await withTimeout(seconds: 12) {
+                try await room.connect(url: url, token: token)
+            }
         }
 
         let videoTrack = LocalVideoTrack.createBufferTrack(
@@ -423,27 +422,29 @@ private extension KidiCameraKitPlugin {
         if liveKitOutput == nil {
             cameraKit.add(output: output)
             liveKitOutput = output
+        } else {
+            // Re-bind after a previous stop; keep the same Output registered.
+            output.capturer = capturer
         }
 
-        // Attendre au moins une frame filtrée avant publish (dimensions LiveKit).
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+        // Prefer waiting for a filtered frame so LiveKit gets real dimensions,
+        // but do not hard-fail: publish anyway so the host is never stuck on
+        // « Connexion au live… » if the first buffer is slightly late.
+        let gotFrame = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
             var resumed = false
             output.onFirstFrame = {
                 guard !resumed else { return }
                 resumed = true
-                cont.resume()
+                cont.resume(returning: true)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 guard !resumed else { return }
                 resumed = true
-                cont.resume(
-                    throwing: NSError(
-                        domain: "KidiCameraKit",
-                        code: 2,
-                        userInfo: [NSLocalizedDescriptionKey: "Timed out waiting for Camera Kit frames"]
-                    )
-                )
+                cont.resume(returning: false)
             }
+        }
+        if !gotFrame {
+            print("[KidiCameraKit] no Camera Kit frame yet — publishing anyway")
         }
 
         try await room.localParticipant.publish(videoTrack: videoTrack)
@@ -460,10 +461,41 @@ private extension KidiCameraKitPlugin {
             cameraKit.remove(output: output)
         }
         liveKitOutput = nil
+        if let publication = liveKitRoom?.localParticipant.getTrackPublication(source: .camera)
+            as? LocalTrackPublication
+        {
+            try? await liveKitRoom?.localParticipant.unpublish(publication: publication)
+        }
         liveKitVideoTrack = nil
         await liveKitRoom?.disconnect()
         liveKitRoom = nil
         print("[KidiCameraKit] LiveKit publish stopped")
+    }
+
+    func withTimeout<T>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw NSError(
+                    domain: "KidiCameraKit",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Timed out after \(Int(seconds))s"]
+                )
+            }
+            guard let result = try await group.next() else {
+                throw NSError(
+                    domain: "KidiCameraKit",
+                    code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Timed out"]
+                )
+            }
+            group.cancelAll()
+            return result
+        }
     }
 }
 
