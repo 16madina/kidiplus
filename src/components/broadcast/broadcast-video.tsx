@@ -15,6 +15,8 @@ import {
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
+  warmupNativeCameraKit,
+
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
