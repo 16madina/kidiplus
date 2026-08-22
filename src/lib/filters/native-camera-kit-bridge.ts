@@ -281,13 +281,19 @@ export async function setNativePublishEnabled(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return; // web : la publication est gérée par broadcast-video
-  if (args.enabled) {
-    // Live can start before the filter carousel — always warm the Snap session.
-    const token = snapApiToken();
-    if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
-    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.enabled) {
+      // Live can start before the filter carousel — always warm the Snap session.
+      const token = snapApiToken();
+      if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    }
+    console.info("[native-camera-kit] setPublishEnabled", args.enabled);
+    await plugin.setPublishEnabled(args);
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
-  await plugin.setPublishEnabled(args);
 }
 
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
@@ -298,16 +304,23 @@ export async function setNativePreview(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return;
-  if (args.active) {
-    const token = snapApiToken();
-    if (token) {
-      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.active) {
+      const token = snapApiToken();
+      if (token) {
+        await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+      }
+      console.info("[native-camera-kit] startPreview", args.facing ?? "user");
+      await plugin.startPreview({
+        mirrored: args.mirrored ?? false,
+        facing: args.facing ?? "user",
+      });
+    } else {
+      await plugin.stopPreview();
     }
-    await plugin.startPreview({
-      mirrored: args.mirrored ?? false,
-      facing: args.facing ?? "user",
-    });
-  } else {
-    await plugin.stopPreview();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
+
 }
