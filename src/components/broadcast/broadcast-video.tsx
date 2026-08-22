@@ -16,6 +16,7 @@ import {
   setNativePreview,
   setNativePublishEnabled,
   warmupNativeCameraKit,
+  errMsg,
 
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
@@ -215,7 +216,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               try { await track.stopProcessor(); } catch { /* none */ }
             }
             void applyBridgeLens(lens).catch((e) => {
-              console.warn("[native-camera-kit] applyBridgeLens failed", e);
+              console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
             });
             return;
           }
@@ -272,7 +273,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (!isNativeCameraKitAvailable()) return;
       void warmupNativeCameraKit().catch((e) => {
-        console.warn("[native-camera-kit] warmup failed", e);
+        console.warn("[native-camera-kit] warmup failed", errMsg(e));
       });
     }, []);
 
@@ -555,7 +556,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 return;
               }
             } catch (e) {
-              console.warn("[native-camera-kit] fallback to web pipeline", e);
+              console.warn("[native-camera-kit] fallback to web pipeline:", errMsg(e));
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
               // Give iOS a beat to release the camera before getUserMedia.
@@ -567,7 +568,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const lens = activeLensRef.current;
             if (lens?.isSnapLens) {
               void applyBridgeLens(lens).catch((e) => {
-                console.warn("[native-camera-kit] applyBridgeLens failed", e);
+                console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
               });
             }
             localVideoTrackRef.current = null;

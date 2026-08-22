@@ -224,7 +224,7 @@ export async function warmupNativeCameraKit(): Promise<boolean> {
     console.info(`[native-camera-kit] warmup ok, ${lenses.length} lens(es)`);
     return !nativeDisabled;
   } catch (e) {
-    console.warn("[native-camera-kit] warmup error", e);
+    console.warn("[native-camera-kit] warmup error", errMsg(e));
     disableNative(e);
     return false;
   }
