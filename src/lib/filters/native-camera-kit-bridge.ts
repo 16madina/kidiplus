@@ -210,7 +210,7 @@ export async function waitForNativeCameraKit(): Promise<boolean> {
   return warmupNativeCameraKit();
 }
 
-export async function warmupNativeCameraKit(): Promise<boolean> {
+export async function warmupNativeCameraKit(_reason?: string): Promise<boolean> {
   const plugin = await getNativePlugin();
   if (!plugin) {
     console.info("[native-camera-kit] warmup skipped (no native plugin)");
