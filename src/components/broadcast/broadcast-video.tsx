@@ -15,6 +15,8 @@ import {
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
+  warmupNativeCameraKit,
+
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
@@ -263,10 +265,22 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
+    // Warm up the native Snap session as soon as the broadcast screen mounts.
+    // Waiting for the filter carousel meant `initialize()` was never called on
+    // iOS/Android, so the first lens tap or go-live had to pay the full SDK
+    // boot cost (and any failure surfaced only as a frozen camera).
+    useEffect(() => {
+      if (!isNativeCameraKitAvailable()) return;
+      void warmupNativeCameraKit().catch((e) => {
+        console.warn("[native-camera-kit] warmup failed", e);
+      });
+    }, []);
+
     // Report status upward.
     useEffect(() => {
       onStatus?.(state);
     }, [state, onStatus]);
+
 
     // Probe device count to decide whether the flip button should show.
     // Re-probes on state changes because iOS/Android only expose the full
