@@ -77,7 +77,10 @@ export function AddProductSheet({
   const [customColor, setCustomColor] = useState("");
   const [customSize, setCustomSize] = useState("");
 
+  const [nameError, setNameError] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const pickingSlotRef = useRef<number>(0);
   const urlTrackerRef = useRef(createObjectUrlTracker());
 
@@ -150,6 +153,7 @@ export function AddProductSheet({
   const reset = () => {
     setMode("auction");
     setName("");
+    setNameError(false);
     setImages([]);
     setImageFiles([null, null, null]);
     setStartPrice(defaults.start);
@@ -170,7 +174,15 @@ export function AddProductSheet({
   const canSave = name.trim().length > 0;
 
   const save = () => {
-    if (!canSave) return;
+    if (!canSave) {
+      // Android WebViews sometimes swallow the last IME keystroke, so instead of
+      // a dead disabled button we point the user at the missing field.
+      haptic.error();
+      setNameError(true);
+      nameInputRef.current?.focus();
+      nameInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     haptic.medium();
     const inc = Number(bidIncrement);
     const extraImages: string[] = [];
@@ -287,12 +299,25 @@ export function AddProductSheet({
           {t("broadcast.setup.productSheet.name", "Nom du produit")}
         </label>
         <input
+          ref={nameInputRef}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); setNameError(false); }}
+          onInput={(e) => {
+            // Android IME (Gboard) can commit text without a change event.
+            const v = (e.target as HTMLInputElement).value;
+            setName((prev) => (prev === v ? prev : v));
+          }}
+          onBlur={(e) => setName(e.target.value)}
+          enterKeyHint="done"
           placeholder={t("broadcast.setup.productSheet.namePlaceholder", "ex : Nike Dunk Low")}
           className="mt-2 h-12 rounded-xl border bg-muted px-4 text-[15px] outline-none placeholder:text-muted-foreground/70"
-          style={{ borderColor: "var(--border)" }}
+          style={{ borderColor: nameError ? "oklch(0.62 0.24 20)" : "var(--border)" }}
         />
+        {nameError && (
+          <p className="mt-1.5 text-[12px] font-semibold" style={{ color: "oklch(0.62 0.24 20)" }}>
+            {t("broadcast.setup.productSheet.nameRequired", "Ajoute un nom de produit pour continuer")}
+          </p>
+        )}
 
         {/* Mode toggle */}
         <div className="mt-5 text-[14px] font-semibold text-foreground">
@@ -526,9 +551,9 @@ export function AddProductSheet({
 
         <Press
           onClick={save}
-          disabled={!canSave}
           hapticOnTap={false}
-          className="!min-h-14 mt-6 h-14 w-full rounded-2xl text-[16px] font-bold disabled:opacity-40"
+          className="!min-h-14 mt-6 mb-8 h-14 w-full rounded-2xl text-[16px] font-bold"
+          animate={{ opacity: canSave ? 1 : 0.55 }}
           style={{
             background: `linear-gradient(135deg, ${GOLD}, oklch(0.72 0.16 70))`,
             color: "#0a0a12",
