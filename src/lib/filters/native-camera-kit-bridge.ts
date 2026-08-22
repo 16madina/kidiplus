@@ -104,13 +104,38 @@ function hasNativePluginImpl(): boolean {
 async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
   if (nativePlugin) return nativePlugin;
   if (!hasNativePluginImpl()) return null;
+  // The plugin is registered manually on the bridge, so it is already exposed
+  // on `window.Capacitor.Plugins`. Reuse it instead of calling registerPlugin()
+  // again (which warns "already registered" and can hand back a stale proxy).
+  const fromWindow = pluginFromWindow();
+  if (fromWindow) {
+    nativePlugin = fromWindow as KidiCameraKitPlugin;
+    return nativePlugin;
+  }
   try {
     const { registerPlugin } = await import("@capacitor/core");
     nativePlugin = registerPlugin<KidiCameraKitPlugin>("KidiCameraKit");
     return nativePlugin;
   } catch (e) {
-    console.warn("[native-camera-kit] plugin registration failed", e);
+    console.warn("[native-camera-kit] plugin registration failed", errMsg(e));
     return null;
+  }
+}
+
+/** Capacitor's console proxy stringifies Errors as `{}` — always log a string
+ * so Xcode/Logcat show the real reason instead of an empty object. */
+export function errMsg(e: unknown): string {
+  if (!e) return "unknown error";
+  if (typeof e === "string") return e;
+  const o = e as { message?: unknown; errorMessage?: unknown; code?: unknown };
+  const msg = o.message ?? o.errorMessage;
+  if (typeof msg === "string" && msg) {
+    return o.code ? `${msg} (code=${String(o.code)})` : msg;
+  }
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
   }
 }
 
@@ -121,13 +146,13 @@ function disableNative(reason: unknown): void {
   if (nativeDisabled) return;
   nativeDisabled = true;
   nativePlugin = null;
-  console.warn("[native-camera-kit] disabled, falling back to web:", reason);
+  console.warn("[native-camera-kit] disabled, falling back to web:", errMsg(reason));
 }
 
 function isUnimplemented(e: unknown): boolean {
-  const msg = String((e as { message?: string } | null)?.message ?? e ?? "");
-  return /not implemented|unimplemented|not available|UNIMPLEMENTED/i.test(msg);
+  return /not implemented|unimplemented|not available|UNIMPLEMENTED/i.test(errMsg(e));
 }
+
 
 
 export function isNativeCameraKitAvailable(): boolean {
