@@ -56,6 +56,12 @@ Pour forcer le fallback WASM même si le plugin natif est compilé :
 VITE_NATIVE_CAMERA_KIT_ENABLED=false
 ```
 
+Le chemin natif est **désactivé par défaut**. Pour l’activer (après validation appareil) :
+
+```env
+VITE_NATIVE_CAMERA_KIT_ENABLED=true
+```
+
 ## iOS — étapes de finalisation côté Xcode
 
 ### 1. SDK Snap Camera Kit (fait)

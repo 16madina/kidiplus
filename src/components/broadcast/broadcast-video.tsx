@@ -508,14 +508,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           if (cancelled) return;
           phase = "connect";
 
-          // iOS/Android + Snap : une seule connexion LiveKit (native) pour éviter
-          // le conflit d'identité avec la WebView, et zéro WASM pour les filtres.
-          // Si le plugin natif ne répond pas (build sans implémentation), on
-          // retombe sur le chemin WebRTC classique au lieu de rester bloqué.
+          // Native Snap Camera Kit is opt-in (VITE_NATIVE_CAMERA_KIT_ENABLED=true).
+          // If the native publisher hangs or fails, fall back to the proven
+          // WebRTC path instead of staying on « Connexion au live… ».
           let useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
           if (useNativeVideo) {
             phase = "camera";
-            const withTimeout = <T,>(p: Promise<T>, ms = 8000) =>
+            const withTimeout = <T,>(p: Promise<T>, ms = 6000) =>
               Promise.race([
                 p,
                 new Promise<never>((_, rej) =>
@@ -540,6 +539,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             } catch (e) {
               console.warn("[native-camera-kit] fallback to web pipeline", e);
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
+              await setNativePreview({ active: false }).catch(() => {});
+              // Give iOS a beat to release the camera before getUserMedia.
+              await new Promise((r) => setTimeout(r, 350));
               useNativeVideo = false;
             }
           }

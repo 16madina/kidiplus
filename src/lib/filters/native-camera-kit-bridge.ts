@@ -61,9 +61,14 @@ type KidiCameraKitPlugin = {
  */
 function hasNativePluginImpl(): boolean {
   try {
-    // Force-off: VITE_NATIVE_CAMERA_KIT_ENABLED=false
-    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
+    // Production default: WebRTC/WASM in the WebView. The native Camera Kit
+    // publisher is opt-in until end-to-end publish is proven on device —
+    // otherwise iOS stays stuck on « Connexion au live… » when the plugin
+    // is registered but frames never reach LiveKit.
+    const nativeCameraKitEnabled =
+      import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "true";
     return (
+      nativeCameraKitEnabled &&
       Capacitor.isNativePlatform() &&
       Capacitor.isPluginAvailable("KidiCameraKit")
     );
