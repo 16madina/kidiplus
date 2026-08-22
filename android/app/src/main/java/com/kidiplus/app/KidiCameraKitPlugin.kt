@@ -469,7 +469,9 @@ private class CameraKitSurfaceCapturer(
 
     override fun startCapture(width: Int, height: Int, framerate: Int) {
         val helper = this.helper ?: return
-        helper.setTextureSize(width.coerceAtLeast(720), height.coerceAtLeast(1280))
+        // Respect the requested aspect ratio — forcing a 720x1280 floor turned
+        // landscape/low-res requests into a distorted square surface.
+        helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
         helper.startListening { frame: VideoFrame -> observer?.onFrameCaptured(frame) }
         val surface = Surface(helper.surfaceTexture)
         this.surface = surface
