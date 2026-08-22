@@ -15,6 +15,7 @@ import {
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
+  waitForNativeCameraKit,
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
@@ -208,7 +209,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
         if (wantSnap) {
           // iOS/Android : SDK Snap natif (GPU) — pas de TrackProcessor WASM.
-          if (isNativeCameraKitAvailable()) {
+          if (isNativeCameraKitAvailable() || (await waitForNativeCameraKit())) {
             if (isCameraKit || isEffects) {
               try { await track.stopProcessor(); } catch { /* none */ }
             }
@@ -399,10 +400,45 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
+      let useNativePreview = isNativeCameraKitAvailable();
 
       async function acquire() {
         if (!previewShouldRun) return teardown();
         teardown();
+
+        useNativePreview = await waitForNativeCameraKit();
+        if (cancelled) return;
+
+        // Native Camera Kit owns the camera. Opening getUserMedia here
+        // locks AVCaptureSession and makes startPreview hang → JS fallback.
+        if (useNativePreview) {
+          const preflight = await ensureCameraMicPermission({
+            video: { facingMode: facing },
+            audio: false,
+          });
+          if (cancelled) return;
+          if (preflight.status !== "granted") {
+            if (preflight.status === "denied_by_user") setState("denied");
+            else if (preflight.status === "config_missing") setState("config_missing");
+            else if (preflight.status === "no_device") setState("unavailable");
+            else if (preflight.status === "unsupported") setState("unsupported");
+            else setState("error");
+            return;
+          }
+          try {
+            await setNativePreview({
+              active: true,
+              mirrored: facing === "user",
+              facing,
+            });
+            if (!cancelled) setState("granted");
+            return;
+          } catch (e) {
+            console.warn("[native-camera-kit] preview start failed — web fallback", e);
+            useNativePreview = false;
+          }
+        }
+
         const res = await ensureCameraMicAccess({
           video: { facingMode: facing },
           audio: false,
@@ -436,6 +472,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
         setPreviewStream(null);
         if (videoRef.current) videoRef.current.srcObject = null;
+        if (useNativePreview) {
+          void setNativePreview({ active: false });
+        }
       }
 
       void acquire();
@@ -510,7 +549,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           // Native Snap Camera Kit: initialize + preview first so frames flow,
           // then publish to LiveKit. On failure, fall back to WebRTC.
-          let useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
+          let useNativeVideo = !isRtmp && (await waitForNativeCameraKit());
           if (useNativeVideo) {
             phase = "camera";
             const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
@@ -532,6 +571,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 await setNativePreview({ active: false }).catch(() => {});
                 return;
               }
+              // Show the native preview immediately. LiveKit publish can
+              // finish after the host already sees the camera.
+              setState("granted");
               await withTimeout(
                 setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
               );
@@ -541,7 +583,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 return;
               }
             } catch (e) {
-              console.warn("[native-camera-kit] fallback to web pipeline", e);
+              const msg =
+                e instanceof Error
+                  ? e.message
+                  : e && typeof e === "object" && "message" in e
+                    ? String((e as { message: unknown }).message)
+                    : String(e);
+              console.warn("[native-camera-kit] fallback to web pipeline", msg || e);
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
               // Give iOS a beat to release the camera before getUserMedia.
@@ -935,9 +983,17 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
     const mirrored = !livekit && facing === "user";
+    const nativeCam = isNativeCameraKitAvailable();
 
     return (
-      <div className="absolute inset-0 overflow-hidden bg-neutral-900">
+      <div
+        data-kp-native-cam={nativeCam ? "" : undefined}
+        className={
+          nativeCam
+            ? "kp-native-cam-root absolute inset-0 overflow-hidden bg-transparent"
+            : "absolute inset-0 overflow-hidden bg-neutral-900"
+        }
+      >
         {fallbackImage && !showVideo && (
           <img
             src={fallbackImage}
@@ -951,7 +1007,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           // Effects canvas is already composed (camera selfie-flipped,
           // images not). Never CSS-flip that result or viewers/host diverge.
           mirrored={mirrored && !effects.hasEffects}
-          showVideo={showVideo}
+          showVideo={showVideo && !nativeCam}
         />
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,

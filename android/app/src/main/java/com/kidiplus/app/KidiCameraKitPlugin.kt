@@ -62,6 +62,26 @@ class KidiCameraKitPlugin : Plugin() {
     private var publishOutput: Closeable? = null
     private var publishEnabled = false
 
+    override fun load() {
+        Log.i(TAG, "plugin loaded")
+        val payload = JSObject().put("ready", true)
+        notifyListeners("pluginLoaded", payload)
+        activity?.window?.decorView?.postDelayed({
+            notifyListeners("pluginLoaded", payload)
+        }, 600)
+    }
+
+    @PluginMethod
+    fun getStatus(call: PluginCall) {
+        call.resolve(
+            JSObject()
+                .put("ready", true)
+                .put("initialized", initialized)
+                .put("sessionStarted", previewStarted)
+                .put("captureRunning", previewStarted)
+        )
+    }
+
     @PluginMethod
     fun initialize(call: PluginCall) {
         val apiToken = call.getString("apiToken").orEmpty()
@@ -100,6 +120,7 @@ class KidiCameraKitPlugin : Plugin() {
         }
         initialized = true
         Log.i(TAG, "initialized groups=${ids.joinToString(",")}")
+        emitStatus("initialized", JSObject().put("groups", ids.joinToString(",")))
         call.resolve(JSObject().put("initialized", true))
     }
 
@@ -192,6 +213,8 @@ class KidiCameraKitPlugin : Plugin() {
         ensurePreviewStarted {
             makeWebViewTransparent()
             Log.i(TAG, "startPreview facingFront=$facingFront")
+            emitStatus("previewStarted", JSObject().put("facingFront", facingFront))
+            notifyListeners("captureState", JSObject().put("running", previewStarted))
             call.resolve(JSObject().put("started", true))
         }
     }
@@ -369,6 +392,18 @@ class KidiCameraKitPlugin : Plugin() {
             if (value.isNotEmpty()) out.add(value)
         }
         return out
+    }
+
+    private fun emitStatus(phase: String, extra: JSObject? = null) {
+        val data = JSObject()
+            .put("phase", phase)
+            .put("initialized", initialized)
+            .put("sessionStarted", previewStarted)
+            .put("captureRunning", previewStarted)
+        extra?.keys()?.forEach { key ->
+            data.put(key, extra.get(key))
+        }
+        notifyListeners("status", data)
     }
 
     companion object {

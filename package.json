@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "native:prepare": "node scripts/prepare-native.mjs",
     "native:assets": "npx @capacitor/assets generate --iconBackgroundColor '#0C1122' --iconBackgroundColorDark '#0C1122' --splashBackgroundColor '#0C1122' --splashBackgroundColorDark '#0C1122'",
-    "native:sync": "npm run native:prepare && npx cap sync",
+    "native:sync": "npm run native:prepare && npx cap sync && node scripts/ensure-native-plugins.mjs",
     "native:android": "npm run native:sync && npx cap open android",
     "native:ios": "npm run native:sync && npx cap open ios",
     "validate:backend": "node scripts/validate-backend.mjs",
