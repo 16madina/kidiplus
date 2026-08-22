@@ -59,14 +59,43 @@ type KidiCameraKitPlugin = {
  * plugin compilé, on bascule sur un chemin natif fantôme et la caméra reste
  * bloquée sur « Connexion au live… ».
  */
+let nativeDisabled = false; // set when the native path proves unusable
+let detectionLogged = false;
+
+function pluginFromWindow(): unknown {
+  try {
+    const cap = (globalThis as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } })
+      .Capacitor;
+    return cap?.Plugins?.["KidiCameraKit"] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function hasNativePluginImpl(): boolean {
   try {
     // Force-off only: VITE_NATIVE_CAMERA_KIT_ENABLED=false
     if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
-    return (
-      Capacitor.isNativePlatform() &&
-      Capacitor.isPluginAvailable("KidiCameraKit")
-    );
+    if (nativeDisabled) return false;
+    if (!Capacitor.isNativePlatform()) return false;
+    // `isPluginAvailable` only knows about plugins listed in the Capacitor
+    // registry; our app-level plugin is registered manually, so also look it
+    // up directly on `window.Capacitor.Plugins`.
+    const available =
+      Capacitor.isPluginAvailable("KidiCameraKit") || !!pluginFromWindow();
+    if (!detectionLogged) {
+      detectionLogged = true;
+      console.info(
+        "[native-camera-kit] detection",
+        JSON.stringify({
+          platform: Capacitor.getPlatform(),
+          isPluginAvailable: Capacitor.isPluginAvailable("KidiCameraKit"),
+          onWindow: !!pluginFromWindow(),
+          available,
+        }),
+      );
+    }
+    return available;
   } catch {
     return false;
   }
@@ -84,6 +113,22 @@ async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
     return null;
   }
 }
+
+/** A missing/broken native implementation must not strand the host on a black
+ * screen: disable the native path for the rest of the session and let the web
+ * pipeline take over. */
+function disableNative(reason: unknown): void {
+  if (nativeDisabled) return;
+  nativeDisabled = true;
+  nativePlugin = null;
+  console.warn("[native-camera-kit] disabled, falling back to web:", reason);
+}
+
+function isUnimplemented(e: unknown): boolean {
+  const msg = String((e as { message?: string } | null)?.message ?? e ?? "");
+  return /not implemented|unimplemented|not available|UNIMPLEMENTED/i.test(msg);
+}
+
 
 export function isNativeCameraKitAvailable(): boolean {
   return hasNativePluginImpl();
