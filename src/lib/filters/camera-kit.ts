@@ -188,6 +188,9 @@ export async function createCameraKitPipeline(args: {
   fps?: number;
   /** Plafond du plus grand côté du rendu AR (défaut : 1280, 960 si mobile modeste). */
   maxLongSide?: number;
+  /** Appelé si la sortie reste figée malgré les tentatives de reprise —
+   *  l'appelant doit retirer le processeur et repasser sur la caméra brute. */
+  onFatalStall?: () => void;
 }): Promise<CameraKitPipeline> {
   const [cameraKit, mod] = await Promise.all([
     getCameraKit(),
