@@ -459,6 +459,11 @@ class KidiCameraKitPlugin : Plugin() {
             capturer = capturer,
         )
         liveKitTrack = track
+        // publishVideoTrack() does NOT start an externally-provided capturer.
+        // Without startCapture(), VideoCapturer.startCapture() is never invoked
+        // and zero frames reach LiveKit — exactly the "no video frame within
+        // 5000ms" failure seen on device.
+        track.startCapture()
         room.localParticipant.publishVideoTrack(track)
         awaitFrameAfter(frameBeforePublish, 5_000)
         try {
@@ -512,6 +517,10 @@ class KidiCameraKitPlugin : Plugin() {
         publishEnabled = false
         publishOutput?.close()
         publishOutput = null
+        try {
+            liveKitTrack?.stopCapture()
+        } catch (_: Exception) {
+        }
         try {
             liveKitTrack?.stop()
         } catch (_: Exception) {
