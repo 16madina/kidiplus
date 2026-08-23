@@ -445,6 +445,9 @@
       "greenScreenDesc": "Remplace ton décor",
       "posterFaceDesc": "Image sur ton live"
     },
+    "filters": {
+      "unstable": "Filtre désactivé : instable sur cet appareil"
+    },
     "setup": {
       "titlePlaceholder": "Titre du live…",
       "descriptionPlaceholder": "Décris ton live (optionnel)",

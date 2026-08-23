@@ -445,6 +445,9 @@
       "greenScreenDesc": "Replace your room",
       "posterFaceDesc": "Image on your live"
     },
+    "filters": {
+      "unstable": "Filter turned off: unstable on this device"
+    },
     "setup": {
       "titlePlaceholder": "Live title…",
       "descriptionPlaceholder": "Describe your live (optional)",
