@@ -364,6 +364,31 @@ class KidiCameraKitPlugin : Plugin() {
         }
     }
 
+    /** Runs [task] on the main thread (inline if already there). */
+    private fun runOnUi(task: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            task()
+        } else {
+            activity?.runOnUiThread(task)
+        }
+    }
+
+    /** Runs [task] on the main thread and blocks the caller until done. */
+    private fun <T> runOnUiBlocking(task: () -> T): T {
+        if (Looper.myLooper() == Looper.getMainLooper()) return task()
+        val latch = CountDownLatch(1)
+        var result: Result<T>? = null
+        val act = activity
+        if (act == null) throw IllegalStateException("no activity")
+        act.runOnUiThread {
+            result = runCatching(task)
+            latch.countDown()
+        }
+        latch.await(10, TimeUnit.SECONDS)
+        return result?.getOrThrow()
+            ?: throw IllegalStateException("UI thread did not run Camera Kit task in time")
+    }
+
     private fun ensureStub(): ViewStub {
         val activity = activity ?: throw IllegalStateException("no activity")
         activity.findViewById<ViewStub>(R.id.camera_kit_stub)?.let { return it }
