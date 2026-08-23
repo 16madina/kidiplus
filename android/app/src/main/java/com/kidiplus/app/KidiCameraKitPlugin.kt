@@ -65,6 +65,7 @@ class KidiCameraKitPlugin : Plugin() {
     private var publishEnabled = false
     private val publishedFrameCount = AtomicLong(0)
     private val lastPublishedFrameAt = AtomicLong(0)
+    private val lensApplyGeneration = AtomicLong(0)
 
     override fun load() {
         Log.i(TAG, "plugin loaded")
@@ -177,6 +178,7 @@ class KidiCameraKitPlugin : Plugin() {
 
     @PluginMethod
     fun applyLens(call: PluginCall) {
+        val generation = lensApplyGeneration.incrementAndGet()
         val session = cameraKitSession
         if (!initialized || session == null) {
             call.reject("CameraKit not initialized")
@@ -196,7 +198,9 @@ class KidiCameraKitPlugin : Plugin() {
             val cached = lensByKey[lensKey(lensId, groupId)]
             if (cached != null) {
                 session.lenses.processor.apply(cached) { ok ->
-                    if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get())
+                    if (generation != lensApplyGeneration.get()) {
+                        if (!call.isReleased) call.reject("Lens request superseded")
+                    } else if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get(), generation)
                     else call.reject("Failed to apply lens")
                 }
                 return@ensurePreviewStarted
@@ -207,7 +211,9 @@ class KidiCameraKitPlugin : Plugin() {
                 result.whenHasFirst { lens ->
                     lensByKey[lensKey(lens.id, lens.groupId)] = lens
                     session.lenses.processor.apply(lens) { ok ->
-                        if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get())
+                        if (generation != lensApplyGeneration.get()) {
+                            if (!call.isReleased) call.reject("Lens request superseded")
+                        } else if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get(), generation)
                         else call.reject("Failed to apply lens")
                     }
                 }
@@ -217,6 +223,7 @@ class KidiCameraKitPlugin : Plugin() {
 
     @PluginMethod
     fun clearLens(call: PluginCall) {
+        lensApplyGeneration.incrementAndGet()
         cameraKitSession?.lenses?.processor?.clear { _ ->
             call.resolve(JSObject().put("cleared", true))
         } ?: call.resolve(JSObject().put("cleared", true))
@@ -411,7 +418,11 @@ class KidiCameraKitPlugin : Plugin() {
         Log.i(TAG, "LiveKit video published")
     }
 
-    private fun resolveAppliedAfterFrame(call: PluginCall, frameBeforeApply: Long) {
+    private fun resolveAppliedAfterFrame(
+        call: PluginCall,
+        frameBeforeApply: Long,
+        generation: Long,
+    ) {
         if (!publishEnabled) {
             call.resolve(JSObject().put("applied", true))
             return
@@ -419,6 +430,7 @@ class KidiCameraKitPlugin : Plugin() {
         scope.launch {
             try {
                 awaitFrameAfter(frameBeforeApply, 3_500)
+                if (generation != lensApplyGeneration.get()) return@launch
                 if (!call.isReleased) {
                     call.resolve(
                         JSObject()

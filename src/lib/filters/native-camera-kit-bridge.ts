@@ -29,6 +29,7 @@ export type { CameraKitPipeline };
 // ---------------------------------------------------------------------------
 
 let nativePlugin: KidiCameraKitPlugin | null = null;
+let nativeLensApplyQueue: Promise<void> = Promise.resolve();
 
 type KidiCameraKitPlugin = {
   getStatus(): Promise<{
@@ -366,13 +367,17 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
   }
   const plugin = await getNativePlugin();
   if (plugin) {
-    try {
-      await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
-    } catch (e) {
-      if (isUnimplemented(e)) disableNative(e);
-      else throw e;
-    }
-    return;
+    nativeLensApplyQueue = nativeLensApplyQueue
+      .catch(() => {})
+      .then(async () => {
+        try {
+          await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+        } catch (e) {
+          if (isUnimplemented(e)) disableNative(e);
+          throw e;
+        }
+      });
+    return nativeLensApplyQueue;
   }
   // Web : la lens est appliquée par le pipeline en cours (voir broadcast-video).
 }
