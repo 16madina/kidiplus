@@ -3,6 +3,7 @@ package com.kidiplus.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
@@ -38,6 +39,8 @@ import livekit.org.webrtc.SurfaceTextureHelper
 import livekit.org.webrtc.VideoCapturer
 import livekit.org.webrtc.VideoFrame
 import java.io.Closeable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
