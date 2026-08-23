@@ -126,16 +126,30 @@ class KidiCameraKitPlugin : Plugin() {
         }
 
         groupIds = ids
-        if (cameraKitSession == null) {
-            val source = CameraXImageProcessorSource(
-                context = activity,
-                lifecycleOwner = activity as LifecycleOwner,
-            )
-            imageSource = source
-            cameraKitSession = Session(context = activity) {
-                apiToken(apiToken)
-                imageProcessorSource(source)
-                attachTo(ensureStub())
+        synchronized(sessionLock) {
+            if (cameraKitSession == null) {
+                try {
+                    // Session's attachTo() adds a ViewStub to the view hierarchy,
+                    // which MUST happen on the main thread. Capacitor dispatches
+                    // plugin calls on a HandlerThread — creating the session here
+                    // crashed the app with CalledFromWrongThreadException.
+                    runOnUiBlocking {
+                        val source = CameraXImageProcessorSource(
+                            context = activity,
+                            lifecycleOwner = activity as LifecycleOwner,
+                        )
+                        imageSource = source
+                        cameraKitSession = Session(context = activity) {
+                            apiToken(apiToken)
+                            imageProcessorSource(source)
+                            attachTo(ensureStub())
+                        }
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "session create failed", t)
+                    call.reject("Camera Kit init failed: ${t.message}")
+                    return
+                }
             }
         }
         initialized = true
