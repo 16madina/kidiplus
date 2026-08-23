@@ -161,6 +161,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const nativeVideoActiveRef = useRef(false);
     const nativeLensSequenceRef = useRef(0);
     const nativeLensQueueRef = useRef<Promise<void>>(Promise.resolve());
+    const nativeAppliedLensKeyRef = useRef("");
     const [nativeFallbackRevision, setNativeFallbackRevision] = useState(0);
 
     // Clé du dernier pipeline appliqué (lens + facing) — évite de
@@ -632,6 +633,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               const initialLens = activeLensRef.current;
               if (initialLens.isSnapLens) {
                 await withTimeout(applyBridgeLens(initialLens), 5000);
+                nativeAppliedLensKeyRef.current = `${initialLens.groupId}:${initialLens.lensId}`;
               }
               if (cancelled) {
                 await setNativePublishEnabled({ enabled: false }).catch(() => {});
@@ -822,6 +824,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
       async function teardown() {
         nativeVideoActiveRef.current = false;
+        nativeAppliedLensKeyRef.current = "";
         const t = localVideoTrackRef.current;
         if (t) {
           try {
@@ -858,6 +861,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (!livekit || !nativeVideoActiveRef.current || state !== "granted") return;
       if (!activeLens.isSnapLens) return;
+      const lensKey = `${activeLens.groupId}:${activeLens.lensId}`;
+      if (nativeAppliedLensKeyRef.current === lensKey) return;
       let cancelled = false;
       const sequence = ++nativeLensSequenceRef.current;
       const lens = activeLens;
@@ -866,6 +871,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         .then(async () => {
           if (cancelled || sequence !== nativeLensSequenceRef.current) return;
           await applyBridgeLens(lens);
+          nativeAppliedLensKeyRef.current = lensKey;
         })
         .catch((e) => {
           if (cancelled || sequence !== nativeLensSequenceRef.current) return;
