@@ -399,13 +399,21 @@ export async function createCameraKitPipeline(args: {
     canvas,
     outputTrack,
     setLens: async (lensId: string, groupId: string = SNAP_LENS_GROUP_ID) => {
-      if (destroyed) return;
+      if (destroyed || fatalSignalled) return;
       const lens = await cameraKit.lensRepository.loadLens(lensId, groupId);
       await session.applyLens(lens);
+      currentLens = { lensId, groupId };
+      // applyLens peut mettre la boucle de rendu en pause sur certaines
+      // WebView Android : un play() explicite relance le rendu immédiatement.
+      await session.play("live").catch(() => {});
+      lastOutputFrameAt = performance.now();
     },
     clearLens: async () => {
       if (destroyed) return;
+      currentLens = null;
       await session.removeLens();
+      await session.play("live").catch(() => {});
+      lastOutputFrameAt = performance.now();
     },
     destroy: async () => {
       if (destroyed) return;
