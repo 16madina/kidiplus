@@ -159,6 +159,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const effectsRef = useRef(effects);
     effectsRef.current = effects;
     const nativeVideoActiveRef = useRef(false);
+    const nativeLensSequenceRef = useRef(0);
+    const nativeLensQueueRef = useRef<Promise<void>>(Promise.resolve());
     const [nativeFallbackRevision, setNativeFallbackRevision] = useState(0);
 
     // Clé du dernier pipeline appliqué (lens + facing) — évite de
@@ -638,12 +640,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             }
           }
           if (useNativeVideo) {
-            const lens = activeLensRef.current;
-            if (lens?.isSnapLens) {
-              void applyBridgeLens(lens).catch((e) => {
-                console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
-              });
-            }
             localVideoTrackRef.current = null;
             roomRef.current = null;
             nativeVideoActiveRef.current = true;
@@ -854,20 +850,28 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (!livekit || !nativeVideoActiveRef.current || state !== "granted") return;
       if (!activeLens.isSnapLens) return;
       let cancelled = false;
-      void applyBridgeLens(activeLens).catch((e) => {
-        if (cancelled) return;
-        console.error("[native-camera-kit] lens produced no frame", errMsg(e));
-        disableNativeCameraKit(e);
-        clearLensRef.current();
-        toast.error(
-          t(
-            "broadcast.filters.unstable",
-            "Filtre désactivé : instable sur cet appareil",
-          ),
-          { id: "lens-stalled" },
-        );
-        setNativeFallbackRevision((value) => value + 1);
-      });
+      const sequence = ++nativeLensSequenceRef.current;
+      const lens = activeLens;
+      nativeLensQueueRef.current = nativeLensQueueRef.current
+        .catch(() => {})
+        .then(async () => {
+          if (cancelled || sequence !== nativeLensSequenceRef.current) return;
+          await applyBridgeLens(lens);
+        })
+        .catch((e) => {
+          if (cancelled || sequence !== nativeLensSequenceRef.current) return;
+          console.error("[native-camera-kit] lens produced no frame", errMsg(e));
+          disableNativeCameraKit(e);
+          clearLensRef.current();
+          toast.error(
+            t(
+              "broadcast.filters.unstable",
+              "Filtre désactivé : instable sur cet appareil",
+            ),
+            { id: "lens-stalled" },
+          );
+          setNativeFallbackRevision((value) => value + 1);
+        });
       return () => {
         cancelled = true;
       };

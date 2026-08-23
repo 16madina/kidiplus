@@ -188,7 +188,6 @@ class KidiCameraKitPlugin : Plugin() {
             return
         }
         val groupId = call.getString("groupId").orEmpty()
-        val frameBeforeApply = publishedFrameCount.get()
         ensurePreviewStarted { previewOk ->
             if (!previewOk) {
                 call.reject("Camera preview failed to start")
@@ -197,7 +196,7 @@ class KidiCameraKitPlugin : Plugin() {
             val cached = lensByKey[lensKey(lensId, groupId)]
             if (cached != null) {
                 session.lenses.processor.apply(cached) { ok ->
-                    if (ok) resolveAppliedAfterFrame(call, frameBeforeApply)
+                    if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get())
                     else call.reject("Failed to apply lens")
                 }
                 return@ensurePreviewStarted
@@ -208,7 +207,7 @@ class KidiCameraKitPlugin : Plugin() {
                 result.whenHasFirst { lens ->
                     lensByKey[lensKey(lens.id, lens.groupId)] = lens
                     session.lenses.processor.apply(lens) { ok ->
-                        if (ok) resolveAppliedAfterFrame(call, frameBeforeApply)
+                        if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get())
                         else call.reject("Failed to apply lens")
                     }
                 }
@@ -276,6 +275,7 @@ class KidiCameraKitPlugin : Plugin() {
                 call.resolve(JSObject().put("enabled", true))
             } catch (e: Exception) {
                 Log.e(TAG, "setPublishEnabled failed", e)
+                stopPublishing()
                 call.reject("Publish failed: ${e.message}")
             }
         }
