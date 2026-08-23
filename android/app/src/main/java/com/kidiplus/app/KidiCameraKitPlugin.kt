@@ -585,6 +585,7 @@ private class CameraKitSurfaceCapturer(
     private var observer: CapturerObserver? = null
     private var surface: Surface? = null
     private var output: Closeable? = null
+    private var framesSeen = 0L
 
     override fun initialize(
         helper: SurfaceTextureHelper,
@@ -596,11 +597,21 @@ private class CameraKitSurfaceCapturer(
     }
 
     override fun startCapture(width: Int, height: Int, framerate: Int) {
-        val helper = this.helper ?: return
+        val helper = this.helper
+        if (helper == null) {
+            Log.e("KidiCameraKit", "capturer startCapture called before initialize()")
+            observer?.onCapturerStarted(false)
+            return
+        }
+        Log.i("KidiCameraKit", "capturer startCapture ${width}x${height}@$framerate")
         // Respect the requested aspect ratio — forcing a 720x1280 floor turned
         // landscape/low-res requests into a distorted square surface.
         helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
         helper.startListening { frame: VideoFrame ->
+            framesSeen++
+            if (framesSeen == 1L) {
+                Log.i("KidiCameraKit", "first Camera Kit frame delivered to LiveKit")
+            }
             onFrame()
             observer?.onFrameCaptured(frame)
         }
@@ -621,10 +632,13 @@ private class CameraKitSurfaceCapturer(
         )
         output = connected
         onConnected(connected)
+        Log.i("KidiCameraKit", "Camera Kit output connected to LiveKit capturer")
         observer?.onCapturerStarted(true)
     }
 
     override fun stopCapture() {
+        Log.i("KidiCameraKit", "capturer stopCapture after $framesSeen frames")
+        framesSeen = 0L
         output?.close()
         output = null
         surface?.release()
