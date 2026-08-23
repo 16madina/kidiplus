@@ -20,12 +20,12 @@ import {
 } from "react";
 import { LENSES, NONE_LENS, type Lens } from "./lenses-catalog";
 import {
-  isCameraKitSupported,
   SNAP_LENS_GROUP_ID,
 } from "./camera-kit";
 import {
   loadBridgeLenses,
   clearBridgeLensesCache,
+  isCameraKitSupported,
 } from "./native-camera-kit-bridge";
 
 type FilterContextValue = {

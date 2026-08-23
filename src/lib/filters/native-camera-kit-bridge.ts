@@ -31,6 +31,15 @@ export type { CameraKitPipeline };
 let nativePlugin: KidiCameraKitPlugin | null = null;
 
 type KidiCameraKitPlugin = {
+  getStatus(): Promise<{
+    ready: boolean;
+    initialized: boolean;
+    sessionStarted: boolean;
+    captureRunning: boolean;
+    publishing?: boolean;
+    frameCount?: number;
+    lastFrameAgeMs?: number;
+  }>;
   initialize(options: { apiToken: string; groupIds: string[] }): Promise<void>;
   loadLenses(options: { groupIds: string[] }): Promise<{
     lenses: Array<{
@@ -74,15 +83,11 @@ function pluginFromWindow(): unknown {
 
 function hasNativePluginImpl(): boolean {
   try {
-    // Emergency safety gate: the current native publisher can resolve before
-    // it has emitted/published a real frame. That makes the UI report success
-    // while both the host and viewers receive black video. Keep this path
-    // completely disabled (regardless of a stale production env flag) until
-    // native first-frame + publish acknowledgement is implemented end-to-end.
-    return false;
-    /* istanbul ignore next -- retained native implementation for later validation */
     if (nativeDisabled) return false;
     if (!Capacitor.isNativePlatform()) return false;
+    // iOS stays safety-gated until its publisher also acknowledges real frames.
+    // Android has frame-level acknowledgement in KidiCameraKitPlugin.
+    if (Capacitor.getPlatform() !== "android") return false;
     // `isPluginAvailable` only knows about plugins listed in the Capacitor
     // registry; our app-level plugin is registered manually, so also look it
     // up directly on `window.Capacitor.Plugins`.
@@ -107,6 +112,7 @@ function hasNativePluginImpl(): boolean {
 }
 
 const NATIVE_METHODS = [
+  "getStatus",
   "initialize",
   "loadLenses",
   "applyLens",
@@ -193,6 +199,25 @@ function disableNative(reason: unknown): void {
   nativeDisabled = true;
   nativePlugin = null;
   console.warn("[native-camera-kit] disabled, falling back to web:", errMsg(reason));
+}
+
+export function disableNativeCameraKit(reason: unknown): void {
+  disableNative(reason);
+}
+
+export async function getNativeCameraKitHealth(): Promise<{
+  publishing: boolean;
+  frameCount: number;
+  lastFrameAgeMs: number;
+} | null> {
+  const plugin = await getNativePlugin();
+  if (!plugin) return null;
+  const status = await plugin.getStatus();
+  return {
+    publishing: status.publishing === true,
+    frameCount: status.frameCount ?? 0,
+    lastFrameAgeMs: status.lastFrameAgeMs ?? 0,
+  };
 }
 
 function isUnimplemented(e: unknown): boolean {

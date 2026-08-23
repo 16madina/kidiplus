@@ -10,10 +10,12 @@ import {
   ensureCameraMicAccess,
   ensureCameraMicPermission,
 } from "@/lib/media-permissions";
-import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import {
   applyBridgeLens,
+  disableNativeCameraKit,
   errMsg,
+  getNativeCameraKitHealth,
+  isCameraKitSupported,
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
@@ -156,6 +158,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     clearLensRef.current = clearLens;
     const effectsRef = useRef(effects);
     effectsRef.current = effects;
+    const nativeVideoActiveRef = useRef(false);
+    const [nativeFallbackRevision, setNativeFallbackRevision] = useState(0);
 
     // Clé du dernier pipeline appliqué (lens + facing) — évite de
     // stopper/recréer le processeur quand rien n'a changé : chaque
@@ -585,7 +589,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           // Native Snap Camera Kit: initialize + preview first so frames flow,
           // then publish to LiveKit. On failure, fall back to WebRTC.
-          let useNativeVideo = !isRtmp && (await waitForNativeCameraKit());
+          // Keep the proven raw LiveKit camera path unless a Snap lens is
+          // actually selected. Android switches to native Camera Kit only for
+          // AR, then returns to raw LiveKit when the lens is removed.
+          let useNativeVideo =
+            !isRtmp &&
+            activeLensRef.current.isSnapLens === true &&
+            (await waitForNativeCameraKit());
           if (useNativeVideo) {
             phase = "camera";
             const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
@@ -636,9 +646,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             }
             localVideoTrackRef.current = null;
             roomRef.current = null;
+            nativeVideoActiveRef.current = true;
             setState("granted");
             return;
           }
+          nativeVideoActiveRef.current = false;
           phase = "connect";
 
 
@@ -804,6 +816,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       }
 
       async function teardown() {
+        nativeVideoActiveRef.current = false;
         const t = localVideoTrackRef.current;
         if (t) {
           try {
@@ -829,9 +842,81 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       livekit?.identity,
       roomShouldRun,
       retryKey,
+      activeLens.isSnapLens,
+      nativeFallbackRevision,
       videoSource,
       ingressIdentity,
     ]);
+
+    // Native Android lens changes are applied outside the Web LiveKit track
+    // pipeline. The native plugin resolves only after a post-lens frame exists.
+    useEffect(() => {
+      if (!livekit || !nativeVideoActiveRef.current || state !== "granted") return;
+      if (!activeLens.isSnapLens) return;
+      let cancelled = false;
+      void applyBridgeLens(activeLens).catch((e) => {
+        if (cancelled) return;
+        console.error("[native-camera-kit] lens produced no frame", errMsg(e));
+        disableNativeCameraKit(e);
+        clearLensRef.current();
+        toast.error(
+          t(
+            "broadcast.filters.unstable",
+            "Filtre désactivé : instable sur cet appareil",
+          ),
+          { id: "lens-stalled" },
+        );
+        setNativeFallbackRevision((value) => value + 1);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [activeLens.lensId, activeLens.groupId, activeLens.isSnapLens, livekit, state, t]);
+
+    // Continuous native health check: if Camera Kit stops producing frames
+    // after initially succeeding, restart this host effect on the raw camera.
+    useEffect(() => {
+      if (!livekit || state !== "granted") return;
+      let cancelled = false;
+      let checking = false;
+      const check = async () => {
+        if (cancelled || checking || !nativeVideoActiveRef.current) return;
+        checking = true;
+        try {
+          const health = await getNativeCameraKitHealth();
+          if (
+            !cancelled &&
+            health?.publishing &&
+            health.frameCount > 0 &&
+            health.lastFrameAgeMs > 3000
+          ) {
+            throw new Error(`native Camera Kit stalled for ${health.lastFrameAgeMs}ms`);
+          }
+        } catch (e) {
+          if (!cancelled && nativeVideoActiveRef.current) {
+            console.error("[native-camera-kit] health check failed", errMsg(e));
+            disableNativeCameraKit(e);
+            clearLensRef.current();
+            toast.error(
+              t(
+                "broadcast.filters.unstable",
+                "Filtre désactivé : instable sur cet appareil",
+              ),
+              { id: "lens-stalled" },
+            );
+            setNativeFallbackRevision((value) => value + 1);
+          }
+        } finally {
+          checking = false;
+        }
+      };
+      const timer = window.setInterval(() => void check(), 1000);
+      void check();
+      return () => {
+        cancelled = true;
+        window.clearInterval(timer);
+      };
+    }, [livekit, state, t]);
 
     // Toggle camera without reconnecting. When turning back ON, re-apply the
     // remembered facingMode — otherwise LiveKit defaults to front camera and
