@@ -3,6 +3,7 @@ package com.kidiplus.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
@@ -38,6 +39,8 @@ import livekit.org.webrtc.SurfaceTextureHelper
 import livekit.org.webrtc.VideoCapturer
 import livekit.org.webrtc.VideoFrame
 import java.io.Closeable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -47,6 +50,11 @@ import java.util.concurrent.atomic.AtomicLong
 @CapacitorPlugin(name = "KidiCameraKit")
 class KidiCameraKitPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // Serializes session creation — the JS warmup calls initialize() twice
+    // concurrently, and a double Session would make two CameraX sources fight
+    // over the camera.
+    private val sessionLock = Any()
 
     private var cameraKitSession: Session? = null
     private var imageSource: CameraXImageProcessorSource? = null
@@ -118,16 +126,30 @@ class KidiCameraKitPlugin : Plugin() {
         }
 
         groupIds = ids
-        if (cameraKitSession == null) {
-            val source = CameraXImageProcessorSource(
-                context = activity,
-                lifecycleOwner = activity as LifecycleOwner,
-            )
-            imageSource = source
-            cameraKitSession = Session(context = activity) {
-                apiToken(apiToken)
-                imageProcessorSource(source)
-                attachTo(ensureStub())
+        synchronized(sessionLock) {
+            if (cameraKitSession == null) {
+                try {
+                    // Session's attachTo() adds a ViewStub to the view hierarchy,
+                    // which MUST happen on the main thread. Capacitor dispatches
+                    // plugin calls on a HandlerThread — creating the session here
+                    // crashed the app with CalledFromWrongThreadException.
+                    runOnUiBlocking {
+                        val source = CameraXImageProcessorSource(
+                            context = activity,
+                            lifecycleOwner = activity as LifecycleOwner,
+                        )
+                        imageSource = source
+                        cameraKitSession = Session(context = activity) {
+                            apiToken(apiToken)
+                            imageProcessorSource(source)
+                            attachTo(ensureStub())
+                        }
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "session create failed", t)
+                    call.reject("Camera Kit init failed: ${t.message}")
+                    return
+                }
             }
         }
         initialized = true
@@ -342,6 +364,31 @@ class KidiCameraKitPlugin : Plugin() {
         }
     }
 
+    /** Runs [task] on the main thread (inline if already there). */
+    private fun runOnUi(task: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            task()
+        } else {
+            activity?.runOnUiThread(task)
+        }
+    }
+
+    /** Runs [task] on the main thread and blocks the caller until done. */
+    private fun <T> runOnUiBlocking(task: () -> T): T {
+        if (Looper.myLooper() == Looper.getMainLooper()) return task()
+        val latch = CountDownLatch(1)
+        var result: Result<T>? = null
+        val act = activity
+        if (act == null) throw IllegalStateException("no activity")
+        act.runOnUiThread {
+            result = runCatching(task)
+            latch.countDown()
+        }
+        latch.await(10, TimeUnit.SECONDS)
+        return result?.getOrThrow()
+            ?: throw IllegalStateException("UI thread did not run Camera Kit task in time")
+    }
+
     private fun ensureStub(): ViewStub {
         val activity = activity ?: throw IllegalStateException("no activity")
         activity.findViewById<ViewStub>(R.id.camera_kit_stub)?.let { return it }
@@ -359,17 +406,21 @@ class KidiCameraKitPlugin : Plugin() {
     }
 
     private fun makeWebViewTransparent() {
-        val webView = bridge?.webView ?: return
-        webView.setBackgroundColor(Color.TRANSPARENT)
-        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+        runOnUi {
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(Color.TRANSPARENT)
+            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+        }
     }
 
     private fun restoreWebViewBackground() {
         // Undo makeWebViewTransparent() so a gap in web content shows the app
         // navy instead of a void behind the WebView.
-        val webView = bridge?.webView ?: return
-        webView.setBackgroundColor(Color.parseColor("#10162B"))
-        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
+        runOnUi {
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(Color.parseColor("#10162B"))
+            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
+        }
     }
 
     private suspend fun startPublishing(url: String, token: String) {
@@ -408,6 +459,11 @@ class KidiCameraKitPlugin : Plugin() {
             capturer = capturer,
         )
         liveKitTrack = track
+        // publishVideoTrack() does NOT start an externally-provided capturer.
+        // Without startCapture(), VideoCapturer.startCapture() is never invoked
+        // and zero frames reach LiveKit — exactly the "no video frame within
+        // 5000ms" failure seen on device.
+        track.startCapture()
         room.localParticipant.publishVideoTrack(track)
         awaitFrameAfter(frameBeforePublish, 5_000)
         try {
@@ -461,6 +517,10 @@ class KidiCameraKitPlugin : Plugin() {
         publishEnabled = false
         publishOutput?.close()
         publishOutput = null
+        try {
+            liveKitTrack?.stopCapture()
+        } catch (_: Exception) {
+        }
         try {
             liveKitTrack?.stop()
         } catch (_: Exception) {
@@ -525,6 +585,7 @@ private class CameraKitSurfaceCapturer(
     private var observer: CapturerObserver? = null
     private var surface: Surface? = null
     private var output: Closeable? = null
+    private var framesSeen = 0L
 
     override fun initialize(
         helper: SurfaceTextureHelper,
@@ -536,11 +597,21 @@ private class CameraKitSurfaceCapturer(
     }
 
     override fun startCapture(width: Int, height: Int, framerate: Int) {
-        val helper = this.helper ?: return
+        val helper = this.helper
+        if (helper == null) {
+            Log.e("KidiCameraKit", "capturer startCapture called before initialize()")
+            observer?.onCapturerStarted(false)
+            return
+        }
+        Log.i("KidiCameraKit", "capturer startCapture ${width}x${height}@$framerate")
         // Respect the requested aspect ratio — forcing a 720x1280 floor turned
         // landscape/low-res requests into a distorted square surface.
         helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
         helper.startListening { frame: VideoFrame ->
+            framesSeen++
+            if (framesSeen == 1L) {
+                Log.i("KidiCameraKit", "first Camera Kit frame delivered to LiveKit")
+            }
             onFrame()
             observer?.onFrameCaptured(frame)
         }
@@ -561,10 +632,13 @@ private class CameraKitSurfaceCapturer(
         )
         output = connected
         onConnected(connected)
+        Log.i("KidiCameraKit", "Camera Kit output connected to LiveKit capturer")
         observer?.onCapturerStarted(true)
     }
 
     override fun stopCapture() {
+        Log.i("KidiCameraKit", "capturer stopCapture after $framesSeen frames")
+        framesSeen = 0L
         output?.close()
         output = null
         surface?.release()
