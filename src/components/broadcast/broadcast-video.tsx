@@ -237,6 +237,25 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               lensId: lens.lensId,
               groupId: lens.groupId,
               mirror: facing === "user",
+              onFatalStall: () => {
+                // Le rendu AR est resté figé malgré les reprises (WebView
+                // Android saturée / WebGL perdu) : on retire le processeur
+                // pour repasser sur la caméra brute plutôt que de publier
+                // une image gelée aux viewers.
+                console.warn("[camera-kit] fatal stall — repli caméra brute");
+                void track
+                  .stopProcessor()
+                  .then(() => syncFrontCameraMirror(track, facing))
+                  .catch(() => {});
+                clearLensRef.current();
+                toast.error(
+                  t(
+                    "broadcast.filters.unstable",
+                    "Filtre désactivé : instable sur cet appareil",
+                  ),
+                  { id: "lens-stalled" },
+                );
+              },
             }),
             true,
           );
