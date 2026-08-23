@@ -531,6 +531,13 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       };
     }, [facing, previewShouldRun, livekit, activeLens.isSnapLens]);
 
+    // Native AR publishing REQUIRES a room teardown when a Snap lens is
+    // toggled (the native plugin takes over LiveKit publishing itself). On
+    // web the same toggle is just a TrackProcessor swap handled by
+    // applyHostPipeline below, so the room must NOT reconnect there —
+    // otherwise viewers lose the host for several seconds on every filter tap.
+    const nativeArPublishing = isNativeCameraKitAvailable();
+
     // --- LiveKit host mode ------------------------------------------------
     useEffect(() => {
       if (!livekit) return;
