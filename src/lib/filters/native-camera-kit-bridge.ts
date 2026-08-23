@@ -143,6 +143,7 @@ function nativePromiseBridge(): KidiCameraKitPlugin | null {
 }
 
 async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
+  if (nativeDisabled) return null;
   if (nativePlugin) return nativePlugin;
   if (!hasNativePluginImpl()) return null;
 
@@ -198,7 +199,6 @@ export function errMsg(e: unknown): string {
 function disableNative(reason: unknown): void {
   if (nativeDisabled) return;
   nativeDisabled = true;
-  nativePlugin = null;
   console.warn("[native-camera-kit] disabled, falling back to web:", errMsg(reason));
 }
 
@@ -422,7 +422,11 @@ export async function setNativePublishEnabled(args: {
   roomUrl?: string;
   token?: string;
 }): Promise<void> {
-  const plugin = await getNativePlugin();
+  // Cleanup must still reach the cached plugin after it has been disabled;
+  // otherwise its native camera remains open and blocks the raw fallback.
+  const plugin = !args.enabled && nativePlugin
+    ? nativePlugin
+    : await getNativePlugin();
   if (!plugin) return; // web : la publication est gérée par broadcast-video
   try {
     if (args.enabled) {
@@ -445,7 +449,9 @@ export async function setNativePreview(args: {
   mirrored?: boolean;
   facing?: "user" | "environment";
 }): Promise<void> {
-  const plugin = await getNativePlugin();
+  const plugin = !args.active && nativePlugin
+    ? nativePlugin
+    : await getNativePlugin();
   if (!plugin) return;
   try {
     if (args.active) {
