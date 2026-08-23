@@ -480,6 +480,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           } catch (e) {
             console.warn("[native-camera-kit] preview start failed — web fallback", e);
+            disableNativeCameraKit(e);
             useNativePreview = false;
           }
         }
@@ -628,6 +629,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               await withTimeout(
                 setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
               );
+              const initialLens = activeLensRef.current;
+              if (initialLens.isSnapLens) {
+                await withTimeout(applyBridgeLens(initialLens), 5000);
+              }
               if (cancelled) {
                 await setNativePublishEnabled({ enabled: false }).catch(() => {});
                 await setNativePreview({ active: false }).catch(() => {});
@@ -637,6 +642,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               console.warn("[native-camera-kit] fallback to web pipeline:", errMsg(e));
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
+              disableNativeCameraKit(e);
               // Give iOS a beat to release the camera before getUserMedia.
               await new Promise((r) => setTimeout(r, 350));
               useNativeVideo = false;
