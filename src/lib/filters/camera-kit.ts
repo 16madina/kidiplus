@@ -337,12 +337,16 @@ export async function createCameraKitPipeline(args: {
     }
   };
 
+  let lastProbeTime = -1;
   const watchdog = setInterval(() => {
     if (destroyed || fatalSignalled) return;
-    if (!hasRvfc && probe.currentTime > 0) {
+    if (!hasRvfc) {
       // Sans requestVideoFrameCallback : currentTime d'un flux MediaStream
       // n'avance que si des frames arrivent réellement.
-      noteFrame();
+      if (probe.currentTime !== lastProbeTime) {
+        lastProbeTime = probe.currentTime;
+        noteFrame();
+      }
     }
     const stallMs = performance.now() - lastOutputFrameAt;
     if (stallMs <= 1500) {
