@@ -51,6 +51,11 @@ import java.util.concurrent.atomic.AtomicLong
 class KidiCameraKitPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    // Serializes session creation — the JS warmup calls initialize() twice
+    // concurrently, and a double Session would make two CameraX sources fight
+    // over the camera.
+    private val sessionLock = Any()
+
     private var cameraKitSession: Session? = null
     private var imageSource: CameraXImageProcessorSource? = null
     private var groupIds: List<String> = emptyList()
