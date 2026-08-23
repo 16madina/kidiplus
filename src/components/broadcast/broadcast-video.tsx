@@ -442,13 +442,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
-      let useNativePreview = isNativeCameraKitAvailable();
+      let useNativePreview =
+        activeLensRef.current.isSnapLens === true && isNativeCameraKitAvailable();
 
       async function acquire() {
         if (!previewShouldRun) return teardown();
         teardown();
 
-        useNativePreview = await waitForNativeCameraKit();
+        useNativePreview =
+          activeLensRef.current.isSnapLens === true &&
+          (await waitForNativeCameraKit());
         if (cancelled) return;
 
         // Native Camera Kit owns the camera. Opening getUserMedia here
@@ -524,7 +527,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         cancelled = true;
         teardown();
       };
-    }, [facing, previewShouldRun, livekit]);
+    }, [facing, previewShouldRun, livekit, activeLens.isSnapLens]);
 
     // --- LiveKit host mode ------------------------------------------------
     useEffect(() => {

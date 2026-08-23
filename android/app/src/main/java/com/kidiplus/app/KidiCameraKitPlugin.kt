@@ -430,7 +430,10 @@ class KidiCameraKitPlugin : Plugin() {
         scope.launch {
             try {
                 awaitFrameAfter(frameBeforeApply, 3_500)
-                if (generation != lensApplyGeneration.get()) return@launch
+                if (generation != lensApplyGeneration.get()) {
+                    if (!call.isReleased) call.reject("Lens request superseded")
+                    return@launch
+                }
                 if (!call.isReleased) {
                     call.resolve(
                         JSObject()
