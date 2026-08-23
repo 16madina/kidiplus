@@ -406,17 +406,21 @@ class KidiCameraKitPlugin : Plugin() {
     }
 
     private fun makeWebViewTransparent() {
-        val webView = bridge?.webView ?: return
-        webView.setBackgroundColor(Color.TRANSPARENT)
-        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+        runOnUi {
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(Color.TRANSPARENT)
+            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+        }
     }
 
     private fun restoreWebViewBackground() {
         // Undo makeWebViewTransparent() so a gap in web content shows the app
         // navy instead of a void behind the WebView.
-        val webView = bridge?.webView ?: return
-        webView.setBackgroundColor(Color.parseColor("#10162B"))
-        (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
+        runOnUi {
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(Color.parseColor("#10162B"))
+            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
+        }
     }
 
     private suspend fun startPublishing(url: String, token: String) {
