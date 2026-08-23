@@ -880,7 +880,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       }
 
       async function teardown() {
-        nativeVideoActiveRef.current = false;
+        setNativeActive(false);
         nativeAppliedLensKeyRef.current = "";
         const t = localVideoTrackRef.current;
         if (t) {
@@ -1183,7 +1183,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // au lieu de droite).
     const snapProcessorMirrors =
       !!livekit && activeLens.isSnapLens === true && isCameraKitSupported();
-    const nativeCam = isNativeCameraKitAvailable();
+    // Reactive: true ONLY while the native preview is actually rendering.
+    // Using isNativeCameraKitAvailable() (static capability) here also hid the
+    // raw-camera <video> → opaque ancestors painted over the native preview →
+    // the "black screen" this fix eliminates.
+    const nativeCam = nativePreviewActive;
 
     return (
       <div

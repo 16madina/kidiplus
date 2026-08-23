@@ -1306,6 +1306,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   return (
     <motion.div
       key="live"
+      data-kp-camera-layer=""
       initial={{ opacity: 0, scale: 1.02 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}

@@ -446,7 +446,8 @@
       "posterFaceDesc": "Image on your live"
     },
     "filters": {
-      "unstable": "Filter turned off: unstable on this device"
+      "unstable": "Filter turned off: unstable on this device",
+      "unavailable": "Filters unavailable on this device"
     },
     "setup": {
       "titlePlaceholder": "Live title…",
