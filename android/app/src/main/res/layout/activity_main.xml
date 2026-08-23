@@ -7,8 +7,7 @@
     tools:context=".MainActivity">
 
     <ViewStub
-        android:id="@+id/kidi_camerakit_preview_stub"
-        android:inflatedId="@+id/kidi_camerakit_preview"
+        android:id="@+id/camera_kit_stub"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
