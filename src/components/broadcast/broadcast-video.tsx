@@ -159,6 +159,16 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const effectsRef = useRef(effects);
     effectsRef.current = effects;
     const nativeVideoActiveRef = useRef(false);
+    // Reactive mirror of nativeVideoActiveRef. It drives render: hide the web
+    // <video>, make the container transparent, and unlock the html/body/shell
+    // backgrounds (.kp-native-cam-active) ONLY while the native preview is
+    // actually rendering. A static capability check would ALSO hide the raw
+    // LiveKit preview → black screen whenever the native session isn't up.
+    const [nativePreviewActive, setNativePreviewActiveState] = useState(false);
+    const setNativeActive = (active: boolean) => {
+      nativeVideoActiveRef.current = active;
+      setNativePreviewActiveState(active);
+    };
     const nativeLensSequenceRef = useRef(0);
     const nativeLensQueueRef = useRef<Promise<void>>(Promise.resolve());
     const nativeAppliedLensKeyRef = useRef("");
@@ -477,11 +487,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               mirrored: facing === "user",
               facing,
             });
-            if (!cancelled) setState("granted");
+            if (!cancelled) {
+              setState("granted");
+              setNativeActive(true);
+            }
             return;
           } catch (e) {
             console.warn("[native-camera-kit] preview start failed — web fallback", e);
             disableNativeCameraKit(e);
+            setNativeActive(false);
             useNativePreview = false;
           }
         }
@@ -520,6 +534,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         setPreviewStream(null);
         if (videoRef.current) videoRef.current.srcObject = null;
         if (useNativePreview) {
+          setNativeActive(false);
           void setNativePreview({ active: false });
         }
       }
@@ -530,6 +545,41 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         teardown();
       };
     }, [facing, previewShouldRun, livekit, activeLens.isSnapLens]);
+
+    // Native Android Camera Kit renders its preview on a native view BEHIND
+    // the WebView. While it is active, every web layer above it (html, body,
+    // app shell, broadcast screens) must be transparent — otherwise the host
+    // sees an opaque black/navy page instead of the camera. The CSS lives in
+    // styles.css under `.kp-native-cam-active`.
+    useEffect(() => {
+      const root = document.documentElement;
+      root.classList.toggle("kp-native-cam-active", nativePreviewActive);
+      return () => root.classList.remove("kp-native-cam-active");
+    }, [nativePreviewActive]);
+
+    // Android only: Snap lenses run exclusively through the native Camera Kit
+    // plugin (the web pipeline freezes on Android WebView). If the plugin
+    // failed to initialize, the raw camera keeps running — tell the host
+    // instead of silently ignoring the filter. iOS is untouched (native is
+    // gated off there by design).
+    useEffect(() => {
+      if (Capacitor.getPlatform() !== "android") return;
+      if (activeLens.isSnapLens !== true) return;
+      let cancelled = false;
+      void (async () => {
+        // Await the in-flight warmup before declaring the plugin dead.
+        const ok = await waitForNativeCameraKit();
+        if (cancelled || ok) return;
+        clearLensRef.current();
+        toast.error(
+          t("broadcast.filters.unavailable", "Filtres indisponibles sur cet appareil"),
+          { id: "lens-unavailable" },
+        );
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [activeLens, t]);
 
     // Native AR publishing REQUIRES a room teardown when a Snap lens is
     // toggled (the native plugin takes over LiveKit publishing itself). On
@@ -660,11 +710,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           if (useNativeVideo) {
             localVideoTrackRef.current = null;
             roomRef.current = null;
-            nativeVideoActiveRef.current = true;
+            setNativeActive(true);
             setState("granted");
             return;
           }
-          nativeVideoActiveRef.current = false;
+          setNativeActive(false);
           phase = "connect";
 
 
