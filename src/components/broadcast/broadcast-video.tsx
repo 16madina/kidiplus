@@ -857,7 +857,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       livekit?.identity,
       roomShouldRun,
       retryKey,
-      activeLens.isSnapLens,
+      // Reconnect only when the lens toggle switches between raw WebRTC and
+      // native AR publishing. On web this stays false and lens changes go
+      // through the in-place processor swap (no disconnect).
+      nativeArPublishing && activeLens.isSnapLens,
       nativeFallbackRevision,
       videoSource,
       ingressIdentity,
