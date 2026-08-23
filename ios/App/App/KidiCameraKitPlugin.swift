@@ -26,6 +26,7 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "startPreview", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopPreview", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setPublishEnabled", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getStatus", returnType: CAPPluginReturnPromise),
     ]
 
     private var cameraKit: CameraKitSession?
@@ -50,46 +51,62 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
     private var liveKitVideoTrack: LocalVideoTrack?
     private var liveKitOutput: KidiCameraKitLiveKitOutput?
     private var publishEnabled = false
+    private var idleStopWork: DispatchWorkItem?
+
+    /// Public Snap client token + default lens group. Used when JS omits
+    /// arguments or Info.plist keys are missing from the built binary.
+    private static let embeddedApiToken =
+        "eyJhbGciOiJIUzI1NiIsImtpZCI6IkNhbnZhc1MyU0hNQUNQcm9kIiwidHlwIjoiSldUIn0.eyJhdWQiOiJjYW52YXMtY2FudmFzYXBpIiwiaXNzIjoiY2FudmFzLXMyc3Rva2VuIiwibmJmIjoxNzg0MDQzNzkxLCJzdWIiOiIxOWJhOGM5OC1jMDRhLTRlOTgtOGVkYi04YWM4ZDQyODUzMzN-UFJPRFVDVElPTn43OTRjMjZhNC02ZDg0LTQ5NGYtOGE4Ny04MmZkMmVkZDVmYTUifQ.YE50FTWYfbngNKJGigMDb-I_eVvfASwRF9NRsQ4MD_4"
+    private static let embeddedGroupId = "df287f43-6646-4b01-a711-1a0e632c211a"
+
+    override public func load() {
+        let plistToken = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitAPIToken") as? String) ?? ""
+        let plistGroup = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitLensGroupID") as? String) ?? ""
+        print(
+            "[KidiCameraKit] plugin loaded plistToken=\(!plistToken.isEmpty) " +
+            "plistGroup=\(plistGroup.isEmpty ? "MISSING" : plistGroup) " +
+            "embeddedFallback=true"
+        )
+        let payload: [String: Any] = [
+            "ready": true,
+            "plistToken": !plistToken.isEmpty,
+            "plistGroup": plistGroup,
+        ]
+        DispatchQueue.main.async { [weak self] in
+            self?.notifyListeners("pluginLoaded", data: payload)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.notifyListeners("pluginLoaded", data: payload)
+        }
+    }
+
+    @objc func getStatus(_ call: CAPPluginCall) {
+        let plistToken = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitAPIToken") as? String) ?? ""
+        let plistGroup = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitLensGroupID") as? String) ?? ""
+        call.resolve([
+            "ready": true,
+            "initialized": isInitialized,
+            "sessionStarted": sessionStarted,
+            "captureRunning": captureSession?.isRunning ?? false,
+            "plistToken": !plistToken.isEmpty,
+            "plistGroup": plistGroup,
+        ])
+    }
 
     // MARK: - initialize
 
     @objc func initialize(_ call: CAPPluginCall) {
-        guard let apiToken = call.getString("apiToken"), !apiToken.isEmpty else {
-            call.reject("Missing apiToken")
-            return
-        }
-        guard let groupIds = call.getArray("groupIds", String.self), !groupIds.isEmpty else {
-            call.reject("Missing groupIds")
-            return
-        }
+        let apiToken = call.getString("apiToken")
+        let groupIds = call.getArray("groupIds", String.self)
 
         DispatchQueue.main.async {
-            self.groupIds = groupIds
-
-            if self.cameraKit == nil {
-                let lensesConfig = LensesConfig(
-                    cacheConfig: CacheConfig(lensContentMaxSize: 150 * 1024 * 1024)
-                )
-                let session = CameraKitSession(
-                    sessionConfig: SessionConfig(apiToken: apiToken),
-                    lensesConfig: lensesConfig,
-                    errorHandler: nil
-                )
-                self.cameraKit = session
+            do {
+                try self.bootstrapSession(apiToken: apiToken, groupIds: groupIds)
+                self.emitStatus("initialized")
+                call.resolve(["initialized": true])
+            } catch {
+                call.reject(error.localizedDescription)
             }
-
-            guard let session = self.cameraKit else {
-                call.reject("Failed to create Camera Kit session")
-                return
-            }
-
-            for groupId in groupIds {
-                session.lenses.repository.addObserver(self, groupID: groupId)
-            }
-
-            self.isInitialized = true
-            print("[KidiCameraKit] initialized groups=\(groupIds.joined(separator: ","))")
-            call.resolve(["initialized": true])
         }
     }
 
@@ -162,7 +179,7 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let processor = session.lenses.processor else {
                 DispatchQueue.main.async {
                     // Session pas encore démarrée : on démarre la preview puis on réessaie.
-                    self.ensureSessionStarted(facing: self.cameraPosition == .front ? "user" : "environment") {
+                    self.ensureSessionStarted(facing: self.cameraPosition == .front ? "user" : "environment") { _ in
                         session.lenses.processor?.apply(lens: lens, launchData: nil) { success in
                             if success {
                                 call.resolve(["applied": true])
@@ -208,11 +225,24 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
         let facing = call.getString("facing") ?? "user"
 
         DispatchQueue.main.async {
-            self.ensureSessionStarted(facing: facing) {
+            // Never reject here: the production JS falls back to WASM on any
+            // reject, and startRunning can block while getUserMedia releases
+            // the camera. Prepare the session, resolve immediately, start
+            // capture in the background.
+            do {
+                try self.bootstrapSession(apiToken: nil, groupIds: nil)
+            } catch {
+                print("[KidiCameraKit] startPreview bootstrap: \(error.localizedDescription)")
+            }
+            self.ensureSessionStarted(facing: facing, waitForCapture: false) { _ in
                 if let preview = self.previewView {
                     preview.transform = mirrored ? CGAffineTransform(scaleX: -1, y: 1) : .identity
                 }
                 print("[KidiCameraKit] startPreview mirrored=\(mirrored) facing=\(facing)")
+                self.emitStatus("previewStarted", extra: [
+                    "mirrored": mirrored,
+                    "facing": facing,
+                ])
                 call.resolve(["started": true])
             }
         }
@@ -233,24 +263,43 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
         let roomUrl = call.getString("roomUrl")
         let token = call.getString("token")
 
-        Task { @MainActor in
-            if !enabled {
+        if !enabled {
+            Task { @MainActor in
                 await self.stopPublishing()
                 call.resolve(["enabled": false])
-                return
             }
+            return
+        }
 
-            guard let roomUrl, let token, !roomUrl.isEmpty, !token.isEmpty else {
-                call.reject("Missing roomUrl or token")
-                return
-            }
+        guard let roomUrl, let token, !roomUrl.isEmpty, !token.isEmpty else {
+            call.reject("Missing roomUrl or token")
+            return
+        }
 
+        // Resolve as soon as the Camera Kit preview is up. The production JS
+        // stays on « Connexion au live… » until this promise settles; LiveKit
+        // connect/publish must not block it (and must not run exclusively on
+        // the main actor — that can deadlock room.connect).
+        DispatchQueue.main.async {
             do {
-                try await self.startPublishing(url: roomUrl, token: token)
-                call.resolve(["enabled": true])
+                try self.bootstrapSession(apiToken: nil, groupIds: nil)
             } catch {
-                print("[KidiCameraKit] setPublishEnabled failed: \(error)")
-                call.reject("Publish failed: \(error.localizedDescription)")
+                print("[KidiCameraKit] publish bootstrap: \(error.localizedDescription)")
+            }
+            self.ensureSessionStarted(
+                facing: self.cameraPosition == .front ? "user" : "environment",
+                waitForCapture: false
+            ) { _ in
+                print("[KidiCameraKit] setPublishEnabled preview ready")
+                call.resolve(["enabled": true])
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await self.startPublishing(url: roomUrl, token: token)
+                    } catch {
+                        print("[KidiCameraKit] background publish failed: \(error)")
+                    }
+                }
             }
         }
     }
@@ -259,12 +308,86 @@ public class KidiCameraKitPlugin: CAPPlugin, CAPBridgedPlugin {
 // MARK: - Session lifecycle
 
 private extension KidiCameraKitPlugin {
-    func ensureSessionStarted(facing: String, completion: @escaping () -> Void) {
+    func defaultApiToken() -> String {
+        let plist = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitAPIToken") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return plist.isEmpty ? Self.embeddedApiToken : plist
+    }
+
+    func defaultGroupIds() -> [String] {
+        let id = (Bundle.main.object(forInfoDictionaryKey: "SCCameraKitLensGroupID") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolved = id.isEmpty ? Self.embeddedGroupId : id
+        return resolved.isEmpty ? [] : [resolved]
+    }
+
+    func bootstrapSession(apiToken: String?, groupIds: [String]?) throws {
+        let token = (apiToken?.isEmpty == false ? apiToken : nil) ?? defaultApiToken()
+        let groups = (groupIds?.isEmpty == false ? groupIds : nil) ?? defaultGroupIds()
+        print(
+            "[KidiCameraKit] bootstrap jsToken=\(apiToken?.isEmpty == false) " +
+            "jsGroups=\(groupIds?.count ?? 0) usingTokenLen=\(token.count) groups=\(groups)"
+        )
+        guard !token.isEmpty else {
+            throw NSError(
+                domain: "KidiCameraKit",
+                code: 5,
+                userInfo: [NSLocalizedDescriptionKey: "Missing apiToken"]
+            )
+        }
+        guard !groups.isEmpty else {
+            throw NSError(
+                domain: "KidiCameraKit",
+                code: 6,
+                userInfo: [NSLocalizedDescriptionKey: "Missing groupIds"]
+            )
+        }
+
+        self.groupIds = groups
+        if cameraKit == nil {
+            let lensesConfig = LensesConfig(
+                cacheConfig: CacheConfig(lensContentMaxSize: 150 * 1024 * 1024)
+            )
+            cameraKit = CameraKitSession(
+                sessionConfig: SessionConfig(apiToken: token),
+                lensesConfig: lensesConfig,
+                errorHandler: nil
+            )
+        }
+        guard let session = cameraKit else {
+            throw NSError(
+                domain: "KidiCameraKit",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to create Camera Kit session"]
+            )
+        }
+        for groupId in groups {
+            session.lenses.repository.addObserver(self, groupID: groupId)
+        }
+        isInitialized = true
+        print("[KidiCameraKit] initialized groups=\(groups.joined(separator: ","))")
+        emitStatus("bootstrapped", extra: ["groups": groups.joined(separator: ",")])
+    }
+
+    func emitStatus(_ phase: String, extra: [String: Any] = [:]) {
+        var data: [String: Any] = [
+            "phase": phase,
+            "initialized": isInitialized,
+            "sessionStarted": sessionStarted,
+            "captureRunning": captureSession?.isRunning ?? false,
+        ]
+        extra.forEach { data[$0.key] = $0.value }
+        notifyListeners("status", data: data)
+    }
+
+    func ensureSessionStarted(facing: String, waitForCapture: Bool = true, completion: @escaping (Bool) -> Void) {
         cameraPosition = facing == "environment" ? .back : .front
+        idleStopWork?.cancel()
+        idleStopWork = nil
 
         guard let cameraKit else {
             print("[KidiCameraKit] ensureSessionStarted: session missing (call initialize first)")
-            completion()
+            completion(false)
             return
         }
 
@@ -272,7 +395,7 @@ private extension KidiCameraKitPlugin {
             guard let self else { return }
             guard granted else {
                 print("[KidiCameraKit] camera permission denied")
-                completion()
+                completion(false)
                 return
             }
 
@@ -326,14 +449,39 @@ private extension KidiCameraKitPlugin {
             self.attachPreview(preview)
             self.makeWebViewTransparent()
 
-            // Always (re)start capture — stopPreview may have stopped the session
-            // while sessionStarted stayed true, which previously left LiveKit
-            // waiting forever for frames (« Connexion au live… »).
-            DispatchQueue.global(qos: .userInitiated).async {
-                input.startRunning()
-                DispatchQueue.main.async {
-                    completion()
+            if waitForCapture {
+                self.startCaptureWithRetry(input: input, attempt: 0, completion: completion)
+            } else {
+                self.startCaptureWithRetry(input: input, attempt: 0) { running in
+                    print("[KidiCameraKit] capture running=\(running)")
                 }
+                completion(true)
+            }
+        }
+    }
+
+    func startCaptureWithRetry(
+        input: AVSessionInput,
+        attempt: Int,
+        completion: @escaping (Bool) -> Void
+    ) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            input.startRunning()
+            let running = self.captureSession?.isRunning == true
+            if !running && attempt < 5 {
+                print("[KidiCameraKit] camera not running yet, retry \(attempt + 1)")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    self.startCaptureWithRetry(input: input, attempt: attempt + 1, completion: completion)
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                print("[KidiCameraKit] capture running=\(running) attempt=\(attempt)")
+                self.notifyListeners("captureState", data: ["running": running])
+                if !running {
+                    print("[KidiCameraKit] camera failed to start after retries")
+                }
+                completion(running)
             }
         }
     }
@@ -355,14 +503,51 @@ private extension KidiCameraKitPlugin {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        // Punch through the React camera layer so PreviewView is visible
+        // even before a web deploy updates Tailwind backgrounds.
+        webView.evaluateJavaScript(
+            """
+            (function(){
+              try {
+                document.documentElement.classList.add('kp-native-ck');
+                document.documentElement.style.background='transparent';
+                if (document.body) document.body.style.background='transparent';
+                var st=document.getElementById('kp-native-ck-style');
+                if(!st){st=document.createElement('style');st.id='kp-native-ck-style';
+                  (document.head||document.documentElement).appendChild(st);}
+                st.textContent=[
+                  'html.kp-native-ck,html.kp-native-ck body{background:transparent!important}',
+                  'html.kp-native-ck [data-kp-native-cam],',
+                  'html.kp-native-ck .kp-native-cam-root{background:transparent!important}'
+                ].join('');
+                document.querySelectorAll('[data-kp-native-cam],.kp-native-cam-root').forEach(function(el){
+                  el.style.background='transparent';
+                });
+                document.querySelectorAll('video').forEach(function(v){
+                  var p=v.parentElement;
+                  if(p) p.style.background='transparent';
+                  if(!v.srcObject && !v.currentSrc) v.style.opacity='0';
+                });
+              } catch (e) {}
+            })();
+            """,
+            completionHandler: nil
+        )
     }
 
     func teardownPreviewOnly() {
         previewView?.removeFromSuperview()
-        // Keep Camera Kit session alive if publishing; only hide preview.
-        if !publishEnabled {
-            sessionInput?.stopRunning()
+        // Delay stopping capture so setup → live does not kill the session
+        // (CameraKitPreview unmounts and calls stopPreview first).
+        idleStopWork?.cancel()
+        guard !publishEnabled else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, !self.publishEnabled else { return }
+            self.sessionInput?.stopRunning()
+            print("[KidiCameraKit] idle camera stopped")
         }
+        idleStopWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
 
     func requestCameraAccess(completion: @escaping (Bool) -> Void) {
@@ -385,9 +570,19 @@ private extension KidiCameraKitPlugin {
     @MainActor
     func startPublishing(url: String, token: String) async throws {
         publishEnabled = true
+        idleStopWork?.cancel()
+        idleStopWork = nil
 
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            ensureSessionStarted(facing: cameraPosition == .front ? "user" : "environment") {
+            do {
+                try bootstrapSession(apiToken: nil, groupIds: nil)
+            } catch {
+                print("[KidiCameraKit] publish bootstrap: \(error.localizedDescription)")
+            }
+            ensureSessionStarted(
+                facing: cameraPosition == .front ? "user" : "environment",
+                waitForCapture: false
+            ) { _ in
                 cont.resume()
             }
         }
@@ -461,14 +656,18 @@ private extension KidiCameraKitPlugin {
             cameraKit.remove(output: output)
         }
         liveKitOutput = nil
-        if let publication = liveKitRoom?.localParticipant.getTrackPublication(source: .camera)
-            as? LocalTrackPublication
+        if let publication = liveKitRoom?.localParticipant.trackPublications.values
+            .compactMap({ $0 as? LocalTrackPublication })
+            .first(where: { $0.source == .camera })
         {
             try? await liveKitRoom?.localParticipant.unpublish(publication: publication)
         }
         liveKitVideoTrack = nil
         await liveKitRoom?.disconnect()
         liveKitRoom = nil
+        if previewView?.superview == nil {
+            sessionInput?.stopRunning()
+        }
         print("[KidiCameraKit] LiveKit publish stopped")
     }
 

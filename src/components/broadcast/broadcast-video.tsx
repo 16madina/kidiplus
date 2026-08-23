@@ -3,6 +3,7 @@ import { useFilter } from "@/lib/filters/filter-context";
 import { Camera, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 import { Press } from "@/components/press";
 import { useAppActive } from "@/lib/app-state";
 import {
@@ -12,9 +13,12 @@ import {
 import { isCameraKitSupported } from "@/lib/filters/camera-kit";
 import {
   applyBridgeLens,
+  errMsg,
   isNativeCameraKitAvailable,
   setNativePreview,
   setNativePublishEnabled,
+  waitForNativeCameraKit,
+  warmupNativeCameraKit,
 } from "@/lib/filters/native-camera-kit-bridge";
 import { CameraKitVideoProcessor } from "@/lib/filters/camera-kit-processor";
 import { CameraKitPreview } from "@/components/broadcast/camera-kit-preview";
@@ -208,12 +212,12 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
         if (wantSnap) {
           // iOS/Android : SDK Snap natif (GPU) — pas de TrackProcessor WASM.
-          if (isNativeCameraKitAvailable()) {
+          if (isNativeCameraKitAvailable() || (await waitForNativeCameraKit())) {
             if (isCameraKit || isEffects) {
               try { await track.stopProcessor(); } catch { /* none */ }
             }
             void applyBridgeLens(lens).catch((e) => {
-              console.warn("[native-camera-kit] applyBridgeLens failed", e);
+              console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
             });
             return;
           }
@@ -263,10 +267,22 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
+    // Warm up the native Snap session as soon as the broadcast screen mounts.
+    // Waiting for the filter carousel meant `initialize()` was never called on
+    // iOS/Android, so the first lens tap or go-live had to pay the full SDK
+    // boot cost (and any failure surfaced only as a frozen camera).
+    useEffect(() => {
+      if (!isNativeCameraKitAvailable()) return;
+      void warmupNativeCameraKit().catch((e) => {
+        console.warn("[native-camera-kit] warmup failed", errMsg(e));
+      });
+    }, []);
+
     // Report status upward.
     useEffect(() => {
       onStatus?.(state);
     }, [state, onStatus]);
+
 
     // Probe device count to decide whether the flip button should show.
     // Re-probes on state changes because iOS/Android only expose the full
@@ -399,10 +415,45 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     useEffect(() => {
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
+      let useNativePreview = isNativeCameraKitAvailable();
 
       async function acquire() {
         if (!previewShouldRun) return teardown();
         teardown();
+
+        useNativePreview = await waitForNativeCameraKit();
+        if (cancelled) return;
+
+        // Native Camera Kit owns the camera. Opening getUserMedia here
+        // locks AVCaptureSession and makes startPreview hang → JS fallback.
+        if (useNativePreview) {
+          const preflight = await ensureCameraMicPermission({
+            video: { facingMode: facing },
+            audio: false,
+          });
+          if (cancelled) return;
+          if (preflight.status !== "granted") {
+            if (preflight.status === "denied_by_user") setState("denied");
+            else if (preflight.status === "config_missing") setState("config_missing");
+            else if (preflight.status === "no_device") setState("unavailable");
+            else if (preflight.status === "unsupported") setState("unsupported");
+            else setState("error");
+            return;
+          }
+          try {
+            await setNativePreview({
+              active: true,
+              mirrored: facing === "user",
+              facing,
+            });
+            if (!cancelled) setState("granted");
+            return;
+          } catch (e) {
+            console.warn("[native-camera-kit] preview start failed — web fallback", e);
+            useNativePreview = false;
+          }
+        }
+
         const res = await ensureCameraMicAccess({
           video: { facingMode: facing },
           audio: false,
@@ -436,6 +487,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         }
         setPreviewStream(null);
         if (videoRef.current) videoRef.current.srcObject = null;
+        if (useNativePreview) {
+          void setNativePreview({ active: false });
+        }
       }
 
       void acquire();
@@ -510,7 +564,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
           // Native Snap Camera Kit: initialize + preview first so frames flow,
           // then publish to LiveKit. On failure, fall back to WebRTC.
-          let useNativeVideo = isNativeCameraKitAvailable() && !isRtmp;
+          let useNativeVideo = !isRtmp && (await waitForNativeCameraKit());
           if (useNativeVideo) {
             phase = "camera";
             const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
@@ -532,6 +586,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 await setNativePreview({ active: false }).catch(() => {});
                 return;
               }
+              // Show the native preview immediately. LiveKit publish can
+              // finish after the host already sees the camera.
+              setState("granted");
               await withTimeout(
                 setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
               );
@@ -541,7 +598,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 return;
               }
             } catch (e) {
-              console.warn("[native-camera-kit] fallback to web pipeline", e);
+              console.warn("[native-camera-kit] fallback to web pipeline:", errMsg(e));
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
               // Give iOS a beat to release the camera before getUserMedia.
@@ -553,7 +610,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             const lens = activeLensRef.current;
             if (lens?.isSnapLens) {
               void applyBridgeLens(lens).catch((e) => {
-                console.warn("[native-camera-kit] applyBridgeLens failed", e);
+                console.warn("[native-camera-kit] applyBridgeLens failed", errMsg(e));
               });
             }
             localVideoTrackRef.current = null;
@@ -934,10 +991,24 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       (videoSource === "rtmp" || enabled);
     // Preview-only CSS mirror. LiveKit mode uses MirrorVideoProcessor on the
     // published track (and shows it locally) so we must not double-flip.
-    const mirrored = !livekit && facing === "user";
+    const mirrored = facing === "user" && (!livekit || Capacitor.isNativePlatform());
+    // En live, le processeur Camera Kit miroire déjà la piste publiée
+    // (Transform2D.MirrorX) et LiveKit l'affiche localement telle quelle :
+    // un flip CSS en plus inverserait l'image une seconde fois (main à gauche
+    // au lieu de droite).
+    const snapProcessorMirrors =
+      !!livekit && activeLens.isSnapLens === true && isCameraKitSupported();
+    const nativeCam = isNativeCameraKitAvailable();
 
     return (
-      <div className="absolute inset-0 overflow-hidden bg-neutral-900">
+      <div
+        data-kp-native-cam={nativeCam ? "" : undefined}
+        className={
+          nativeCam
+            ? "kp-native-cam-root absolute inset-0 overflow-hidden bg-transparent"
+            : "absolute inset-0 overflow-hidden bg-neutral-900"
+        }
+      >
         {fallbackImage && !showVideo && (
           <img
             src={fallbackImage}
@@ -950,8 +1021,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           videoRef={videoRef}
           // Effects canvas is already composed (camera selfie-flipped,
           // images not). Never CSS-flip that result or viewers/host diverge.
-          mirrored={mirrored && !effects.hasEffects}
-          showVideo={showVideo}
+          // Same for the Camera Kit processor: its output is already mirrored.
+          mirrored={mirrored && !effects.hasEffects && !snapProcessorMirrors}
+          showVideo={showVideo && !nativeCam}
         />
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,

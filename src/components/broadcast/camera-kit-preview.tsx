@@ -11,7 +11,6 @@ import {
   createBridgeWebPipeline,
   isCameraKitSupported,
   isNativeCameraKitAvailable,
-  setNativePreview,
   type CameraKitPipeline,
 } from "@/lib/filters/native-camera-kit-bridge";
 
@@ -29,14 +28,18 @@ export function CameraKitPreview({
   const [ready, setReady] = useState(false);
 
   const track = stream?.getVideoTracks()[0] ?? null;
-  const active = !!track && lens.isSnapLens === true && isCameraKitSupported();
   const useNative = isNativeCameraKitAvailable();
+  const active =
+    lens.isSnapLens === true &&
+    isCameraKitSupported() &&
+    (useNative || !!track);
 
-  // Natif : preview GPU + apply/clear lens (pas de getUserMedia WASM).
+  // Natif : le parent (broadcast-video) possède la preview Camera Kit.
+  // Ici on applique / retire seulement la lens — un stopPreview ici
+  // coupait la caméra au passage setup → live.
   useEffect(() => {
     if (!useNative) return;
     if (!active) {
-      void setNativePreview({ active: false });
       void clearBridgeLens().catch(() => {});
       setReady(false);
       return;
@@ -44,23 +47,16 @@ export function CameraKitPreview({
 
     let cancelled = false;
     setReady(false);
-    void (async () => {
-      try {
-        await setNativePreview({
-          active: true,
-          mirrored,
-          facing: mirrored ? "user" : "environment",
-        });
-        await applyBridgeLens(lens);
+    void applyBridgeLens(lens)
+      .then(() => {
         if (!cancelled) setReady(true);
-      } catch (e) {
-        console.warn("[camera-kit] native preview failed", e);
-      }
-    })();
+      })
+      .catch((e: unknown) => {
+        console.warn("[camera-kit] native preview lens failed", e);
+      });
 
     return () => {
       cancelled = true;
-      void setNativePreview({ active: false });
       setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

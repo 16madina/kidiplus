@@ -70,6 +70,9 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   // Prefetch Snap Camera Kit + lenses while the host prepares the live.
   useEffect(() => {
     loadLenses();
+    void import("@/lib/filters/native-camera-kit-bridge").then(({ warmupNativeCameraKit }) => {
+      void warmupNativeCameraKit("broadcast-setup");
+    });
   }, [loadLenses]);
   const { profile } = useAuth();
   const emailGate = useEmailConfirmGate();

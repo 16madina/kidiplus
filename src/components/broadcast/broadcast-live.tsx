@@ -203,6 +203,12 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   // Hide the app's bottom tab bar while the host is on-air.
   useImmersiveScope(true);
 
+  useEffect(() => {
+    void import("@/lib/filters/native-camera-kit-bridge").then(({ warmupNativeCameraKit }) => {
+      void warmupNativeCameraKit("broadcast-live");
+    });
+  }, []);
+
   // YouTube / Facebook connect status (camera live only).
   useEffect(() => {
     if (isRtmp) return;

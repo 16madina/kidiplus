@@ -59,37 +59,193 @@ type KidiCameraKitPlugin = {
  * plugin compilé, on bascule sur un chemin natif fantôme et la caméra reste
  * bloquée sur « Connexion au live… ».
  */
+let nativeDisabled = false; // set when the native path proves unusable
+let detectionLogged = false;
+
+function pluginFromWindow(): unknown {
+  try {
+    const cap = (globalThis as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } })
+      .Capacitor;
+    return cap?.Plugins?.["KidiCameraKit"] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function hasNativePluginImpl(): boolean {
   try {
-    // Force-off only: VITE_NATIVE_CAMERA_KIT_ENABLED=false
-    if (import.meta.env.VITE_NATIVE_CAMERA_KIT_ENABLED === "false") return false;
-    return (
-      Capacitor.isNativePlatform() &&
-      Capacitor.isPluginAvailable("KidiCameraKit")
-    );
+    // Emergency safety gate: the current native publisher can resolve before
+    // it has emitted/published a real frame. That makes the UI report success
+    // while both the host and viewers receive black video. Keep this path
+    // completely disabled (regardless of a stale production env flag) until
+    // native first-frame + publish acknowledgement is implemented end-to-end.
+    return false;
+    /* istanbul ignore next -- retained native implementation for later validation */
+    if (nativeDisabled) return false;
+    if (!Capacitor.isNativePlatform()) return false;
+    // `isPluginAvailable` only knows about plugins listed in the Capacitor
+    // registry; our app-level plugin is registered manually, so also look it
+    // up directly on `window.Capacitor.Plugins`.
+    const available =
+      Capacitor.isPluginAvailable("KidiCameraKit") || !!pluginFromWindow();
+    if (!detectionLogged) {
+      detectionLogged = true;
+      console.info(
+        "[native-camera-kit] detection",
+        JSON.stringify({
+          platform: Capacitor.getPlatform(),
+          isPluginAvailable: Capacitor.isPluginAvailable("KidiCameraKit"),
+          onWindow: !!pluginFromWindow(),
+          available,
+        }),
+      );
+    }
+    return available;
   } catch {
     return false;
   }
 }
 
+const NATIVE_METHODS = [
+  "initialize",
+  "loadLenses",
+  "applyLens",
+  "clearLens",
+  "startPreview",
+  "stopPreview",
+  "setPublishEnabled",
+] as const;
+
+/** Direct bridge call. `registerPlugin()` only routes to native when the plugin
+ * appears in `Capacitor.PluginHeaders`; KidiCameraKit is registered manually on
+ * the bridge (capacitorDidLoad), so its header is missing and the generated
+ * proxy rejects with "not implemented on ios" WITHOUT ever reaching Swift —
+ * exactly the silent fallback seen in Xcode. `Capacitor.nativePromise` talks to
+ * the bridge directly and always reaches the Swift method. */
+function nativePromiseBridge(): KidiCameraKitPlugin | null {
+  const cap = (globalThis as unknown as {
+    Capacitor?: { nativePromise?: (p: string, m: string, o?: unknown) => Promise<unknown> };
+  }).Capacitor;
+  if (typeof cap?.nativePromise !== "function") return null;
+  const call = cap.nativePromise.bind(cap);
+  const obj = {} as Record<string, (o?: unknown) => Promise<unknown>>;
+  for (const m of NATIVE_METHODS) {
+    obj[m] = (o?: unknown) => call("KidiCameraKit", m, o ?? {});
+  }
+  return obj as unknown as KidiCameraKitPlugin;
+}
+
 async function getNativePlugin(): Promise<KidiCameraKitPlugin | null> {
   if (nativePlugin) return nativePlugin;
   if (!hasNativePluginImpl()) return null;
+
+  // 1) Plugin object injected by the native bridge (routes straight to Swift).
+  const fromWindow = pluginFromWindow() as KidiCameraKitPlugin | null;
+  if (fromWindow && typeof fromWindow.initialize === "function") {
+    console.info("[native-camera-kit] using window.Capacitor.Plugins.KidiCameraKit");
+    nativePlugin = fromWindow;
+    return nativePlugin;
+  }
+
+  // 2) Low-level bridge call (works even without a PluginHeader entry).
+  const bridged = nativePromiseBridge();
+  if (bridged) {
+    console.info("[native-camera-kit] using Capacitor.nativePromise bridge");
+    nativePlugin = bridged;
+    return nativePlugin;
+  }
+
+  // 3) Last resort: standard registration.
   try {
     const { registerPlugin } = await import("@capacitor/core");
+    console.info("[native-camera-kit] using registerPlugin proxy");
     nativePlugin = registerPlugin<KidiCameraKitPlugin>("KidiCameraKit");
     return nativePlugin;
   } catch (e) {
-    console.warn("[native-camera-kit] plugin registration failed", e);
+    console.warn("[native-camera-kit] plugin registration failed", errMsg(e));
     return null;
   }
 }
+
+
+/** Capacitor's console proxy stringifies Errors as `{}` — always log a string
+ * so Xcode/Logcat show the real reason instead of an empty object. */
+export function errMsg(e: unknown): string {
+  if (!e) return "unknown error";
+  if (typeof e === "string") return e;
+  const o = e as { message?: unknown; errorMessage?: unknown; code?: unknown };
+  const msg = o.message ?? o.errorMessage;
+  if (typeof msg === "string" && msg) {
+    return o.code ? `${msg} (code=${String(o.code)})` : msg;
+  }
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
+/** A missing/broken native implementation must not strand the host on a black
+ * screen: disable the native path for the rest of the session and let the web
+ * pipeline take over. */
+function disableNative(reason: unknown): void {
+  if (nativeDisabled) return;
+  nativeDisabled = true;
+  nativePlugin = null;
+  console.warn("[native-camera-kit] disabled, falling back to web:", errMsg(reason));
+}
+
+function isUnimplemented(e: unknown): boolean {
+  return /not implemented|unimplemented|not available|UNIMPLEMENTED/i.test(errMsg(e));
+}
+
+
 
 export function isNativeCameraKitAvailable(): boolean {
   return hasNativePluginImpl();
 }
 
+/**
+ * Boots the native Snap session ahead of time (plugin registration +
+ * `initialize` + lens list). Called when the broadcast screen mounts so the
+ * Xcode/Logcat trace shows `KidiCameraKit initialize` immediately and any
+ * failure disables the native path BEFORE the host taps "go live".
+ */
+export async function waitForNativeCameraKit(): Promise<boolean> {
+  return warmupNativeCameraKit();
+}
+
+export async function warmupNativeCameraKit(_reason?: string): Promise<boolean> {
+  const plugin = await getNativePlugin();
+  if (!plugin) {
+    console.info("[native-camera-kit] warmup skipped (no native plugin)");
+    return false;
+  }
+  const token = snapApiToken();
+  if (!token) {
+    disableNative("missing VITE_SNAP_CAMERA_KIT_API_TOKEN");
+    return false;
+  }
+  try {
+    console.info("[native-camera-kit] warmup initialize()", SNAP_LENS_GROUP_IDS.join(","));
+    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    const lenses = await loadBridgeLenses();
+    console.info(`[native-camera-kit] warmup ok, ${lenses.length} lens(es)`);
+    return !nativeDisabled;
+  } catch (e) {
+    console.warn("[native-camera-kit] warmup error", errMsg(e));
+    disableNative(e);
+    return false;
+  }
+}
+
+
 export function isCameraKitSupported(): boolean {
+  // Never run the Web Camera Kit WASM TrackProcessor inside a native WebView.
+  // On iOS it can output an all-black processed track even though the raw
+  // getUserMedia camera is healthy. Native builds therefore publish the raw
+  // LiveKit camera while the native integration is safety-gated above.
+  if (Capacitor.isNativePlatform()) return hasNativePluginImpl();
   if (hasNativePluginImpl()) return true; // le plugin natif fournit le support
   return isWebCameraKitSupported();
 }
@@ -120,7 +276,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 
   const plugin = await getNativePlugin();
   if (plugin) {
-    nativeLensesPromise = loadNativeLenses(plugin);
+    nativeLensesPromise = loadNativeLenses(plugin).catch(async (e) => {
+      // Native SDK missing/erroring → never leave the carousel empty.
+      disableNative(e);
+      return loadWebLenses();
+    });
   } else {
     nativeLensesPromise = loadWebLenses();
   }
@@ -139,9 +299,11 @@ export async function loadBridgeLenses(force = false): Promise<BridgeLens[]> {
 async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens[]> {
   const token = snapApiToken();
   if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+  console.info("[native-camera-kit] initialize()", SNAP_LENS_GROUP_IDS.join(","));
   await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
   const res = await plugin.loadLenses({ groupIds: SNAP_LENS_GROUP_IDS });
-  console.info(`[native-camera-kit] ${res.lenses.length} lens(es) loaded`);
+  console.info(`[native-camera-kit] ${res.lenses?.length ?? 0} lens(es) loaded`);
+  if (!res.lenses?.length) throw new Error("native returned 0 lenses");
   return res.lenses.map((l) => ({
     lensId: l.id,
     groupId: l.groupId || SNAP_LENS_GROUP_ID,
@@ -150,6 +312,7 @@ async function loadNativeLenses(plugin: KidiCameraKitPlugin): Promise<BridgeLens
     previewUrl: l.previewUrl,
   }));
 }
+
 
 async function loadWebLenses(): Promise<BridgeLens[]> {
   const lenses = await loadWebSnapLenses(false);
@@ -178,7 +341,12 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
   }
   const plugin = await getNativePlugin();
   if (plugin) {
-    await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    try {
+      await plugin.applyLens({ lensId: lens.lensId, groupId: lens.groupId });
+    } catch (e) {
+      if (isUnimplemented(e)) disableNative(e);
+      else throw e;
+    }
     return;
   }
   // Web : la lens est appliquée par le pipeline en cours (voir broadcast-video).
@@ -186,10 +354,14 @@ export async function applyBridgeLens(lens: Lens): Promise<void> {
 
 export async function clearBridgeLens(): Promise<void> {
   const plugin = await getNativePlugin();
-  if (plugin) {
+  if (!plugin) return;
+  try {
     await plugin.clearLens();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Preview / pipeline web
@@ -220,13 +392,19 @@ export async function setNativePublishEnabled(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return; // web : la publication est gérée par broadcast-video
-  if (args.enabled) {
-    // Live can start before the filter carousel — always warm the Snap session.
-    const token = snapApiToken();
-    if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
-    await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.enabled) {
+      // Live can start before the filter carousel — always warm the Snap session.
+      const token = snapApiToken();
+      if (!token) throw new Error("VITE_SNAP_CAMERA_KIT_API_TOKEN is not configured");
+      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+    }
+    console.info("[native-camera-kit] setPublishEnabled", args.enabled);
+    await plugin.setPublishEnabled(args);
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
-  await plugin.setPublishEnabled(args);
 }
 
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
@@ -237,16 +415,23 @@ export async function setNativePreview(args: {
 }): Promise<void> {
   const plugin = await getNativePlugin();
   if (!plugin) return;
-  if (args.active) {
-    const token = snapApiToken();
-    if (token) {
-      await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+  try {
+    if (args.active) {
+      const token = snapApiToken();
+      if (token) {
+        await plugin.initialize({ apiToken: token, groupIds: SNAP_LENS_GROUP_IDS });
+      }
+      console.info("[native-camera-kit] startPreview", args.facing ?? "user");
+      await plugin.startPreview({
+        mirrored: args.mirrored ?? false,
+        facing: args.facing ?? "user",
+      });
+    } else {
+      await plugin.stopPreview();
     }
-    await plugin.startPreview({
-      mirrored: args.mirrored ?? false,
-      facing: args.facing ?? "user",
-    });
-  } else {
-    await plugin.stopPreview();
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
   }
+
 }
