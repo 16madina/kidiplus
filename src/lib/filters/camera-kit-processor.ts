@@ -64,10 +64,17 @@ export class CameraKitVideoProcessor
   }
 
   private async start(source: MediaStreamTrack): Promise<void> {
+    // WebView Android : WASM + WebGL2 + encodage LiveKit sollicitent fortement
+    // le GPU/main-thread. Un rendu AR plus petit et moins fréquent évite le
+    // gel complet constaté dès l'application d'une lens.
+    const isAndroidWebView =
+      Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
     const pipeline = await createBridgeWebPipeline({
       source,
       mirror: this.mirror,
       cameraType: this.mirror ? "user" : "environment",
+      ...(isAndroidWebView ? { fps: 24, maxLongSide: 960 } : {}),
+      onFatalStall: this.onFatalStall,
     });
     this.pipeline = pipeline;
     this.processedTrack = pipeline.outputTrack;
