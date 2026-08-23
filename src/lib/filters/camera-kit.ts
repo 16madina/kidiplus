@@ -271,35 +271,123 @@ export async function createCameraKitPipeline(args: {
   let destroyed = false;
   setTimeout(() => { if (!destroyed) measureAndAdapt(); }, 3000);
 
-  // Watchdog anti-image-figée : si la WebView a été throttlée (arrière-plan,
-  // appel entrant, mémoire basse), la session Camera Kit peut rester en pause
-  // et le canvas — donc la piste publiée — se fige sur la dernière image.
-  // On relance la session dès que l'app redevient visible, et périodiquement
-  // si le rAF ne tourne plus.
-  let lastFrame = performance.now();
-  const beat = () => {
-    if (destroyed) return;
-    lastFrame = performance.now();
-    requestAnimationFrame(beat);
+  // Watchdog anti-image-figée, mesuré sur la PISTE DE SORTIE : le rAF de la
+  // page peut tourner alors que le moteur AR ne produit plus aucune frame
+  // (WebGL perdu, WASM saturé, applyLens qui met le rendu en pause — constaté
+  // sur WebView Android). On sonde donc le flux captureStream via un <video>
+  // caché : si aucune frame n'arrive, la vidéo publiée est figée pour les
+  // viewers et il faut reprendre la session, puis se replier sur la caméra
+  // brute si la reprise échoue.
+  const probe = document.createElement("video");
+  probe.muted = true;
+  probe.playsInline = true;
+  probe.setAttribute("playsinline", "true");
+  probe.srcObject = out;
+  void probe.play().catch(() => {});
+
+  let lastOutputFrameAt = performance.now();
+  const noteFrame = () => {
+    lastOutputFrameAt = performance.now();
   };
-  requestAnimationFrame(beat);
+  const probeRvfc = probe as HTMLVideoElement & {
+    requestVideoFrameCallback?: (cb: () => void) => number;
+  };
+  const hasRvfc = typeof probeRvfc.requestVideoFrameCallback === "function";
+  if (hasRvfc) {
+    const onRvfc = () => {
+      if (destroyed) return;
+      noteFrame();
+      probeRvfc.requestVideoFrameCallback!(onRvfc);
+    };
+    probeRvfc.requestVideoFrameCallback!(onRvfc);
+  }
+
+  let currentLens: { lensId: string; groupId: string } | null = null;
+  let recovering = false;
+  let recoveryAttempts = 0;
+  let fatalSignalled = false;
 
   const resume = () => {
-    if (destroyed) return;
+    if (destroyed || fatalSignalled) return;
     session.play("live").catch(() => {});
   };
+
+  /** Reprise d'une session figée : pause/play + ré-application de la lens. */
+  const recover = async () => {
+    if (destroyed || recovering || fatalSignalled) return;
+    recovering = true;
+    recoveryAttempts++;
+    console.warn(
+      `[camera-kit] sortie figée — reprise de session (essai ${recoveryAttempts})`,
+    );
+    try {
+      await session.pause("live").catch(() => {});
+      await session.play("live").catch(() => {});
+      if (currentLens) {
+        const lens = await cameraKit.lensRepository
+          .loadLens(currentLens.lensId, currentLens.groupId)
+          .catch(() => null);
+        if (lens) await session.applyLens(lens).catch(() => {});
+        await session.play("live").catch(() => {});
+      }
+    } finally {
+      recovering = false;
+      // Laisse une fenêtre à la reprise avant de re-mesurer le gel.
+      lastOutputFrameAt = performance.now();
+    }
+  };
+
   const watchdog = setInterval(() => {
-    if (destroyed) return;
-    if (performance.now() - lastFrame > 1500) resume();
-  }, 2000);
+    if (destroyed || fatalSignalled) return;
+    if (!hasRvfc && probe.currentTime > 0) {
+      // Sans requestVideoFrameCallback : currentTime d'un flux MediaStream
+      // n'avance que si des frames arrivent réellement.
+      noteFrame();
+    }
+    const stallMs = performance.now() - lastOutputFrameAt;
+    if (stallMs <= 1500) {
+      recoveryAttempts = 0;
+      return;
+    }
+    if (recoveryAttempts >= 3 || stallMs > 8000) {
+      fatalSignalled = true;
+      console.error(
+        "[camera-kit] sortie définitivement figée — repli caméra brute",
+      );
+      try {
+        args.onFatalStall?.();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    void recover();
+  }, 1000);
+
+  // Perte du contexte WebGL (pression mémoire GPU fréquente sur Android) :
+  // empêche le comportement par défaut et tente une reprise immédiate.
+  const onContextLost = (e: Event) => {
+    e.preventDefault();
+    console.warn("[camera-kit] webglcontextlost — reprise");
+    void recover();
+  };
+  canvas.addEventListener("webglcontextlost", onContextLost);
+
   document.addEventListener("visibilitychange", resume);
   window.addEventListener("focus", resume);
   window.addEventListener("pageshow", resume);
   const stopWatchdog = () => {
     clearInterval(watchdog);
+    canvas.removeEventListener("webglcontextlost", onContextLost);
     document.removeEventListener("visibilitychange", resume);
     window.removeEventListener("focus", resume);
     window.removeEventListener("pageshow", resume);
+    try {
+      probe.pause();
+      probe.srcObject = null;
+    } catch {
+      /* ignore */
+    }
   };
 
 
