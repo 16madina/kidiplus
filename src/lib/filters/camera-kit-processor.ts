@@ -8,6 +8,7 @@
 // n'accepte qu'un seul processor par piste.
 
 import type { Track, TrackProcessor, VideoProcessorOptions } from "livekit-client";
+import { Capacitor } from "@capacitor/core";
 import {
   createBridgeWebPipeline,
   type CameraKitPipeline,
@@ -23,11 +24,20 @@ export class CameraKitVideoProcessor
   private lensId: string;
   private groupId: string | undefined;
   private mirror: boolean;
+  private onFatalStall?: () => void;
 
-  constructor(args: { lensId: string; groupId?: string; mirror: boolean }) {
+  constructor(args: {
+    lensId: string;
+    groupId?: string;
+    mirror: boolean;
+    /** Appelé si le rendu AR reste figé malgré les reprises — l'appelant
+     *  doit retirer ce processeur et repasser sur la caméra brute. */
+    onFatalStall?: () => void;
+  }) {
     this.lensId = args.lensId;
     this.groupId = args.groupId;
     this.mirror = args.mirror;
+    this.onFatalStall = args.onFatalStall;
   }
 
   async init(opts: VideoProcessorOptions): Promise<void> {
