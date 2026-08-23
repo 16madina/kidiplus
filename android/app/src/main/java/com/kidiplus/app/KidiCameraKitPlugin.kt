@@ -339,15 +339,25 @@ class KidiCameraKitPlugin : Plugin() {
             done(true)
             return
         }
-        val start = {
-            try {
-                source.startPreview(facingFront)
-                previewStarted = true
-                makeWebViewTransparent()
-                done(true)
-            } catch (e: Exception) {
-                Log.e(TAG, "startPreview failed", e)
-                done(false)
+        // CameraX binding must run on the main thread. This method is also
+        // called from the Capacitor bridge thread (startPreview), so always
+        // hop to the UI thread — otherwise CameraX can bind on the wrong
+        // thread and deliver no frames (black stream).
+        val start: () -> Unit = {
+            runOnUi {
+                if (previewStarted) {
+                    done(true)
+                    return@runOnUi
+                }
+                try {
+                    source.startPreview(facingFront)
+                    previewStarted = true
+                    makeWebViewTransparent()
+                    done(true)
+                } catch (e: Exception) {
+                    Log.e(TAG, "startPreview failed", e)
+                    done(false)
+                }
             }
         }
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
@@ -407,6 +417,17 @@ class KidiCameraKitPlugin : Plugin() {
 
     private fun makeWebViewTransparent() {
         runOnUi {
+            // The Camera Kit preview renders BEHIND the WebView. If it is a
+            // SurfaceView it lives in a separate window behind the main one,
+            // so the window background must be transparent too — otherwise
+            // the preview is composited behind an opaque window (black screen).
+            try {
+                activity?.window?.setBackgroundDrawable(
+                    android.graphics.drawable.ColorDrawable(Color.TRANSPARENT),
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "window transparency failed: ${e.message}")
+            }
             val webView = bridge?.webView ?: return@runOnUi
             webView.setBackgroundColor(Color.TRANSPARENT)
             (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
@@ -417,6 +438,10 @@ class KidiCameraKitPlugin : Plugin() {
         // Undo makeWebViewTransparent() so a gap in web content shows the app
         // navy instead of a void behind the WebView.
         runOnUi {
+            try {
+                activity?.window?.setBackgroundDrawable(null)
+            } catch (_: Exception) {
+            }
             val webView = bridge?.webView ?: return@runOnUi
             webView.setBackgroundColor(Color.parseColor("#10162B"))
             (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))

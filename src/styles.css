@@ -311,3 +311,20 @@ html.kp-in-system-pip [data-kp-live-pip] {
   padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
   padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
 }
+
+/* Native Android Camera Kit: the AR preview renders on a native view BEHIND
+   the WebView. While it is active (.kp-native-cam-active on <html>, toggled
+   by broadcast-video.tsx), every web layer above it must be transparent or
+   the host sees an opaque black/navy screen instead of the camera. Keep this
+   block AFTER the kp-in-system-pip rules so it wins ties. */
+html.kp-native-cam-active,
+html.kp-native-cam-active body,
+html.kp-native-cam-active #root {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+html.kp-native-cam-active [data-kp-app-shell],
+html.kp-native-cam-active [data-kp-camera-layer] {
+  background: transparent !important;
+  background-color: transparent !important;
+}

@@ -465,6 +465,7 @@ function AppShellInner() {
   return (
     <ActivityOverlayProvider value={{ openActivity: openActivityOverlay }}>
     <div
+      data-kp-app-shell=""
       className={
         expandShell
           ? "relative mx-auto flex h-[100dvh] w-full max-w-none flex-col overflow-hidden bg-background"
