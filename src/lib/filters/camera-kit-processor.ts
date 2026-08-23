@@ -8,6 +8,7 @@
 // n'accepte qu'un seul processor par piste.
 
 import type { Track, TrackProcessor, VideoProcessorOptions } from "livekit-client";
+import { Capacitor } from "@capacitor/core";
 import {
   createBridgeWebPipeline,
   type CameraKitPipeline,
@@ -23,11 +24,20 @@ export class CameraKitVideoProcessor
   private lensId: string;
   private groupId: string | undefined;
   private mirror: boolean;
+  private onFatalStall?: () => void;
 
-  constructor(args: { lensId: string; groupId?: string; mirror: boolean }) {
+  constructor(args: {
+    lensId: string;
+    groupId?: string;
+    mirror: boolean;
+    /** Appelé si le rendu AR reste figé malgré les reprises — l'appelant
+     *  doit retirer ce processeur et repasser sur la caméra brute. */
+    onFatalStall?: () => void;
+  }) {
     this.lensId = args.lensId;
     this.groupId = args.groupId;
     this.mirror = args.mirror;
+    this.onFatalStall = args.onFatalStall;
   }
 
   async init(opts: VideoProcessorOptions): Promise<void> {
@@ -54,10 +64,17 @@ export class CameraKitVideoProcessor
   }
 
   private async start(source: MediaStreamTrack): Promise<void> {
+    // WebView Android : WASM + WebGL2 + encodage LiveKit sollicitent fortement
+    // le GPU/main-thread. Un rendu AR plus petit et moins fréquent évite le
+    // gel complet constaté dès l'application d'une lens.
+    const isAndroidWebView =
+      Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
     const pipeline = await createBridgeWebPipeline({
       source,
       mirror: this.mirror,
       cameraType: this.mirror ? "user" : "environment",
+      ...(isAndroidWebView ? { fps: 24, maxLongSide: 960 } : {}),
+      onFatalStall: this.onFatalStall,
     });
     this.pipeline = pipeline;
     this.processedTrack = pipeline.outputTrack;

@@ -375,6 +375,8 @@ export async function createBridgeWebPipeline(args: {
   cameraType: "user" | "environment";
   fps?: number;
   maxLongSide?: number;
+  /** Relais du watchdog frame-level : sortie figée malgré les reprises. */
+  onFatalStall?: () => void;
 }): Promise<CameraKitPipeline> {
   return createCameraKitPipeline(args);
 }
