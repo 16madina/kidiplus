@@ -509,14 +509,28 @@ export async function setNativePublishEnabled(args: {
  */
 let previewDesiredActive = false;
 let previewStopToken = 0;
+/** Which screen currently owns the native preview ("preview" = setup screen,
+ * "live" = broadcast screen). A stop request from a screen that no longer owns
+ * the preview is a stale React cleanup and is ignored. */
+let previewOwner: string | null = null;
 const PREVIEW_STOP_GRACE_MS = 600;
+
+export type NativePreviewOwner = "preview" | "live";
 
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
 export async function setNativePreview(args: {
   active: boolean;
   mirrored?: boolean;
   facing?: "user" | "environment";
+  owner?: NativePreviewOwner;
 }): Promise<void> {
+  const owner = args.owner ?? "live";
+  if (!args.active && previewOwner && previewOwner !== owner) {
+    console.info(
+      `[native-camera-kit] stopPreview ignored (stale owner ${owner}, active ${previewOwner})`,
+    );
+    return;
+  }
   previewDesiredActive = args.active;
   const stopToken = ++previewStopToken;
   const plugin = !args.active && nativePlugin
@@ -534,6 +548,7 @@ export async function setNativePreview(args: {
         mirrored: args.mirrored ?? false,
         facing: args.facing ?? "user",
       });
+      previewOwner = owner;
     } else {
       // Grace period: a setup→live handoff re-activates within a few frames.
       await new Promise<void>((r) => setTimeout(r, PREVIEW_STOP_GRACE_MS));
@@ -542,7 +557,13 @@ export async function setNativePreview(args: {
         return;
       }
       await plugin.stopPreview();
+      previewOwner = null;
     }
+  } catch (e) {
+    if (isUnimplemented(e)) disableNative(e);
+    throw e;
+  }
+
   } catch (e) {
     if (isUnimplemented(e)) disableNative(e);
     throw e;
