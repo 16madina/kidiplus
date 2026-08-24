@@ -557,6 +557,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               active: true,
               mirrored: facing === "user",
               facing,
+              owner: "preview",
             });
             if (!cancelled) {
               setState("granted");
@@ -567,7 +568,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             console.warn("[native-camera-kit] preview start failed — web fallback", e);
             // startPreview() may fail after CameraX has already begun binding.
             // Always request cleanup and wait before the WebView opens camera 2.
-            await setNativePreview({ active: false }).catch(() => {});
+            await setNativePreview({
+              active: false,
+              owner: "preview",
+              force: true,
+            }).catch(() => {});
             await waitForNativeCameraRelease();
             disableNativeCameraKit(e);
             setNativeActive(false);
@@ -610,7 +615,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (videoRef.current) videoRef.current.srcObject = null;
         if (useNativePreview) {
           setNativeActive(false);
-          await setNativePreview({ active: false }).catch(() => {});
+          // NOT forced: when this fires because the host tapped "Lancer le
+          // live", the live screen already owns the native preview. Forcing a
+          // stop here detached the TextureView while the LiveKit capturer kept
+          // publishing → black host screen with perfectly healthy logs.
+          await setNativePreview({ active: false, owner: "preview" }).catch(() => {});
         }
       }
 
@@ -753,10 +762,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                   active: true,
                   mirrored: facingRef.current === "user",
                   facing: facingRef.current,
+                  owner: "live",
                 }),
               );
               if (cancelled) {
-                await setNativePreview({ active: false }).catch(() => {});
+                await setNativePreview({
+                  active: false,
+                  owner: "live",
+                  force: true,
+                }).catch(() => {});
                 return;
               }
               // Show the native preview immediately. LiveKit publish can
@@ -772,13 +786,21 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               }
               if (cancelled) {
                 await setNativePublishEnabled({ enabled: false }).catch(() => {});
-                await setNativePreview({ active: false }).catch(() => {});
+                await setNativePreview({
+                  active: false,
+                  owner: "live",
+                  force: true,
+                }).catch(() => {});
                 return;
               }
             } catch (e) {
               console.warn("[native-camera-kit] fallback to web pipeline:", errMsg(e));
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
-              await setNativePreview({ active: false }).catch(() => {});
+              await setNativePreview({
+                active: false,
+                owner: "live",
+                force: true,
+              }).catch(() => {});
               disableNativeCameraKit(e);
               await waitForNativeCameraRelease();
               useNativeVideo = false;
@@ -975,7 +997,11 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await disconnectRoom(room);
         if (videoRef.current) videoRef.current.srcObject = null;
         await setNativePublishEnabled({ enabled: false }).catch(() => {});
-        await setNativePreview({ active: false }).catch(() => {});
+        await setNativePreview({
+          active: false,
+          owner: "live",
+          force: true,
+        }).catch(() => {});
         if (hadWebCamera || hadNativeCamera) {
           await waitForNativeCameraRelease();
         }
