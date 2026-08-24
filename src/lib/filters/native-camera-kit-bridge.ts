@@ -71,6 +71,13 @@ type KidiCameraKitPlugin = {
  */
 let nativeDisabled = false; // set when the native path proves unusable
 let detectionLogged = false;
+/** A single stall used to kill the native path for the WHOLE app session: the
+ * module flag never reset, so every later live on Android reported "Camera Kit
+ * non supporté" and no native call was ever made again (visible in Logcat as a
+ * live that publishes a raw WebRTC track with zero KidiCameraKit calls). Allow
+ * a bounded number of retries, one per new broadcast session. */
+let nativeFailureCount = 0;
+const MAX_NATIVE_FAILURES = 3;
 
 function pluginFromWindow(): unknown {
   try {
