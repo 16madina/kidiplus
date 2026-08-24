@@ -57,6 +57,14 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Snap Camera Kit API token (native Android SDK).
+             Paste the PRODUCTION token from Snap Developer Portal here, or
+             better: set snapCameraKitToken in android/local.properties /
+             gradle.properties and keep the placeholder below. -->
+        <meta-data
+            android:name="com.snap.camerakit.api.token"
+            android:value="${snapCameraKitToken}" />
+
         <!-- FCM default notification channel (Android 8+) -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
