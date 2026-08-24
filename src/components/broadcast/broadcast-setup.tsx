@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
@@ -58,6 +59,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
+  const filtersAvailable = Capacitor.getPlatform() !== "android";
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
@@ -572,7 +574,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
                       : t("common.edit", "modifier")}
                   </span>
                 </Press>
-                {b.streamSource !== "rtmp" && (
+                {b.streamSource !== "rtmp" && filtersAvailable && (
                   <Press
                     onClick={() => {
                       haptic.selection();

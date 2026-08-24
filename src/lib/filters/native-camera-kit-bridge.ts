@@ -31,6 +31,17 @@ export type { CameraKitPipeline };
 let nativePlugin: KidiCameraKitPlugin | null = null;
 let nativeLensApplyQueue: Promise<void> = Promise.resolve();
 
+/**
+ * Safety kill-switch for the unfinished Android native publisher.
+ *
+ * The plugin owns both CameraX and a second LiveKit room. Making it the camera
+ * owner for an entire broadcast caused a proven-good web LiveKit camera to be
+ * replaced by a black native surface, including when no lens was selected.
+ * Keep the implementation in the repository for a future isolated rewrite,
+ * but never enter it in production until it has passed device-level tests.
+ */
+const ANDROID_NATIVE_CAMERA_KIT_ENABLED = false;
+
 type KidiCameraKitPlugin = {
   getStatus(): Promise<{
     ready: boolean;
@@ -96,6 +107,7 @@ function hasNativePluginImpl(): boolean {
     // iOS stays safety-gated until its publisher also acknowledges real frames.
     // Android has frame-level acknowledgement in KidiCameraKitPlugin.
     if (Capacitor.getPlatform() !== "android") return false;
+    if (!ANDROID_NATIVE_CAMERA_KIT_ENABLED) return false;
     // `isPluginAvailable` only knows about plugins listed in the Capacitor
     // registry; our app-level plugin is registered manually, so also look it
     // up directly on `window.Capacitor.Plugins`.
@@ -302,9 +314,11 @@ export function isCameraKitSupported(): boolean {
   // ce qui affichait « Camera Kit non supporté sur cet appareil » et faisait
   // disparaître tous les filtres du carrousel.
   if (Capacitor.getPlatform() === "ios") return isWebCameraKitSupported();
-  // Android natif : plugin natif (GPU) uniquement — le pipeline web y fige
-  // l'image, il ne sert que de secours lens-list côté bridge.
-  return hasNativePluginImpl();
+  // Android: neither the native dual-publisher path nor the WebView WASM path
+  // is stable enough for production. Returning false keeps the proven raw
+  // LiveKit camera active and prevents a filter tap from taking ownership of
+  // the camera or reconnecting the host participant.
+  return false;
 }
 
 // ---------------------------------------------------------------------------
