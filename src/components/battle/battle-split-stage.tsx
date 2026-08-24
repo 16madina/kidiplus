@@ -131,6 +131,11 @@ export function BattleSplitStage({
   return (
     <>
       <div
+        // Android native Camera Kit renders BEHIND the WebView: this pane is a
+        // direct ancestor of the host video on the LIVE screen, so it must join
+        // the `kp-native-cam-active` transparency chain or it paints opaque
+        // black over the native preview (the setup→live "black screen").
+        data-kp-camera-layer=""
         className={
           running
             ? "absolute z-[12] overflow-hidden rounded-[18px] bg-black isolate"
@@ -138,6 +143,7 @@ export function BattleSplitStage({
         }
         style={running ? paneStyle("left") : undefined}
       >
+
         {hostVideo}
         {running && hostFighter && <PaneName name={hostFighter.displayName} />}
       </div>
