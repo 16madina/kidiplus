@@ -495,12 +495,47 @@ export async function setNativePublishEnabled(args: {
   }
 }
 
+/**
+ * Setup → live handoff guard.
+ *
+ * BroadcastSetup unmounts its `<BroadcastVideo>` (preview mode) at the exact
+ * moment BroadcastLive mounts a new one (LiveKit mode). React fires the old
+ * cleanup *after* the new mount has already called `startPreview()`, so the
+ * stale `stopPreview()` detached the freshly attached TextureView while the
+ * LiveKit capturer kept publishing: logs stayed healthy (frames delivered,
+ * video published) but the host's screen went black. Deferring deactivation
+ * and cancelling it when a new activation arrives keeps the Camera Kit session
+ * and its preview view alive across the transition.
+ */
+let previewDesiredActive = false;
+let previewStopToken = 0;
+/** Which screen currently owns the native preview ("preview" = setup screen,
+ * "live" = broadcast screen). A stop request from a screen that no longer owns
+ * the preview is a stale React cleanup and is ignored. */
+let previewOwner: string | null = null;
+const PREVIEW_STOP_GRACE_MS = 600;
+
+export type NativePreviewOwner = "preview" | "live";
+
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
 export async function setNativePreview(args: {
   active: boolean;
   mirrored?: boolean;
   facing?: "user" | "environment";
+  owner?: NativePreviewOwner;
+  /** Real teardown / error recovery: release the camera immediately, no
+   * owner check and no handoff grace period. */
+  force?: boolean;
 }): Promise<void> {
+  const owner = args.owner ?? "live";
+  if (!args.active && !args.force && previewOwner && previewOwner !== owner) {
+    console.info(
+      `[native-camera-kit] stopPreview ignored (stale owner ${owner}, active ${previewOwner})`,
+    );
+    return;
+  }
+  previewDesiredActive = args.active;
+  const stopToken = ++previewStopToken;
   const plugin = !args.active && nativePlugin
     ? nativePlugin
     : await getNativePlugin();
@@ -516,15 +551,29 @@ export async function setNativePreview(args: {
         mirrored: args.mirrored ?? false,
         facing: args.facing ?? "user",
       });
+      previewOwner = owner;
     } else {
+      if (!args.force) {
+        // Grace period: a setup→live handoff re-activates within a few frames.
+        await new Promise<void>((r) => setTimeout(r, PREVIEW_STOP_GRACE_MS));
+        if (previewDesiredActive || stopToken !== previewStopToken) {
+          console.info("[native-camera-kit] stopPreview cancelled (handoff)");
+          return;
+        }
+      }
       await plugin.stopPreview();
+      previewOwner = null;
     }
+
+
+
   } catch (e) {
     if (isUnimplemented(e)) disableNative(e);
     throw e;
   }
 
 }
+
 
 // ---------------------------------------------------------------------------
 // Bascule caméra avant/arrière dans le pipeline natif

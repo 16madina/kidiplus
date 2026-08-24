@@ -328,3 +328,11 @@ html.kp-native-cam-active [data-kp-camera-layer] {
   background: transparent !important;
   background-color: transparent !important;
 }
+/* Belt-and-braces: any element that directly wraps the native camera root
+   (live screen panes, animated stage wrappers) must be see-through too. */
+html.kp-native-cam-active *:has(> .kp-native-cam-root),
+html.kp-native-cam-active *:has(> * > .kp-native-cam-root) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
