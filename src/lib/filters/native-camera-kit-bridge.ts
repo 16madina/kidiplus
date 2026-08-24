@@ -40,7 +40,7 @@ let nativeLensApplyQueue: Promise<void> = Promise.resolve();
  * Keep the implementation in the repository for a future isolated rewrite,
  * but never enter it in production until it has passed device-level tests.
  */
-const ANDROID_NATIVE_CAMERA_KIT_ENABLED = false;
+const ANDROID_NATIVE_CAMERA_KIT_ENABLED = true;
 
 type KidiCameraKitPlugin = {
   getStatus(): Promise<{
@@ -66,6 +66,12 @@ type KidiCameraKitPlugin = {
   clearLens(): Promise<void>;
   startPreview(options: { mirrored: boolean; facing: "user" | "environment" }): Promise<void>;
   stopPreview(): Promise<void>;
+  flipCamera(): Promise<{ flipped: boolean; facing: "user" | "environment" }>;
+  isAvailable(): Promise<{ available: boolean; supported: boolean; hasToken: boolean }>;
+  addListener?(
+    event: string,
+    cb: (data: { reason?: string }) => void,
+  ): Promise<{ remove: () => void }> | { remove: () => void };
   setPublishEnabled(options: {
     enabled: boolean;
     roomUrl?: string;
@@ -139,6 +145,8 @@ const NATIVE_METHODS = [
   "clearLens",
   "startPreview",
   "stopPreview",
+  "flipCamera",
+  "isAvailable",
   "setPublishEnabled",
 ] as const;
 
@@ -314,11 +322,10 @@ export function isCameraKitSupported(): boolean {
   // ce qui affichait « Camera Kit non supporté sur cet appareil » et faisait
   // disparaître tous les filtres du carrousel.
   if (Capacitor.getPlatform() === "ios") return isWebCameraKitSupported();
-  // Android: neither the native dual-publisher path nor the WebView WASM path
-  // is stable enough for production. Returning false keeps the proven raw
-  // LiveKit camera active and prevents a filter tap from taking ownership of
-  // the camera or reconnecting the host participant.
-  return false;
+  // Android: the WebView WASM pipeline freezes, so filters are supported only
+  // when the rebuilt native plugin is present. Its own frame watchdog reverts
+  // to the raw LiveKit camera if a lens ever stops producing frames.
+  return hasNativePluginImpl();
 }
 
 // ---------------------------------------------------------------------------
@@ -517,4 +524,59 @@ export async function setNativePreview(args: {
     throw e;
   }
 
+}
+
+// ---------------------------------------------------------------------------
+// Bascule caméra avant/arrière dans le pipeline natif
+// ---------------------------------------------------------------------------
+
+/** Retourne true si le flip a été effectué côté natif (même pipeline Camera
+ * Kit, simple changement de sélecteur CameraX). */
+export async function flipNativeCamera(): Promise<boolean> {
+  const plugin = await getNativePlugin();
+  if (!plugin || typeof plugin.flipCamera !== "function") return false;
+  try {
+    const res = await plugin.flipCamera();
+    return res?.flipped === true;
+  } catch (e) {
+    console.warn("[native-camera-kit] flipCamera failed", errMsg(e));
+    return false;
+  }
+}
+
+/**
+ * Écoute l'événement `fallback` émis par le plugin natif (watchdog : aucune
+ * frame Camera Kit depuis >3s). La couche web doit alors revenir sur la caméra
+ * LiveKit brute et afficher le toast « Filtres indisponibles ».
+ */
+export function onNativeCameraKitFallback(
+  handler: (reason: string) => void,
+): () => void {
+  const plugin = pluginFromWindow() as
+    | { addListener?: (e: string, cb: (d: { reason?: string }) => void) => unknown }
+    | null;
+  if (!plugin || typeof plugin.addListener !== "function") return () => {};
+  let handle: { remove?: () => void } | null = null;
+  try {
+    const res = plugin.addListener("fallback", (data) => {
+      handler(data?.reason ?? "unknown");
+    }) as { remove?: () => void } | Promise<{ remove?: () => void }>;
+    if (res && typeof (res as Promise<unknown>).then === "function") {
+      void (res as Promise<{ remove?: () => void }>).then((h) => {
+        handle = h;
+      });
+    } else {
+      handle = res as { remove?: () => void };
+    }
+  } catch (e) {
+    console.warn("[native-camera-kit] fallback listener failed", errMsg(e));
+    return () => {};
+  }
+  return () => {
+    try {
+      handle?.remove?.();
+    } catch {
+      /* ignore */
+    }
+  };
 }

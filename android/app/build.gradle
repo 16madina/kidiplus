@@ -9,14 +9,30 @@ android {
         applicationId "com.kidiplus.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 28
-        versionName "1.14"
+        versionCode 29
+        versionName "1.15"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Snap Camera Kit native API token injected into AndroidManifest
+        // meta-data (com.snap.camerakit.api.token). Put the real value in
+        // android/local.properties as: snapCameraKitToken=eyJ...
+        def snapToken = ""
+        def localProps = rootProject.file("local.properties")
+        if (localProps.exists()) {
+            def props = new Properties()
+            localProps.withInputStream { props.load(it) }
+            snapToken = props.getProperty("snapCameraKitToken", "")
+        }
+        if (!snapToken) {
+            snapToken = project.findProperty("snapCameraKitToken") ?: (System.getenv("SNAP_CAMERA_KIT_PRODUCTION_TOKEN") ?: "")
+        }
+        manifestPlaceholders = [snapCameraKitToken: snapToken]
 
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21

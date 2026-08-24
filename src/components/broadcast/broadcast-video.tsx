@@ -17,6 +17,8 @@ import {
   getNativeCameraKitHealth,
   isCameraKitSupported,
   isNativeCameraKitAvailable,
+  flipNativeCamera,
+  onNativeCameraKitFallback,
   resetNativeCameraKit,
   setNativePreview,
   setNativePublishEnabled,
@@ -322,13 +324,24 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
-    // Production safety rule: Android always uses the normal LiveKit camera.
-    // Clear any filter/effect state carried across screens so no processor can
-    // acquire or replace the camera behind the host's back.
+    // Android: the native Camera Kit plugin owns the AR pipeline (CameraX ->
+    // Camera Kit -> TextureView + LiveKit external track). Its own watchdog
+    // reverts to the raw camera if no frame arrives, so no blanket kill-switch
+    // is needed here anymore. Listen for that native fallback event.
     useEffect(() => {
       if (Capacitor.getPlatform() !== "android") return;
-      if (activeLensRef.current.lensId !== "none") clearLensRef.current();
-      if (effectsRef.current.hasEffects) effectsRef.current.clearAll();
+      return onNativeCameraKitFallback((reason) => {
+        console.warn("[native-camera-kit] native fallback event:", reason);
+        setNativeActive(false);
+        clearLensRef.current();
+        if (effectsRef.current.hasEffects) effectsRef.current.clearAll();
+        toast.error(
+          t("broadcast.filters.unavailable", "Filtres indisponibles sur cet appareil"),
+          { id: "lens-unavailable" },
+        );
+        setNativeFallbackRevision((value) => value + 1);
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // A new broadcast session clears a previous "native disabled" verdict so
@@ -420,6 +433,26 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         return (pub?.track as LocalAudioTrack | undefined) ?? null;
       },
       switchCamera: async (target?: CameraFacing) => {
+        // Android native Camera Kit owns the camera: flip the CameraX selector
+        // inside the SAME pipeline instead of republishing a WebRTC track.
+        if (nativeVideoActiveRef.current) {
+          if (flipInFlightRef.current) throw new Error("flip_busy");
+          flipInFlightRef.current = true;
+          onFlipBusyChange?.(true);
+          try {
+            const ok = await flipNativeCamera();
+            if (!ok) throw new Error("flip_failed");
+            const current = lastAppliedFacingRef.current ?? facing;
+            const applied: CameraFacing =
+              target ?? (current === "user" ? "environment" : "user");
+            lastAppliedFacingRef.current = applied;
+            onFacingAppliedRef.current?.(applied);
+            return applied;
+          } finally {
+            flipInFlightRef.current = false;
+            onFlipBusyChange?.(false);
+          }
+        }
         const room = roomRef.current;
         let track = localVideoTrackRef.current;
         if (!livekit || !room) {
@@ -489,7 +522,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
       let useNativePreview =
-        Capacitor.getPlatform() !== "android" &&
         activeLensRef.current.isSnapLens === true &&
         !effectsRef.current.hasEffects &&
         isNativeCameraKitAvailable();
@@ -499,7 +531,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await teardown();
 
         useNativePreview =
-          Capacitor.getPlatform() !== "android" &&
           activeLensRef.current.isSnapLens === true &&
           !effectsRef.current.hasEffects &&
           (await waitForNativeCameraKit());
@@ -1299,7 +1330,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,
             le filtre passe par le TrackProcessor — pas besoin d'overlay. */}
-        {!livekit && showVideo && !effects.hasEffects && Capacitor.getPlatform() !== "android" && (
+        {!livekit && showVideo && !effects.hasEffects && (
           <CameraKitPreview
             stream={previewStream}
             lens={activeLens}

@@ -54,6 +54,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { BroadcastVideoHandle } from "./broadcast-video";
 import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
+import { isCameraKitSupported } from "@/lib/filters/native-camera-kit-bridge";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
@@ -107,7 +108,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
   const isRtmp = b.streamSource === "rtmp";
-  const filtersAvailable = Capacitor.getPlatform() !== "android";
+  const filtersAvailable = isCameraKitSupported();
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(!isRtmp);
   const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);

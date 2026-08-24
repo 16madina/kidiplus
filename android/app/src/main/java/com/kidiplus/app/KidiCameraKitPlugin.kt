@@ -3,15 +3,16 @@ package com.kidiplus.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.SurfaceTexture
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
+import android.view.TextureView
 import android.view.ViewGroup
-import android.view.ViewStub
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -31,6 +32,7 @@ import io.livekit.android.room.Room
 import io.livekit.android.room.track.LocalVideoTrack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -45,52 +47,92 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Native Snap Camera Kit + LiveKit publisher for Capacitor Android.
- * Mirrors ios/App/App/KidiCameraKitPlugin.swift.
+ * Snap Camera Kit (native) + LiveKit publisher for Capacitor Android.
+ *
+ * Clean-room rebuild. Design rules, each one earned from a previous black-screen
+ * regression:
+ *
+ *  1. ONE camera pipeline: CameraX -> Camera Kit session -> outputs.
+ *     Outputs are (a) a TextureView for local display and (b) a LiveKit
+ *     external video capturer. The WebView LiveKit SDK never opens the camera
+ *     while this plugin is publishing.
+ *  2. Display uses a **TextureView**, not a SurfaceView: it composites inside
+ *     the normal view hierarchy, so no separate-window z-order fights and no
+ *     need to make the activity window background transparent.
+ *  3. Every session/view/CameraX call runs on the MAIN thread. Capacitor calls
+ *     plugin methods on a background thread; binding CameraX there produced a
+ *     silent zero-frame camera.
+ *  4. The WebView is only made transparent AFTER a real Camera Kit frame has
+ *     been rendered (TextureView.onSurfaceTextureUpdated). Never reveal an
+ *     empty surface.
+ *  5. A watchdog verifies frames keep flowing. No frames for >3s after start or
+ *     after applying a lens -> clear the lens, notify JS ("fallback" event) so
+ *     the web layer reverts to the raw camera. The live must never stay black.
+ *
+ * API token: read from AndroidManifest meta-data `com.snap.camerakit.api.token`
+ * (JS may also pass `apiToken`, which wins if present).
  */
 @CapacitorPlugin(name = "KidiCameraKit")
 class KidiCameraKitPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    // Serializes session creation — the JS warmup calls initialize() twice
-    // concurrently, and a double Session would make two CameraX sources fight
-    // over the camera.
-    private val sessionLock = Any()
+    /** Serializes session creation / preview start. */
+    private val lock = Any()
 
-    private var cameraKitSession: Session? = null
+    private var session: Session? = null
     private var imageSource: CameraXImageProcessorSource? = null
     private var groupIds: List<String> = emptyList()
     private var initialized = false
-    private var previewStarted = false
+
+    // Preview (display) state
+    private var previewView: TextureView? = null
+    private var previewOutput: Closeable? = null
     private var previewRequested = false
+    private var previewStarted = false
     private var previewStarting = false
-    private val previewStartCallbacks = mutableListOf<(Boolean) -> Unit>()
+    private val previewCallbacks = mutableListOf<(Boolean) -> Unit>()
     private var facingFront = true
+    private var webViewTransparent = false
 
+    // Lens state
     private var cachedLenses: List<JSObject> = emptyList()
-    private var lensByKey: MutableMap<String, LensesComponent.Lens> = mutableMapOf()
-    private var observeHandle: Closeable? = null
+    private val lensByKey = mutableMapOf<String, LensesComponent.Lens>()
+    private var lensObserve: Closeable? = null
+    private var currentLensKey: String? = null
 
+    // Frame health (any output: preview or LiveKit)
+    private val frameCount = AtomicLong(0)
+    private val lastFrameAt = AtomicLong(0)
+    private var watchdog: Job? = null
+
+    // LiveKit publication
     private var liveKitRoom: Room? = null
     private var liveKitTrack: LocalVideoTrack? = null
     private var publishOutput: Closeable? = null
     private var publishEnabled = false
-    private val publishedFrameCount = AtomicLong(0)
-    private val lastPublishedFrameAt = AtomicLong(0)
-    private val lensApplyGeneration = AtomicLong(0)
 
     override fun load() {
         Log.i(TAG, "plugin loaded")
-        val payload = JSObject().put("ready", true)
-        notifyListeners("pluginLoaded", payload)
-        activity?.window?.decorView?.postDelayed({
-            notifyListeners("pluginLoaded", payload)
-        }, 600)
+        notifyListeners("pluginLoaded", JSObject().put("ready", true))
+    }
+
+    // ---------------------------------------------------------------- status
+
+    @PluginMethod
+    fun isAvailable(call: PluginCall) {
+        val act = activity
+        val ok = act != null && supported(act) && resolveToken(null).isNotEmpty()
+        call.resolve(
+            JSObject()
+                .put("available", ok)
+                .put("supported", act != null && supported(act))
+                .put("hasToken", resolveToken(null).isNotEmpty()),
+        )
     }
 
     @PluginMethod
     fun getStatus(call: PluginCall) {
-        val lastFrameAt = lastPublishedFrameAt.get()
+        val last = lastFrameAt.get()
         call.resolve(
             JSObject()
                 .put("ready", true)
@@ -98,19 +140,19 @@ class KidiCameraKitPlugin : Plugin() {
                 .put("sessionStarted", previewStarted)
                 .put("captureRunning", previewStarted)
                 .put("publishing", publishEnabled)
-                .put("frameCount", publishedFrameCount.get())
-                .put(
-                    "lastFrameAgeMs",
-                    if (lastFrameAt > 0) SystemClock.elapsedRealtime() - lastFrameAt else 0,
-                )
+                .put("frameCount", frameCount.get())
+                .put("lastFrameAgeMs", if (last > 0) SystemClock.elapsedRealtime() - last else 0)
+                .put("lensId", currentLensKey?.substringAfter('|').orEmpty()),
         )
     }
 
+    // ------------------------------------------------------------ initialize
+
     @PluginMethod
     fun initialize(call: PluginCall) {
-        val apiToken = call.getString("apiToken").orEmpty()
-        if (apiToken.isEmpty()) {
-            call.reject("Missing apiToken")
+        val token = resolveToken(call.getString("apiToken"))
+        if (token.isEmpty()) {
+            call.reject("Missing Camera Kit API token (JS apiToken or manifest meta-data com.snap.camerakit.api.token)")
             return
         }
         val ids = call.getArray("groupIds")?.toStringList().orEmpty()
@@ -118,39 +160,40 @@ class KidiCameraKitPlugin : Plugin() {
             call.reject("Missing groupIds")
             return
         }
-
-        val activity = activity
-        if (activity == null) {
+        val act = activity
+        if (act == null) {
             call.reject("Activity unavailable")
             return
         }
-        if (!supported(activity)) {
+        if (!supported(act)) {
             call.reject("Camera Kit is not supported on this device")
             return
         }
 
         groupIds = ids
-        synchronized(sessionLock) {
-            if (cameraKitSession == null) {
+        synchronized(lock) {
+            if (session == null) {
                 try {
-                    // Session's attachTo() adds a ViewStub to the view hierarchy,
-                    // which MUST happen on the main thread. Capacitor dispatches
-                    // plugin calls on a HandlerThread — creating the session here
-                    // crashed the app with CalledFromWrongThreadException.
+                    // Session creation touches the view hierarchy internally →
+                    // main thread only (CalledFromWrongThreadException otherwise).
                     runOnUiBlocking {
                         val source = CameraXImageProcessorSource(
-                            context = activity,
-                            lifecycleOwner = activity as LifecycleOwner,
+                            context = act,
+                            lifecycleOwner = act as LifecycleOwner,
                         )
                         imageSource = source
-                        cameraKitSession = Session(context = activity) {
-                            apiToken(apiToken)
+                        // No attachTo(): we own the rendering (TextureView) and
+                        // the LiveKit output. Camera Kit's bundled CameraLayout
+                        // uses a SurfaceView, which is what caused the
+                        // separate-window black-screen composition bugs.
+                        session = Session(context = act) {
+                            apiToken(token)
                             imageProcessorSource(source)
-                            attachTo(ensureStub())
                         }
                     }
                 } catch (t: Throwable) {
                     Log.e(TAG, "session create failed", t)
+                    cleanupSession()
                     call.reject("Camera Kit init failed: ${t.message}")
                     return
                 }
@@ -158,14 +201,16 @@ class KidiCameraKitPlugin : Plugin() {
         }
         initialized = true
         Log.i(TAG, "initialized groups=${ids.joinToString(",")}")
-        emitStatus("initialized", JSObject().put("groups", ids.joinToString(",")))
+        emit("initialized", JSObject().put("groups", ids.joinToString(",")))
         call.resolve(JSObject().put("initialized", true))
     }
 
+    // ---------------------------------------------------------------- lenses
+
     @PluginMethod
     fun loadLenses(call: PluginCall) {
-        val session = cameraKitSession
-        if (!initialized || session == null) {
+        val s = session
+        if (!initialized || s == null) {
             call.reject("CameraKit not initialized — call initialize() first")
             return
         }
@@ -179,34 +224,30 @@ class KidiCameraKitPlugin : Plugin() {
         fun finish(list: List<JSObject>) {
             if (resolved) return
             resolved = true
-            val payload = JSArray()
-            list.forEach { payload.put(it) }
-            if (!call.isReleased) {
-                call.resolve(JSObject().put("lenses", payload))
-            }
+            val arr = JSArray()
+            list.forEach { arr.put(it) }
+            if (!call.isReleased) call.resolve(JSObject().put("lenses", arr))
         }
-        observeHandle?.close()
-        observeHandle = session.lenses.repository.observe(
+        lensObserve?.close()
+        lensObserve = s.lenses.repository.observe(
             LensesComponent.Repository.QueryCriteria.Available(ids.toSet()),
         ) { result ->
             if (result is LensesComponent.Repository.Result.Some) {
                 cachedLenses = result.lenses.map { lens ->
-                    lensByKey[lensKey(lens.id, lens.groupId)] = lens
+                    lensByKey[key(lens.id, lens.groupId)] = lens
                     lens.toJs()
                 }
                 finish(cachedLenses)
             }
         }
-        activity?.window?.decorView?.postDelayed({
-            finish(cachedLenses)
-        }, 8_000)
+        // Never hang the carousel: resolve with whatever we have after 8s.
+        postDelayed(8_000) { finish(cachedLenses) }
     }
 
     @PluginMethod
     fun applyLens(call: PluginCall) {
-        val generation = lensApplyGeneration.incrementAndGet()
-        val session = cameraKitSession
-        if (!initialized || session == null) {
+        val s = session
+        if (!initialized || s == null) {
             call.reject("CameraKit not initialized")
             return
         }
@@ -215,34 +256,51 @@ class KidiCameraKitPlugin : Plugin() {
             call.reject("Missing lensId")
             return
         }
-        val groupId = call.getString("groupId").orEmpty()
+        val groupId = call.getString("groupId").orEmpty().ifEmpty { groupIds.firstOrNull().orEmpty() }
         previewRequested = true
-        ensurePreviewStarted { previewOk ->
-            if (!previewOk) {
+        ensurePreview { ok ->
+            if (!ok) {
                 call.reject("Camera preview failed to start")
-                return@ensurePreviewStarted
+                return@ensurePreview
             }
-            val cached = lensByKey[lensKey(lensId, groupId)]
-            if (cached != null) {
-                session.lenses.processor.apply(cached) { ok ->
-                    if (generation != lensApplyGeneration.get()) {
-                        if (!call.isReleased) call.reject("Lens request superseded")
-                    } else if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get(), generation)
-                    else call.reject("Failed to apply lens")
+            val baseline = frameCount.get()
+            val apply: (LensesComponent.Lens) -> Unit = { lens ->
+                s.lenses.processor.apply(lens) { applied ->
+                    if (!applied) {
+                        Log.w(TAG, "lens apply rejected id=$lensId")
+                        if (!call.isReleased) call.reject("Failed to apply lens")
+                        return@apply
+                    }
+                    currentLensKey = key(lens.id, lens.groupId)
+                    // Only report success once real frames come out of the lens.
+                    scope.launch {
+                        if (awaitFrames(baseline, LENS_FRAME_TIMEOUT_MS)) {
+                            if (!call.isReleased) {
+                                call.resolve(
+                                    JSObject()
+                                        .put("applied", true)
+                                        .put("frameCount", frameCount.get()),
+                                )
+                            }
+                        } else {
+                            Log.e(TAG, "lens produced no frame — reverting")
+                            revertToRawCamera("lens_no_frame")
+                            if (!call.isReleased) call.reject("Lens produced no video frame")
+                        }
+                    }
                 }
-                return@ensurePreviewStarted
             }
-            session.lenses.repository.observe(
+            val cached = lensByKey[key(lensId, groupId)]
+            if (cached != null) {
+                apply(cached)
+                return@ensurePreview
+            }
+            s.lenses.repository.observe(
                 LensesComponent.Repository.QueryCriteria.ById(lensId, groupId),
             ) { result ->
                 result.whenHasFirst { lens ->
-                    lensByKey[lensKey(lens.id, lens.groupId)] = lens
-                    session.lenses.processor.apply(lens) { ok ->
-                        if (generation != lensApplyGeneration.get()) {
-                            if (!call.isReleased) call.reject("Lens request superseded")
-                        } else if (ok) resolveAppliedAfterFrame(call, publishedFrameCount.get(), generation)
-                        else call.reject("Failed to apply lens")
-                    }
+                    lensByKey[key(lens.id, lens.groupId)] = lens
+                    apply(lens)
                 }
             }
         }
@@ -250,60 +308,91 @@ class KidiCameraKitPlugin : Plugin() {
 
     @PluginMethod
     fun clearLens(call: PluginCall) {
-        lensApplyGeneration.incrementAndGet()
-        cameraKitSession?.lenses?.processor?.clear { _ ->
+        currentLensKey = null
+        val processor = session?.lenses?.processor
+        if (processor == null) {
             call.resolve(JSObject().put("cleared", true))
-        } ?: call.resolve(JSObject().put("cleared", true))
+            return
+        }
+        processor.clear { if (!call.isReleased) call.resolve(JSObject().put("cleared", true)) }
     }
+
+    // --------------------------------------------------------------- preview
 
     @PluginMethod
     fun startPreview(call: PluginCall) {
         facingFront = (call.getString("facing") ?: "user") != "environment"
+        val group = call.getString("lensGroupId")
+        if (!group.isNullOrEmpty() && !groupIds.contains(group)) {
+            groupIds = groupIds + group
+        }
         previewRequested = true
-        ensurePreviewStarted { ok ->
+        ensurePreview { ok ->
             if (!ok) {
-                // Never resolve success without a running camera — that was the
-                // iOS black-screen pattern (UI thinks native works, no frames).
                 call.reject("Camera preview failed to start")
-                return@ensurePreviewStarted
+                return@ensurePreview
             }
-            Log.i(TAG, "startPreview facingFront=$facingFront")
-            emitStatus("previewStarted", JSObject().put("facingFront", facingFront))
-            notifyListeners("captureState", JSObject().put("running", previewStarted))
+            emit("previewStarted", JSObject().put("facingFront", facingFront))
+            notifyListeners("captureState", JSObject().put("running", true))
             call.resolve(JSObject().put("started", true))
         }
     }
 
     @PluginMethod
     fun stopPreview(call: PluginCall) {
-        if (!publishEnabled) {
-            previewRequested = false
-            previewStarted = false
-            runOnUi {
-                try {
-                    imageSource?.stopPreview()
-                } catch (_: Throwable) {
-                    /* older support-camerax may not expose stopPreview */
-                }
-                forceReleaseCameraX {
-                    restoreWebViewBackground()
-                    if (!call.isReleased) {
-                        call.resolve(JSObject().put("stopped", true))
+        if (publishEnabled) {
+            // The preview surface is also the publisher's input; report honestly
+            // instead of pretending the camera was released.
+            call.resolve(JSObject().put("stopped", false).put("reason", "publishing"))
+            return
+        }
+        previewRequested = false
+        teardownPreview {
+            if (!call.isReleased) call.resolve(JSObject().put("stopped", true))
+        }
+    }
+
+    @PluginMethod
+    fun flipCamera(call: PluginCall) {
+        if (!previewStarted) {
+            call.reject("Preview is not running")
+            return
+        }
+        facingFront = !facingFront
+        val source = imageSource
+        if (source == null) {
+            call.reject("Camera source unavailable")
+            return
+        }
+        val baseline = frameCount.get()
+        runOnUi {
+            try {
+                // Same pipeline, different CameraX selector.
+                source.startPreview(facingFront)
+            } catch (e: Exception) {
+                Log.e(TAG, "flipCamera failed", e)
+                if (!call.isReleased) call.reject("Flip failed: ${e.message}")
+                return@runOnUi
+            }
+            scope.launch {
+                val ok = awaitFrames(baseline, START_FRAME_TIMEOUT_MS)
+                if (!ok) revertToRawCamera("flip_no_frame")
+                if (!call.isReleased) {
+                    if (ok) {
+                        call.resolve(
+                            JSObject()
+                                .put("flipped", true)
+                                .put("facing", if (facingFront) "user" else "environment"),
+                        )
+                    } else {
+                        call.reject("Camera produced no frame after flip")
                     }
                 }
             }
-            return
         }
-        // The preview is also Camera Kit's input for the active LiveKit
-        // publisher, so it cannot be stopped independently while publishing.
-        // Report the partial stop honestly instead of claiming the native
-        // surface was released.
-        call.resolve(
-            JSObject()
-                .put("stopped", false)
-                .put("reason", "publishing"),
-        )
     }
+
+    // ------------------------------------------------------------ publishing
 
     @PluginMethod
     fun setPublishEnabled(call: PluginCall) {
@@ -333,155 +422,323 @@ class KidiCameraKitPlugin : Plugin() {
         }
     }
 
-    override fun handleOnDestroy() {
-        observeHandle?.close()
-        observeHandle = null
-        // Run cleanup synchronously: scope.launch then scope.cancel() cancelled
-        // the coroutine before it ran, leaking the LiveKit room + camera.
+    private suspend fun startPublishing(url: String, token: String) {
+        publishEnabled = true
+        previewRequested = true
+        val act = activity ?: throw IllegalStateException("no activity")
+        val s = session ?: throw IllegalStateException("Camera Kit session missing")
+
+        var done = false
+        var ok = false
+        ensurePreview { result -> done = true; ok = result }
+        var waited = 0
+        while (!done && waited < 100) {
+            delay(50)
+            waited++
+        }
+        if (!ok) {
+            publishEnabled = false
+            throw IllegalStateException("Camera preview failed to start — refusing to publish black frames")
+        }
+
+        val room = liveKitRoom ?: LiveKit.create(act.applicationContext)
+        liveKitRoom = room
+        room.connect(url, token)
+
+        val baseline = frameCount.get()
+        val capturer = CameraKitSurfaceCapturer(
+            session = s,
+            onConnected = { handle -> publishOutput = handle },
+            onFrame = { onFrame() },
+        )
+        val track = room.localParticipant.createVideoTrack(name = "camera", capturer = capturer)
+        liveKitTrack = track
+        // publishVideoTrack() does not start an external capturer; without this
+        // no frame ever reaches LiveKit ("no video frame within 5000ms").
+        track.startCapture()
+        room.localParticipant.publishVideoTrack(track)
+        if (!awaitFrames(baseline, PUBLISH_FRAME_TIMEOUT_MS)) {
+            throw IllegalStateException("Camera Kit produced no published frame")
+        }
         try {
-            kotlinx.coroutines.runBlocking { stopPublishing() }
-        } catch (_: Exception) {
+            room.localParticipant.setMicrophoneEnabled(true)
+        } catch (e: Exception) {
+            Log.w(TAG, "mic publish failed", e)
         }
-        cameraKitSession?.close()
-        cameraKitSession = null
-        imageSource = null
-        initialized = false
-        previewStarted = false
-        previewRequested = false
-        previewStarting = false
-        synchronized(sessionLock) {
-            previewStartCallbacks.clear()
-        }
-        scope.cancel()
-        super.handleOnDestroy()
+        Log.i(TAG, "LiveKit video published")
     }
+
+    private suspend fun stopPublishing() {
+        publishEnabled = false
+        publishOutput?.close()
+        publishOutput = null
+        runCatching { liveKitTrack?.stopCapture() }
+        runCatching { liveKitTrack?.stop() }
+        liveKitTrack = null
+        runCatching { liveKitRoom?.disconnect() }
+        liveKitRoom = null
+        if (!previewRequested) teardownPreview {}
+        Log.i(TAG, "LiveKit publish stopped")
+    }
+
+    // ------------------------------------------------------------- lifecycle
 
     override fun handleOnStop() {
         super.handleOnStop()
         if (!previewRequested && !publishEnabled) return
-
-        // CameraX is lifecycle-bound to the Activity and drops its use-cases
-        // when the Activity stops. Keep the intent to run, but never keep the
-        // stale `previewStarted=true`: that made ensurePreviewStarted() skip
-        // rebinding after Android background/PiP and left a frozen AR frame.
+        // CameraX is lifecycle-bound: use-cases are dropped when the activity
+        // stops. Drop `previewStarted` so resume rebinds instead of trusting a
+        // frozen frame.
         previewStarted = false
         previewStarting = false
-        lastPublishedFrameAt.set(SystemClock.elapsedRealtime())
-        runOnUi {
-            try {
-                imageSource?.stopPreview()
-            } catch (e: Throwable) {
-                Log.w(TAG, "Camera Kit pause cleanup failed", e)
-            }
-        }
-        Log.i(TAG, "activity stopped; Camera Kit preview marked for rebind")
+        stopWatchdog()
+        runOnUi { runCatching { imageSource?.stopPreview() } }
+        Log.i(TAG, "activity stopped; preview marked for rebind")
     }
 
     override fun handleOnResume() {
         super.handleOnResume()
         if (!initialized || (!previewRequested && !publishEnabled)) return
-        Log.i(TAG, "activity resumed; rebinding Camera Kit preview")
-        ensurePreviewStarted { ok ->
-            if (ok) {
-                lastPublishedFrameAt.set(SystemClock.elapsedRealtime())
-                emitStatus("previewResumed")
-            } else {
-                Log.e(TAG, "Camera Kit preview failed to resume")
-                emitStatus("previewResumeFailed")
-            }
+        Log.i(TAG, "activity resumed; rebinding preview")
+        ensurePreview { ok ->
+            if (ok) emit("previewResumed") else revertToRawCamera("resume_failed")
         }
     }
 
-    private fun ensurePreviewStarted(done: (ok: Boolean) -> Unit) {
-        val activity = activity
+    override fun handleOnDestroy() {
+        lensObserve?.close()
+        lensObserve = null
+        stopWatchdog()
+        runCatching { kotlinx.coroutines.runBlocking { stopPublishing() } }
+        teardownPreviewSync()
+        cleanupSession()
+        scope.cancel()
+        super.handleOnDestroy()
+    }
+
+    private fun cleanupSession() {
+        runCatching { session?.close() }
+        session = null
+        imageSource = null
+        initialized = false
+    }
+
+    // ------------------------------------------------------- preview plumbing
+
+    private fun ensurePreview(done: (ok: Boolean) -> Unit) {
+        val act = activity
         val source = imageSource
-        if (activity == null || source == null) {
+        if (act == null || source == null) {
             done(false)
             return
         }
-        synchronized(sessionLock) {
+        synchronized(lock) {
             if (previewStarted) {
                 done(true)
                 return
             }
-            previewStartCallbacks.add(done)
+            previewCallbacks.add(done)
             if (previewStarting) return
             previewStarting = true
         }
-        // CameraX binding must run on the main thread. This method is also
-        // called from the Capacitor bridge thread (startPreview), so always
-        // hop to the UI thread — otherwise CameraX can bind on the wrong
-        // thread and deliver no frames (black stream).
-        val start: () -> Unit = {
+
+        val start = {
             runOnUi {
                 if (previewStarted) {
-                    finishPreviewStart(true)
+                    finishPreview(true)
                     return@runOnUi
                 }
-                // CameraXImageProcessorSource can leave its Preview and
-                // ImageCapture use-cases bound after stopPreview/lifecycle
-                // changes. Starting it again then binds a second identical
-                // pair and crashes strict Samsung devices. Force an unbind and
-                // wait for CameraDevice.onClosed() before the next bind.
+                attachPreviewView()
+                // CameraXImageProcessorSource can leave stale use-cases bound;
+                // unbind and let the camera service close before rebinding.
                 forceReleaseCameraX {
-                    if (previewStarted) {
-                        finishPreviewStart(true)
-                        return@forceReleaseCameraX
-                    }
                     try {
                         source.startPreview(facingFront)
-                        // Starting CameraX only schedules its asynchronous bind.
-                        // Do not expose the native surface yet: until Camera Kit
-                        // proves an output frame, transparency would reveal an
-                        // empty surface and the host would see a black screen.
-                        finishPreviewStart(true)
+                        previewStarted = true
+                        startWatchdog()
+                        finishPreview(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "startPreview failed", e)
-                        finishPreviewStart(false)
+                        finishPreview(false)
                     }
                 }
             }
         }
-        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+
+        if (ContextCompat.checkSelfPermission(act, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
         ) {
             start()
         } else {
             ActivityCompat.requestPermissions(
-                activity,
+                act,
                 arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
                 REQ_CAMERA,
             )
-            activity.window.decorView.postDelayed({ start() }, 400)
+            postDelayed(500) { start() }
         }
     }
 
-    private fun finishPreviewStart(ok: Boolean) {
-        val callbacks = synchronized(sessionLock) {
+    private fun finishPreview(ok: Boolean) {
+        val callbacks = synchronized(lock) {
             previewStarted = ok
             previewStarting = false
-            previewStartCallbacks.toList().also { previewStartCallbacks.clear() }
+            previewCallbacks.toList().also { previewCallbacks.clear() }
         }
-        callbacks.forEach { callback ->
-            try {
-                callback(ok)
-            } catch (e: Exception) {
-                Log.w(TAG, "preview start callback failed", e)
+        callbacks.forEach { cb -> runCatching { cb(ok) } }
+    }
+
+    /** Inserts the TextureView BEHIND the WebView (index 0) and connects it as
+     * a Camera Kit preview output as soon as its SurfaceTexture exists. */
+    private fun attachPreviewView() {
+        if (previewView != null) return
+        val act = activity ?: return
+        val parent = (bridge?.webView?.parent as? ViewGroup)
+            ?: act.findViewById(android.R.id.content)
+        val view = TextureView(act).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+            isOpaque = true
+            surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                    connectPreviewOutput(st)
+                }
+
+                override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = Unit
+
+                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                    previewOutput?.close()
+                    previewOutput = null
+                    return true
+                }
+
+                override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+                    onFrame()
+                }
+            }
+        }
+        previewView = view
+        parent.addView(view, 0)
+    }
+
+    private fun connectPreviewOutput(texture: SurfaceTexture) {
+        val s = session ?: return
+        previewOutput?.close()
+        val surface = Surface(texture)
+        previewOutput = runCatching {
+            s.processor.connectOutput(
+                object : ImageProcessor.Output.BackedBySurface(
+                    surface,
+                    ImageProcessor.Output.Purpose.PREVIEW,
+                ) {
+                    override fun writeFrame(): ImageProcessor.Output.Frame =
+                        object : ImageProcessor.Output.Frame {
+                            override val timestamp: Long = SystemClock.elapsedRealtimeNanos()
+                            override fun recycle() = Unit
+                        }
+                },
+            )
+        }.onFailure { Log.e(TAG, "preview output connect failed", it) }.getOrNull()
+        Log.i(TAG, "preview output connected=${previewOutput != null}")
+    }
+
+    private fun teardownPreview(done: () -> Unit) {
+        previewStarted = false
+        previewStarting = false
+        stopWatchdog()
+        runOnUi {
+            teardownPreviewSync()
+            forceReleaseCameraX { done() }
+        }
+    }
+
+    private fun teardownPreviewSync() {
+        runCatching { imageSource?.stopPreview() }
+        previewOutput?.close()
+        previewOutput = null
+        runOnUi {
+            previewView?.let { view ->
+                (view.parent as? ViewGroup)?.removeView(view)
+            }
+            previewView = null
+            restoreWebViewBackground()
+        }
+    }
+
+    // --------------------------------------------------------- frame watchdog
+
+    private fun onFrame() {
+        val count = frameCount.incrementAndGet()
+        lastFrameAt.set(SystemClock.elapsedRealtime())
+        if (count == 1L) {
+            Log.i(TAG, "first Camera Kit frame rendered")
+            // Only NOW punch the WebView transparent: revealing earlier shows an
+            // empty surface, i.e. the historical black screen.
+            makeWebViewTransparent()
+            notifyListeners("firstFrame", JSObject().put("frameCount", count))
+        }
+    }
+
+    private fun startWatchdog() {
+        stopWatchdog()
+        lastFrameAt.set(SystemClock.elapsedRealtime())
+        watchdog = scope.launch {
+            // Grace period for the first frame after a (re)bind.
+            delay(START_FRAME_TIMEOUT_MS)
+            while (previewStarted || publishEnabled) {
+                val age = SystemClock.elapsedRealtime() - lastFrameAt.get()
+                if (age > STALL_TIMEOUT_MS) {
+                    Log.e(TAG, "no Camera Kit frame for ${age}ms — falling back")
+                    revertToRawCamera("stalled")
+                    return@launch
+                }
+                delay(1_000)
             }
         }
     }
 
-    /** Runs [task] on the main thread (inline if already there). */
-    private fun runOnUi(task: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            task()
-        } else {
-            activity?.runOnUiThread(task)
+    private fun stopWatchdog() {
+        watchdog?.cancel()
+        watchdog = null
+    }
+
+    /** Clears the lens, hides the native surface and tells JS to go back to the
+     * plain LiveKit camera. Never leaves the host on a black screen. */
+    private fun revertToRawCamera(reason: String) {
+        Log.w(TAG, "revertToRawCamera reason=$reason")
+        currentLensKey = null
+        runCatching { session?.lenses?.processor?.clear {} }
+        stopWatchdog()
+        runOnUi { restoreWebViewBackground() }
+        notifyListeners("fallback", JSObject().put("reason", reason))
+    }
+
+    // --------------------------------------------------------- view utilities
+
+    private fun makeWebViewTransparent() {
+        runOnUi {
+            if (webViewTransparent) return@runOnUi
+            webViewTransparent = true
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(Color.TRANSPARENT)
+            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
+            // NOTE: with a TextureView the activity window background must stay
+            // as it is — no window-level transparency hacks needed.
         }
     }
 
-    /** Unbinds stale CameraX use-cases and waits for the camera service to
-     * finish closing the device before another Camera Kit preview starts. */
+    private fun restoreWebViewBackground() {
+        runOnUi {
+            if (!webViewTransparent) return@runOnUi
+            webViewTransparent = false
+            val webView = bridge?.webView ?: return@runOnUi
+            webView.setBackgroundColor(APP_BACKGROUND)
+            (webView.parent as? ViewGroup)?.setBackgroundColor(APP_BACKGROUND)
+        }
+    }
+
     private fun forceReleaseCameraX(done: () -> Unit) {
         val act = activity
         if (act == null) {
@@ -490,29 +747,28 @@ class KidiCameraKitPlugin : Plugin() {
         }
         runOnUi {
             try {
-                val providerFuture = ProcessCameraProvider.getInstance(act)
-                providerFuture.addListener({
-                    try {
-                        providerFuture.get().unbindAll()
-                    } catch (e: Exception) {
-                        Log.w(TAG, "CameraX unbindAll failed", e)
-                    }
-                    act.window.decorView.postDelayed(done, CAMERA_X_RELEASE_DELAY_MS)
+                val future = ProcessCameraProvider.getInstance(act)
+                future.addListener({
+                    runCatching { future.get().unbindAll() }
+                        .onFailure { Log.w(TAG, "CameraX unbindAll failed", it) }
+                    postDelayed(CAMERA_X_RELEASE_DELAY_MS) { done() }
                 }, ContextCompat.getMainExecutor(act))
             } catch (e: Exception) {
                 Log.w(TAG, "CameraX provider unavailable", e)
-                act.window.decorView.postDelayed(done, CAMERA_X_RELEASE_DELAY_MS)
+                postDelayed(CAMERA_X_RELEASE_DELAY_MS) { done() }
             }
         }
     }
 
-    /** Runs [task] on the main thread and blocks the caller until done. */
+    private fun runOnUi(task: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) task() else activity?.runOnUiThread(task)
+    }
+
     private fun <T> runOnUiBlocking(task: () -> T): T {
         if (Looper.myLooper() == Looper.getMainLooper()) return task()
+        val act = activity ?: throw IllegalStateException("no activity")
         val latch = CountDownLatch(1)
         var result: Result<T>? = null
-        val act = activity
-        if (act == null) throw IllegalStateException("no activity")
         act.runOnUiThread {
             result = runCatching(task)
             latch.countDown()
@@ -522,180 +778,43 @@ class KidiCameraKitPlugin : Plugin() {
             ?: throw IllegalStateException("UI thread did not run Camera Kit task in time")
     }
 
-    private fun ensureStub(): ViewStub {
-        val activity = activity ?: throw IllegalStateException("no activity")
-        activity.findViewById<ViewStub>(R.id.camera_kit_stub)?.let { return it }
-        val parent = (bridge?.webView?.parent as? ViewGroup)
-            ?: activity.findViewById(android.R.id.content)
-        val stub = ViewStub(activity).apply {
-            id = R.id.camera_kit_stub
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
-        parent.addView(stub, 0)
-        return stub
+    private fun postDelayed(delayMs: Long, task: () -> Unit) {
+        activity?.window?.decorView?.postDelayed(task, delayMs)
     }
 
-    private fun makeWebViewTransparent() {
-        runOnUi {
-            // The Camera Kit preview renders BEHIND the WebView. If it is a
-            // SurfaceView it lives in a separate window behind the main one,
-            // so the window background must be transparent too — otherwise
-            // the preview is composited behind an opaque window (black screen).
-            try {
-                activity?.window?.setBackgroundDrawable(
-                    android.graphics.drawable.ColorDrawable(Color.TRANSPARENT),
-                )
-            } catch (e: Exception) {
-                Log.w(TAG, "window transparency failed: ${e.message}")
-            }
-            val webView = bridge?.webView ?: return@runOnUi
-            webView.setBackgroundColor(Color.TRANSPARENT)
-            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.TRANSPARENT)
-        }
-    }
-
-    private fun restoreWebViewBackground() {
-        // Undo makeWebViewTransparent() so a gap in web content shows the app
-        // navy instead of a void behind the WebView.
-        runOnUi {
-            try {
-                activity?.window?.setBackgroundDrawable(null)
-            } catch (_: Exception) {
-            }
-            val webView = bridge?.webView ?: return@runOnUi
-            webView.setBackgroundColor(Color.parseColor("#10162B"))
-            (webView.parent as? ViewGroup)?.setBackgroundColor(Color.parseColor("#10162B"))
-        }
-    }
-
-    private suspend fun startPublishing(url: String, token: String) {
-        publishEnabled = true
-        previewRequested = true
-        val activity = activity ?: throw IllegalStateException("no activity")
-        val session = cameraKitSession ?: throw IllegalStateException("Camera Kit session missing")
-
-        var started = false
-        var previewOk = false
-        ensurePreviewStarted { ok -> started = true; previewOk = ok }
-        var waits = 0
-        while (!started && waits < 50) {
-            kotlinx.coroutines.delay(50)
-            waits++
-        }
-        if (!previewOk) {
-            publishEnabled = false
-            throw IllegalStateException("Camera preview failed to start — refusing to publish black frames")
-        }
-
-        val room = liveKitRoom ?: LiveKit.create(activity.applicationContext)
-        liveKitRoom = room
-        room.connect(url, token)
-
-        val frameBeforePublish = publishedFrameCount.get()
-        val capturer = CameraKitSurfaceCapturer(
-            session = session,
-            onConnected = { handle -> publishOutput = handle },
-            onFrame = {
-                publishedFrameCount.incrementAndGet()
-                lastPublishedFrameAt.set(SystemClock.elapsedRealtime())
-            },
-        )
-        val track = room.localParticipant.createVideoTrack(
-            name = "camera",
-            capturer = capturer,
-        )
-        liveKitTrack = track
-        // publishVideoTrack() does NOT start an externally-provided capturer.
-        // Without startCapture(), VideoCapturer.startCapture() is never invoked
-        // and zero frames reach LiveKit — exactly the "no video frame within
-        // 5000ms" failure seen on device.
-        track.startCapture()
-        room.localParticipant.publishVideoTrack(track)
-        awaitFrameAfter(frameBeforePublish, 5_000)
-        // The native output is now proven alive. Only now reveal the preview
-        // behind the WebView; failures above leave the normal web UI opaque.
-        makeWebViewTransparent()
-        try {
-            room.localParticipant.setMicrophoneEnabled(true)
-        } catch (e: Exception) {
-            Log.w(TAG, "mic publish failed", e)
-        }
-        Log.i(TAG, "LiveKit video published")
-    }
-
-    private fun resolveAppliedAfterFrame(
-        call: PluginCall,
-        frameBeforeApply: Long,
-        generation: Long,
-    ) {
-        if (!publishEnabled) {
-            call.resolve(JSObject().put("applied", true))
-            return
-        }
-        scope.launch {
-            try {
-                awaitFrameAfter(frameBeforeApply, 3_500)
-                if (generation != lensApplyGeneration.get()) {
-                    if (!call.isReleased) call.reject("Lens request superseded")
-                    return@launch
-                }
-                if (!call.isReleased) {
-                    call.resolve(
-                        JSObject()
-                            .put("applied", true)
-                            .put("frameCount", publishedFrameCount.get()),
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "lens applied but no output frame arrived", e)
-                if (!call.isReleased) call.reject("Lens produced no video frame")
-            }
-        }
-    }
-
-    private suspend fun awaitFrameAfter(baseline: Long, timeoutMs: Long) {
+    private suspend fun awaitFrames(baseline: Long, timeoutMs: Long): Boolean {
         val deadline = SystemClock.elapsedRealtime() + timeoutMs
         while (SystemClock.elapsedRealtime() < deadline) {
-            if (publishedFrameCount.get() > baseline) return
+            if (frameCount.get() > baseline) return true
             delay(50)
         }
-        throw IllegalStateException("Camera Kit produced no video frame within ${timeoutMs}ms")
+        return false
     }
 
-    private suspend fun stopPublishing() {
-        publishEnabled = false
-        publishOutput?.close()
-        publishOutput = null
-        try {
-            liveKitTrack?.stopCapture()
-        } catch (_: Exception) {
+    /** JS token wins; otherwise the manifest meta-data value. */
+    private fun resolveToken(fromJs: String?): String {
+        if (!fromJs.isNullOrBlank()) return fromJs
+        val act = activity ?: return ""
+        return try {
+            val info = act.packageManager.getApplicationInfo(
+                act.packageName,
+                PackageManager.GET_META_DATA,
+            )
+            info.metaData?.getString(META_TOKEN)?.trim().orEmpty()
+        } catch (e: Exception) {
+            Log.w(TAG, "manifest token lookup failed", e)
+            ""
         }
-        try {
-            liveKitTrack?.stop()
-        } catch (_: Exception) {
-        }
-        liveKitTrack = null
-        try {
-            liveKitRoom?.disconnect()
-        } catch (_: Exception) {
-        }
-        liveKitRoom = null
-        if (!previewRequested) restoreWebViewBackground()
-        Log.i(TAG, "LiveKit publish stopped")
     }
 
-    private fun lensKey(id: String, groupId: String) = "$groupId|$id"
+    private fun key(id: String, groupId: String) = "$groupId|$id"
 
     private fun LensesComponent.Lens.toJs(): JSObject {
         val obj = JSObject()
         obj.put("id", id)
         obj.put("groupId", groupId)
         obj.put("name", name.orEmpty().ifBlank { "Lens" })
-        val icon = icons.firstOrNull()?.uri?.toString()
-        if (!icon.isNullOrEmpty()) obj.put("iconUrl", icon)
+        icons.firstOrNull()?.uri?.toString()?.takeIf { it.isNotEmpty() }?.let { obj.put("iconUrl", it) }
         return obj
     }
 
@@ -708,27 +827,33 @@ class KidiCameraKitPlugin : Plugin() {
         return out
     }
 
-    private fun emitStatus(phase: String, extra: JSObject? = null) {
+    private fun emit(phase: String, extra: JSObject? = null) {
         val data = JSObject()
             .put("phase", phase)
             .put("initialized", initialized)
             .put("sessionStarted", previewStarted)
             .put("captureRunning", previewStarted)
-        extra?.keys()?.forEach { key ->
-            data.put(key, extra.get(key))
-        }
+        extra?.keys()?.forEach { k -> data.put(k, extra.get(k)) }
         notifyListeners("status", data)
     }
 
     companion object {
         private const val TAG = "KidiCameraKit"
+        private const val META_TOKEN = "com.snap.camerakit.api.token"
         private const val REQ_CAMERA = 4921
         private const val CAMERA_X_RELEASE_DELAY_MS = 700L
+        private const val START_FRAME_TIMEOUT_MS = 3_000L
+        private const val LENS_FRAME_TIMEOUT_MS = 3_000L
+        private const val PUBLISH_FRAME_TIMEOUT_MS = 5_000L
+        private const val STALL_TIMEOUT_MS = 3_000L
+        private val APP_BACKGROUND = Color.parseColor("#10162B")
     }
 }
 
 /**
- * Pushes Camera Kit's filtered frames into LiveKit via a SurfaceTexture.
+ * Pushes Camera Kit's filtered frames into LiveKit as an external video track.
+ * Mirrors the iOS bridge (KidiCameraKitLiveKitOutput.swift): Camera Kit output
+ * surface -> WebRTC SurfaceTextureHelper -> LiveKit capturer observer.
  */
 private class CameraKitSurfaceCapturer(
     private val session: Session,
@@ -753,19 +878,15 @@ private class CameraKitSurfaceCapturer(
     override fun startCapture(width: Int, height: Int, framerate: Int) {
         val helper = this.helper
         if (helper == null) {
-            Log.e("KidiCameraKit", "capturer startCapture called before initialize()")
+            Log.e("KidiCameraKit", "capturer startCapture before initialize()")
             observer?.onCapturerStarted(false)
             return
         }
         Log.i("KidiCameraKit", "capturer startCapture ${width}x${height}@$framerate")
-        // Respect the requested aspect ratio — forcing a 720x1280 floor turned
-        // landscape/low-res requests into a distorted square surface.
         helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
         helper.startListening { frame: VideoFrame ->
             framesSeen++
-            if (framesSeen == 1L) {
-                Log.i("KidiCameraKit", "first Camera Kit frame delivered to LiveKit")
-            }
+            if (framesSeen == 1L) Log.i("KidiCameraKit", "first frame delivered to LiveKit")
             onFrame()
             observer?.onFrameCaptured(frame)
         }
@@ -776,17 +897,15 @@ private class CameraKitSurfaceCapturer(
                 surface,
                 ImageProcessor.Output.Purpose.RECORDING,
             ) {
-                override fun writeFrame(): ImageProcessor.Output.Frame {
-                    return object : ImageProcessor.Output.Frame {
+                override fun writeFrame(): ImageProcessor.Output.Frame =
+                    object : ImageProcessor.Output.Frame {
                         override val timestamp: Long = SystemClock.elapsedRealtimeNanos()
                         override fun recycle() = Unit
                     }
-                }
             },
         )
         output = connected
         onConnected(connected)
-        Log.i("KidiCameraKit", "Camera Kit output connected to LiveKit capturer")
         observer?.onCapturerStarted(true)
     }
 

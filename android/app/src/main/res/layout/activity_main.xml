@@ -6,10 +6,9 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <ViewStub
-        android:id="@+id/camera_kit_stub"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <!-- Camera Kit inserts its TextureView at index 0 (behind the WebView)
+         at runtime; no ViewStub / SurfaceView is used. -->
+
 
     <WebView
         android:layout_width="match_parent"
