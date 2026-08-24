@@ -56,7 +56,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const runLoad = useCallback((force: boolean) => {
     if (loadStartedRef.current && !force) return;
     if (!isCameraKitSupported()) {
-      setLensesError("Camera Kit non supporté sur cet appareil");
+      // Snap AR is intentionally hidden on platforms where its camera path is
+      // unsafe. Keep the rest of the effects tray usable without repeatedly
+      // presenting an error for a feature that is not offered on this device.
+      setSnapLenses([]);
+      setLensesError(null);
       return;
     }
     loadStartedRef.current = true;
