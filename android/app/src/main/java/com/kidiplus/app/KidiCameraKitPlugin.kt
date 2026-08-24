@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.view.ViewStub
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -271,13 +272,21 @@ class KidiCameraKitPlugin : Plugin() {
     @PluginMethod
     fun stopPreview(call: PluginCall) {
         if (!publishEnabled) {
-            try {
-                imageSource?.stopPreview()
-            } catch (_: Throwable) {
-                /* older support-camerax may not expose stopPreview */
-            }
             previewStarted = false
-            restoreWebViewBackground()
+            runOnUi {
+                try {
+                    imageSource?.stopPreview()
+                } catch (_: Throwable) {
+                    /* older support-camerax may not expose stopPreview */
+                }
+                forceReleaseCameraX {
+                    restoreWebViewBackground()
+                    if (!call.isReleased) {
+                        call.resolve(JSObject().put("stopped", true))
+                    }
+                }
+            }
+            return
         }
         call.resolve(JSObject().put("stopped", true))
     }
@@ -349,14 +358,25 @@ class KidiCameraKitPlugin : Plugin() {
                     done(true)
                     return@runOnUi
                 }
-                try {
-                    source.startPreview(facingFront)
-                    previewStarted = true
-                    makeWebViewTransparent()
-                    done(true)
-                } catch (e: Exception) {
-                    Log.e(TAG, "startPreview failed", e)
-                    done(false)
+                // CameraXImageProcessorSource can leave its Preview and
+                // ImageCapture use-cases bound after stopPreview/lifecycle
+                // changes. Starting it again then binds a second identical
+                // pair and crashes strict Samsung devices. Force an unbind and
+                // wait for CameraDevice.onClosed() before the next bind.
+                forceReleaseCameraX {
+                    if (previewStarted) {
+                        done(true)
+                        return@forceReleaseCameraX
+                    }
+                    try {
+                        source.startPreview(facingFront)
+                        previewStarted = true
+                        makeWebViewTransparent()
+                        done(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "startPreview failed", e)
+                        done(false)
+                    }
                 }
             }
         }
@@ -380,6 +400,32 @@ class KidiCameraKitPlugin : Plugin() {
             task()
         } else {
             activity?.runOnUiThread(task)
+        }
+    }
+
+    /** Unbinds stale CameraX use-cases and waits for the camera service to
+     * finish closing the device before another Camera Kit preview starts. */
+    private fun forceReleaseCameraX(done: () -> Unit) {
+        val act = activity
+        if (act == null) {
+            done()
+            return
+        }
+        runOnUi {
+            try {
+                val providerFuture = ProcessCameraProvider.getInstance(act)
+                providerFuture.addListener({
+                    try {
+                        providerFuture.get().unbindAll()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "CameraX unbindAll failed", e)
+                    }
+                    act.window.decorView.postDelayed(done, CAMERA_X_RELEASE_DELAY_MS)
+                }, ContextCompat.getMainExecutor(act))
+            } catch (e: Exception) {
+                Log.w(TAG, "CameraX provider unavailable", e)
+                act.window.decorView.postDelayed(done, CAMERA_X_RELEASE_DELAY_MS)
+            }
         }
     }
 
@@ -595,6 +641,7 @@ class KidiCameraKitPlugin : Plugin() {
     companion object {
         private const val TAG = "KidiCameraKit"
         private const val REQ_CAMERA = 4921
+        private const val CAMERA_X_RELEASE_DELAY_MS = 700L
     }
 }
 

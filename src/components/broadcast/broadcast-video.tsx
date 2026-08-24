@@ -470,7 +470,9 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
       let useNativePreview =
-        activeLensRef.current.isSnapLens === true && isNativeCameraKitAvailable();
+        activeLensRef.current.isSnapLens === true &&
+        !effectsRef.current.hasEffects &&
+        isNativeCameraKitAvailable();
 
       async function acquire() {
         if (!previewShouldRun) return teardown();
@@ -478,6 +480,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
         useNativePreview =
           activeLensRef.current.isSnapLens === true &&
+          !effectsRef.current.hasEffects &&
           (await waitForNativeCameraKit());
         if (cancelled) return;
 
@@ -681,6 +684,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           let useNativeVideo =
             !isRtmp &&
             activeLensRef.current.isSnapLens === true &&
+            !effectsRef.current.hasEffects &&
             (await waitForNativeCameraKit());
           if (useNativeVideo) {
             phase = "camera";
@@ -941,7 +945,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       // Reconnect only when the lens toggle switches between raw WebRTC and
       // native AR publishing. On web this stays false and lens changes go
       // through the in-place processor swap (no disconnect).
-      nativeArPublishing && activeLens.isSnapLens,
+      nativeArPublishing && activeLens.isSnapLens && !effects.hasEffects,
       nativeFallbackRevision,
       videoSource,
       ingressIdentity,
@@ -951,7 +955,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     // pipeline. The native plugin resolves only after a post-lens frame exists.
     useEffect(() => {
       if (!livekit || !nativeVideoActiveRef.current || state !== "granted") return;
-      if (!activeLens.isSnapLens) return;
+      if (!activeLens.isSnapLens || effects.hasEffects) return;
       const lensKey = `${activeLens.groupId}:${activeLens.lensId}`;
       if (nativeAppliedLensKeyRef.current === lensKey) return;
       let cancelled = false;
@@ -981,7 +985,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       return () => {
         cancelled = true;
       };
-    }, [activeLens.lensId, activeLens.groupId, activeLens.isSnapLens, livekit, state, t]);
+    }, [
+      activeLens.lensId,
+      activeLens.groupId,
+      activeLens.isSnapLens,
+      effects.hasEffects,
+      livekit,
+      state,
+      t,
+    ]);
 
     // Continuous native health check: if Camera Kit stops producing frames
     // after initially succeeding, restart this host effect on the raw camera.
