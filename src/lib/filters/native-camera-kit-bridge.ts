@@ -206,11 +206,32 @@ export function errMsg(e: unknown): string {
 function disableNative(reason: unknown): void {
   if (nativeDisabled) return;
   nativeDisabled = true;
-  console.warn("[native-camera-kit] disabled, falling back to web:", errMsg(reason));
+  nativeFailureCount += 1;
+  nativePlugin = null;
+  console.warn(
+    `[native-camera-kit] disabled (${nativeFailureCount}/${MAX_NATIVE_FAILURES}):`,
+    errMsg(reason),
+  );
 }
 
 export function disableNativeCameraKit(reason: unknown): void {
   disableNative(reason);
+}
+
+/** Called when a NEW broadcast session starts: give the native engine another
+ * chance instead of staying degraded until the app is force-quit. After
+ * MAX_NATIVE_FAILURES the device is treated as permanently incompatible. */
+export function resetNativeCameraKit(): void {
+  if (!nativeDisabled) return;
+  if (nativeFailureCount >= MAX_NATIVE_FAILURES) {
+    console.info("[native-camera-kit] stays disabled (too many failures)");
+    return;
+  }
+  nativeDisabled = false;
+  nativePlugin = null;
+  detectionLogged = false;
+  clearBridgeLensesCache();
+  console.info("[native-camera-kit] re-enabled for a new broadcast session");
 }
 
 export async function getNativeCameraKitHealth(): Promise<{
