@@ -322,6 +322,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
+    // A new broadcast session clears a previous "native disabled" verdict so
+    // Android filters work again without force-quitting the app. Keyed on
+    // roomShouldRun only (NOT on nativeFallbackRevision) so an in-live stall
+    // still falls back to the raw camera instead of looping on the native path.
+    useEffect(() => {
+      if (roomShouldRun) resetNativeCameraKit();
+    }, [roomShouldRun]);
+
+
     // Warm up the native Snap session as soon as the broadcast screen mounts.
     // Waiting for the filter carousel meant `initialize()` was never called on
     // iOS/Android, so the first lens tap or go-live had to pay the full SDK
