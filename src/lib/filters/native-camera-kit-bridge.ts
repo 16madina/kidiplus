@@ -495,12 +495,30 @@ export async function setNativePublishEnabled(args: {
   }
 }
 
+/**
+ * Setup → live handoff guard.
+ *
+ * BroadcastSetup unmounts its `<BroadcastVideo>` (preview mode) at the exact
+ * moment BroadcastLive mounts a new one (LiveKit mode). React fires the old
+ * cleanup *after* the new mount has already called `startPreview()`, so the
+ * stale `stopPreview()` detached the freshly attached TextureView while the
+ * LiveKit capturer kept publishing: logs stayed healthy (frames delivered,
+ * video published) but the host's screen went black. Deferring deactivation
+ * and cancelling it when a new activation arrives keeps the Camera Kit session
+ * and its preview view alive across the transition.
+ */
+let previewDesiredActive = false;
+let previewStopToken = 0;
+const PREVIEW_STOP_GRACE_MS = 600;
+
 /** Démarre/arrête l'aperçu natif (affichage du flux filtré). */
 export async function setNativePreview(args: {
   active: boolean;
   mirrored?: boolean;
   facing?: "user" | "environment";
 }): Promise<void> {
+  previewDesiredActive = args.active;
+  const stopToken = ++previewStopToken;
   const plugin = !args.active && nativePlugin
     ? nativePlugin
     : await getNativePlugin();
@@ -517,6 +535,12 @@ export async function setNativePreview(args: {
         facing: args.facing ?? "user",
       });
     } else {
+      // Grace period: a setup→live handoff re-activates within a few frames.
+      await new Promise<void>((r) => setTimeout(r, PREVIEW_STOP_GRACE_MS));
+      if (previewDesiredActive || stopToken !== previewStopToken) {
+        console.info("[native-camera-kit] stopPreview cancelled (handoff)");
+        return;
+      }
       await plugin.stopPreview();
     }
   } catch (e) {
@@ -525,6 +549,7 @@ export async function setNativePreview(args: {
   }
 
 }
+
 
 // ---------------------------------------------------------------------------
 // Bascule caméra avant/arrière dans le pipeline natif
