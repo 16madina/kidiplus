@@ -523,9 +523,12 @@ export async function setNativePreview(args: {
   mirrored?: boolean;
   facing?: "user" | "environment";
   owner?: NativePreviewOwner;
+  /** Real teardown / error recovery: release the camera immediately, no
+   * owner check and no handoff grace period. */
+  force?: boolean;
 }): Promise<void> {
   const owner = args.owner ?? "live";
-  if (!args.active && previewOwner && previewOwner !== owner) {
+  if (!args.active && !args.force && previewOwner && previewOwner !== owner) {
     console.info(
       `[native-camera-kit] stopPreview ignored (stale owner ${owner}, active ${previewOwner})`,
     );
@@ -550,15 +553,18 @@ export async function setNativePreview(args: {
       });
       previewOwner = owner;
     } else {
-      // Grace period: a setup→live handoff re-activates within a few frames.
-      await new Promise<void>((r) => setTimeout(r, PREVIEW_STOP_GRACE_MS));
-      if (previewDesiredActive || stopToken !== previewStopToken) {
-        console.info("[native-camera-kit] stopPreview cancelled (handoff)");
-        return;
+      if (!args.force) {
+        // Grace period: a setup→live handoff re-activates within a few frames.
+        await new Promise<void>((r) => setTimeout(r, PREVIEW_STOP_GRACE_MS));
+        if (previewDesiredActive || stopToken !== previewStopToken) {
+          console.info("[native-camera-kit] stopPreview cancelled (handoff)");
+          return;
+        }
       }
       await plugin.stopPreview();
       previewOwner = null;
     }
+
   } catch (e) {
     if (isUnimplemented(e)) disableNative(e);
     throw e;
