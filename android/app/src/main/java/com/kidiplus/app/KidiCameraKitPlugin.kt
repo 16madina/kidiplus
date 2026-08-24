@@ -62,6 +62,9 @@ class KidiCameraKitPlugin : Plugin() {
     private var groupIds: List<String> = emptyList()
     private var initialized = false
     private var previewStarted = false
+    private var previewRequested = false
+    private var previewStarting = false
+    private val previewStartCallbacks = mutableListOf<(Boolean) -> Unit>()
     private var facingFront = true
 
     private var cachedLenses: List<JSObject> = emptyList()
@@ -213,6 +216,7 @@ class KidiCameraKitPlugin : Plugin() {
             return
         }
         val groupId = call.getString("groupId").orEmpty()
+        previewRequested = true
         ensurePreviewStarted { previewOk ->
             if (!previewOk) {
                 call.reject("Camera preview failed to start")
@@ -255,6 +259,7 @@ class KidiCameraKitPlugin : Plugin() {
     @PluginMethod
     fun startPreview(call: PluginCall) {
         facingFront = (call.getString("facing") ?: "user") != "environment"
+        previewRequested = true
         ensurePreviewStarted { ok ->
             if (!ok) {
                 // Never resolve success without a running camera — that was the
@@ -272,6 +277,7 @@ class KidiCameraKitPlugin : Plugin() {
     @PluginMethod
     fun stopPreview(call: PluginCall) {
         if (!publishEnabled) {
+            previewRequested = false
             previewStarted = false
             runOnUi {
                 try {
@@ -288,7 +294,15 @@ class KidiCameraKitPlugin : Plugin() {
             }
             return
         }
-        call.resolve(JSObject().put("stopped", true))
+        // The preview is also Camera Kit's input for the active LiveKit
+        // publisher, so it cannot be stopped independently while publishing.
+        // Report the partial stop honestly instead of claiming the native
+        // surface was released.
+        call.resolve(
+            JSObject()
+                .put("stopped", false)
+                .put("reason", "publishing"),
+        )
     }
 
     @PluginMethod
@@ -333,8 +347,49 @@ class KidiCameraKitPlugin : Plugin() {
         imageSource = null
         initialized = false
         previewStarted = false
+        previewRequested = false
+        previewStarting = false
+        synchronized(sessionLock) {
+            previewStartCallbacks.clear()
+        }
         scope.cancel()
         super.handleOnDestroy()
+    }
+
+    override fun handleOnStop() {
+        super.handleOnStop()
+        if (!previewRequested && !publishEnabled) return
+
+        // CameraX is lifecycle-bound to the Activity and drops its use-cases
+        // when the Activity stops. Keep the intent to run, but never keep the
+        // stale `previewStarted=true`: that made ensurePreviewStarted() skip
+        // rebinding after Android background/PiP and left a frozen AR frame.
+        previewStarted = false
+        previewStarting = false
+        lastPublishedFrameAt.set(SystemClock.elapsedRealtime())
+        runOnUi {
+            try {
+                imageSource?.stopPreview()
+            } catch (e: Throwable) {
+                Log.w(TAG, "Camera Kit pause cleanup failed", e)
+            }
+        }
+        Log.i(TAG, "activity stopped; Camera Kit preview marked for rebind")
+    }
+
+    override fun handleOnResume() {
+        super.handleOnResume()
+        if (!initialized || (!previewRequested && !publishEnabled)) return
+        Log.i(TAG, "activity resumed; rebinding Camera Kit preview")
+        ensurePreviewStarted { ok ->
+            if (ok) {
+                lastPublishedFrameAt.set(SystemClock.elapsedRealtime())
+                emitStatus("previewResumed")
+            } else {
+                Log.e(TAG, "Camera Kit preview failed to resume")
+                emitStatus("previewResumeFailed")
+            }
+        }
     }
 
     private fun ensurePreviewStarted(done: (ok: Boolean) -> Unit) {
@@ -344,9 +399,14 @@ class KidiCameraKitPlugin : Plugin() {
             done(false)
             return
         }
-        if (previewStarted) {
-            done(true)
-            return
+        synchronized(sessionLock) {
+            if (previewStarted) {
+                done(true)
+                return
+            }
+            previewStartCallbacks.add(done)
+            if (previewStarting) return
+            previewStarting = true
         }
         // CameraX binding must run on the main thread. This method is also
         // called from the Capacitor bridge thread (startPreview), so always
@@ -355,7 +415,7 @@ class KidiCameraKitPlugin : Plugin() {
         val start: () -> Unit = {
             runOnUi {
                 if (previewStarted) {
-                    done(true)
+                    finishPreviewStart(true)
                     return@runOnUi
                 }
                 // CameraXImageProcessorSource can leave its Preview and
@@ -365,17 +425,16 @@ class KidiCameraKitPlugin : Plugin() {
                 // wait for CameraDevice.onClosed() before the next bind.
                 forceReleaseCameraX {
                     if (previewStarted) {
-                        done(true)
+                        finishPreviewStart(true)
                         return@forceReleaseCameraX
                     }
                     try {
                         source.startPreview(facingFront)
-                        previewStarted = true
                         makeWebViewTransparent()
-                        done(true)
+                        finishPreviewStart(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "startPreview failed", e)
-                        done(false)
+                        finishPreviewStart(false)
                     }
                 }
             }
@@ -391,6 +450,21 @@ class KidiCameraKitPlugin : Plugin() {
                 REQ_CAMERA,
             )
             activity.window.decorView.postDelayed({ start() }, 400)
+        }
+    }
+
+    private fun finishPreviewStart(ok: Boolean) {
+        val callbacks = synchronized(sessionLock) {
+            previewStarted = ok
+            previewStarting = false
+            previewStartCallbacks.toList().also { previewStartCallbacks.clear() }
+        }
+        callbacks.forEach { callback ->
+            try {
+                callback(ok)
+            } catch (e: Exception) {
+                Log.w(TAG, "preview start callback failed", e)
+            }
         }
     }
 
@@ -496,6 +570,7 @@ class KidiCameraKitPlugin : Plugin() {
 
     private suspend fun startPublishing(url: String, token: String) {
         publishEnabled = true
+        previewRequested = true
         val activity = activity ?: throw IllegalStateException("no activity")
         val session = cameraKitSession ?: throw IllegalStateException("Camera Kit session missing")
 
