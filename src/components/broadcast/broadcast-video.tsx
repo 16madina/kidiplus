@@ -686,15 +686,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           if (cancelled) return;
           phase = "connect";
 
-          // Native Snap Camera Kit: initialize + preview first so frames flow,
-          // then publish to LiveKit. On failure, fall back to WebRTC.
-          // Keep the proven raw LiveKit camera path unless a Snap lens is
-          // actually selected. Android switches to native Camera Kit only for
-          // AR, then returns to raw LiveKit when the lens is removed.
+          // Android: keep Camera Kit as the camera owner for the WHOLE live,
+          // including the unfiltered state. Switching camera ownership between
+          // WebRTC and CameraX on every lens tap tears down the host participant
+          // and produces a black gap (or a permanently busy camera on stricter
+          // OEMs). Lens changes now happen inside the already-running native
+          // session. If native startup cannot prove a real output frame, this
+          // falls back to the raw WebRTC camera below.
           let useNativeVideo =
             !isRtmp &&
-            activeLensRef.current.isSnapLens === true &&
-            !effectsRef.current.hasEffects &&
             (await waitForNativeCameraKit());
           if (useNativeVideo) {
             phase = "camera";
@@ -724,7 +724,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
                 setNativePublishEnabled({ enabled: true, roomUrl: url, token }),
               );
               const initialLens = activeLensRef.current;
-              if (initialLens.isSnapLens) {
+              if (initialLens.isSnapLens && !effectsRef.current.hasEffects) {
                 await withTimeout(applyBridgeLens(initialLens), 5000);
                 nativeAppliedLensKeyRef.current = `${initialLens.groupId}:${initialLens.lensId}`;
               }
@@ -952,21 +952,22 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       livekit?.identity,
       roomShouldRun,
       retryKey,
-      // Reconnect only when the lens toggle switches between raw WebRTC and
-      // native AR publishing. On web this stays false and lens changes go
-      // through the in-place processor swap (no disconnect).
-      nativeArPublishing && activeLens.isSnapLens && !effects.hasEffects,
+      // Never reconnect for a lens/effect toggle. Android keeps one native
+      // camera owner for the whole live; web/iOS swap processors in place.
+      nativeArPublishing,
       nativeFallbackRevision,
       videoSource,
       ingressIdentity,
     ]);
 
-    // Native Android lens changes are applied outside the Web LiveKit track
-    // pipeline. The native plugin resolves only after a post-lens frame exists.
+    // Native Android lens changes are applied inside the persistent Camera Kit
+    // session. Applying and clearing a lens must never rebuild the room.
     useEffect(() => {
       if (!livekit || !nativeVideoActiveRef.current || state !== "granted") return;
-      if (!activeLens.isSnapLens || effects.hasEffects) return;
-      const lensKey = `${activeLens.groupId}:${activeLens.lensId}`;
+      if (effects.hasEffects) return;
+      const lensKey = activeLens.isSnapLens
+        ? `${activeLens.groupId}:${activeLens.lensId}`
+        : "none";
       if (nativeAppliedLensKeyRef.current === lensKey) return;
       let cancelled = false;
       const sequence = ++nativeLensSequenceRef.current;
@@ -1004,6 +1005,23 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       state,
       t,
     ]);
+
+    // Background replacement uses a Web canvas/MediaPipe processor. It cannot
+    // share Android's physical camera with the native CameraX publisher. Keep
+    // the proven native stream visible and reject the unsupported effect rather
+    // than stopping CameraX and exposing a black screen to host and viewers.
+    useEffect(() => {
+      if (Capacitor.getPlatform() !== "android") return;
+      if (!nativePreviewActive || !effects.hasEffects) return;
+      effects.clearAll();
+      toast.error(
+        t(
+          "broadcast.effects.unavailable",
+          "Arrière-plan indisponible sur cet appareil",
+        ),
+        { id: "bg-unavailable" },
+      );
+    }, [effects.hasEffects, effects.clearAll, nativePreviewActive, t]);
 
     // Continuous native health check: if Camera Kit stops producing frames
     // after initially succeeding, restart this host effect on the raw camera.
