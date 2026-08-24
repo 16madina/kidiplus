@@ -267,13 +267,16 @@ export async function warmupNativeCameraKit(_reason?: string): Promise<boolean> 
 
 
 export function isCameraKitSupported(): boolean {
-  // Never run the Web Camera Kit WASM TrackProcessor inside a native WebView.
-  // On iOS it can output an all-black processed track even though the raw
-  // getUserMedia camera is healthy. Native builds therefore publish the raw
-  // LiveKit camera while the native integration is safety-gated above.
-  if (Capacitor.isNativePlatform()) return hasNativePluginImpl();
-  if (hasNativePluginImpl()) return true; // le plugin natif fournit le support
-  return isWebCameraKitSupported();
+  if (!Capacitor.isNativePlatform()) return isWebCameraKitSupported();
+  // iOS natif : le plugin Snap natif est safety-gated (voir hasNativePluginImpl),
+  // mais le pipeline WEB Camera Kit (WASM + TrackProcessor LiveKit) est le
+  // chemin filtres éprouvé sur iPhone. Ne JAMAIS renvoyer false ici : c'est
+  // ce qui affichait « Camera Kit non supporté sur cet appareil » et faisait
+  // disparaître tous les filtres du carrousel.
+  if (Capacitor.getPlatform() === "ios") return isWebCameraKitSupported();
+  // Android natif : plugin natif (GPU) uniquement — le pipeline web y fige
+  // l'image, il ne sert que de secours lens-list côté bridge.
+  return hasNativePluginImpl();
 }
 
 // ---------------------------------------------------------------------------
