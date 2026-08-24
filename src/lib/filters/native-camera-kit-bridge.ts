@@ -565,10 +565,7 @@ export async function setNativePreview(args: {
       previewOwner = null;
     }
 
-  } catch (e) {
-    if (isUnimplemented(e)) disableNative(e);
-    throw e;
-  }
+
 
   } catch (e) {
     if (isUnimplemented(e)) disableNative(e);
