@@ -17,6 +17,7 @@ import {
   getNativeCameraKitHealth,
   isCameraKitSupported,
   isNativeCameraKitAvailable,
+  resetNativeCameraKit,
   setNativePreview,
   setNativePublishEnabled,
   waitForNativeCameraKit,
