@@ -672,14 +672,21 @@ class KidiCameraKitPlugin : Plugin() {
     private fun onFrame() {
         val count = frameCount.incrementAndGet()
         lastFrameAt.set(SystemClock.elapsedRealtime())
-        if (count == 1L) {
-            Log.i(TAG, "first Camera Kit frame rendered")
-            // Only NOW punch the WebView transparent: revealing earlier shows an
-            // empty surface, i.e. the historical black screen.
+        // Re-assert transparency on EVERY (re)start, not only on the very first
+        // frame of the app session. The setup -> live transition tears the
+        // preview view down and restores the WebView background; keying the
+        // reveal on `count == 1` meant the second start kept an opaque WebView
+        // over a perfectly healthy Camera Kit surface (the "black screen after
+        // Lancer le live" bug).
+        if (!webViewTransparent && previewView != null) {
+            Log.i(TAG, "Camera Kit frame flowing (count=$count) — revealing preview")
             makeWebViewTransparent()
-            notifyListeners("firstFrame", JSObject().put("frameCount", count))
+            if (count == 1L) {
+                notifyListeners("firstFrame", JSObject().put("frameCount", count))
+            }
         }
     }
+
 
     private fun startWatchdog() {
         stopWatchdog()
