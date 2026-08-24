@@ -430,7 +430,10 @@ class KidiCameraKitPlugin : Plugin() {
                     }
                     try {
                         source.startPreview(facingFront)
-                        makeWebViewTransparent()
+                        // Starting CameraX only schedules its asynchronous bind.
+                        // Do not expose the native surface yet: until Camera Kit
+                        // proves an output frame, transparency would reveal an
+                        // empty surface and the host would see a black screen.
                         finishPreviewStart(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "startPreview failed", e)
@@ -612,6 +615,9 @@ class KidiCameraKitPlugin : Plugin() {
         track.startCapture()
         room.localParticipant.publishVideoTrack(track)
         awaitFrameAfter(frameBeforePublish, 5_000)
+        // The native output is now proven alive. Only now reveal the preview
+        // behind the WebView; failures above leave the normal web UI opaque.
+        makeWebViewTransparent()
         try {
             room.localParticipant.setMicrophoneEnabled(true)
         } catch (e: Exception) {
@@ -677,6 +683,7 @@ class KidiCameraKitPlugin : Plugin() {
         } catch (_: Exception) {
         }
         liveKitRoom = null
+        if (!previewRequested) restoreWebViewBackground()
         Log.i(TAG, "LiveKit publish stopped")
     }
 

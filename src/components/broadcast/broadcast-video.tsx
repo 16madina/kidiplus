@@ -480,6 +480,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
       let useNativePreview =
+        Capacitor.getPlatform() !== "android" &&
         activeLensRef.current.isSnapLens === true &&
         !effectsRef.current.hasEffects &&
         isNativeCameraKitAvailable();
@@ -489,6 +490,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await teardown();
 
         useNativePreview =
+          Capacitor.getPlatform() !== "android" &&
           activeLensRef.current.isSnapLens === true &&
           !effectsRef.current.hasEffects &&
           (await waitForNativeCameraKit());
@@ -1288,7 +1290,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,
             le filtre passe par le TrackProcessor — pas besoin d'overlay. */}
-        {!livekit && showVideo && !effects.hasEffects && (
+        {!livekit && showVideo && !effects.hasEffects && Capacitor.getPlatform() !== "android" && (
           <CameraKitPreview
             stream={previewStream}
             lens={activeLens}
