@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { X, RefreshCw, Plus, Trash2, Image as ImageIcon, Camera, ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Capacitor } from "@capacitor/core";
+import { isCameraKitSupported } from "@/lib/filters/native-camera-kit-bridge";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
