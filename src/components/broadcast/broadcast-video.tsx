@@ -17,6 +17,7 @@ import {
   getNativeCameraKitHealth,
   isCameraKitSupported,
   isNativeCameraKitAvailable,
+  flipNativeCamera,
   onNativeCameraKitFallback,
   resetNativeCameraKit,
   setNativePreview,
@@ -432,6 +433,26 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         return (pub?.track as LocalAudioTrack | undefined) ?? null;
       },
       switchCamera: async (target?: CameraFacing) => {
+        // Android native Camera Kit owns the camera: flip the CameraX selector
+        // inside the SAME pipeline instead of republishing a WebRTC track.
+        if (nativeVideoActiveRef.current) {
+          if (flipInFlightRef.current) throw new Error("flip_busy");
+          flipInFlightRef.current = true;
+          onFlipBusyChange?.(true);
+          try {
+            const ok = await flipNativeCamera();
+            if (!ok) throw new Error("flip_failed");
+            const current = lastAppliedFacingRef.current ?? facing;
+            const applied: CameraFacing =
+              target ?? (current === "user" ? "environment" : "user");
+            lastAppliedFacingRef.current = applied;
+            onFacingAppliedRef.current?.(applied);
+            return applied;
+          } finally {
+            flipInFlightRef.current = false;
+            onFlipBusyChange?.(false);
+          }
+        }
         const room = roomRef.current;
         let track = localVideoTrackRef.current;
         if (!livekit || !room) {
