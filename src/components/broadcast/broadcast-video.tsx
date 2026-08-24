@@ -47,6 +47,18 @@ import {
 } from "@/lib/livekit";
 
 /**
+ * CameraX releases its camera asynchronously. Opening getUserMedia immediately
+ * after stopPreview() can make both pipelines overlap and crash on devices
+ * with strict surface limits (for example the Samsung A50). Capacitor resolves
+ * the native call before CameraDevice.onClosed(), so leave Android enough time
+ * to finish the release before starting the WebRTC fallback.
+ */
+async function waitForNativeCameraRelease(): Promise<void> {
+  const delayMs = Capacitor.getPlatform() === "android" ? 1_000 : 350;
+  await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+}
+
+/**
  * Video layer for the broadcaster (host) side.
  *
  * Two modes:
@@ -458,7 +470,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
       async function acquire() {
         if (!previewShouldRun) return teardown();
-        teardown();
+        await teardown();
 
         useNativePreview =
           activeLensRef.current.isSnapLens === true &&
@@ -494,6 +506,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           } catch (e) {
             console.warn("[native-camera-kit] preview start failed — web fallback", e);
+            // startPreview() may fail after CameraX has already begun binding.
+            // Always request cleanup and wait before the WebView opens camera 2.
+            await setNativePreview({ active: false }).catch(() => {});
+            await waitForNativeCameraRelease();
             disableNativeCameraKit(e);
             setNativeActive(false);
             useNativePreview = false;
@@ -525,7 +541,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         else setState("error");
       }
 
-      function teardown() {
+      async function teardown() {
         const s = streamRef.current;
         if (s) {
           s.getTracks().forEach((t) => t.stop());
@@ -535,7 +551,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (videoRef.current) videoRef.current.srcObject = null;
         if (useNativePreview) {
           setNativeActive(false);
-          void setNativePreview({ active: false });
+          await setNativePreview({ active: false }).catch(() => {});
         }
       }
 
@@ -702,8 +718,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
               await setNativePublishEnabled({ enabled: false }).catch(() => {});
               await setNativePreview({ active: false }).catch(() => {});
               disableNativeCameraKit(e);
-              // Give iOS a beat to release the camera before getUserMedia.
-              await new Promise((r) => setTimeout(r, 350));
+              await waitForNativeCameraRelease();
               useNativeVideo = false;
             }
           }
@@ -893,8 +908,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await disconnectRoom(roomRef.current);
         roomRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
-        void setNativePublishEnabled({ enabled: false });
-        void setNativePreview({ active: false });
+        await setNativePublishEnabled({ enabled: false }).catch(() => {});
+        await setNativePreview({ active: false }).catch(() => {});
       }
 
       void start();
