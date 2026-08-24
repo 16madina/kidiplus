@@ -525,3 +525,58 @@ export async function setNativePreview(args: {
   }
 
 }
+
+// ---------------------------------------------------------------------------
+// Bascule caméra avant/arrière dans le pipeline natif
+// ---------------------------------------------------------------------------
+
+/** Retourne true si le flip a été effectué côté natif (même pipeline Camera
+ * Kit, simple changement de sélecteur CameraX). */
+export async function flipNativeCamera(): Promise<boolean> {
+  const plugin = await getNativePlugin();
+  if (!plugin || typeof plugin.flipCamera !== "function") return false;
+  try {
+    const res = await plugin.flipCamera();
+    return res?.flipped === true;
+  } catch (e) {
+    console.warn("[native-camera-kit] flipCamera failed", errMsg(e));
+    return false;
+  }
+}
+
+/**
+ * Écoute l'événement `fallback` émis par le plugin natif (watchdog : aucune
+ * frame Camera Kit depuis >3s). La couche web doit alors revenir sur la caméra
+ * LiveKit brute et afficher le toast « Filtres indisponibles ».
+ */
+export function onNativeCameraKitFallback(
+  handler: (reason: string) => void,
+): () => void {
+  const plugin = pluginFromWindow() as
+    | { addListener?: (e: string, cb: (d: { reason?: string }) => void) => unknown }
+    | null;
+  if (!plugin || typeof plugin.addListener !== "function") return () => {};
+  let handle: { remove?: () => void } | null = null;
+  try {
+    const res = plugin.addListener("fallback", (data) => {
+      handler(data?.reason ?? "unknown");
+    }) as { remove?: () => void } | Promise<{ remove?: () => void }>;
+    if (res && typeof (res as Promise<unknown>).then === "function") {
+      void (res as Promise<{ remove?: () => void }>).then((h) => {
+        handle = h;
+      });
+    } else {
+      handle = res as { remove?: () => void };
+    }
+  } catch (e) {
+    console.warn("[native-camera-kit] fallback listener failed", errMsg(e));
+    return () => {};
+  }
+  return () => {
+    try {
+      handle?.remove?.();
+    } catch {
+      /* ignore */
+    }
+  };
+}

@@ -17,6 +17,7 @@ import {
   getNativeCameraKitHealth,
   isCameraKitSupported,
   isNativeCameraKitAvailable,
+  onNativeCameraKitFallback,
   resetNativeCameraKit,
   setNativePreview,
   setNativePublishEnabled,
@@ -322,13 +323,24 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
-    // Production safety rule: Android always uses the normal LiveKit camera.
-    // Clear any filter/effect state carried across screens so no processor can
-    // acquire or replace the camera behind the host's back.
+    // Android: the native Camera Kit plugin owns the AR pipeline (CameraX ->
+    // Camera Kit -> TextureView + LiveKit external track). Its own watchdog
+    // reverts to the raw camera if no frame arrives, so no blanket kill-switch
+    // is needed here anymore. Listen for that native fallback event.
     useEffect(() => {
       if (Capacitor.getPlatform() !== "android") return;
-      if (activeLensRef.current.lensId !== "none") clearLensRef.current();
-      if (effectsRef.current.hasEffects) effectsRef.current.clearAll();
+      return onNativeCameraKitFallback((reason) => {
+        console.warn("[native-camera-kit] native fallback event:", reason);
+        setNativeActive(false);
+        clearLensRef.current();
+        if (effectsRef.current.hasEffects) effectsRef.current.clearAll();
+        toast.error(
+          t("broadcast.filters.unavailable", "Filtres indisponibles sur cet appareil"),
+          { id: "lens-unavailable" },
+        );
+        setNativeFallbackRevision((value) => value + 1);
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // A new broadcast session clears a previous "native disabled" verdict so
@@ -489,7 +501,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       if (livekit) return; // handled by LK effect below
       let cancelled = false;
       let useNativePreview =
-        Capacitor.getPlatform() !== "android" &&
         activeLensRef.current.isSnapLens === true &&
         !effectsRef.current.hasEffects &&
         isNativeCameraKitAvailable();
@@ -499,7 +510,6 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         await teardown();
 
         useNativePreview =
-          Capacitor.getPlatform() !== "android" &&
           activeLensRef.current.isSnapLens === true &&
           !effectsRef.current.hasEffects &&
           (await waitForNativeCameraKit());

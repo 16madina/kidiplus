@@ -107,7 +107,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
   const isRtmp = b.streamSource === "rtmp";
-  const filtersAvailable = Capacitor.getPlatform() !== "android";
+  const filtersAvailable = isCameraKitSupported();
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(!isRtmp);
   const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);

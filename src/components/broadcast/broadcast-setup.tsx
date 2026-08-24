@@ -59,7 +59,7 @@ export function BroadcastSetup({ onExit }: { onExit: () => void }) {
   const b = useBroadcast();
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
-  const filtersAvailable = Capacitor.getPlatform() !== "android";
+  const filtersAvailable = isCameraKitSupported();
   const [showAdd, setShowAdd] = useState(false);
   const [showShopPicker, setShowShopPicker] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
