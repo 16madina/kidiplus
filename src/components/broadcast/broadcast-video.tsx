@@ -47,11 +47,11 @@ import {
 } from "@/lib/livekit";
 
 /**
- * CameraX releases its camera asynchronously. Opening getUserMedia immediately
- * after stopPreview() can make both pipelines overlap and crash on devices
- * with strict surface limits (for example the Samsung A50). Capacitor resolves
- * the native call before CameraDevice.onClosed(), so leave Android enough time
- * to finish the release before starting the WebRTC fallback.
+ * Android releases its camera asynchronously in both directions. Starting
+ * CameraX immediately after stopping a WebRTC track (or starting WebRTC after
+ * stopPreview()) can make both pipelines overlap on devices with strict
+ * surface limits, such as the Samsung A50. Leave the camera service enough
+ * time to deliver CameraDevice.onClosed() before the next owner starts.
  */
 async function waitForNativeCameraRelease(): Promise<void> {
   const delayMs = Capacitor.getPlatform() === "android" ? 1_000 : 350;
@@ -184,6 +184,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const nativeLensSequenceRef = useRef(0);
     const nativeLensQueueRef = useRef<Promise<void>>(Promise.resolve());
     const nativeAppliedLensKeyRef = useRef("");
+    // React runs an effect's async cleanup without awaiting it. Serialize host
+    // camera owners explicitly so a filter tap cannot start CameraX while the
+    // raw LiveKit/WebRTC track is still releasing the same camera.
+    const hostCameraTeardownRef = useRef<Promise<void>>(Promise.resolve());
     const [nativeFallbackRevision, setNativeFallbackRevision] = useState(0);
 
     // Clé du dernier pipeline appliqué (lens + facing) — évite de
@@ -634,6 +638,8 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       }
 
       async function start() {
+        await hostCameraTeardownRef.current.catch(() => {});
+        if (cancelled) return;
         if (!roomShouldRun) return teardown();
         setState("connecting");
 
@@ -895,27 +901,37 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
       }
 
       async function teardown() {
+        const hadNativeCamera = nativeVideoActiveRef.current;
+        const t = localVideoTrackRef.current;
+        const room = roomRef.current;
+        const hadWebCamera = !!t;
+
         setNativeActive(false);
         nativeAppliedLensKeyRef.current = "";
-        const t = localVideoTrackRef.current;
+        localVideoTrackRef.current = null;
+        roomRef.current = null;
         if (t) {
           try {
             t.detach();
             t.stop();
           } catch {}
-          localVideoTrackRef.current = null;
         }
-        await disconnectRoom(roomRef.current);
-        roomRef.current = null;
+        await disconnectRoom(room);
         if (videoRef.current) videoRef.current.srcObject = null;
         await setNativePublishEnabled({ enabled: false }).catch(() => {});
         await setNativePreview({ active: false }).catch(() => {});
+        if (hadWebCamera || hadNativeCamera) {
+          await waitForNativeCameraRelease();
+        }
       }
 
       void start();
       return () => {
         cancelled = true;
-        void teardown();
+        const cleanup = teardown();
+        hostCameraTeardownRef.current = cleanup.catch((e) => {
+          console.warn("[camera-handoff] teardown failed", errMsg(e));
+        });
       };
     }, [
       livekit?.room,
