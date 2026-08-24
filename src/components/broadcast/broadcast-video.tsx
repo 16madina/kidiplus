@@ -322,6 +322,15 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
     const previewShouldRun = enabled && appActive;
     const roomShouldRun = appActive;
 
+    // Production safety rule: Android always uses the normal LiveKit camera.
+    // Clear any filter/effect state carried across screens so no processor can
+    // acquire or replace the camera behind the host's back.
+    useEffect(() => {
+      if (Capacitor.getPlatform() !== "android") return;
+      if (activeLensRef.current.lensId !== "none") clearLensRef.current();
+      if (effectsRef.current.hasEffects) effectsRef.current.clearAll();
+    }, []);
+
     // A new broadcast session clears a previous "native disabled" verdict so
     // Android filters work again without force-quitting the app. Keyed on
     // roomShouldRun only (NOT on nativeFallbackRevision) so an in-live stall

@@ -53,6 +53,7 @@ import { blockUser, refreshBlockedIds } from "@/lib/moderation-db";
 import { useAuth } from "@/lib/auth-context";
 import type { BroadcastVideoHandle } from "./broadcast-video";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { Press } from "@/components/press";
 import { BroadcastVideo } from "./broadcast-video";
@@ -106,6 +107,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
   const facing = b.cameraFacing;
   const setFacing = b.setCameraFacing;
   const isRtmp = b.streamSource === "rtmp";
+  const filtersAvailable = Capacitor.getPlatform() !== "android";
   const [cameraOn, setCameraOn] = useState(true);
   const [micOn, setMicOn] = useState(!isRtmp);
   const [rtmpSheetOpen, setRtmpSheetOpen] = useState(isRtmp && !!b.rtmpCreds);
@@ -1933,7 +1935,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           }}
           onOpenModerators={() => setModeratorsSheetOpen(true)}
           onOpenProducts={() => setProductsOpen(true)}
-          onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+          onOpenFilters={isRtmp || !filtersAvailable ? undefined : () => setFiltersOpen((o) => !o)}
         />
       ) : (
         <HostToolRail
@@ -1944,7 +1946,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
           flipBusy={flipBusy}
           moderatorsOpen={moderatorsSheetOpen}
           filtersActive={!isRtmp && (activeLens.lensId !== "none" || liveEffects.hasEffects)}
-          onOpenFilters={isRtmp ? undefined : () => setFiltersOpen((o) => !o)}
+          onOpenFilters={isRtmp || !filtersAvailable ? undefined : () => setFiltersOpen((o) => !o)}
           battleActive={false}
           onOpenBattle={() => {
             battle.openInvite();
@@ -1969,7 +1971,7 @@ export function BroadcastLive({ onEnd }: { onEnd: () => void }) {
         />
       )}
 
-      {!isRtmp && (
+      {!isRtmp && filtersAvailable && (
         <FiltersCarousel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
       )}
 
