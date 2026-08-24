@@ -1330,7 +1330,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         {/* Aperçu AR (setup uniquement) : le canvas Camera Kit recouvre le
             <video> brut quand une vraie lens Snap est sélectionnée. En live,
             le filtre passe par le TrackProcessor — pas besoin d'overlay. */}
-        {!livekit && showVideo && !effects.hasEffects && Capacitor.getPlatform() !== "android" && (
+        {!livekit && showVideo && !effects.hasEffects && (
           <CameraKitPreview
             stream={previewStream}
             lens={activeLens}
