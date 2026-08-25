@@ -707,6 +707,23 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (!roomShouldRun) return teardown();
         setState("connecting");
 
+        // Go-live speed: fire the token request AND the Camera Kit warmup
+        // immediately, in parallel with the permission preflight. These are
+        // independent (network vs. OS prompt vs. GPU session) and used to run
+        // strictly one after another, which is most of the "connexion en
+        // cours" wait.
+        const tokenPromise = getToken(
+          livekit!.room,
+          livekit!.identity,
+          livekit!.name,
+          "host",
+        );
+        // Avoid an unhandled rejection while the preflight is still pending.
+        tokenPromise.catch(() => {});
+        const nativeReadyPromise = isRtmp
+          ? Promise.resolve(false)
+          : waitForNativeCameraKit().catch(() => false);
+
         if (!isRtmp) {
           // Permission only — do not open video here. Opening then stopping the
           // camera before LiveKit createLocalVideoTrack causes NotReadableError
@@ -728,12 +745,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
         let phase: "token" | "connect" | "camera" = "token";
         try {
-          const { token, url } = await getToken(
-            livekit!.room,
-            livekit!.identity,
-            livekit!.name,
-            "host",
-          );
+          const { token, url } = await tokenPromise;
           if (cancelled) return;
           phase = "connect";
 
@@ -744,9 +756,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           // OEMs). Lens changes now happen inside the already-running native
           // session. If native startup cannot prove a real output frame, this
           // falls back to the raw WebRTC camera below.
-          let useNativeVideo =
-            !isRtmp &&
-            (await waitForNativeCameraKit());
+          let useNativeVideo = !isRtmp && (await nativeReadyPromise);
           if (useNativeVideo) {
             phase = "camera";
             const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
@@ -816,8 +826,19 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           setNativeActive(false);
           phase = "connect";
 
+          // Open the camera WHILE the room connects: both take ~0.5-1.5s and
+          // do not depend on each other.
+          const cameraPromise =
+            !isRtmp && enabled
+              ? createHostLocalVideoTrack({ facingMode: facingRef.current })
+              : null;
+          cameraPromise?.catch(() => {});
 
-          const room = await connectRoom(url, token);
+          const room = await connectRoom(url, token).catch(async (e) => {
+            const t = await cameraPromise?.catch(() => null);
+            t?.stop();
+            throw e;
+          });
           if (cancelled) {
             await disconnectRoom(room);
             return;
@@ -933,9 +954,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           // 720p first; createHostLocalVideoTrack steps down only on failure.
-          const track = await createHostLocalVideoTrack({
-            facingMode: desiredFacing,
-          });
+          // Already started in parallel with connectRoom above.
+          const track =
+            (await cameraPromise) ??
+            (await createHostLocalVideoTrack({ facingMode: desiredFacing }));
           if (cancelled) {
             track.stop();
             await disconnectRoom(room);

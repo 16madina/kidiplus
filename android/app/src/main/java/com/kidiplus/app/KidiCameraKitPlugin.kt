@@ -29,8 +29,14 @@ import com.snap.camerakit.support.camerax.CameraXImageProcessorSource
 import com.snap.camerakit.supported
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
+import io.livekit.android.room.participant.VideoTrackPublishOptions
 import io.livekit.android.room.track.LocalVideoTrack
+import io.livekit.android.room.track.LocalVideoTrackOptions
+import io.livekit.android.room.track.VideoCaptureParameter
+import io.livekit.android.room.track.VideoEncoding
+import io.livekit.android.room.track.Track
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -108,8 +114,13 @@ class KidiCameraKitPlugin : Plugin() {
     // LiveKit publication
     private var liveKitRoom: Room? = null
     private var liveKitTrack: LocalVideoTrack? = null
+    private var publishCapturer: CameraKitSurfaceCapturer? = null
     private var publishOutput: Closeable? = null
     private var publishEnabled = false
+
+    // Adaptive capture profile (Camera Kit output size + publish encoding).
+    private var profileIndex = 0
+    private var adaptiveJob: Job? = null
 
     override fun load() {
         Log.i(TAG, "plugin loaded")
@@ -428,6 +439,13 @@ class KidiCameraKitPlugin : Plugin() {
         val act = activity ?: throw IllegalStateException("no activity")
         val s = session ?: throw IllegalStateException("Camera Kit session missing")
 
+        // Go-live speed: the LiveKit room connect (signalling + ICE, ~0.5-1.5s)
+        // runs CONCURRENTLY with CameraX + Camera Kit warmup instead of after
+        // it. By the time the first filtered frame exists, the room is joined.
+        val room = liveKitRoom ?: LiveKit.create(act.applicationContext)
+        liveKitRoom = room
+        val connecting = scope.async { runCatching { room.connect(url, token) } }
+
         var done = false
         var ok = false
         ensurePreview { result -> done = true; ok = result }
@@ -438,28 +456,59 @@ class KidiCameraKitPlugin : Plugin() {
         }
         if (!ok) {
             publishEnabled = false
+            connecting.cancel()
             throw IllegalStateException("Camera preview failed to start — refusing to publish black frames")
         }
-
-        val room = liveKitRoom ?: LiveKit.create(act.applicationContext)
-        liveKitRoom = room
-        room.connect(url, token)
+        connecting.await().getOrThrow()
 
         val baseline = frameCount.get()
+        val profile = currentProfile()
         val capturer = CameraKitSurfaceCapturer(
             session = s,
+            width = profile.width,
+            height = profile.height,
+            fps = profile.fps,
             onConnected = { handle -> publishOutput = handle },
             onFrame = { onFrame() },
         )
-        val track = room.localParticipant.createVideoTrack(name = "camera", capturer = capturer)
+        publishCapturer = capturer
+        val track = room.localParticipant.createVideoTrack(
+            name = "camera",
+            capturer = capturer,
+            // adaptOutputToDimensions = false: our capturer already emits the
+            // exact target size, so LiveKit must not insert a per-frame
+            // scale/crop processor on top of the Camera Kit output.
+            options = LocalVideoTrackOptions(
+                isScreencast = false,
+                captureParams = VideoCaptureParameter(
+                    profile.width,
+                    profile.height,
+                    profile.fps,
+                    adaptOutputToDimensions = false,
+                ),
+            ),
+        )
         liveKitTrack = track
         // publishVideoTrack() does not start an external capturer; without this
         // no frame ever reaches LiveKit ("no video frame within 5000ms").
         track.startCapture()
-        room.localParticipant.publishVideoTrack(track)
+        room.localParticipant.publishVideoTrack(
+            track,
+            VideoTrackPublishOptions(
+                videoEncoding = VideoEncoding(profile.bitrate, profile.fps),
+                // Simulcast on a custom (texture) source means 2-3 extra
+                // encoder instances on the same GPU/CPU that Camera Kit is
+                // already using — the main cause of slow-motion video on
+                // mid-range Android. One stream only.
+                simulcast = false,
+                source = Track.Source.CAMERA,
+            ),
+        )
+        Log.i(TAG, "publish profile ${profile.width}x${profile.height}@${profile.fps} ${profile.bitrate}bps simulcast=false")
         if (!awaitFrames(baseline, PUBLISH_FRAME_TIMEOUT_MS)) {
             throw IllegalStateException("Camera Kit produced no published frame")
         }
+        startAdaptiveMonitor()
         try {
             room.localParticipant.setMicrophoneEnabled(true)
         } catch (e: Exception) {
@@ -470,15 +519,78 @@ class KidiCameraKitPlugin : Plugin() {
 
     private suspend fun stopPublishing() {
         publishEnabled = false
+        stopAdaptiveMonitor()
         publishOutput?.close()
         publishOutput = null
         runCatching { liveKitTrack?.stopCapture() }
         runCatching { liveKitTrack?.stop() }
         liveKitTrack = null
+        publishCapturer = null
         runCatching { liveKitRoom?.disconnect() }
         liveKitRoom = null
         if (!previewRequested) teardownPreview {}
         Log.i(TAG, "LiveKit publish stopped")
+    }
+
+    // ------------------------------------------------- adaptive quality ladder
+
+    private fun currentProfile(): CaptureProfile =
+        CAPTURE_PROFILES[profileIndex.coerceIn(0, CAPTURE_PROFILES.lastIndex)]
+
+    /**
+     * Watches the fps actually delivered to LiveKit. If the device cannot hold
+     * the current profile (<20fps sustained over two windows), step DOWN once
+     * per window: a smooth 540p/480p beats a stuttering 720p. Stepping is
+     * one-way — we never oscillate.
+     */
+    private fun startAdaptiveMonitor() {
+        stopAdaptiveMonitor()
+        adaptiveJob = scope.launch {
+            var lowWindows = 0
+            var last = publishCapturer?.deliveredFrames() ?: 0L
+            var lastAt = SystemClock.elapsedRealtime()
+            // Ignore the first seconds: camera + encoder are still ramping up.
+            delay(ADAPT_WARMUP_MS)
+            last = publishCapturer?.deliveredFrames() ?: last
+            lastAt = SystemClock.elapsedRealtime()
+            while (publishEnabled) {
+                delay(ADAPT_WINDOW_MS)
+                val capturer = publishCapturer ?: continue
+                val now = SystemClock.elapsedRealtime()
+                val frames = capturer.deliveredFrames()
+                val elapsed = (now - lastAt).coerceAtLeast(1)
+                val fps = (frames - last) * 1000.0 / elapsed
+                last = frames
+                lastAt = now
+                if (fps < ADAPT_MIN_FPS && profileIndex < CAPTURE_PROFILES.lastIndex) {
+                    lowWindows++
+                    if (lowWindows >= 2) {
+                        lowWindows = 0
+                        profileIndex++
+                        val p = currentProfile()
+                        Log.w(
+                            TAG,
+                            "delivered fps=${"%.1f".format(fps)} — stepping down to ${p.width}x${p.height}@${p.fps}",
+                        )
+                        runCatching { capturer.changeCaptureFormat(p.width, p.height, p.fps) }
+                        notifyListeners(
+                            "captureProfile",
+                            JSObject()
+                                .put("width", p.width)
+                                .put("height", p.height)
+                                .put("fps", p.fps),
+                        )
+                    }
+                } else {
+                    lowWindows = 0
+                }
+            }
+        }
+    }
+
+    private fun stopAdaptiveMonitor() {
+        adaptiveJob?.cancel()
+        adaptiveJob = null
     }
 
     // ------------------------------------------------------------- lifecycle
@@ -853,9 +965,31 @@ class KidiCameraKitPlugin : Plugin() {
         private const val LENS_FRAME_TIMEOUT_MS = 3_000L
         private const val PUBLISH_FRAME_TIMEOUT_MS = 5_000L
         private const val STALL_TIMEOUT_MS = 3_000L
+        private const val ADAPT_WARMUP_MS = 4_000L
+        private const val ADAPT_WINDOW_MS = 2_000L
+        private const val ADAPT_MIN_FPS = 20.0
         private val APP_BACKGROUND = Color.parseColor("#10162B")
+
+        /**
+         * Capture/publish ladder used when Camera Kit owns the camera. 720p30 is
+         * the cap (never higher: a live-selling stream gains nothing from 1080p
+         * and the lens shader + encoder share the same GPU). Steps down only.
+         */
+        val CAPTURE_PROFILES = listOf(
+            CaptureProfile(1280, 720, 30, 1_600_000),
+            CaptureProfile(960, 540, 24, 900_000),
+            CaptureProfile(854, 480, 24, 650_000),
+        )
     }
 }
+
+/** One rung of the adaptive capture ladder. */
+data class CaptureProfile(
+    val width: Int,
+    val height: Int,
+    val fps: Int,
+    val bitrate: Int,
+)
 
 /**
  * Pushes Camera Kit's filtered frames into LiveKit as an external video track.
@@ -864,6 +998,9 @@ class KidiCameraKitPlugin : Plugin() {
  */
 private class CameraKitSurfaceCapturer(
     private val session: Session,
+    width: Int,
+    height: Int,
+    fps: Int,
     private val onConnected: (Closeable) -> Unit,
     private val onFrame: () -> Unit,
 ) : VideoCapturer {
@@ -871,7 +1008,15 @@ private class CameraKitSurfaceCapturer(
     private var observer: CapturerObserver? = null
     private var surface: Surface? = null
     private var output: Closeable? = null
-    private var framesSeen = 0L
+    private val framesSeen = AtomicLong(0)
+    @Volatile private var targetWidth = width
+    @Volatile private var targetHeight = height
+    /** Minimum spacing between delivered frames; extra frames are dropped
+     * before they reach the encoder (cheap: no copy, just a release). */
+    @Volatile private var minIntervalNs = 1_000_000_000L / fps.coerceAtLeast(1) - 2_000_000L
+    private var lastDeliveredNs = 0L
+
+    fun deliveredFrames(): Long = framesSeen.get()
 
     override fun initialize(
         helper: SurfaceTextureHelper,
@@ -889,11 +1034,26 @@ private class CameraKitSurfaceCapturer(
             observer?.onCapturerStarted(false)
             return
         }
-        Log.i("KidiCameraKit", "capturer startCapture ${width}x${height}@$framerate")
-        helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
+        if (width > 0 && height > 0) {
+            targetWidth = width
+            targetHeight = height
+        }
+        if (framerate > 0) minIntervalNs = 1_000_000_000L / framerate - 2_000_000L
+        Log.i("KidiCameraKit", "capturer startCapture ${targetWidth}x${targetHeight}@$framerate")
+        // Texture size == published size: no scaling stage, no bitmap copies.
+        // The whole path stays on the GPU (Camera Kit surface -> texture frame
+        // -> hardware encoder) on the SurfaceTextureHelper thread, never on the
+        // UI thread.
+        helper.setTextureSize(targetWidth, targetHeight)
         helper.startListening { frame: VideoFrame ->
-            framesSeen++
-            if (framesSeen == 1L) Log.i("KidiCameraKit", "first frame delivered to LiveKit")
+            val now = frame.timestampNs
+            if (lastDeliveredNs != 0L && now - lastDeliveredNs < minIntervalNs) {
+                frame.release()
+                return@startListening
+            }
+            lastDeliveredNs = now
+            val count = framesSeen.incrementAndGet()
+            if (count == 1L) Log.i("KidiCameraKit", "first frame delivered to LiveKit")
             onFrame()
             observer?.onFrameCaptured(frame)
         }
@@ -917,8 +1077,9 @@ private class CameraKitSurfaceCapturer(
     }
 
     override fun stopCapture() {
-        Log.i("KidiCameraKit", "capturer stopCapture after $framesSeen frames")
-        framesSeen = 0L
+        Log.i("KidiCameraKit", "capturer stopCapture after ${framesSeen.get()} frames")
+        framesSeen.set(0)
+        lastDeliveredNs = 0L
         output?.close()
         output = null
         surface?.release()
@@ -927,7 +1088,17 @@ private class CameraKitSurfaceCapturer(
         observer?.onCapturerStopped()
     }
 
-    override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) = Unit
+    /** Live step-down: resize the shared texture and re-throttle. No republish,
+     * no camera restart — the encoder simply receives smaller frames. */
+    override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) {
+        if (width > 0 && height > 0) {
+            targetWidth = width
+            targetHeight = height
+            runCatching { helper?.setTextureSize(width, height) }
+        }
+        if (framerate > 0) minIntervalNs = 1_000_000_000L / framerate - 2_000_000L
+        Log.i("KidiCameraKit", "capturer changeCaptureFormat ${width}x${height}@$framerate")
+    }
 
     override fun dispose() {
         stopCapture()
