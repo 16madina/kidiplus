@@ -437,6 +437,13 @@ class KidiCameraKitPlugin : Plugin() {
         val act = activity ?: throw IllegalStateException("no activity")
         val s = session ?: throw IllegalStateException("Camera Kit session missing")
 
+        // Go-live speed: the LiveKit room connect (signalling + ICE, ~0.5-1.5s)
+        // runs CONCURRENTLY with CameraX + Camera Kit warmup instead of after
+        // it. By the time the first filtered frame exists, the room is joined.
+        val room = liveKitRoom ?: LiveKit.create(act.applicationContext)
+        liveKitRoom = room
+        val connecting = scope.async { runCatching { room.connect(url, token) } }
+
         var done = false
         var ok = false
         ensurePreview { result -> done = true; ok = result }
@@ -447,28 +454,59 @@ class KidiCameraKitPlugin : Plugin() {
         }
         if (!ok) {
             publishEnabled = false
+            connecting.cancel()
             throw IllegalStateException("Camera preview failed to start — refusing to publish black frames")
         }
-
-        val room = liveKitRoom ?: LiveKit.create(act.applicationContext)
-        liveKitRoom = room
-        room.connect(url, token)
+        connecting.await().getOrThrow()
 
         val baseline = frameCount.get()
+        val profile = currentProfile()
         val capturer = CameraKitSurfaceCapturer(
             session = s,
+            width = profile.width,
+            height = profile.height,
+            fps = profile.fps,
             onConnected = { handle -> publishOutput = handle },
             onFrame = { onFrame() },
         )
-        val track = room.localParticipant.createVideoTrack(name = "camera", capturer = capturer)
+        publishCapturer = capturer
+        val track = room.localParticipant.createVideoTrack(
+            name = "camera",
+            capturer = capturer,
+            // adaptOutputToDimensions = false: our capturer already emits the
+            // exact target size, so LiveKit must not insert a per-frame
+            // scale/crop processor on top of the Camera Kit output.
+            options = LocalVideoTrackOptions(
+                isScreencast = false,
+                captureParams = VideoCaptureParameter(
+                    profile.width,
+                    profile.height,
+                    profile.fps,
+                    adaptOutputToDimensions = false,
+                ),
+            ),
+        )
         liveKitTrack = track
         // publishVideoTrack() does not start an external capturer; without this
         // no frame ever reaches LiveKit ("no video frame within 5000ms").
         track.startCapture()
-        room.localParticipant.publishVideoTrack(track)
+        room.localParticipant.publishVideoTrack(
+            track,
+            VideoTrackPublishOptions(
+                videoEncoding = VideoEncoding(profile.bitrate, profile.fps),
+                // Simulcast on a custom (texture) source means 2-3 extra
+                // encoder instances on the same GPU/CPU that Camera Kit is
+                // already using — the main cause of slow-motion video on
+                // mid-range Android. One stream only.
+                simulcast = false,
+                source = Track.Source.CAMERA,
+            ),
+        )
+        Log.i(TAG, "publish profile ${profile.width}x${profile.height}@${profile.fps} ${profile.bitrate}bps simulcast=false")
         if (!awaitFrames(baseline, PUBLISH_FRAME_TIMEOUT_MS)) {
             throw IllegalStateException("Camera Kit produced no published frame")
         }
+        startAdaptiveMonitor()
         try {
             room.localParticipant.setMicrophoneEnabled(true)
         } catch (e: Exception) {
@@ -479,15 +517,78 @@ class KidiCameraKitPlugin : Plugin() {
 
     private suspend fun stopPublishing() {
         publishEnabled = false
+        stopAdaptiveMonitor()
         publishOutput?.close()
         publishOutput = null
         runCatching { liveKitTrack?.stopCapture() }
         runCatching { liveKitTrack?.stop() }
         liveKitTrack = null
+        publishCapturer = null
         runCatching { liveKitRoom?.disconnect() }
         liveKitRoom = null
         if (!previewRequested) teardownPreview {}
         Log.i(TAG, "LiveKit publish stopped")
+    }
+
+    // ------------------------------------------------- adaptive quality ladder
+
+    private fun currentProfile(): CaptureProfile =
+        CAPTURE_PROFILES[profileIndex.coerceIn(0, CAPTURE_PROFILES.lastIndex)]
+
+    /**
+     * Watches the fps actually delivered to LiveKit. If the device cannot hold
+     * the current profile (<20fps sustained over two windows), step DOWN once
+     * per window: a smooth 540p/480p beats a stuttering 720p. Stepping is
+     * one-way — we never oscillate.
+     */
+    private fun startAdaptiveMonitor() {
+        stopAdaptiveMonitor()
+        adaptiveJob = scope.launch {
+            var lowWindows = 0
+            var last = publishCapturer?.deliveredFrames() ?: 0L
+            var lastAt = SystemClock.elapsedRealtime()
+            // Ignore the first seconds: camera + encoder are still ramping up.
+            delay(ADAPT_WARMUP_MS)
+            last = publishCapturer?.deliveredFrames() ?: last
+            lastAt = SystemClock.elapsedRealtime()
+            while (publishEnabled) {
+                delay(ADAPT_WINDOW_MS)
+                val capturer = publishCapturer ?: continue
+                val now = SystemClock.elapsedRealtime()
+                val frames = capturer.deliveredFrames()
+                val elapsed = (now - lastAt).coerceAtLeast(1)
+                val fps = (frames - last) * 1000.0 / elapsed
+                last = frames
+                lastAt = now
+                if (fps < ADAPT_MIN_FPS && profileIndex < CAPTURE_PROFILES.lastIndex) {
+                    lowWindows++
+                    if (lowWindows >= 2) {
+                        lowWindows = 0
+                        profileIndex++
+                        val p = currentProfile()
+                        Log.w(
+                            TAG,
+                            "delivered fps=${"%.1f".format(fps)} — stepping down to ${p.width}x${p.height}@${p.fps}",
+                        )
+                        runCatching { capturer.changeCaptureFormat(p.width, p.height, p.fps) }
+                        notifyListeners(
+                            "captureProfile",
+                            JSObject()
+                                .put("width", p.width)
+                                .put("height", p.height)
+                                .put("fps", p.fps),
+                        )
+                    }
+                } else {
+                    lowWindows = 0
+                }
+            }
+        }
+    }
+
+    private fun stopAdaptiveMonitor() {
+        adaptiveJob?.cancel()
+        adaptiveJob = null
     }
 
     // ------------------------------------------------------------- lifecycle
