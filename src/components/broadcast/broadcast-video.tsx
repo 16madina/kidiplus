@@ -954,9 +954,10 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
             return;
           }
           // 720p first; createHostLocalVideoTrack steps down only on failure.
-          const track = await createHostLocalVideoTrack({
-            facingMode: desiredFacing,
-          });
+          // Already started in parallel with connectRoom above.
+          const track =
+            (await cameraPromise) ??
+            (await createHostLocalVideoTrack({ facingMode: desiredFacing }));
           if (cancelled) {
             track.stop();
             await disconnectRoom(room);
