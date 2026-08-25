@@ -29,7 +29,11 @@ import com.snap.camerakit.support.camerax.CameraXImageProcessorSource
 import com.snap.camerakit.supported
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
+import io.livekit.android.room.participant.VideoTrackPublishOptions
 import io.livekit.android.room.track.LocalVideoTrack
+import io.livekit.android.room.track.LocalVideoTrackOptions
+import io.livekit.android.room.track.VideoCaptureParameter
+import io.livekit.android.room.track.VideoEncoding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
