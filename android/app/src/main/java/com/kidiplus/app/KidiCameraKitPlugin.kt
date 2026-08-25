@@ -112,8 +112,13 @@ class KidiCameraKitPlugin : Plugin() {
     // LiveKit publication
     private var liveKitRoom: Room? = null
     private var liveKitTrack: LocalVideoTrack? = null
+    private var publishCapturer: CameraKitSurfaceCapturer? = null
     private var publishOutput: Closeable? = null
     private var publishEnabled = false
+
+    // Adaptive capture profile (Camera Kit output size + publish encoding).
+    private var profileIndex = 0
+    private var adaptiveJob: Job? = null
 
     override fun load() {
         Log.i(TAG, "plugin loaded")
