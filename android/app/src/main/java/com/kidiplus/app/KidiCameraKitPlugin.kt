@@ -965,9 +965,31 @@ class KidiCameraKitPlugin : Plugin() {
         private const val LENS_FRAME_TIMEOUT_MS = 3_000L
         private const val PUBLISH_FRAME_TIMEOUT_MS = 5_000L
         private const val STALL_TIMEOUT_MS = 3_000L
+        private const val ADAPT_WARMUP_MS = 4_000L
+        private const val ADAPT_WINDOW_MS = 2_000L
+        private const val ADAPT_MIN_FPS = 20.0
         private val APP_BACKGROUND = Color.parseColor("#10162B")
+
+        /**
+         * Capture/publish ladder used when Camera Kit owns the camera. 720p30 is
+         * the cap (never higher: a live-selling stream gains nothing from 1080p
+         * and the lens shader + encoder share the same GPU). Steps down only.
+         */
+        val CAPTURE_PROFILES = listOf(
+            CaptureProfile(1280, 720, 30, 1_600_000),
+            CaptureProfile(960, 540, 24, 900_000),
+            CaptureProfile(854, 480, 24, 650_000),
+        )
     }
 }
+
+/** One rung of the adaptive capture ladder. */
+data class CaptureProfile(
+    val width: Int,
+    val height: Int,
+    val fps: Int,
+    val bitrate: Int,
+)
 
 /**
  * Pushes Camera Kit's filtered frames into LiveKit as an external video track.
