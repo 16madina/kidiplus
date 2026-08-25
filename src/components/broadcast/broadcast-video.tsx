@@ -707,6 +707,23 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
         if (!roomShouldRun) return teardown();
         setState("connecting");
 
+        // Go-live speed: fire the token request AND the Camera Kit warmup
+        // immediately, in parallel with the permission preflight. These are
+        // independent (network vs. OS prompt vs. GPU session) and used to run
+        // strictly one after another, which is most of the "connexion en
+        // cours" wait.
+        const tokenPromise = getToken(
+          livekit!.room,
+          livekit!.identity,
+          livekit!.name,
+          "host",
+        );
+        // Avoid an unhandled rejection while the preflight is still pending.
+        tokenPromise.catch(() => {});
+        const nativeReadyPromise = isRtmp
+          ? Promise.resolve(false)
+          : waitForNativeCameraKit().catch(() => false);
+
         if (!isRtmp) {
           // Permission only — do not open video here. Opening then stopping the
           // camera before LiveKit createLocalVideoTrack causes NotReadableError
@@ -728,12 +745,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
 
         let phase: "token" | "connect" | "camera" = "token";
         try {
-          const { token, url } = await getToken(
-            livekit!.room,
-            livekit!.identity,
-            livekit!.name,
-            "host",
-          );
+          const { token, url } = await tokenPromise;
           if (cancelled) return;
           phase = "connect";
 
@@ -744,9 +756,7 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           // OEMs). Lens changes now happen inside the already-running native
           // session. If native startup cannot prove a real output frame, this
           // falls back to the raw WebRTC camera below.
-          let useNativeVideo =
-            !isRtmp &&
-            (await waitForNativeCameraKit());
+          let useNativeVideo = !isRtmp && (await nativeReadyPromise);
           if (useNativeVideo) {
             phase = "camera";
             const withTimeout = <T,>(p: Promise<T>, ms = 12000) =>
