@@ -998,6 +998,9 @@ data class CaptureProfile(
  */
 private class CameraKitSurfaceCapturer(
     private val session: Session,
+    width: Int,
+    height: Int,
+    fps: Int,
     private val onConnected: (Closeable) -> Unit,
     private val onFrame: () -> Unit,
 ) : VideoCapturer {
@@ -1005,7 +1008,15 @@ private class CameraKitSurfaceCapturer(
     private var observer: CapturerObserver? = null
     private var surface: Surface? = null
     private var output: Closeable? = null
-    private var framesSeen = 0L
+    private val framesSeen = AtomicLong(0)
+    @Volatile private var targetWidth = width
+    @Volatile private var targetHeight = height
+    /** Minimum spacing between delivered frames; extra frames are dropped
+     * before they reach the encoder (cheap: no copy, just a release). */
+    @Volatile private var minIntervalNs = 1_000_000_000L / fps.coerceAtLeast(1) - 2_000_000L
+    private var lastDeliveredNs = 0L
+
+    fun deliveredFrames(): Long = framesSeen.get()
 
     override fun initialize(
         helper: SurfaceTextureHelper,
@@ -1023,11 +1034,26 @@ private class CameraKitSurfaceCapturer(
             observer?.onCapturerStarted(false)
             return
         }
-        Log.i("KidiCameraKit", "capturer startCapture ${width}x${height}@$framerate")
-        helper.setTextureSize(width.coerceAtLeast(640), height.coerceAtLeast(480))
+        if (width > 0 && height > 0) {
+            targetWidth = width
+            targetHeight = height
+        }
+        if (framerate > 0) minIntervalNs = 1_000_000_000L / framerate - 2_000_000L
+        Log.i("KidiCameraKit", "capturer startCapture ${targetWidth}x${targetHeight}@$framerate")
+        // Texture size == published size: no scaling stage, no bitmap copies.
+        // The whole path stays on the GPU (Camera Kit surface -> texture frame
+        // -> hardware encoder) on the SurfaceTextureHelper thread, never on the
+        // UI thread.
+        helper.setTextureSize(targetWidth, targetHeight)
         helper.startListening { frame: VideoFrame ->
-            framesSeen++
-            if (framesSeen == 1L) Log.i("KidiCameraKit", "first frame delivered to LiveKit")
+            val now = frame.timestampNs
+            if (lastDeliveredNs != 0L && now - lastDeliveredNs < minIntervalNs) {
+                frame.release()
+                return@startListening
+            }
+            lastDeliveredNs = now
+            val count = framesSeen.incrementAndGet()
+            if (count == 1L) Log.i("KidiCameraKit", "first frame delivered to LiveKit")
             onFrame()
             observer?.onFrameCaptured(frame)
         }
@@ -1051,8 +1077,9 @@ private class CameraKitSurfaceCapturer(
     }
 
     override fun stopCapture() {
-        Log.i("KidiCameraKit", "capturer stopCapture after $framesSeen frames")
-        framesSeen = 0L
+        Log.i("KidiCameraKit", "capturer stopCapture after ${framesSeen.get()} frames")
+        framesSeen.set(0)
+        lastDeliveredNs = 0L
         output?.close()
         output = null
         surface?.release()
@@ -1061,7 +1088,17 @@ private class CameraKitSurfaceCapturer(
         observer?.onCapturerStopped()
     }
 
-    override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) = Unit
+    /** Live step-down: resize the shared texture and re-throttle. No republish,
+     * no camera restart — the encoder simply receives smaller frames. */
+    override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) {
+        if (width > 0 && height > 0) {
+            targetWidth = width
+            targetHeight = height
+            runCatching { helper?.setTextureSize(width, height) }
+        }
+        if (framerate > 0) minIntervalNs = 1_000_000_000L / framerate - 2_000_000L
+        Log.i("KidiCameraKit", "capturer changeCaptureFormat ${width}x${height}@$framerate")
+    }
 
     override fun dispose() {
         stopCapture()
