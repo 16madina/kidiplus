@@ -826,8 +826,19 @@ export const BroadcastVideo = forwardRef<BroadcastVideoHandle, BroadcastVideoPro
           setNativeActive(false);
           phase = "connect";
 
+          // Open the camera WHILE the room connects: both take ~0.5-1.5s and
+          // do not depend on each other.
+          const cameraPromise =
+            !isRtmp && enabled
+              ? createHostLocalVideoTrack({ facingMode: facingRef.current })
+              : null;
+          cameraPromise?.catch(() => {});
 
-          const room = await connectRoom(url, token);
+          const room = await connectRoom(url, token).catch(async (e) => {
+            const t = await cameraPromise?.catch(() => null);
+            t?.stop();
+            throw e;
+          });
           if (cancelled) {
             await disconnectRoom(room);
             return;
