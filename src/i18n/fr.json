@@ -19,7 +19,7 @@
   },
   "gifts": {
     "title": "Envoyer un cadeau",
-    "subtitle": "Le vendeur reçoit 70% du montant",
+    "subtitle": "Le vendeur reçoit 80% du montant",
     "open": "Cadeaux",
     "short": "Cadeaux 🎁",
     "walletBalance": "Solde",
