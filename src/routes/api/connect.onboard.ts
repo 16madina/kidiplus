@@ -18,7 +18,7 @@ import {
   statusFromAccount,
   stripeForEnv,
 } from "@/lib/stripe-connect.server";
-import { connectReturnOrigin } from "@/lib/paypal-public-origin";
+import { connectReturnOriginForMode } from "@/lib/paypal-public-origin";
 
 export const Route = createFileRoute("/api/connect/onboard")({
   server: {
@@ -152,7 +152,7 @@ export const Route = createFileRoute("/api/connect/onboard")({
             await admin.from("profiles").update({ country }).eq("id", userId);
           }
 
-          const appOrigin = connectReturnOrigin(request);
+          const appOrigin = connectReturnOriginForMode(request, connect.env === "live");
           const link = await stripe.accountLinks.create({
             account: accountId,
             refresh_url: `${appOrigin}/connect-return?refresh=1`,
