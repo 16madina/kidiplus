@@ -108,7 +108,10 @@ export const Route = createFileRoute("/api/connect/onboard")({
               type: "express" as const,
               country,
               email: typeof p.email === "string" ? p.email : undefined,
-              default_currency: currency.toLowerCase(),
+              // No default_currency: Stripe rejects pairs like EUR + CA
+              // ("Stripe currently doesn't support currency eur with country CA").
+              // The account keeps its country's native currency; cross-currency
+              // transfers are converted by Stripe at payout time.
               // No business_type: Stripe's hosted onboarding asks the seller
               // whether they are an individual or a company and collects the
               // matching fields.
