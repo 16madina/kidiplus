@@ -25,7 +25,7 @@ export const PLATFORM_FEE_RATE = PLATFORM_FEE_PERCENT / 100;
  * The remainder credits the seller's available balance instantly (no escrow —
  * nothing to deliver). Mirrored server-side in the `send_gift` RPC.
  */
-export const GIFT_FEE_PERCENT = 30;
+export const GIFT_FEE_PERCENT = 20;
 
 /**
  * Escrow window: seller funds move from `pending` to `available` once the

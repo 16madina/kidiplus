@@ -19,7 +19,7 @@
   },
   "gifts": {
     "title": "Send a gift",
-    "subtitle": "The seller keeps 70% of the amount",
+    "subtitle": "The seller keeps 80% of the amount",
     "open": "Gifts",
     "short": "Gifts 🎁",
     "walletBalance": "Balance",
