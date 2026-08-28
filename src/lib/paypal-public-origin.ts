@@ -70,3 +70,13 @@ export function connectReturnOrigin(request: Request): string {
   }
   return publicAppOrigin(request);
 }
+
+/**
+ * Same as connectReturnOrigin, but Stripe livemode rejects non-HTTPS
+ * return/refresh URLs — fall back to the public https origin then.
+ */
+export function connectReturnOriginForMode(request: Request, live: boolean): string {
+  const origin = connectReturnOrigin(request);
+  if (live && !origin.startsWith("https:")) return publicAppOrigin(request);
+  return origin;
+}
