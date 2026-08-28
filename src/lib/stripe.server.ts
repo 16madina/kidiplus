@@ -32,10 +32,21 @@ const GATEWAY_STRIPE_BASE = "https://connector-gateway.lovable.dev/stripe";
 const MANAGED_SANDBOX_PUBLISHABLE_KEY =
   "pk_test_51TpirRPyczv2Aj3VhOa9l3nPZeChZHglpkH8sYGPabcV7iIwx9hnSwndiaA5L0NeNFMtATC8uE9Xv7th3K16ooEF00jY9h264C";
 
+// Managed LIVE publishable token. Preview builds are compiled with the test
+// token from .env.development, even when PAYMENTS_MODE pins server requests to
+// live. Returning the preview token in that case makes Stripe.js reject the
+// live PaymentIntent because the two belong to different Stripe accounts.
+const MANAGED_LIVE_PUBLISHABLE_KEY =
+  "pk_live_51SYGiOPn7aesiMlZ5jZn4DXo2Ar0cUHtVcSiVHqB1pBeLLqc0R3jnTtKNTG9lL8hrczOuWtLXkIMk2OQErb8Z94A00pSA5DBMx";
+
 function managedSandboxPublishableKey(): string {
   return (
     process.env.STRIPE_SANDBOX_PUBLISHABLE_KEY?.trim() || MANAGED_SANDBOX_PUBLISHABLE_KEY
   );
+}
+
+function managedLivePublishableKey(): string {
+  return process.env.STRIPE_LIVE_PUBLISHABLE_KEY?.trim() || MANAGED_LIVE_PUBLISHABLE_KEY;
 }
 
 /** Mode of the BYOK STRIPE_SECRET_KEY, if any. */
@@ -182,6 +193,13 @@ export function getStripeConfig(hint?: StripeEnv | null, opts?: StripeClientOpts
   // STRIPE_SANDBOX_API_KEY (the client prefers the server-provided key).
   if (env === "sandbox" && !publishableKey.startsWith("pk_test_") && !legacySecret) {
     publishableKey = managedSandboxPublishableKey();
+  }
+
+  // The inverse matters in preview: its bundled VITE token is pk_test_, while
+  // PAYMENTS_MODE=live correctly routes PI creation through the live gateway.
+  // Always return a key for the effective managed environment.
+  if (env === "live" && !publishableKey.startsWith("pk_live_") && !legacySecret) {
+    publishableKey = managedLivePublishableKey();
   }
 
 
