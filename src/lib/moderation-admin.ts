@@ -144,6 +144,12 @@ export async function adminSendMessage(userId: string, title: string, body: stri
   return data as { ok: boolean; id?: string; error?: string };
 }
 
+export async function adminActionReport(reportId: string) {
+  const { data, error } = await sb.rpc("admin_action_report", { _report_id: reportId });
+  if (error) return { ok: false as const, error: error.message };
+  return data as { ok: boolean; removed?: boolean; kind?: string | null; owner_id?: string | null; error?: string };
+}
+
 export async function adminResolveReport(reportId: string, status: "reviewed" | "actioned" | "dismissed", note?: string | null) {
   const { data, error } = await sb.rpc("admin_resolve_report", {
     _report_id: reportId, _status: status, _note: note ?? null,
