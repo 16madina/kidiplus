@@ -173,7 +173,7 @@ export function ReportsTab({
         targetHandle={sanctionTarget?.handle ?? null}
         onDone={async () => {
           if (sanctionTarget) {
-            await adminResolveReport(sanctionTarget.reportId, "actioned", null);
+            await adminActionReport(sanctionTarget.reportId);
           }
           setSanctionTarget(null);
           await load();
