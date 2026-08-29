@@ -11,6 +11,7 @@ import { haptic } from "@/lib/haptics";
 import {
   adminEndLive,
   adminResolveReport,
+  adminActionReport,
   adminRevokeSanction,
   adminSendMessage,
   fetchAdminReports,
