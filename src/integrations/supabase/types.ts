@@ -2999,11 +2999,19 @@ export type Database = {
         Args: { _confirm: boolean; _order_id: string }
         Returns: Json
       }
+      _report_content_ref: {
+        Args: { _note: string; _target_id: string; _target_type: string }
+        Returns: {
+          content_id: string
+          kind: string
+        }[]
+      }
       _settle_expired_auction_row: {
         Args: { _live_id: string; _product_id: string }
         Returns: undefined
       }
       account_deletion_check: { Args: never; Returns: Json }
+      admin_action_report: { Args: { _report_id: string }; Returns: Json }
       admin_assign_promo_code: {
         Args: { _id: string; _owner_id: string }
         Returns: Json
