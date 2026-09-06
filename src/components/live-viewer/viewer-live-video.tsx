@@ -25,6 +25,8 @@ import {
 } from "@/lib/pip-session";
 import { Room } from "livekit-client";
 import { BattleSplitDivider, BATTLE_VIDEO_DOCK_STYLE } from "@/components/battle/battle-split-chrome";
+import type { LiveFxPayload } from "@/lib/live-fx";
+import { LiveFxOverlay } from "./live-fx-overlay";
 
 export type ViewerLiveVideoProps = {
   room: string;
@@ -36,6 +38,8 @@ export type ViewerLiveVideoProps = {
   layout?: "single" | "split";
   splitHostName?: string | null;
   splitGuestName?: string | null;
+  /** Poster/tint/blur metadata mirrored by the native host. */
+  fx?: LiveFxPayload;
 };
 
 export type ViewerStatus =
@@ -220,6 +224,7 @@ export function ViewerLiveVideo({
   layout = "single",
   splitHostName,
   splitGuestName,
+  fx,
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -764,6 +769,7 @@ export function ViewerLiveVideo({
             muted
             className="absolute inset-0 h-full w-full object-cover"
           />
+          {fx ? <LiveFxOverlay fx={fx} /> : null}
           {layout === "split" && splitHostName ? (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-7">
               <p className="truncate text-[11px] font-bold text-white">{splitHostName}</p>

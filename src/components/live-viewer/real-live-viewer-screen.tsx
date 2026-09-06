@@ -1089,7 +1089,8 @@ export function RealLiveViewerScreen() {
           identity={isGuest ? identity : `viewer_${identity.slice(0, 8)}`}
           name={displayName}
           posterImage={active.thumbnail.replace("w=600", "w=1200")}
-            onStatus={handleVideoStatus}
+          fx={room.fx}
+          onStatus={handleVideoStatus}
         />
       ) : (
         <img src={active.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -1850,4 +1851,3 @@ function SwipeHint({ hasNext }: { hasNext: boolean }) {
     </motion.div>
   );
 }
-

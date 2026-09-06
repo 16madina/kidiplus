@@ -25,6 +25,14 @@ import {
   type LiveProductRow,
 } from "@/lib/lives-db";
 import { isSimBidderId } from "@/lib/prelaunch-live-sim";
+import {
+  EMPTY_LIVE_FX,
+  LIVE_FX_EVENT,
+  LIVE_FX_REQUEST_EVENT,
+  liveFxChannelName,
+  sanitizeLiveFx,
+  type LiveFxPayload,
+} from "@/lib/live-fx";
 
 /** Resolve the stored image_url path (bucket path) into a signed/absolute URL.
  *  Signing can transiently fail (auth not yet attached / network warmup); we
@@ -219,6 +227,7 @@ export type LiveRoomState = {
     auctionRound: number;
   } | null;
   lastGift: GiftEvt | null;
+  fx: LiveFxPayload;
   sendChat: (text: string, replyTo?: ChatReplyTo) => void;
   /** Pre-launch crowd: overlay viewer pill (host broadcasts, all clients apply). */
   broadcastSimViewers: (count: number) => void;
@@ -301,6 +310,7 @@ export function useLiveRoom(params: {
   const [lastExtension, setLastExtension] = useState<AuctionExtendEvt | null>(null);
   const [lastBid, setLastBid] = useState<LiveRoomState["lastBid"]>(null);
   const [lastGift, setLastGift] = useState<GiftEvt | null>(null);
+  const [fx, setFx] = useState<LiveFxPayload>(EMPTY_LIVE_FX);
   const productsRef = useRef<LiveProductRow[]>([]);
   productsRef.current = products;
 
@@ -445,6 +455,7 @@ export function useLiveRoom(params: {
     setLastExtension(null);
     setLastBid(null);
     setLastGift(null);
+    setFx(EMPTY_LIVE_FX);
   }, [liveId]);
 
   // Drop lastGift after the animation window so remounting the viewer
@@ -789,6 +800,54 @@ export function useLiveRoom(params: {
     };
   }, [liveId, isHost]);
 
+  // Viewer-only FX transport. Keep it separate from `live:<id>` so no
+  // callback is added to an already subscribed room channel. A late viewer
+  // asks the host to replay the latest visual state.
+  useEffect(() => {
+    if (!liveId || isHost) return;
+
+    let active = true;
+    let ownedChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    void (async () => {
+      const channelName = liveFxChannelName(liveId);
+      const topic = `realtime:${channelName}`;
+      const previousChannels = supabase
+        .getChannels()
+        .filter((candidate) => candidate.topic === topic);
+      for (const previous of previousChannels) {
+        await supabase.removeChannel(previous);
+      }
+      if (!active) return;
+
+      const channel = supabase.channel(channelName, {
+        config: { broadcast: { self: false, ack: true } },
+      });
+      ownedChannel = channel;
+
+      channel
+        .on("broadcast", { event: LIVE_FX_EVENT }, ({ payload }) => {
+          if (!active || ownedChannel !== channel) return;
+          setFx(sanitizeLiveFx(payload as Partial<LiveFxPayload>));
+        })
+        .subscribe((status) => {
+          if (!active || ownedChannel !== channel || status !== "SUBSCRIBED") return;
+          void channel.send({
+            type: "broadcast",
+            event: LIVE_FX_REQUEST_EVENT,
+            payload: { identity, at: Date.now() },
+          });
+        });
+    })();
+
+    return () => {
+      active = false;
+      const channel = ownedChannel;
+      ownedChannel = null;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [liveId, identity, isHost]);
+
   // Broadcast + presence channel.
   useEffect(() => {
     if (!liveId) return;
@@ -1128,6 +1187,7 @@ export function useLiveRoom(params: {
       lastExtension,
       lastBid,
       lastGift,
+      fx,
       broadcastSimViewers: (count) => {
         const clamped = Math.max(50, Math.min(160, Math.round(Number(count) || 50)));
         setSimViewerCount(clamped);
@@ -1306,6 +1366,7 @@ export function useLiveRoom(params: {
       lastExtension,
       lastBid,
       lastGift,
+      fx,
       identity,
       displayName,
       isHost,
