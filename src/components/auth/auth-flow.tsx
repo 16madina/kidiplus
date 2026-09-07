@@ -11,6 +11,7 @@ import { SignUpScreen } from "./sign-up-screen";
 import { ForgotPasswordScreen } from "./forgot-password-screen";
 import { useAuth } from "@/lib/auth-context";
 import { LegalScreen } from "@/components/legal/legal-screen";
+import { SocialLoginButtons } from "./social-buttons";
 import { AuthLanguageToggle } from "./auth-language-toggle";
 import badge from "@/assets/kidi-badge-v2.png.asset.json";
 import wordmark from "@/assets/kidi-wordmark.png.asset.json";
@@ -281,6 +282,22 @@ function Welcome({
           >
             {t("auth.welcome.signIn")}
           </Press>
+
+          <div
+            className="w-full"
+            style={{ opacity: acceptTerms ? 1 : 0.55 }}
+            onClickCapture={(e) => {
+              if (!acceptTerms) {
+                e.preventDefault();
+                e.stopPropagation();
+                toast.error(t("consent.required"));
+              }
+            }}
+          >
+            <SocialLoginButtons mode="signin" />
+          </div>
+
+
 
           {onGuest && (
             <>
