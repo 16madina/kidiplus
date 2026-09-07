@@ -5,7 +5,7 @@
 // and you have submitted a client secret JWT. Until then, keep it false
 // to avoid presenting an Apple button that fails with "Unsupported
 // provider" — Apple review reject risk.
-export const SHOW_APPLE_LOGIN = false;
+export const SHOW_APPLE_LOGIN = true;
 
 // Custom URL scheme registered by the native app (Info.plist
 // CFBundleURLTypes on iOS, AndroidManifest intent-filter on Android).

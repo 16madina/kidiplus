@@ -1537,6 +1537,7 @@ export type Database = {
           email_confirm_expires_at: string | null
           email_confirm_sent_at: string | null
           email_verified_at: string | null
+          first_name: string | null
           followers_count: number
           following_count: number
           frozen_at: string | null
@@ -1551,12 +1552,22 @@ export type Database = {
           is_verified: boolean
           kyc_verified: boolean
           language: string
+          last_name: string | null
           moderation_status: string
+          payout_bank_holder: string | null
+          payout_bank_iban: string | null
+          payout_om_phone: string | null
+          payout_paypal_email: string | null
+          payout_wave_phone: string | null
           phone: string | null
           rating_avg: number
           rating_count: number
           risk_restricted: boolean
+          stripe_account_id: string | null
+          stripe_business_type: string | null
           stripe_connect_id: string | null
+          stripe_payouts_enabled: boolean | null
+          stripe_requirements_due: Json | null
           terms_accepted_at: string | null
           terms_version: string | null
           welcome_email_sent: boolean
@@ -1579,6 +1590,7 @@ export type Database = {
           email_confirm_expires_at?: string | null
           email_confirm_sent_at?: string | null
           email_verified_at?: string | null
+          first_name?: string | null
           followers_count?: number
           following_count?: number
           frozen_at?: string | null
@@ -1593,12 +1605,22 @@ export type Database = {
           is_verified?: boolean
           kyc_verified?: boolean
           language?: string
+          last_name?: string | null
           moderation_status?: string
+          payout_bank_holder?: string | null
+          payout_bank_iban?: string | null
+          payout_om_phone?: string | null
+          payout_paypal_email?: string | null
+          payout_wave_phone?: string | null
           phone?: string | null
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
+          stripe_account_id?: string | null
+          stripe_business_type?: string | null
           stripe_connect_id?: string | null
+          stripe_payouts_enabled?: boolean | null
+          stripe_requirements_due?: Json | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -1621,6 +1643,7 @@ export type Database = {
           email_confirm_expires_at?: string | null
           email_confirm_sent_at?: string | null
           email_verified_at?: string | null
+          first_name?: string | null
           followers_count?: number
           following_count?: number
           frozen_at?: string | null
@@ -1635,12 +1658,22 @@ export type Database = {
           is_verified?: boolean
           kyc_verified?: boolean
           language?: string
+          last_name?: string | null
           moderation_status?: string
+          payout_bank_holder?: string | null
+          payout_bank_iban?: string | null
+          payout_om_phone?: string | null
+          payout_paypal_email?: string | null
+          payout_wave_phone?: string | null
           phone?: string | null
           rating_avg?: number
           rating_count?: number
           risk_restricted?: boolean
+          stripe_account_id?: string | null
+          stripe_business_type?: string | null
           stripe_connect_id?: string | null
+          stripe_payouts_enabled?: boolean | null
+          stripe_requirements_due?: Json | null
           terms_accepted_at?: string | null
           terms_version?: string | null
           welcome_email_sent?: boolean
@@ -3027,6 +3060,7 @@ export type Database = {
         Args: { _reason: string; _user_id: string }
         Returns: Json
       }
+      admin_get_payout_methods: { Args: { _user_id: string }; Returns: Json }
       admin_get_prelaunch_live_sim: { Args: never; Returns: string }
       admin_issue_sanction: {
         Args: {
@@ -3249,6 +3283,7 @@ export type Database = {
       find_dm_thread: { Args: { _other: string }; Returns: string }
       fx_rate: { Args: { _from: string; _to: string }; Returns: number }
       get_my_email: { Args: never; Returns: string }
+      get_my_payout_methods: { Args: never; Returns: Json }
       get_prelaunch_live_sim: { Args: never; Returns: string }
       get_seller_delivery_settings: {
         Args: { _seller_id: string }
@@ -3426,6 +3461,7 @@ export type Database = {
       sync_my_wallet_currency: { Args: never; Returns: Json }
       touch_live_host: { Args: { _live_id: string }; Returns: Json }
       unblock_user: { Args: { _blocked_id: string }; Returns: Json }
+      update_my_payout_methods: { Args: { _patch: Json }; Returns: Json }
       validate_promo_code: { Args: { _code: string }; Returns: Json }
       verification_eligibility: { Args: { _user: string }; Returns: Json }
     }
@@ -3446,12 +3482,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3475,11 +3511,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3500,11 +3536,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3525,11 +3561,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3542,11 +3578,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
