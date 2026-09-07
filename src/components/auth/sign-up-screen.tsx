@@ -10,6 +10,7 @@ import { LegalScreen } from "@/components/legal/legal-screen";
 import { TERMS_VERSION } from "@/lib/legal-content";
 import { validatePromoCode, applyPromoCode } from "@/lib/referrals-db";
 import { CountryFlag } from "@/components/country-flag";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 
 type CountryChoice = { code: string; name: string; value: string };
 const COUNTRIES: CountryChoice[] = [
@@ -180,6 +181,9 @@ export function SignUpScreen({
           {t("auth.signUp.subtitle")}
         </p>
       </div>
+
+      <SocialLoginButtons mode="signup" />
+      <OrDivider />
 
       <form onSubmit={submit} className="flex flex-col gap-3 pb-6">
         <AuthInput

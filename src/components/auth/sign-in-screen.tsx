@@ -15,6 +15,7 @@ import {
 } from "@/lib/biometric";
 import { toast } from "sonner";
 import { LegalScreen } from "@/components/legal/legal-screen";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 
 export function SignInScreen({
   onBack,
@@ -121,6 +122,9 @@ export function SignInScreen({
           {t("auth.signIn.subtitle")}
         </p>
       </div>
+
+      <SocialLoginButtons mode="signin" />
+      <OrDivider />
 
       <form onSubmit={submit} className="flex flex-col gap-3">
 
