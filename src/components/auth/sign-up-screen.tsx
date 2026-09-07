@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2, Check, X as XIcon, ChevronDown } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
@@ -180,6 +181,9 @@ export function SignUpScreen({
           {t("auth.signUp.subtitle")}
         </p>
       </div>
+
+      <SocialLoginButtons mode="signup" />
+      <OrDivider />
 
       <form onSubmit={submit} className="flex flex-col gap-3 pb-6">
         <AuthInput
