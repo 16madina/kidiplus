@@ -12,6 +12,7 @@ import { ForgotPasswordScreen } from "./forgot-password-screen";
 import { useAuth } from "@/lib/auth-context";
 import { LegalScreen } from "@/components/legal/legal-screen";
 import { AuthLanguageToggle } from "./auth-language-toggle";
+import { SocialLoginButtons } from "./social-buttons";
 import badge from "@/assets/kidi-badge-v2.png.asset.json";
 import wordmark from "@/assets/kidi-wordmark.png.asset.json";
 import bg1 from "@/assets/welcome-bgs/auth-bg-1.png.asset.json";
@@ -281,6 +282,20 @@ function Welcome({
           >
             {t("auth.welcome.signIn")}
           </Press>
+
+          <div
+            className="w-full"
+            style={{ opacity: acceptTerms ? 1 : 0.55 }}
+            onClickCapture={(e) => {
+              if (!acceptTerms) {
+                e.preventDefault();
+                e.stopPropagation();
+                requireTerms(() => {});
+              }
+            }}
+          >
+            <SocialLoginButtons mode="signin" />
+          </div>
 
           {onGuest && (
             <>
