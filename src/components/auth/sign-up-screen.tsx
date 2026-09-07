@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2, Check, X as XIcon, ChevronDown } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 import { Press } from "@/components/press";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
@@ -10,7 +11,6 @@ import { LegalScreen } from "@/components/legal/legal-screen";
 import { TERMS_VERSION } from "@/lib/legal-content";
 import { validatePromoCode, applyPromoCode } from "@/lib/referrals-db";
 import { CountryFlag } from "@/components/country-flag";
-import { SocialLoginButtons, OrDivider } from "./social-buttons";
 
 type CountryChoice = { code: string; name: string; value: string };
 const COUNTRIES: CountryChoice[] = [

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Fingerprint, Loader2, ScanFace } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
+import { SocialLoginButtons, OrDivider } from "./social-buttons";
 import { AuthScreenShell, AuthInput } from "./auth-shell";
 import { useAuth, frenchAuthError } from "@/lib/auth-context";
 import { haptic } from "@/lib/haptics";
@@ -15,7 +16,6 @@ import {
 } from "@/lib/biometric";
 import { toast } from "sonner";
 import { LegalScreen } from "@/components/legal/legal-screen";
-import { SocialLoginButtons, OrDivider } from "./social-buttons";
 
 export function SignInScreen({
   onBack,
