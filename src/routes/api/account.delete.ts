@@ -5,6 +5,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { isAllowedOrigin } from "@/lib/api-cors";
+import { AppleRevokeError, revokeAppleAuthorizationCode } from "@/lib/apple-revoke.server";
 function corsHeaders(origin: string | null): HeadersInit {
   const base: Record<string, string> = {
     Vary: "Origin",
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/api/account/delete")({
         if (userErr || !userRes.user) return json({ error: "unauthorized" }, 401, origin);
         const userId = userRes.user.id;
 
-        let body: { confirm?: unknown };
+        let body: { confirm?: unknown; client?: unknown; appleAuthorizationCode?: unknown };
         try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
         if (body?.confirm !== "DELETE") {
           return json({ error: "confirm_required" }, 400, origin);
@@ -64,6 +65,39 @@ export const Route = createFileRoute("/api/account/delete")({
           return json({ error: "has_blockers", ...c }, 409, origin);
         }
 
+        const appleIdentity = userRes.user.identities?.find(
+          (identity) => identity.provider === "apple",
+        );
+        if (appleIdentity && body.client === "ios_native") {
+          const appleSubject =
+            typeof appleIdentity.identity_data?.sub === "string"
+              ? appleIdentity.identity_data.sub
+              : appleIdentity.id;
+          if (
+            typeof body.appleAuthorizationCode !== "string" ||
+            !body.appleAuthorizationCode.trim()
+          ) {
+            return json({ error: "apple_authorization_required" }, 428, origin);
+          }
+          try {
+            await revokeAppleAuthorizationCode(
+              body.appleAuthorizationCode.trim(),
+              appleSubject,
+            );
+          } catch (error) {
+            const code =
+              error instanceof AppleRevokeError ? error.code : "apple_revoke_failed";
+            const status =
+              code === "apple_revoke_not_configured"
+                ? 503
+                : code === "apple_identity_mismatch"
+                  ? 403
+                  : 502;
+            return json({ error: code }, status, origin);
+          }
+        }
+
+        // Apple must be revoked first. From here on, deletion is destructive.
         // Step 1 (as user): anonymise profile + end active lives
         const { error: rpcErr } = await supaAuth.rpc("anonymize_my_account");
         if (rpcErr) return json({ error: rpcErr.message }, 500, origin);
