@@ -38,14 +38,10 @@ export const Route = createFileRoute("/api/live-replay/stop")({
           return liveReplayJson({ error: "Missing liveId" }, 400, origin);
         }
 
-        const { supabaseAdmin } = await import(
-          "@/integrations/supabase/client.server"
-        );
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: liveRow, error: liveError } = await supabaseAdmin
           .from("lives")
-          .select(
-            "id, seller_id, replay_egress_id, replay_status, replay_storage_path, ended_at",
-          )
+          .select("id, seller_id, replay_egress_id, replay_status, replay_storage_path, ended_at")
           .eq("id", liveId)
           .maybeSingle();
 
@@ -90,11 +86,7 @@ export const Route = createFileRoute("/api/live-replay/stop")({
                   info,
                 });
                 if (result === "ready" || result === "failed") {
-                  return liveReplayJson(
-                    { ok: true, status: result },
-                    200,
-                    origin,
-                  );
+                  return liveReplayJson({ ok: true, status: result }, 200, origin);
                 }
                 if (
                   info.status === EgressStatus.EGRESS_COMPLETE ||
@@ -111,13 +103,28 @@ export const Route = createFileRoute("/api/live-replay/stop")({
           }
         }
 
+        // Only transition the state we originally read. The LiveKit webhook can
+        // complete while the short poll above is still running; an unconditional
+        // update here used to overwrite `ready` with `processing`.
         await supabaseAdmin
           .from("lives")
           .update({ replay_status: "processing" } as never)
           .eq("id", liveId)
-          .eq("replay_egress_id", egressId);
+          .eq("replay_egress_id", egressId)
+          .eq("replay_status", "recording");
 
-        return liveReplayJson({ ok: true, status: "processing" }, 200, origin);
+        const { data: current } = await supabaseAdmin
+          .from("lives")
+          .select("replay_status")
+          .eq("id", liveId)
+          .eq("replay_egress_id", egressId)
+          .maybeSingle();
+
+        return liveReplayJson(
+          { ok: true, status: current?.replay_status ?? "processing" },
+          200,
+          origin,
+        );
       },
     },
   },

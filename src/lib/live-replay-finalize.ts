@@ -32,9 +32,7 @@ export function resolvePublicReplayUrl(
   return null;
 }
 
-export function extractReplayStoragePath(
-  filepath: string | undefined | null,
-): string | null {
+export function extractReplayStoragePath(filepath: string | undefined | null): string | null {
   if (!filepath) return null;
   const trimmed = filepath.trim();
   if (!trimmed) return null;
@@ -67,9 +65,7 @@ export async function markReplayReady(opts: {
   replayUrl: string;
   endedAt: string | null;
 }): Promise<void> {
-  const { supabaseAdmin } = await import(
-    "@/integrations/supabase/client.server"
-  );
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const baseDate = opts.endedAt ? new Date(opts.endedAt) : new Date();
   const expiresAt = liveReplayExpiresAt(
     Number.isFinite(baseDate.getTime()) ? baseDate : new Date(),
@@ -94,9 +90,7 @@ export async function applyEgressInfoToLive(opts: {
   storedPath: string | null;
   info: EgressInfo;
 }): Promise<"ready" | "failed" | "pending" | "ignored"> {
-  const { supabaseAdmin } = await import(
-    "@/integrations/supabase/client.server"
-  );
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const status = opts.info.status;
 
   const failed =
@@ -122,12 +116,9 @@ export async function applyEgressInfoToLive(opts: {
 
   const fileResult = opts.info.fileResults?.[0];
   const resultFile = fileResult?.filename || fileResult?.location || null;
-  const locationHint =
-    typeof fileResult?.location === "string" ? fileResult.location : null;
+  const locationHint = typeof fileResult?.location === "string" ? fileResult.location : null;
   const storagePath =
-    extractReplayStoragePath(resultFile) ??
-    normalizeReplayStoragePath(opts.storedPath) ??
-    null;
+    extractReplayStoragePath(resultFile) ?? normalizeReplayStoragePath(opts.storedPath) ?? null;
 
   if (!storagePath) {
     await supabaseAdmin
@@ -146,12 +137,7 @@ export async function applyEgressInfoToLive(opts: {
         ? fileResult.size
         : null;
   if (size != null && size < 8_000) {
-    console.error(
-      "[live-replay] egress file too small",
-      opts.liveId,
-      opts.egressId,
-      size,
-    );
+    console.error("[live-replay] egress file too small", opts.liveId, opts.egressId, size);
     await supabaseAdmin
       .from("lives")
       .update({
@@ -179,10 +165,10 @@ export async function applyEgressInfoToLive(opts: {
   }
 
   if (locationHint && isPrivateObjectStorageUrl(locationHint)) {
-    console.info(
-      "[live-replay] ignoring private storage location; using public base URL",
-      { liveId: opts.liveId, publicUrl: replayUrl },
-    );
+    console.info("[live-replay] ignoring private storage location; using public base URL", {
+      liveId: opts.liveId,
+      publicUrl: replayUrl,
+    });
   }
 
   await markReplayReady({
@@ -201,23 +187,34 @@ export async function repairLiveReplayPublicUrl(liveId: string): Promise<{
   url?: string;
   error?: string;
 }> {
-  const { supabaseAdmin } = await import(
-    "@/integrations/supabase/client.server"
-  );
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: row } = await supabaseAdmin
     .from("lives")
-    .select("id, replay_status, replay_url, replay_storage_path")
+    .select(
+      "id, replay_status, replay_url, replay_storage_path, replay_ready_at, replay_expires_at",
+    )
     .eq("id", liveId)
     .maybeSingle();
 
   if (!row) return { ok: false, error: "not_found" };
-  if (row.replay_status !== "ready") {
+  const readyButStale =
+    row.replay_status === "processing" &&
+    Boolean(row.replay_ready_at) &&
+    Boolean(row.replay_url || row.replay_storage_path);
+  if (row.replay_status !== "ready" && !readyButStale) {
     return { ok: false, error: "not_ready" };
   }
 
+  if (row.replay_expires_at && new Date(row.replay_expires_at).getTime() <= Date.now()) {
+    await supabaseAdmin
+      .from("lives")
+      .update({ replay_status: "expired", replay_url: null } as never)
+      .eq("id", liveId);
+    return { ok: false, error: "expired" };
+  }
+
   const path =
-    normalizeReplayStoragePath(row.replay_storage_path) ??
-    extractReplayStoragePath(row.replay_url);
+    normalizeReplayStoragePath(row.replay_storage_path) ?? extractReplayStoragePath(row.replay_url);
 
   if (!path) return { ok: false, error: "no_path" };
 
@@ -225,17 +222,21 @@ export async function repairLiveReplayPublicUrl(liveId: string): Promise<{
   if (!url) return { ok: false, error: "no_public_base" };
 
   const needsUpdate =
-    !row.replay_url ||
-    row.replay_url !== url ||
-    isPrivateObjectStorageUrl(row.replay_url);
+    !row.replay_url || row.replay_url !== url || isPrivateObjectStorageUrl(row.replay_url);
 
   if (needsUpdate) {
     await supabaseAdmin
       .from("lives")
       .update({
+        replay_status: "ready",
         replay_url: url,
         replay_storage_path: path,
       } as never)
+      .eq("id", liveId);
+  } else if (readyButStale) {
+    await supabaseAdmin
+      .from("lives")
+      .update({ replay_status: "ready" } as never)
       .eq("id", liveId);
   }
 
