@@ -655,6 +655,21 @@ export function ViewerLiveVideo({
     }
   }, [isIosNative, inSystemPip, appActive, pipHold]);
 
+  // Silent preview mode (home full-screen browsing): keep both remote audio
+  // elements muted until the viewer actually joins the live.
+  useEffect(() => {
+    const a = audioRef.current;
+    const b = audioBRef.current;
+    if (a) {
+      a.muted = muted;
+      a.volume = muted ? 0 : 1;
+    }
+    if (b) {
+      b.muted = muted;
+      b.volume = muted ? 0 : 1;
+    }
+  }, [muted, status]);
+
   // Android WebView PiP: keep kicking BOTH elements — otherwise the bubble
   // often keeps only one of video/audio after the Activity resize.
   useEffect(() => {
