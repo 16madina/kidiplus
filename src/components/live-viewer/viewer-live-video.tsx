@@ -640,8 +640,8 @@ export function ViewerLiveVideo({
       }
       return;
     }
-    if (audio) audio.muted = false;
-    if (audioB) audioB.muted = false;
+    if (audio) audio.muted = mutedRef.current;
+    if (audioB) audioB.muted = mutedRef.current;
     // App backgrounded but native PiP not up yet — keep WebView playing so
     // there's no black gap; iOS may still freeze WKWebView, native takes over.
     const r = roomRef.current;
