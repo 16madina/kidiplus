@@ -40,6 +40,8 @@ export type ViewerLiveVideoProps = {
   splitGuestName?: string | null;
   /** Poster/tint/blur metadata mirrored by the native host. */
   fx?: LiveFxPayload;
+  /** Silent preview (home full-screen browsing) — no remote audio playback. */
+  muted?: boolean;
 };
 
 export type ViewerStatus =
@@ -225,8 +227,11 @@ export function ViewerLiveVideo({
   splitHostName,
   splitGuestName,
   fx,
+  muted = false,
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
