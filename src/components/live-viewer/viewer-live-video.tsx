@@ -40,6 +40,8 @@ export type ViewerLiveVideoProps = {
   splitGuestName?: string | null;
   /** Poster/tint/blur metadata mirrored by the native host. */
   fx?: LiveFxPayload;
+  /** Silent preview (home full-screen browsing) — no remote audio playback. */
+  muted?: boolean;
 };
 
 export type ViewerStatus =
@@ -225,8 +227,11 @@ export function ViewerLiveVideo({
   splitHostName,
   splitGuestName,
   fx,
+  muted = false,
 }: ViewerLiveVideoProps) {
   const { t } = useTranslation();
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -635,8 +640,8 @@ export function ViewerLiveVideo({
       }
       return;
     }
-    if (audio) audio.muted = false;
-    if (audioB) audioB.muted = false;
+    if (audio) audio.muted = mutedRef.current;
+    if (audioB) audioB.muted = mutedRef.current;
     // App backgrounded but native PiP not up yet — keep WebView playing so
     // there's no black gap; iOS may still freeze WKWebView, native takes over.
     const r = roomRef.current;
@@ -649,6 +654,21 @@ export function ViewerLiveVideo({
       setStatus("live");
     }
   }, [isIosNative, inSystemPip, appActive, pipHold]);
+
+  // Silent preview mode (home full-screen browsing): keep both remote audio
+  // elements muted until the viewer actually joins the live.
+  useEffect(() => {
+    const a = audioRef.current;
+    const b = audioBRef.current;
+    if (a) {
+      a.muted = muted;
+      a.volume = muted ? 0 : 1;
+    }
+    if (b) {
+      b.muted = muted;
+      b.volume = muted ? 0 : 1;
+    }
+  }, [muted, status]);
 
   // Android WebView PiP: keep kicking BOTH elements — otherwise the bubble
   // often keeps only one of video/audio after the Activity resize.
