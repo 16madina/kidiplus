@@ -27,7 +27,7 @@ const TEMPLATES: Template[] = [
     label: "Bienvenue",
     emoji: "👋",
     title: "Bienvenue sur KiDi+ 🎉",
-    body: "Découvre les lives en cours et fais tes premières enchères !",
+    body: "Va sur ta page profil et demande ton code promo pour commencer à gagner de l'argent !",
   },
   {
     id: "warning",
