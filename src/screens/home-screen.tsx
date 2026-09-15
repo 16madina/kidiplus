@@ -41,6 +41,7 @@ import { HomeLivePager } from "@/components/home/home-live-pager";
 
 
 const PAGE = 12;
+const HOME_VIEW_KEY = "kidi:home-view-mode";
 const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
 /** Safety-net poll while Home is visible — Android WebViews often drop Realtime. */
@@ -65,6 +66,23 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
+  // Cards (default) vs TikTok-style full-screen browsing. Remembered locally.
+  const [immersive, setImmersive] = useState(false);
+  useEffect(() => {
+    try {
+      setImmersive(localStorage.getItem(HOME_VIEW_KEY) === "immersive");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const setViewMode = useCallback((next: boolean) => {
+    setImmersive(next);
+    try {
+      localStorage.setItem(HOME_VIEW_KEY, next ? "immersive" : "grid");
+    } catch {
+      /* ignore */
+    }
+  }, []);
   const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
 
