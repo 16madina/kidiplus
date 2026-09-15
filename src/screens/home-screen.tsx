@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
-import { Bell, Check, Moon, Sun, Loader2, Store } from "lucide-react";
+import { Bell, Check, Moon, Sun, Loader2, Store, Rows3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
@@ -37,9 +37,11 @@ import { useActivityOverlay } from "@/lib/activity-overlay-context";
 import { UpcomingLivesRow } from "@/components/home/upcoming-lives-row";
 import { DemoCard, DemoCardSkeleton, DemoPlayer, useDemoVideo } from "@/components/home/demo-card";
 import { HostOpenLiveBanner } from "@/components/home/host-open-live-banner";
+import { HomeLivePager } from "@/components/home/home-live-pager";
 
 
 const PAGE = 12;
+const HOME_VIEW_KEY = "kidi:home-view-mode";
 const PULL_TRIGGER = 72;
 const PULL_MAX = 120;
 /** Safety-net poll while Home is visible — Android WebViews often drop Realtime. */
@@ -64,6 +66,23 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
+  // Cards (default) vs TikTok-style full-screen browsing. Remembered locally.
+  const [immersive, setImmersive] = useState(false);
+  useEffect(() => {
+    try {
+      setImmersive(localStorage.getItem(HOME_VIEW_KEY) === "immersive");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const setViewMode = useCallback((next: boolean) => {
+    setImmersive(next);
+    try {
+      localStorage.setItem(HOME_VIEW_KEY, next ? "immersive" : "grid");
+    } catch {
+      /* ignore */
+    }
+  }, []);
   const { ok: demoAvailable, url: demoUrl, coverUrl: demoCoverUrl } = useDemoVideo();
   const { open: openStream, openList } = useLiveViewer();
 
@@ -289,6 +308,17 @@ export function HomeScreen() {
           </div>
           <div className="flex items-center gap-1">
             <Press
+              aria-label={t("home.immersive.enter", "Vue plein écran")}
+              className="h-11 w-11 rounded-full"
+              style={{ color: "var(--foreground)" }}
+              onClick={() => {
+                haptic.light();
+                setViewMode(true);
+              }}
+            >
+              <Rows3 size={21} strokeWidth={1.9} />
+            </Press>
+            <Press
               aria-label={t("home.header.notifications", "Notifications")}
               className="relative h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
@@ -494,6 +524,13 @@ export function HomeScreen() {
         }}
       />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
+      {immersive && filtered.length > 0 && (
+        <HomeLivePager
+          streams={filtered}
+          onClose={() => setViewMode(false)}
+          onEnter={(i) => openList(filtered, i)}
+        />
+      )}
     </div>
   );
 }
