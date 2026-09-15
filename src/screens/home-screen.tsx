@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
-import { Bell, Check, Moon, Sun, Loader2, Store, LayoutGrid, Rows3 } from "lucide-react";
+import { Bell, Check, Moon, Sun, Loader2, Store, Rows3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Press } from "@/components/press";
 import { Logo } from "@/components/brand/logo";
