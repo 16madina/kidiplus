@@ -308,6 +308,17 @@ export function HomeScreen() {
           </div>
           <div className="flex items-center gap-1">
             <Press
+              aria-label={t("home.immersive.enter", "Vue plein écran")}
+              className="h-11 w-11 rounded-full"
+              style={{ color: "var(--foreground)" }}
+              onClick={() => {
+                haptic.light();
+                setViewMode(true);
+              }}
+            >
+              <Rows3 size={21} strokeWidth={1.9} />
+            </Press>
+            <Press
               aria-label={t("home.header.notifications", "Notifications")}
               className="relative h-11 w-11 rounded-full"
               style={{ color: "var(--foreground)" }}
