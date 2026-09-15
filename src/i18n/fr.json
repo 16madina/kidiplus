@@ -260,6 +260,13 @@
       "new": "Nouveautés"
     },
     "livesNearYou": "Lives près de chez toi",
+    "immersive": {
+      "enter": "Vue plein écran",
+      "exit": "Revenir aux cartes",
+      "join": "Rejoindre le live",
+      "soundOn": "Activer le son",
+      "soundOff": "Couper le son"
+    },
     "empty": "Aucun live dans cette catégorie pour le moment.",
     "header": {
       "notifications": "Notifications",

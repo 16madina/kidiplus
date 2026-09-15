@@ -260,6 +260,13 @@
       "new": "New"
     },
     "livesNearYou": "Lives near you",
+    "immersive": {
+      "enter": "Full-screen view",
+      "exit": "Back to cards",
+      "join": "Join the live",
+      "soundOn": "Turn sound on",
+      "soundOff": "Mute"
+    },
     "empty": "No lives in this category right now.",
     "header": {
       "notifications": "Notifications",
