@@ -524,6 +524,13 @@ export function HomeScreen() {
         }}
       />
       <MyShopScreen open={shopOpen} onClose={() => setShopOpen(false)} />
+      {immersive && filtered.length > 0 && (
+        <HomeLivePager
+          streams={filtered}
+          onClose={() => setViewMode(false)}
+          onEnter={(i) => openList(filtered, i)}
+        />
+      )}
     </div>
   );
 }
