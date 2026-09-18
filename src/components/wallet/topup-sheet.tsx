@@ -872,6 +872,39 @@ export function TopUpSheet({
                     {t("common.cancel", { defaultValue: "Annuler" })}
                   </button>
                 </div>
+              ) : step.kind === "paydunya_waiting" ? (
+                <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
+                  <Loader2 className="animate-spin text-primary" size={28} />
+                  <p className="text-[15px] font-semibold">
+                    {t("wallet.topup.paydunyaWaiting", { defaultValue: "Paiement mobile money en cours…" })}
+                  </p>
+                  <p className="max-w-[280px] text-[12px] text-muted-foreground">
+                    {t("wallet.topup.paydunyaWaitingHint", {
+                      defaultValue:
+                        "Termine le paiement Wave / Orange Money. Dès qu'il est confirmé, ferme la fenêtre (Done / ✕) — KiDi+ se met à jour tout seul.",
+                    })}
+                  </p>
+                  <Press
+                    onClick={() => {
+                      closePaypalBrowser();
+                      void tryConfirmPaydunya(step.invoiceToken, step.amount);
+                    }}
+                    className="mt-1 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-bold text-primary-foreground"
+                  >
+                    {t("wallet.topup.paydunyaConfirmCta", { defaultValue: "J'ai payé — revenir" })}
+                  </Press>
+                  <button
+                    type="button"
+                    className="text-[12px] text-muted-foreground underline"
+                    onClick={() => {
+                      clearPendingPaydunya();
+                      setStep({ kind: "amount" });
+                    }}
+                  >
+                    {t("common.cancel", { defaultValue: "Annuler" })}
+                  </button>
+                </div>
               ) : step.kind === "verifying" ? (
                 <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
                   {logoBadge}
