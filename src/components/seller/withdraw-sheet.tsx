@@ -25,6 +25,7 @@ import {
   startConnectOnboarding,
   type ConnectStatus,
 } from "@/lib/stripe-connect-client";
+import { sendPaydunyaPayout } from "@/lib/paydunya-client";
 import { useAuth } from "@/lib/auth-context";
 import { useEmailConfirmGate } from "@/components/auth/email-confirm-banner";
 import {
@@ -250,6 +251,24 @@ export function WithdrawSheet({
             t("connect.errors.transfer", {
               defaultValue:
                 "Retrait enregistré, mais le virement Stripe a échoué. Notre équipe va le traiter.",
+            }),
+          );
+          setStep("success");
+          setTimeout(onClose, 1800);
+          return;
+        }
+      } else if (method === "wave" || method === "orange_money") {
+        // PayDunya: settle immediately with an automated disbursement to the
+        // seller's mobile-money number. On failure the payout row stays
+        // queued for manual admin processing.
+        const sent = await sendPaydunyaPayout(r.payoutId);
+        setBusy(false);
+        if (!sent.ok) {
+          haptic.warning();
+          toast.message(
+            t("payout.paydunyaFallback", {
+              defaultValue:
+                "Retrait enregistré — le transfert automatique a échoué, il sera traité manuellement par notre équipe.",
             }),
           );
           setStep("success");
