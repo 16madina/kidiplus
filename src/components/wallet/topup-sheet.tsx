@@ -514,7 +514,30 @@ export function TopUpSheet({
         setStep({ kind: "error", message: mapPaydunyaError("paydunya_create_failed") });
       }
     } else {
-      redirectExternal(created.checkoutUrl);
+      // Web: keep the user inside KiDi+ — the checkout runs in a small child
+      // window on top of the wallet sheet, which polls and closes it on
+      // success. If the browser blocks popups, fall back to a full redirect.
+      let popup: Window | null = null;
+      try {
+        const w = 460;
+        const h = 780;
+        const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
+        const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+        popup = window.open(
+          created.checkoutUrl,
+          "kidi_paydunya",
+          `popup=yes,width=${w},height=${h},left=${left},top=${top}`,
+        );
+      } catch {
+        popup = null;
+      }
+      if (popup) {
+        paydunyaPopupRef.current = popup;
+        try { popup.focus(); } catch { /* ignore */ }
+        setStep({ kind: "paydunya_waiting", amount: chosenAmount, invoiceToken: created.invoiceToken });
+      } else {
+        redirectExternal(created.checkoutUrl);
+      }
     }
   };
 
