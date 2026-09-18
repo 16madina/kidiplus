@@ -49,6 +49,15 @@ import {
   clearPendingPaypalOrder,
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
+import {
+  createPaydunyaTopup,
+  confirmPaydunyaTopup,
+  markPendingPaydunya,
+  readPendingPaydunya,
+  clearPendingPaydunya,
+  mapPaydunyaError,
+  type PaydunyaChannelChoice,
+} from "@/lib/paydunya-client";
 import { isNative } from "@/lib/native";
 import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
@@ -61,6 +70,7 @@ type Step =
   | { kind: "loading" }
   | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null>; amount: number }
   | { kind: "paypal_waiting"; amount: number; orderId: string }
+  | { kind: "paydunya_waiting"; amount: number; invoiceToken: string }
   | { kind: "verifying"; amount: number }
   | { kind: "done"; amount: number }
   | { kind: "not_configured" }
@@ -114,6 +124,18 @@ export function TopUpSheet({
           const r = await capturePaypalTopup(pendingPp);
           if (r.ok) {
             clearPendingPaypalOrder();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
+      // Recovery: an interrupted PayDunya flow (app killed during payment).
+      const pendingPd = readPendingPaydunya();
+      if (pendingPd) {
+        void (async () => {
+          const r = await confirmPaydunyaTopup(pendingPd);
+          if (r.ok) {
+            clearPendingPaydunya();
             await refresh();
             if (!r.duplicate) toast.success(t("wallet.topup.success"));
           }
