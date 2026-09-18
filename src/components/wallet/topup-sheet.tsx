@@ -230,6 +230,7 @@ export function TopUpSheet({
     if (paydunyaFinishedRef.current) return;
     paydunyaFinishedRef.current = true;
     clearPendingPaydunya();
+    closePaydunyaSurface();
     await refresh();
     haptic.success();
     setConfettiKey((k) => k + 1);
