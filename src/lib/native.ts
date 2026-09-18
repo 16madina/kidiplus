@@ -213,6 +213,42 @@ export async function bootstrapNative(): Promise<void> {
         return true;
       }
 
+      // PayDunya server return — stay on the current WebView page (no reload).
+      if (path.startsWith("/paydunya-done")) {
+        try {
+          const u = new URL(path, "https://kidiplus.com");
+          const status = u.searchParams.get("status") ?? "ok";
+          const amount = u.searchParams.get("amount");
+          const currency = u.searchParams.get("currency");
+          const duplicate = u.searchParams.get("duplicate") === "1";
+          sessionStorage.setItem(
+            "kidi:paydunya_done",
+            JSON.stringify({ status, amount, currency, duplicate }),
+          );
+          void import("@/lib/paydunya-client").then(({ clearPendingPaydunya }) => {
+            clearPendingPaydunya();
+          });
+          void import("@/lib/soft-profile-routes").then(({ stashSoftSection, dispatchOpenSection }) => {
+            stashSoftSection("wallet");
+            dispatchOpenSection("wallet");
+          });
+          window.dispatchEvent(
+            new CustomEvent("kidi:paydunya-topup-done", {
+              detail: {
+                ok: status === "ok",
+                status,
+                amount: amount != null ? Number(amount) : undefined,
+                currency: currency ?? undefined,
+                duplicate,
+              },
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
       navigateInApp(path);
       return true;
     };
