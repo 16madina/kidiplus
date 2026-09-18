@@ -64,6 +64,37 @@ export function WalletScreen({ open, onClose }: { open: boolean; onClose: () => 
       /* ignore */
     }
 
+    try {
+      const raw = sessionStorage.getItem("kidi:paydunya_done");
+      if (raw) {
+        sessionStorage.removeItem("kidi:paydunya_done");
+        const done = JSON.parse(raw) as {
+          status?: string;
+          duplicate?: boolean;
+        };
+        void import("@/lib/paydunya-client").then(({ clearPendingPaydunya }) => {
+          clearPendingPaydunya();
+        });
+        void refresh();
+        if (done.status === "ok") {
+          if (!done.duplicate) toast.success(t("wallet.topup.success"));
+        } else if (done.status === "cancelled") {
+          toast.message(
+            t("wallet.topup.paydunyaCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+          );
+        } else if (done.status === "pending") {
+          toast.message(
+            t("wallet.topup.paydunyaPendingHint", {
+              defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+            }),
+          );
+        }
+        setTopupOpen(false);
+      }
+    } catch {
+      /* ignore */
+    }
+
     const pending = readPendingTopup();
     if (!pending) return;
     void (async () => {

@@ -323,6 +323,27 @@ function AppShellInner() {
           u.searchParams.delete("orderId");
           window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}` || "/");
         }
+        if (u.searchParams.get("paydunya_done") === "1") {
+          const status = u.searchParams.get("status") ?? "ok";
+          const duplicate = u.searchParams.get("duplicate") === "1";
+          sessionStorage.setItem(
+            "kidi:paydunya_done",
+            JSON.stringify({
+              status,
+              amount: u.searchParams.get("amount"),
+              currency: u.searchParams.get("currency"),
+              duplicate,
+            }),
+          );
+          stashSoftSection("wallet");
+          u.searchParams.delete("paydunya_done");
+          u.searchParams.delete("status");
+          u.searchParams.delete("amount");
+          u.searchParams.delete("currency");
+          u.searchParams.delete("duplicate");
+          u.searchParams.delete("reason");
+          window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}` || "/");
+        }
       } catch {
         /* ignore */
       }
