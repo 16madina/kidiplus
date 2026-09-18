@@ -38,6 +38,7 @@ import { Route as ApiBroadcastEgressSessionRouteImport } from './routes/api/broa
 import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
 import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
 import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
+import { Route as ApiPaydunyaPayoutRouteImport } from './routes/api/paydunya-payout'
 import { Route as ApiPaypalPayoutRouteImport } from './routes/api/paypal-payout'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
@@ -73,6 +74,9 @@ import { Route as ApiLiveReplayPurgeRouteImport } from './routes/api/live-replay
 import { Route as ApiLiveReplayStartRouteImport } from './routes/api/live-replay/start'
 import { Route as ApiLiveReplayStopRouteImport } from './routes/api/live-replay/stop'
 import { Route as ApiLiveReplayWebhookRouteImport } from './routes/api/live-replay/webhook'
+import { Route as ApiPaydunyaTopupConfirmRouteImport } from './routes/api/paydunya-topup.confirm'
+import { Route as ApiPaydunyaTopupCreateRouteImport } from './routes/api/paydunya-topup.create'
+import { Route as ApiPaydunyaTopupReturnRouteImport } from './routes/api/paydunya-topup.return'
 import { Route as ApiPaypalCheckoutCaptureRouteImport } from './routes/api/paypal-checkout.capture'
 import { Route as ApiPaypalCheckoutCreateRouteImport } from './routes/api/paypal-checkout.create'
 import { Route as ApiPaypalCheckoutReturnRouteImport } from './routes/api/paypal-checkout.return'
@@ -83,6 +87,7 @@ import { Route as ApiPaypalTopupCreateRouteImport } from './routes/api/paypal-to
 import { Route as ApiPaypalTopupReturnRouteImport } from './routes/api/paypal-topup.return'
 import { Route as ApiPublicAppVersionRouteImport } from './routes/api/public/app-version'
 import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
+import { Route as ApiPublicPaydunyaIpnRouteImport } from './routes/api/public/paydunya-ipn'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 import { Route as ApiSocialChatPollRouteImport } from './routes/api/social-chat/poll'
 import { Route as ApiSocialChatReplyRouteImport } from './routes/api/social-chat/reply'
@@ -249,6 +254,11 @@ const ApiLivekitIngressRoute = ApiLivekitIngressRouteImport.update({
 const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
   id: '/api/livekit-token',
   path: '/api/livekit-token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaydunyaPayoutRoute = ApiPaydunyaPayoutRouteImport.update({
+  id: '/api/paydunya-payout',
+  path: '/api/paydunya-payout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPaypalPayoutRoute = ApiPaypalPayoutRouteImport.update({
@@ -428,6 +438,21 @@ const ApiLiveReplayWebhookRoute = ApiLiveReplayWebhookRouteImport.update({
   path: '/api/live-replay/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaydunyaTopupConfirmRoute = ApiPaydunyaTopupConfirmRouteImport.update({
+  id: '/api/paydunya-topup/confirm',
+  path: '/api/paydunya-topup/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaydunyaTopupCreateRoute = ApiPaydunyaTopupCreateRouteImport.update({
+  id: '/api/paydunya-topup/create',
+  path: '/api/paydunya-topup/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaydunyaTopupReturnRoute = ApiPaydunyaTopupReturnRouteImport.update({
+  id: '/api/paydunya-topup/return',
+  path: '/api/paydunya-topup/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaypalCheckoutCaptureRoute =
   ApiPaypalCheckoutCaptureRouteImport.update({
     id: '/api/paypal-checkout/capture',
@@ -480,6 +505,11 @@ const ApiPublicNotificationsFanoutRoute =
     path: '/api/public/notifications-fanout',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaydunyaIpnRoute = ApiPublicPaydunyaIpnRouteImport.update({
+  id: '/api/public/paydunya-ipn',
+  path: '/api/public/paydunya-ipn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   id: '/api/public/paypal-webhook',
   path: '/api/public/paypal-webhook',
@@ -600,6 +630,7 @@ export interface FileRoutesByFullPath {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -635,6 +666,9 @@ export interface FileRoutesByFullPath {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
+  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
+  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
+  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -645,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -693,6 +728,7 @@ export interface FileRoutesByTo {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -728,6 +764,9 @@ export interface FileRoutesByTo {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
+  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
+  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
+  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -738,6 +777,7 @@ export interface FileRoutesByTo {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -787,6 +827,7 @@ export interface FileRoutesById {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
+  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -822,6 +863,9 @@ export interface FileRoutesById {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
+  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
+  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
+  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -832,6 +876,7 @@ export interface FileRoutesById {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
+  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -882,6 +927,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -917,6 +963,9 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
+    | '/api/paydunya-topup/confirm'
+    | '/api/paydunya-topup/create'
+    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -927,6 +976,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
+    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -975,6 +1025,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -1010,6 +1061,9 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
+    | '/api/paydunya-topup/confirm'
+    | '/api/paydunya-topup/create'
+    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -1020,6 +1074,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
+    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -1068,6 +1123,7 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
+    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -1103,6 +1159,9 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
+    | '/api/paydunya-topup/confirm'
+    | '/api/paydunya-topup/create'
+    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -1113,6 +1172,7 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
+    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -1162,6 +1222,7 @@ export interface RootRouteChildren {
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitIngressRoute: typeof ApiLivekitIngressRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
+  ApiPaydunyaPayoutRoute: typeof ApiPaydunyaPayoutRoute
   ApiPaypalPayoutRoute: typeof ApiPaypalPayoutRouteWithChildren
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
@@ -1195,6 +1256,9 @@ export interface RootRouteChildren {
   ApiLiveReplayStartRoute: typeof ApiLiveReplayStartRoute
   ApiLiveReplayStopRoute: typeof ApiLiveReplayStopRoute
   ApiLiveReplayWebhookRoute: typeof ApiLiveReplayWebhookRoute
+  ApiPaydunyaTopupConfirmRoute: typeof ApiPaydunyaTopupConfirmRoute
+  ApiPaydunyaTopupCreateRoute: typeof ApiPaydunyaTopupCreateRoute
+  ApiPaydunyaTopupReturnRoute: typeof ApiPaydunyaTopupReturnRoute
   ApiPaypalCheckoutCaptureRoute: typeof ApiPaypalCheckoutCaptureRoute
   ApiPaypalCheckoutCreateRoute: typeof ApiPaypalCheckoutCreateRoute
   ApiPaypalCheckoutReturnRoute: typeof ApiPaypalCheckoutReturnRoute
@@ -1203,6 +1267,7 @@ export interface RootRouteChildren {
   ApiPaypalTopupReturnRoute: typeof ApiPaypalTopupReturnRoute
   ApiPublicAppVersionRoute: typeof ApiPublicAppVersionRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
+  ApiPublicPaydunyaIpnRoute: typeof ApiPublicPaydunyaIpnRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiSocialChatPollRoute: typeof ApiSocialChatPollRoute
   ApiSocialChatReplyRoute: typeof ApiSocialChatReplyRoute
@@ -1424,6 +1489,13 @@ declare module '@tanstack/react-router' {
       path: '/api/livekit-token'
       fullPath: '/api/livekit-token'
       preLoaderRoute: typeof ApiLivekitTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paydunya-payout': {
+      id: '/api/paydunya-payout'
+      path: '/api/paydunya-payout'
+      fullPath: '/api/paydunya-payout'
+      preLoaderRoute: typeof ApiPaydunyaPayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/paypal-payout': {
@@ -1671,6 +1743,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLiveReplayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paydunya-topup/confirm': {
+      id: '/api/paydunya-topup/confirm'
+      path: '/api/paydunya-topup/confirm'
+      fullPath: '/api/paydunya-topup/confirm'
+      preLoaderRoute: typeof ApiPaydunyaTopupConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paydunya-topup/create': {
+      id: '/api/paydunya-topup/create'
+      path: '/api/paydunya-topup/create'
+      fullPath: '/api/paydunya-topup/create'
+      preLoaderRoute: typeof ApiPaydunyaTopupCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paydunya-topup/return': {
+      id: '/api/paydunya-topup/return'
+      path: '/api/paydunya-topup/return'
+      fullPath: '/api/paydunya-topup/return'
+      preLoaderRoute: typeof ApiPaydunyaTopupReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paypal-checkout/capture': {
       id: '/api/paypal-checkout/capture'
       path: '/api/paypal-checkout/capture'
@@ -1739,6 +1832,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/notifications-fanout'
       fullPath: '/api/public/notifications-fanout'
       preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paydunya-ipn': {
+      id: '/api/public/paydunya-ipn'
+      path: '/api/public/paydunya-ipn'
+      fullPath: '/api/public/paydunya-ipn'
+      preLoaderRoute: typeof ApiPublicPaydunyaIpnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/paypal-webhook': {
@@ -1935,6 +2035,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitIngressRoute: ApiLivekitIngressRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
+  ApiPaydunyaPayoutRoute: ApiPaydunyaPayoutRoute,
   ApiPaypalPayoutRoute: ApiPaypalPayoutRouteWithChildren,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
@@ -1968,6 +2069,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveReplayStartRoute: ApiLiveReplayStartRoute,
   ApiLiveReplayStopRoute: ApiLiveReplayStopRoute,
   ApiLiveReplayWebhookRoute: ApiLiveReplayWebhookRoute,
+  ApiPaydunyaTopupConfirmRoute: ApiPaydunyaTopupConfirmRoute,
+  ApiPaydunyaTopupCreateRoute: ApiPaydunyaTopupCreateRoute,
+  ApiPaydunyaTopupReturnRoute: ApiPaydunyaTopupReturnRoute,
   ApiPaypalCheckoutCaptureRoute: ApiPaypalCheckoutCaptureRoute,
   ApiPaypalCheckoutCreateRoute: ApiPaypalCheckoutCreateRoute,
   ApiPaypalCheckoutReturnRoute: ApiPaypalCheckoutReturnRoute,
@@ -1976,6 +2080,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaypalTopupReturnRoute: ApiPaypalTopupReturnRoute,
   ApiPublicAppVersionRoute: ApiPublicAppVersionRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
+  ApiPublicPaydunyaIpnRoute: ApiPublicPaydunyaIpnRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiSocialChatPollRoute: ApiSocialChatPollRoute,
   ApiSocialChatReplyRoute: ApiSocialChatReplyRoute,

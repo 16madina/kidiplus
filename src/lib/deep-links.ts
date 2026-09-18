@@ -21,6 +21,7 @@ export function isAllowedDeepLinkPath(pathname: string): boolean {
   if (pathname === "/open" || pathname.startsWith("/open/")) return true;
   if (pathname === "/paypal-return" || pathname.startsWith("/paypal-return/")) return true;
   if (pathname === "/paypal-done" || pathname.startsWith("/paypal-done/")) return true;
+  if (pathname === "/paydunya-done" || pathname.startsWith("/paydunya-done/")) return true;
   if (pathname === "/wallet" || pathname.startsWith("/wallet/")) return true;
   if (pathname === "/auth-callback" || pathname.startsWith("/auth-callback/")) return true;
   if (pathname === "/reset-password" || pathname.startsWith("/reset-password/")) return true;
