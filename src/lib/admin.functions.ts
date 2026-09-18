@@ -8,7 +8,8 @@ import type { Database } from "@/integrations/supabase/types";
  * Signed-out (or token-less) callers get `{ isAdmin: false }` instead of a 500 —
  * this endpoint is polled from screens that render before auth is ready.
  */
-export const getAdminStatus = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminStatus = createServerFn({ method: "GET" })
+  .handler(async () => {
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) return { isAdmin: false };
