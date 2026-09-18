@@ -160,6 +160,24 @@ export function TopUpSheet({
   const paypalPollBusyRef = useRef(false);
   const paydunyaFinishedRef = useRef(false);
   const paydunyaPollBusyRef = useRef(false);
+  // Web: PayDunya refuses to be embedded in an iframe (X-Frame-Options:
+  // SAMEORIGIN), so the closest to "in-app" is a child popup window that we
+  // close ourselves as soon as the invoice is confirmed — the wallet sheet
+  // stays mounted behind it and polls.
+  const paydunyaPopupRef = useRef<Window | null>(null);
+
+  const closePaydunyaSurface = () => {
+    if (isNative()) {
+      closePaypalBrowser();
+      return;
+    }
+    try {
+      paydunyaPopupRef.current?.close();
+    } catch {
+      /* ignore */
+    }
+    paydunyaPopupRef.current = null;
+  };
 
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
     if (paypalFinishedRef.current) return;
@@ -212,6 +230,7 @@ export function TopUpSheet({
     if (paydunyaFinishedRef.current) return;
     paydunyaFinishedRef.current = true;
     clearPendingPaydunya();
+    closePaydunyaSurface();
     await refresh();
     haptic.success();
     setConfettiKey((k) => k + 1);
@@ -232,7 +251,6 @@ export function TopUpSheet({
       if (!opts?.silent) setStep({ kind: "verifying", amount });
       const r = await confirmPaydunyaTopup(invoiceToken);
       if (r.ok) {
-        closePaypalBrowser();
         await finishPaydunyaSuccess(r.amount || amount, r.duplicate);
         return;
       }
@@ -241,6 +259,7 @@ export function TopUpSheet({
       if (r.error === "cancelled" || r.error === "failed") {
         paydunyaFinishedRef.current = true;
         clearPendingPaydunya();
+        closePaydunyaSurface();
         setStep({ kind: "error", message: mapPaydunyaError(r.error, r.message) });
         return;
       }
@@ -420,6 +439,14 @@ export function TopUpSheet({
           if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
         }
       }, 1600);
+    } else {
+      // Web: the PayDunya popup runs in a child window; keep polling here so
+      // the sheet credits the wallet and closes the popup on its own.
+      pollTimer = setInterval(() => {
+        if (paydunyaFinishedRef.current) return;
+        const pendingPd = readPendingPaydunya();
+        if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
+      }, 2000);
     }
 
     return () => {
@@ -487,7 +514,30 @@ export function TopUpSheet({
         setStep({ kind: "error", message: mapPaydunyaError("paydunya_create_failed") });
       }
     } else {
-      redirectExternal(created.checkoutUrl);
+      // Web: keep the user inside KiDi+ — the checkout runs in a small child
+      // window on top of the wallet sheet, which polls and closes it on
+      // success. If the browser blocks popups, fall back to a full redirect.
+      let popup: Window | null = null;
+      try {
+        const w = 460;
+        const h = 780;
+        const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
+        const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+        popup = window.open(
+          created.checkoutUrl,
+          "kidi_paydunya",
+          `popup=yes,width=${w},height=${h},left=${left},top=${top}`,
+        );
+      } catch {
+        popup = null;
+      }
+      if (popup) {
+        paydunyaPopupRef.current = popup;
+        try { popup.focus(); } catch { /* ignore */ }
+        setStep({ kind: "paydunya_waiting", amount: chosenAmount, invoiceToken: created.invoiceToken });
+      } else {
+        redirectExternal(created.checkoutUrl);
+      }
     }
   };
 
