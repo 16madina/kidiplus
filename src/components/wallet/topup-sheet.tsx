@@ -251,7 +251,6 @@ export function TopUpSheet({
       if (!opts?.silent) setStep({ kind: "verifying", amount });
       const r = await confirmPaydunyaTopup(invoiceToken);
       if (r.ok) {
-        closePaypalBrowser();
         await finishPaydunyaSuccess(r.amount || amount, r.duplicate);
         return;
       }
@@ -260,6 +259,7 @@ export function TopUpSheet({
       if (r.error === "cancelled" || r.error === "failed") {
         paydunyaFinishedRef.current = true;
         clearPendingPaydunya();
+        closePaydunyaSurface();
         setStep({ kind: "error", message: mapPaydunyaError(r.error, r.message) });
         return;
       }
