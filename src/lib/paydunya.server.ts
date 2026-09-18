@@ -116,14 +116,12 @@ export async function createPaydunyaInvoice(
   },
 ): Promise<CreateInvoiceResult> {
   const amount = Math.round(args.amountXof);
-  const channels =
-    args.channel === "wave"
-      ? ["wave-senegal", "wave-ci"]
-      : args.channel === "orange_money"
-        ? ["orange-money-senegal", "orange-money-ci"]
-        : args.channel === "card"
-          ? ["card"]
-          : undefined;
+  // Only the card path is restricted. For mobile money we let PayDunya show
+  // every operator enabled on the merchant account (Wave, Orange, Moov, MTN,
+  // Djamo…): restricting to one operator made the other tiles fail with
+  // "Une erreur est survenue" when the buyer switched on the hosted page.
+  const channels = args.channel === "card" ? ["card"] : undefined;
+
 
   const body: Record<string, unknown> = {
     invoice: {
