@@ -158,6 +158,8 @@ export function TopUpSheet({
 
   const paypalFinishedRef = useRef(false);
   const paypalPollBusyRef = useRef(false);
+  const paydunyaFinishedRef = useRef(false);
+  const paydunyaPollBusyRef = useRef(false);
 
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
     if (paypalFinishedRef.current) return;
@@ -203,6 +205,48 @@ export function TopUpSheet({
       if (!opts?.silent) setStep({ kind: "paypal_waiting", amount, orderId });
     } finally {
       if (opts?.silent) paypalPollBusyRef.current = false;
+    }
+  };
+
+  const finishPaydunyaSuccess = async (amount: number, duplicate?: boolean) => {
+    if (paydunyaFinishedRef.current) return;
+    paydunyaFinishedRef.current = true;
+    clearPendingPaydunya();
+    await refresh();
+    haptic.success();
+    setConfettiKey((k) => k + 1);
+    setStep({ kind: "done", amount });
+    if (!duplicate) toast.success(t("wallet.topup.success"));
+    setTimeout(onClose, 1400);
+  };
+
+  const tryConfirmPaydunya = async (
+    invoiceToken: string,
+    amount: number,
+    opts?: { silent?: boolean },
+  ) => {
+    if (paydunyaFinishedRef.current) return;
+    if (opts?.silent && paydunyaPollBusyRef.current) return;
+    if (opts?.silent) paydunyaPollBusyRef.current = true;
+    try {
+      if (!opts?.silent) setStep({ kind: "verifying", amount });
+      const r = await confirmPaydunyaTopup(invoiceToken);
+      if (r.ok) {
+        closePaypalBrowser();
+        await finishPaydunyaSuccess(r.amount || amount, r.duplicate);
+        return;
+      }
+      if (paydunyaFinishedRef.current) return;
+      // Hard failure (declined / cancelled) — surface it; soft states keep waiting.
+      if (r.error === "cancelled" || r.error === "failed") {
+        paydunyaFinishedRef.current = true;
+        clearPendingPaydunya();
+        setStep({ kind: "error", message: mapPaydunyaError(r.error, r.message) });
+        return;
+      }
+      if (!opts?.silent) setStep({ kind: "paydunya_waiting", amount, invoiceToken });
+    } finally {
+      if (opts?.silent) paydunyaPollBusyRef.current = false;
     }
   };
 
