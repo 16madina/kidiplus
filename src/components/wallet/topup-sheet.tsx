@@ -255,6 +255,7 @@ export function TopUpSheet({
   useEffect(() => {
     if (!open) {
       paypalFinishedRef.current = false;
+      paydunyaFinishedRef.current = false;
       return;
     }
 
@@ -291,6 +292,39 @@ export function TopUpSheet({
     };
     window.addEventListener("kidi:paypal-topup-done", onDone);
 
+    const onPdDone = (ev: Event) => {
+      if (paydunyaFinishedRef.current) return;
+      const detail = (ev as CustomEvent<{
+        ok?: boolean;
+        status?: string;
+        amount?: number;
+        duplicate?: boolean;
+      }>).detail;
+      if (!detail) return;
+      try { sessionStorage.removeItem("kidi:paydunya_done"); } catch { /* ignore */ }
+      closePaypalBrowser();
+      if (detail.ok || detail.status === "ok") {
+        void finishPaydunyaSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+        return;
+      }
+      paydunyaFinishedRef.current = true;
+      clearPendingPaydunya();
+      if (detail.status === "cancelled") {
+        toast.message(
+          t("wallet.topup.paydunyaCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+        );
+      } else if (detail.status === "pending") {
+        toast.message(
+          t("wallet.topup.paydunyaPendingHint", {
+            defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+          }),
+        );
+        void refresh();
+      }
+      onClose();
+    };
+    window.addEventListener("kidi:paydunya-topup-done", onPdDone);
+
     let removeBrowserListener: (() => void) | undefined;
     let removeAppState: (() => void) | undefined;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -323,6 +357,33 @@ export function TopUpSheet({
       }
       const pending = readPendingPaypalOrder();
       if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+
+      try {
+        const rawPd = sessionStorage.getItem("kidi:paydunya_done");
+        if (rawPd) {
+          const done = JSON.parse(rawPd) as {
+            status?: string;
+            amount?: string | null;
+            duplicate?: boolean;
+          };
+          sessionStorage.removeItem("kidi:paydunya_done");
+          closePaypalBrowser();
+          if (done.status === "ok") {
+            void finishPaydunyaSuccess(Number(done.amount ?? chosenAmount), !!done.duplicate);
+            return;
+          }
+          if (done.status === "cancelled" || done.status === "error") {
+            paydunyaFinishedRef.current = true;
+            clearPendingPaydunya();
+            onClose();
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const pendingPd = readPendingPaydunya();
+      if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
     };
 
     if (isNative()) {
