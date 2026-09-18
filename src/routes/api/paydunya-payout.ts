@@ -128,7 +128,9 @@ export const Route = createFileRoute("/api/paydunya-payout")({
           await (admin.from("payouts") as any)
             .update({ paydunya_error: `${sent.error}: ${sent.detail ?? ""}`.slice(0, 400) })
             .eq("id", payoutId);
-          return json({ error: sent.error, message: sent.detail }, 502, origin);
+          // The payout row stays queued for manual processing — this is an
+          // expected outcome, not a server fault, so answer 200 with ok:false.
+          return json({ ok: false, pendingManual: true, error: sent.error, message: sent.detail }, 200, origin);
         }
 
         await (admin.from("payouts") as any)

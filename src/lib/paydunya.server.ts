@@ -235,12 +235,22 @@ export async function paydunyaDisburse(
   const alias = args.accountAlias.replace(/[^\d]/g, "");
   if (!alias) return { ok: false, error: "invalid_phone" };
 
+  // PayDunya exposes disbursement (PER) on the live API only — the sandbox
+  // base returns a 404 HTML page. Fail fast with a clear code so the payout
+  // stays queued for manual processing instead of surfacing a server error.
+  if (cfg.mode !== "live") {
+    return { ok: false, error: "disburse_unavailable_in_test" };
+  }
+
   const get = await post(cfg, "/disburse/get-invoice", {
     account_alias: alias,
     amount,
     withdraw_mode: args.withdrawMode,
     callback_url: args.callbackUrl,
   });
+  if (get.status === 404 || (get.data == null && /<html/i.test(get.text))) {
+    return { ok: false, error: "disburse_endpoint_unavailable", detail: `HTTP ${get.status}` };
+  }
   if (get.data?.response_code !== "00" || !get.data?.disburse_token) {
     return {
       ok: false,
