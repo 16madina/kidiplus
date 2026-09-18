@@ -49,6 +49,15 @@ import {
   clearPendingPaypalOrder,
   mapPaypalTopupError,
 } from "@/lib/paypal-topup-client";
+import {
+  createPaydunyaTopup,
+  confirmPaydunyaTopup,
+  markPendingPaydunya,
+  readPendingPaydunya,
+  clearPendingPaydunya,
+  mapPaydunyaError,
+  type PaydunyaChannelChoice,
+} from "@/lib/paydunya-client";
 import { isNative } from "@/lib/native";
 import kidiPlusLogo from "@/assets/img/brands/kidi-plus-logo.png";
 
@@ -61,6 +70,7 @@ type Step =
   | { kind: "loading" }
   | { kind: "ready"; clientSecret: string; stripePromise: Promise<StripeJs | null>; amount: number }
   | { kind: "paypal_waiting"; amount: number; orderId: string }
+  | { kind: "paydunya_waiting"; amount: number; invoiceToken: string }
   | { kind: "verifying"; amount: number }
   | { kind: "done"; amount: number }
   | { kind: "not_configured" }
@@ -119,6 +129,18 @@ export function TopUpSheet({
           }
         })();
       }
+      // Recovery: an interrupted PayDunya flow (app killed during payment).
+      const pendingPd = readPendingPaydunya();
+      if (pendingPd) {
+        void (async () => {
+          const r = await confirmPaydunyaTopup(pendingPd);
+          if (r.ok) {
+            clearPendingPaydunya();
+            await refresh();
+            if (!r.duplicate) toast.success(t("wallet.topup.success"));
+          }
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cur]);
@@ -136,6 +158,8 @@ export function TopUpSheet({
 
   const paypalFinishedRef = useRef(false);
   const paypalPollBusyRef = useRef(false);
+  const paydunyaFinishedRef = useRef(false);
+  const paydunyaPollBusyRef = useRef(false);
 
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
     if (paypalFinishedRef.current) return;
@@ -184,11 +208,54 @@ export function TopUpSheet({
     }
   };
 
+  const finishPaydunyaSuccess = async (amount: number, duplicate?: boolean) => {
+    if (paydunyaFinishedRef.current) return;
+    paydunyaFinishedRef.current = true;
+    clearPendingPaydunya();
+    await refresh();
+    haptic.success();
+    setConfettiKey((k) => k + 1);
+    setStep({ kind: "done", amount });
+    if (!duplicate) toast.success(t("wallet.topup.success"));
+    setTimeout(onClose, 1400);
+  };
+
+  const tryConfirmPaydunya = async (
+    invoiceToken: string,
+    amount: number,
+    opts?: { silent?: boolean },
+  ) => {
+    if (paydunyaFinishedRef.current) return;
+    if (opts?.silent && paydunyaPollBusyRef.current) return;
+    if (opts?.silent) paydunyaPollBusyRef.current = true;
+    try {
+      if (!opts?.silent) setStep({ kind: "verifying", amount });
+      const r = await confirmPaydunyaTopup(invoiceToken);
+      if (r.ok) {
+        closePaypalBrowser();
+        await finishPaydunyaSuccess(r.amount || amount, r.duplicate);
+        return;
+      }
+      if (paydunyaFinishedRef.current) return;
+      // Hard failure (declined / cancelled) — surface it; soft states keep waiting.
+      if (r.error === "cancelled" || r.error === "failed") {
+        paydunyaFinishedRef.current = true;
+        clearPendingPaydunya();
+        setStep({ kind: "error", message: mapPaydunyaError(r.error, r.message) });
+        return;
+      }
+      if (!opts?.silent) setStep({ kind: "paydunya_waiting", amount, invoiceToken });
+    } finally {
+      if (opts?.silent) paydunyaPollBusyRef.current = false;
+    }
+  };
+
   // After PayPal returns: deep link, browser close, OR polling (server already
   // credited on /api/paypal-topup/return — we just need to dismiss the overlay).
   useEffect(() => {
     if (!open) {
       paypalFinishedRef.current = false;
+      paydunyaFinishedRef.current = false;
       return;
     }
 
@@ -225,6 +292,39 @@ export function TopUpSheet({
     };
     window.addEventListener("kidi:paypal-topup-done", onDone);
 
+    const onPdDone = (ev: Event) => {
+      if (paydunyaFinishedRef.current) return;
+      const detail = (ev as CustomEvent<{
+        ok?: boolean;
+        status?: string;
+        amount?: number;
+        duplicate?: boolean;
+      }>).detail;
+      if (!detail) return;
+      try { sessionStorage.removeItem("kidi:paydunya_done"); } catch { /* ignore */ }
+      closePaypalBrowser();
+      if (detail.ok || detail.status === "ok") {
+        void finishPaydunyaSuccess(Number(detail.amount ?? chosenAmount), detail.duplicate);
+        return;
+      }
+      paydunyaFinishedRef.current = true;
+      clearPendingPaydunya();
+      if (detail.status === "cancelled") {
+        toast.message(
+          t("wallet.topup.paydunyaCancelled", { defaultValue: "Paiement annulé — aucun montant prélevé." }),
+        );
+      } else if (detail.status === "pending") {
+        toast.message(
+          t("wallet.topup.paydunyaPendingHint", {
+            defaultValue: "Paiement en cours de confirmation — ton solde se mettra à jour sous peu.",
+          }),
+        );
+        void refresh();
+      }
+      onClose();
+    };
+    window.addEventListener("kidi:paydunya-topup-done", onPdDone);
+
     let removeBrowserListener: (() => void) | undefined;
     let removeAppState: (() => void) | undefined;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -257,6 +357,33 @@ export function TopUpSheet({
       }
       const pending = readPendingPaypalOrder();
       if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+
+      try {
+        const rawPd = sessionStorage.getItem("kidi:paydunya_done");
+        if (rawPd) {
+          const done = JSON.parse(rawPd) as {
+            status?: string;
+            amount?: string | null;
+            duplicate?: boolean;
+          };
+          sessionStorage.removeItem("kidi:paydunya_done");
+          closePaypalBrowser();
+          if (done.status === "ok") {
+            void finishPaydunyaSuccess(Number(done.amount ?? chosenAmount), !!done.duplicate);
+            return;
+          }
+          if (done.status === "cancelled" || done.status === "error") {
+            paydunyaFinishedRef.current = true;
+            clearPendingPaydunya();
+            onClose();
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      const pendingPd = readPendingPaydunya();
+      if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
     };
 
     if (isNative()) {
@@ -284,14 +411,20 @@ export function TopUpSheet({
       // While SFSafariViewController is open, the WebView keeps running.
       // Server credits on return URL → poll until capture is ok, then close the overlay.
       pollTimer = setInterval(() => {
-        if (paypalFinishedRef.current) return;
-        const pending = readPendingPaypalOrder();
-        if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+        if (!paypalFinishedRef.current) {
+          const pending = readPendingPaypalOrder();
+          if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+        }
+        if (!paydunyaFinishedRef.current) {
+          const pendingPd = readPendingPaydunya();
+          if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
+        }
       }, 1600);
     }
 
     return () => {
       window.removeEventListener("kidi:paypal-topup-done", onDone);
+      window.removeEventListener("kidi:paydunya-topup-done", onPdDone);
       removeBrowserListener?.();
       removeAppState?.();
       if (pollTimer) clearInterval(pollTimer);
@@ -331,10 +464,41 @@ export function TopUpSheet({
     }
   };
 
+  const startPaydunya = async (channel: PaydunyaChannelChoice) => {
+    setStep({ kind: "loading" });
+    const created = await createPaydunyaTopup(chosenAmount, channel, { native: isNative() });
+    if (!created.ok) {
+      setStep({ kind: "error", message: mapPaydunyaError(created.error, created.message) });
+      return;
+    }
+    markPendingPaydunya(created.invoiceToken);
+    // Native: system browser. Server return hands off via kidiplus://paydunya-done.
+    // Web: PayDunya returns to /api/paydunya-topup/return then redirects home.
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        setStep({ kind: "paydunya_waiting", amount: chosenAmount, invoiceToken: created.invoiceToken });
+        await Browser.open({
+          url: created.checkoutUrl,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
+      } catch {
+        setStep({ kind: "error", message: mapPaydunyaError("paydunya_create_failed") });
+      }
+    } else {
+      redirectExternal(created.checkoutUrl);
+    }
+  };
+
   const startPayment = async () => {
     if (!valid) return;
     if (selectedMethod === "paypal") {
       void startPaypal();
+      return;
+    }
+    if (selectedMethod === "wave" || selectedMethod === "orange") {
+      void startPaydunya(selectedMethod === "wave" ? "wave" : "orange_money");
       return;
     }
     setStep({ kind: "loading" });
@@ -702,6 +866,39 @@ export function TopUpSheet({
                     className="text-[12px] text-muted-foreground underline"
                     onClick={() => {
                       clearPendingPaypalOrder();
+                      setStep({ kind: "amount" });
+                    }}
+                  >
+                    {t("common.cancel", { defaultValue: "Annuler" })}
+                  </button>
+                </div>
+              ) : step.kind === "paydunya_waiting" ? (
+                <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  {logoBadge}
+                  <Loader2 className="animate-spin text-primary" size={28} />
+                  <p className="text-[15px] font-semibold">
+                    {t("wallet.topup.paydunyaWaiting", { defaultValue: "Paiement mobile money en cours…" })}
+                  </p>
+                  <p className="max-w-[280px] text-[12px] text-muted-foreground">
+                    {t("wallet.topup.paydunyaWaitingHint", {
+                      defaultValue:
+                        "Termine le paiement Wave / Orange Money. Dès qu'il est confirmé, ferme la fenêtre (Done / ✕) — KiDi+ se met à jour tout seul.",
+                    })}
+                  </p>
+                  <Press
+                    onClick={() => {
+                      closePaypalBrowser();
+                      void tryConfirmPaydunya(step.invoiceToken, step.amount);
+                    }}
+                    className="mt-1 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-bold text-primary-foreground"
+                  >
+                    {t("wallet.topup.paydunyaConfirmCta", { defaultValue: "J'ai payé — revenir" })}
+                  </Press>
+                  <button
+                    type="button"
+                    className="text-[12px] text-muted-foreground underline"
+                    onClick={() => {
+                      clearPendingPaydunya();
                       setStep({ kind: "amount" });
                     }}
                   >

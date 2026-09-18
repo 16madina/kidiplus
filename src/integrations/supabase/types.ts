@@ -1447,6 +1447,8 @@ export type Database = {
           id: string
           method: string
           note: string | null
+          paydunya_error: string | null
+          paydunya_token: string | null
           paypal_amount: number | null
           paypal_batch_id: string | null
           paypal_currency: string | null
@@ -1470,6 +1472,8 @@ export type Database = {
           id?: string
           method: string
           note?: string | null
+          paydunya_error?: string | null
+          paydunya_token?: string | null
           paypal_amount?: number | null
           paypal_batch_id?: string | null
           paypal_currency?: string | null
@@ -1493,6 +1497,8 @@ export type Database = {
           id?: string
           method?: string
           note?: string | null
+          paydunya_error?: string | null
+          paydunya_token?: string | null
           paypal_amount?: number | null
           paypal_batch_id?: string | null
           paypal_currency?: string | null
