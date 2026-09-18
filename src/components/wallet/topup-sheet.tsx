@@ -439,6 +439,14 @@ export function TopUpSheet({
           if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
         }
       }, 1600);
+    } else {
+      // Web: the PayDunya popup runs in a child window; keep polling here so
+      // the sheet credits the wallet and closes the popup on its own.
+      pollTimer = setInterval(() => {
+        if (paydunyaFinishedRef.current) return;
+        const pendingPd = readPendingPaydunya();
+        if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
+      }, 2000);
     }
 
     return () => {
