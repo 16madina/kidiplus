@@ -160,6 +160,24 @@ export function TopUpSheet({
   const paypalPollBusyRef = useRef(false);
   const paydunyaFinishedRef = useRef(false);
   const paydunyaPollBusyRef = useRef(false);
+  // Web: PayDunya refuses to be embedded in an iframe (X-Frame-Options:
+  // SAMEORIGIN), so the closest to "in-app" is a child popup window that we
+  // close ourselves as soon as the invoice is confirmed — the wallet sheet
+  // stays mounted behind it and polls.
+  const paydunyaPopupRef = useRef<Window | null>(null);
+
+  const closePaydunyaSurface = () => {
+    if (isNative()) {
+      closePaypalBrowser();
+      return;
+    }
+    try {
+      paydunyaPopupRef.current?.close();
+    } catch {
+      /* ignore */
+    }
+    paydunyaPopupRef.current = null;
+  };
 
   const finishPaypalSuccess = async (amount: number, duplicate?: boolean) => {
     if (paypalFinishedRef.current) return;
