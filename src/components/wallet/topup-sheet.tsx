@@ -411,14 +411,20 @@ export function TopUpSheet({
       // While SFSafariViewController is open, the WebView keeps running.
       // Server credits on return URL → poll until capture is ok, then close the overlay.
       pollTimer = setInterval(() => {
-        if (paypalFinishedRef.current) return;
-        const pending = readPendingPaypalOrder();
-        if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+        if (!paypalFinishedRef.current) {
+          const pending = readPendingPaypalOrder();
+          if (pending) void tryCapturePendingPaypal(pending, chosenAmount, { silent: true });
+        }
+        if (!paydunyaFinishedRef.current) {
+          const pendingPd = readPendingPaydunya();
+          if (pendingPd) void tryConfirmPaydunya(pendingPd, chosenAmount, { silent: true });
+        }
       }, 1600);
     }
 
     return () => {
       window.removeEventListener("kidi:paypal-topup-done", onDone);
+      window.removeEventListener("kidi:paydunya-topup-done", onPdDone);
       removeBrowserListener?.();
       removeAppState?.();
       if (pollTimer) clearInterval(pollTimer);
@@ -458,10 +464,41 @@ export function TopUpSheet({
     }
   };
 
+  const startPaydunya = async (channel: PaydunyaChannelChoice) => {
+    setStep({ kind: "loading" });
+    const created = await createPaydunyaTopup(chosenAmount, channel, { native: isNative() });
+    if (!created.ok) {
+      setStep({ kind: "error", message: mapPaydunyaError(created.error, created.message) });
+      return;
+    }
+    markPendingPaydunya(created.invoiceToken);
+    // Native: system browser. Server return hands off via kidiplus://paydunya-done.
+    // Web: PayDunya returns to /api/paydunya-topup/return then redirects home.
+    if (isNative()) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        setStep({ kind: "paydunya_waiting", amount: chosenAmount, invoiceToken: created.invoiceToken });
+        await Browser.open({
+          url: created.checkoutUrl,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
+      } catch {
+        setStep({ kind: "error", message: mapPaydunyaError("paydunya_create_failed") });
+      }
+    } else {
+      redirectExternal(created.checkoutUrl);
+    }
+  };
+
   const startPayment = async () => {
     if (!valid) return;
     if (selectedMethod === "paypal") {
       void startPaypal();
+      return;
+    }
+    if (selectedMethod === "wave" || selectedMethod === "orange") {
+      void startPaydunya(selectedMethod === "wave" ? "wave" : "orange_money");
       return;
     }
     setStep({ kind: "loading" });
