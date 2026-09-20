@@ -108,6 +108,75 @@ export type FcmSendResult = {
   invalidTokens: string[]; // tokens to remove from DB
 };
 
+type ExpoPushMessage = {
+  to: string;
+  title?: string;
+  body?: string;
+  data?: Record<string, string>;
+  sound: "default";
+  priority: "high";
+};
+
+function isExpoPushToken(token: string): boolean {
+  return /^(?:Expo|Exponent)PushToken\[[^\]]+\]$/.test(token);
+}
+
+/** Send Expo tokens through Expo's push gateway, in the documented 100-token batches. */
+async function sendExpoPushToTokens(
+  input: FcmSendInput,
+): Promise<FcmSendResult> {
+  const tokens = Array.from(new Set(input.tokens.filter(isExpoPushToken)));
+  if (tokens.length === 0) return { sent: 0, failed: 0, invalidTokens: [] };
+
+  let sent = 0;
+  let failed = 0;
+  const invalidTokens: string[] = [];
+  for (let start = 0; start < tokens.length; start += 100) {
+    const batch = tokens.slice(start, start + 100);
+    const messages: ExpoPushMessage[] = batch.map((to) => ({
+      to,
+      ...(input.notification?.title ? { title: input.notification.title } : {}),
+      ...(input.notification?.body ? { body: input.notification.body } : {}),
+      ...(input.data ? { data: input.data } : {}),
+      sound: "default",
+      priority: "high",
+    }));
+    try {
+      const res = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        data?: Array<{ status?: string; details?: { error?: string } }>;
+      } | null;
+      if (!res.ok || !json?.data) {
+        failed += batch.length;
+        console.warn("[expo-push] send failed", res.status);
+        continue;
+      }
+      json.data.forEach((ticket, index) => {
+        if (ticket.status === "ok") {
+          sent++;
+          return;
+        }
+        failed++;
+        if (ticket.details?.error === "DeviceNotRegistered") {
+          invalidTokens.push(batch[index]!);
+        }
+      });
+    } catch (error) {
+      failed += batch.length;
+      console.warn("[expo-push] send error", error);
+    }
+  }
+  return { sent, failed, invalidTokens };
+}
+
 /**
  * Sends a push to a list of FCM registration tokens.
  * Returns invalidTokens (UNREGISTERED / INVALID_ARGUMENT) so callers can prune device_tokens.
@@ -182,8 +251,18 @@ export async function sendFcmToUser(
     .select("token")
     .eq("user_id", userId);
   if (error) throw new Error(error.message);
-  const tokens = (data ?? []).map((r) => r.token);
-  const result = await sendFcmToTokens({ ...payload, tokens });
+  const tokens = (data ?? []).map((r) => r.token as string);
+  const expoTokens = tokens.filter(isExpoPushToken);
+  const fcmTokens = tokens.filter((token) => !isExpoPushToken(token));
+  const [expoResult, fcmResult] = await Promise.all([
+    sendExpoPushToTokens({ ...payload, tokens: expoTokens }),
+    sendFcmToTokens({ ...payload, tokens: fcmTokens }),
+  ]);
+  const result: FcmSendResult = {
+    sent: expoResult.sent + fcmResult.sent,
+    failed: expoResult.failed + fcmResult.failed,
+    invalidTokens: [...expoResult.invalidTokens, ...fcmResult.invalidTokens],
+  };
   if (result.invalidTokens.length > 0) {
     await supabaseAdmin
       .from("device_tokens")
