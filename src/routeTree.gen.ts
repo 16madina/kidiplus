@@ -9,196 +9,102 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
-import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
-import { Route as CommunityRouteImport } from './routes/community'
-import { Route as ConnectReturnRouteImport } from './routes/connect-return'
-import { Route as DownloadRouteImport } from './routes/download'
-import { Route as EarningsRouteImport } from './routes/earnings'
-import { Route as EgressTemplateRouteImport } from './routes/egress-template'
-import { Route as HelpRouteImport } from './routes/help'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as OpenRouteImport } from './routes/open'
-import { Route as OrdersRouteImport } from './routes/orders'
-import { Route as PaypalReturnRouteImport } from './routes/paypal-return'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as SafetyRouteImport } from './routes/safety'
-import { Route as ShopRouteImport } from './routes/shop'
-import { Route as SupportRouteImport } from './routes/support'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as WalletRouteImport } from './routes/wallet'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known.apple-app-site-association'
-import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known.assetlinks[.]json'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as ApiBroadcastEgressSessionRouteImport } from './routes/api/broadcast-egress-session'
-import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
-import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
-import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
-import { Route as ApiPaydunyaPayoutRouteImport } from './routes/api/paydunya-payout'
-import { Route as ApiPaypalPayoutRouteImport } from './routes/api/paypal-payout'
-import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
-import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
-import { Route as BroadcastLiveIdRouteImport } from './routes/broadcast.$liveId'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as GuideReussirSesEncheresEnLiveRouteImport } from './routes/guide/reussir-ses-encheres-en-live'
-import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
-import { Route as JoinCodeRouteImport } from './routes/join.$code'
-import { Route as LiveIdRouteImport } from './routes/live.$id'
-import { Route as PreviewDefiPlusRouteImport } from './routes/preview.defi-plus'
-import { Route as PreviewGiftBaobabRouteImport } from './routes/preview.gift-baobab'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SafetyRouteImport } from './routes/safety'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PaypalReturnRouteImport } from './routes/paypal-return'
+import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as OpenRouteImport } from './routes/open'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as EgressTemplateRouteImport } from './routes/egress-template'
+import { Route as EarningsRouteImport } from './routes/earnings'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as ConnectReturnRouteImport } from './routes/connect-return'
+import { Route as CommunityRouteImport } from './routes/community'
+import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
+import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as SellOnboardingRouteImport } from './routes/sell.onboarding'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
-import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/payments-mode'
-import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
-import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
-import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
-import { Route as ApiConnectLoginLinkRouteImport } from './routes/api/connect.login-link'
-import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
-import { Route as ApiConnectPayoutRouteImport } from './routes/api/connect.payout'
-import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
-import { Route as ApiEmailConfirmSendRouteImport } from './routes/api/email-confirm.send'
-import { Route as ApiEmailConfirmVerifyRouteImport } from './routes/api/email-confirm.verify'
-import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
-import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
-import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
-import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
-import { Route as ApiLiveReplayDeleteRouteImport } from './routes/api/live-replay/delete'
-import { Route as ApiLiveReplayPlayUrlRouteImport } from './routes/api/live-replay/play-url'
-import { Route as ApiLiveReplayPurgeRouteImport } from './routes/api/live-replay/purge'
-import { Route as ApiLiveReplayStartRouteImport } from './routes/api/live-replay/start'
-import { Route as ApiLiveReplayStopRouteImport } from './routes/api/live-replay/stop'
-import { Route as ApiLiveReplayWebhookRouteImport } from './routes/api/live-replay/webhook'
-import { Route as ApiPaydunyaTopupConfirmRouteImport } from './routes/api/paydunya-topup.confirm'
-import { Route as ApiPaydunyaTopupCreateRouteImport } from './routes/api/paydunya-topup.create'
-import { Route as ApiPaydunyaTopupReturnRouteImport } from './routes/api/paydunya-topup.return'
-import { Route as ApiPaypalCheckoutCaptureRouteImport } from './routes/api/paypal-checkout.capture'
-import { Route as ApiPaypalCheckoutCreateRouteImport } from './routes/api/paypal-checkout.create'
-import { Route as ApiPaypalCheckoutReturnRouteImport } from './routes/api/paypal-checkout.return'
-import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
-import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
-import { Route as ApiPaypalTopupCaptureRouteImport } from './routes/api/paypal-topup.capture'
-import { Route as ApiPaypalTopupCreateRouteImport } from './routes/api/paypal-topup.create'
-import { Route as ApiPaypalTopupReturnRouteImport } from './routes/api/paypal-topup.return'
-import { Route as ApiPublicAppVersionRouteImport } from './routes/api/public/app-version'
-import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
-import { Route as ApiPublicPaydunyaIpnRouteImport } from './routes/api/public/paydunya-ipn'
-import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
-import { Route as ApiSocialChatPollRouteImport } from './routes/api/social-chat/poll'
-import { Route as ApiSocialChatReplyRouteImport } from './routes/api/social-chat/reply'
-import { Route as ApiTiktokRestreamRouteImport } from './routes/api/tiktok/restream'
-import { Route as ApiVitrineSignedUploadRouteImport } from './routes/api/vitrine/signed-upload'
-import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
-import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/disconnect'
-import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
-import { Route as ApiYoutubeStatusRouteImport } from './routes/api/youtube/status'
+import { Route as PreviewGiftBaobabRouteImport } from './routes/preview.gift-baobab'
+import { Route as PreviewDefiPlusRouteImport } from './routes/preview.defi-plus'
+import { Route as LiveIdRouteImport } from './routes/live.$id'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as GuideWhatIsLiveShoppingRouteImport } from './routes/guide/what-is-live-shopping'
+import { Route as GuideReussirSesEncheresEnLiveRouteImport } from './routes/guide/reussir-ses-encheres-en-live'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as BroadcastLiveIdRouteImport } from './routes/broadcast.$liveId'
+import { Route as ApiWalletTopupRouteImport } from './routes/api/wallet-topup'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
+import { Route as ApiPaypalPayoutRouteImport } from './routes/api/paypal-payout'
+import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit-token'
+import { Route as ApiLivekitIngressRouteImport } from './routes/api/livekit-ingress'
+import { Route as ApiCheckoutRouteImport } from './routes/api/checkout'
+import { Route as ApiBroadcastEgressSessionRouteImport } from './routes/api/broadcast-egress-session'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known.assetlinks[.]json'
+import { Route as DotwellKnownAppleAppSiteAssociationRouteImport } from './routes/[.]well-known.apple-app-site-association'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as ApiFacebookOauthCallbackRouteImport } from './routes/api/facebook/oauth.callback'
-import { Route as ApiFacebookOauthStartRouteImport } from './routes/api/facebook/oauth.start'
-import { Route as ApiYoutubeOauthCallbackRouteImport } from './routes/api/youtube/oauth.callback'
-import { Route as ApiYoutubeOauthStartRouteImport } from './routes/api/youtube/oauth.start'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as ApiYoutubeStatusRouteImport } from './routes/api/youtube/status'
+import { Route as ApiYoutubeRestreamRouteImport } from './routes/api/youtube/restream'
+import { Route as ApiYoutubeDisconnectRouteImport } from './routes/api/youtube/disconnect'
+import { Route as ApiWalletTopupConfirmRouteImport } from './routes/api/wallet-topup.confirm'
+import { Route as ApiVitrineSignedUploadRouteImport } from './routes/api/vitrine/signed-upload'
+import { Route as ApiTiktokRestreamRouteImport } from './routes/api/tiktok/restream'
+import { Route as ApiSocialChatReplyRouteImport } from './routes/api/social-chat/reply'
+import { Route as ApiSocialChatPollRouteImport } from './routes/api/social-chat/poll'
+import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
+import { Route as ApiPublicNotificationsFanoutRouteImport } from './routes/api/public/notifications-fanout'
+import { Route as ApiPublicAppVersionRouteImport } from './routes/api/public/app-version'
+import { Route as ApiPaypalTopupReturnRouteImport } from './routes/api/paypal-topup.return'
+import { Route as ApiPaypalTopupCreateRouteImport } from './routes/api/paypal-topup.create'
+import { Route as ApiPaypalTopupCaptureRouteImport } from './routes/api/paypal-topup.capture'
+import { Route as ApiPaypalPayoutStatusRouteImport } from './routes/api/paypal-payout.status'
+import { Route as ApiPaypalPayoutConfigRouteImport } from './routes/api/paypal-payout.config'
+import { Route as ApiPaypalCheckoutReturnRouteImport } from './routes/api/paypal-checkout.return'
+import { Route as ApiPaypalCheckoutCreateRouteImport } from './routes/api/paypal-checkout.create'
+import { Route as ApiPaypalCheckoutCaptureRouteImport } from './routes/api/paypal-checkout.capture'
+import { Route as ApiLiveReplayWebhookRouteImport } from './routes/api/live-replay/webhook'
+import { Route as ApiLiveReplayStopRouteImport } from './routes/api/live-replay/stop'
+import { Route as ApiLiveReplayStartRouteImport } from './routes/api/live-replay/start'
+import { Route as ApiLiveReplayPurgeRouteImport } from './routes/api/live-replay/purge'
+import { Route as ApiLiveReplayPlayUrlRouteImport } from './routes/api/live-replay/play-url'
+import { Route as ApiLiveReplayDeleteRouteImport } from './routes/api/live-replay/delete'
+import { Route as ApiFacebookStatusRouteImport } from './routes/api/facebook/status'
+import { Route as ApiFacebookRestreamRouteImport } from './routes/api/facebook/restream'
+import { Route as ApiFacebookPagesRouteImport } from './routes/api/facebook/pages'
+import { Route as ApiFacebookDisconnectRouteImport } from './routes/api/facebook/disconnect'
+import { Route as ApiEmailConfirmVerifyRouteImport } from './routes/api/email-confirm.verify'
+import { Route as ApiEmailConfirmSendRouteImport } from './routes/api/email-confirm.send'
+import { Route as ApiConnectStatusRouteImport } from './routes/api/connect.status'
+import { Route as ApiConnectPayoutRouteImport } from './routes/api/connect.payout'
+import { Route as ApiConnectOnboardRouteImport } from './routes/api/connect.onboard'
+import { Route as ApiConnectLoginLinkRouteImport } from './routes/api/connect.login-link'
+import { Route as ApiCheckoutConfirmRouteImport } from './routes/api/checkout.confirm'
+import { Route as ApiCheckoutCancelIntentRouteImport } from './routes/api/checkout.cancel-intent'
+import { Route as ApiAdminTestPushRouteImport } from './routes/api/admin/test-push'
+import { Route as ApiAdminPushRouteImport } from './routes/api/admin/push'
+import { Route as ApiAdminPaymentsModeRouteImport } from './routes/api/admin/payments-mode'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api/account.delete'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiYoutubeOauthStartRouteImport } from './routes/api/youtube/oauth.start'
+import { Route as ApiYoutubeOauthCallbackRouteImport } from './routes/api/youtube/oauth.callback'
+import { Route as ApiFacebookOauthStartRouteImport } from './routes/api/facebook/oauth.start'
+import { Route as ApiFacebookOauthCallbackRouteImport } from './routes/api/facebook/oauth.callback'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountDeletionRoute = AccountDeletionRouteImport.update({
-  id: '/account-deletion',
-  path: '/account-deletion',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth-callback',
-  path: '/auth-callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CommunityRoute = CommunityRouteImport.update({
-  id: '/community',
-  path: '/community',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectReturnRoute = ConnectReturnRouteImport.update({
-  id: '/connect-return',
-  path: '/connect-return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EarningsRoute = EarningsRouteImport.update({
-  id: '/earnings',
-  path: '/earnings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EgressTemplateRoute = EgressTemplateRouteImport.update({
-  id: '/egress-template',
-  path: '/egress-template',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HelpRoute = HelpRouteImport.update({
-  id: '/help',
-  path: '/help',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OpenRoute = OpenRouteImport.update({
-  id: '/open',
-  path: '/open',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrdersRoute = OrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PaypalReturnRoute = PaypalReturnRouteImport.update({
-  id: '/paypal-return',
-  path: '/paypal-return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SafetyRoute = SafetyRouteImport.update({
-  id: '/safety',
-  path: '/safety',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShopRoute = ShopRouteImport.update({
-  id: '/shop',
-  path: '/shop',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SupportRoute = SupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -206,84 +112,129 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WalletRoute = WalletRouteImport.update({
-  id: '/wallet',
-  path: '/wallet',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DotwellKnownAppleAppSiteAssociationRoute =
-  DotwellKnownAppleAppSiteAssociationRouteImport.update({
-    id: '/.well-known/apple-app-site-association',
-    path: '/.well-known/apple-app-site-association',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DotwellKnownAssetlinksDotjsonRoute =
-  DotwellKnownAssetlinksDotjsonRouteImport.update({
-    id: '/.well-known/assetlinks.json',
-    path: '/.well-known/assetlinks.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiBroadcastEgressSessionRoute =
-  ApiBroadcastEgressSessionRouteImport.update({
-    id: '/api/broadcast-egress-session',
-    path: '/api/broadcast-egress-session',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
-  id: '/api/checkout',
-  path: '/api/checkout',
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLivekitIngressRoute = ApiLivekitIngressRouteImport.update({
-  id: '/api/livekit-ingress',
-  path: '/api/livekit-ingress',
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
-  id: '/api/livekit-token',
-  path: '/api/livekit-token',
+const SafetyRoute = SafetyRouteImport.update({
+  id: '/safety',
+  path: '/safety',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPaydunyaPayoutRoute = ApiPaydunyaPayoutRouteImport.update({
-  id: '/api/paydunya-payout',
-  path: '/api/paydunya-payout',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPaypalPayoutRoute = ApiPaypalPayoutRouteImport.update({
-  id: '/api/paypal-payout',
-  path: '/api/paypal-payout',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
-  id: '/api/stripe-webhook',
-  path: '/api/stripe-webhook',
+const PaypalReturnRoute = PaypalReturnRouteImport.update({
+  id: '/paypal-return',
+  path: '/paypal-return',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWalletTopupRoute = ApiWalletTopupRouteImport.update({
-  id: '/api/wallet-topup',
-  path: '/api/wallet-topup',
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BroadcastLiveIdRoute = BroadcastLiveIdRouteImport.update({
-  id: '/broadcast/$liveId',
-  path: '/broadcast/$liveId',
+const OpenRoute = OpenRouteImport.update({
+  id: '/open',
+  path: '/open',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EgressTemplateRoute = EgressTemplateRouteImport.update({
+  id: '/egress-template',
+  path: '/egress-template',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EarningsRoute = EarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectReturnRoute = ConnectReturnRouteImport.update({
+  id: '/connect-return',
+  path: '/connect-return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth-callback',
+  path: '/auth-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountDeletionRoute = AccountDeletionRouteImport.update({
+  id: '/account-deletion',
+  path: '/account-deletion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SellOnboardingRoute = SellOnboardingRouteImport.update({
+  id: '/sell/onboarding',
+  path: '/sell/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewGiftBaobabRoute = PreviewGiftBaobabRouteImport.update({
+  id: '/preview/gift-baobab',
+  path: '/preview/gift-baobab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewDefiPlusRoute = PreviewDefiPlusRouteImport.update({
+  id: '/preview/defi-plus',
+  path: '/preview/defi-plus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveIdRoute = LiveIdRouteImport.update({
+  id: '/live/$id',
+  path: '/live/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
+  id: '/guide/what-is-live-shopping',
+  path: '/guide/what-is-live-shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideReussirSesEncheresEnLiveRoute =
@@ -292,211 +243,124 @@ const GuideReussirSesEncheresEnLiveRoute =
     path: '/guide/reussir-ses-encheres-en-live',
     getParentRoute: () => rootRouteImport,
   } as any)
-const GuideWhatIsLiveShoppingRoute = GuideWhatIsLiveShoppingRouteImport.update({
-  id: '/guide/what-is-live-shopping',
-  path: '/guide/what-is-live-shopping',
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinCodeRoute = JoinCodeRouteImport.update({
-  id: '/join/$code',
-  path: '/join/$code',
+const BroadcastLiveIdRoute = BroadcastLiveIdRouteImport.update({
+  id: '/broadcast/$liveId',
+  path: '/broadcast/$liveId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LiveIdRoute = LiveIdRouteImport.update({
-  id: '/live/$id',
-  path: '/live/$id',
+const ApiWalletTopupRoute = ApiWalletTopupRouteImport.update({
+  id: '/api/wallet-topup',
+  path: '/api/wallet-topup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PreviewDefiPlusRoute = PreviewDefiPlusRouteImport.update({
-  id: '/preview/defi-plus',
-  path: '/preview/defi-plus',
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PreviewGiftBaobabRoute = PreviewGiftBaobabRouteImport.update({
-  id: '/preview/gift-baobab',
-  path: '/preview/gift-baobab',
+const ApiPaypalPayoutRoute = ApiPaypalPayoutRouteImport.update({
+  id: '/api/paypal-payout',
+  path: '/api/paypal-payout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SellOnboardingRoute = SellOnboardingRouteImport.update({
-  id: '/sell/onboarding',
-  path: '/sell/onboarding',
+const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
+  id: '/api/livekit-token',
+  path: '/api/livekit-token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const ApiLivekitIngressRoute = ApiLivekitIngressRouteImport.update({
+  id: '/api/livekit-ingress',
+  path: '/api/livekit-ingress',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
+const ApiCheckoutRoute = ApiCheckoutRouteImport.update({
+  id: '/api/checkout',
+  path: '/api/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBroadcastEgressSessionRoute =
+  ApiBroadcastEgressSessionRouteImport.update({
+    id: '/api/broadcast-egress-session',
+    path: '/api/broadcast-egress-session',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
-  id: '/api/account/delete',
-  path: '/api/account/delete',
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownAssetlinksDotjsonRoute =
+  DotwellKnownAssetlinksDotjsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownAppleAppSiteAssociationRoute =
+  DotwellKnownAppleAppSiteAssociationRouteImport.update({
+    id: '/.well-known/apple-app-site-association',
+    path: '/.well-known/apple-app-site-association',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminPaymentsModeRoute = ApiAdminPaymentsModeRouteImport.update({
-  id: '/api/admin/payments-mode',
-  path: '/api/admin/payments-mode',
+const ApiYoutubeStatusRoute = ApiYoutubeStatusRouteImport.update({
+  id: '/api/youtube/status',
+  path: '/api/youtube/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminTestPushRoute = ApiAdminTestPushRouteImport.update({
-  id: '/api/admin/test-push',
-  path: '/api/admin/test-push',
+const ApiYoutubeRestreamRoute = ApiYoutubeRestreamRouteImport.update({
+  id: '/api/youtube/restream',
+  path: '/api/youtube/restream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCheckoutCancelIntentRoute = ApiCheckoutCancelIntentRouteImport.update({
-  id: '/cancel-intent',
-  path: '/cancel-intent',
-  getParentRoute: () => ApiCheckoutRoute,
+const ApiYoutubeDisconnectRoute = ApiYoutubeDisconnectRouteImport.update({
+  id: '/api/youtube/disconnect',
+  path: '/api/youtube/disconnect',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
+const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
   id: '/confirm',
   path: '/confirm',
-  getParentRoute: () => ApiCheckoutRoute,
+  getParentRoute: () => ApiWalletTopupRoute,
 } as any)
-const ApiConnectLoginLinkRoute = ApiConnectLoginLinkRouteImport.update({
-  id: '/api/connect/login-link',
-  path: '/api/connect/login-link',
+const ApiVitrineSignedUploadRoute = ApiVitrineSignedUploadRouteImport.update({
+  id: '/api/vitrine/signed-upload',
+  path: '/api/vitrine/signed-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiConnectOnboardRoute = ApiConnectOnboardRouteImport.update({
-  id: '/api/connect/onboard',
-  path: '/api/connect/onboard',
+const ApiTiktokRestreamRoute = ApiTiktokRestreamRouteImport.update({
+  id: '/api/tiktok/restream',
+  path: '/api/tiktok/restream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiConnectPayoutRoute = ApiConnectPayoutRouteImport.update({
-  id: '/api/connect/payout',
-  path: '/api/connect/payout',
+const ApiSocialChatReplyRoute = ApiSocialChatReplyRouteImport.update({
+  id: '/api/social-chat/reply',
+  path: '/api/social-chat/reply',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiConnectStatusRoute = ApiConnectStatusRouteImport.update({
-  id: '/api/connect/status',
-  path: '/api/connect/status',
+const ApiSocialChatPollRoute = ApiSocialChatPollRouteImport.update({
+  id: '/api/social-chat/poll',
+  path: '/api/social-chat/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiEmailConfirmSendRoute = ApiEmailConfirmSendRouteImport.update({
-  id: '/api/email-confirm/send',
-  path: '/api/email-confirm/send',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiEmailConfirmVerifyRoute = ApiEmailConfirmVerifyRouteImport.update({
-  id: '/api/email-confirm/verify',
-  path: '/api/email-confirm/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
-  id: '/api/facebook/disconnect',
-  path: '/api/facebook/disconnect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFacebookPagesRoute = ApiFacebookPagesRouteImport.update({
-  id: '/api/facebook/pages',
-  path: '/api/facebook/pages',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFacebookRestreamRoute = ApiFacebookRestreamRouteImport.update({
-  id: '/api/facebook/restream',
-  path: '/api/facebook/restream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
-  id: '/api/facebook/status',
-  path: '/api/facebook/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayDeleteRoute = ApiLiveReplayDeleteRouteImport.update({
-  id: '/api/live-replay/delete',
-  path: '/api/live-replay/delete',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayPlayUrlRoute = ApiLiveReplayPlayUrlRouteImport.update({
-  id: '/api/live-replay/play-url',
-  path: '/api/live-replay/play-url',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayPurgeRoute = ApiLiveReplayPurgeRouteImport.update({
-  id: '/api/live-replay/purge',
-  path: '/api/live-replay/purge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayStartRoute = ApiLiveReplayStartRouteImport.update({
-  id: '/api/live-replay/start',
-  path: '/api/live-replay/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayStopRoute = ApiLiveReplayStopRouteImport.update({
-  id: '/api/live-replay/stop',
-  path: '/api/live-replay/stop',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLiveReplayWebhookRoute = ApiLiveReplayWebhookRouteImport.update({
-  id: '/api/live-replay/webhook',
-  path: '/api/live-replay/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaydunyaTopupConfirmRoute = ApiPaydunyaTopupConfirmRouteImport.update({
-  id: '/api/paydunya-topup/confirm',
-  path: '/api/paydunya-topup/confirm',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaydunyaTopupCreateRoute = ApiPaydunyaTopupCreateRouteImport.update({
-  id: '/api/paydunya-topup/create',
-  path: '/api/paydunya-topup/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaydunyaTopupReturnRoute = ApiPaydunyaTopupReturnRouteImport.update({
-  id: '/api/paydunya-topup/return',
-  path: '/api/paydunya-topup/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaypalCheckoutCaptureRoute =
-  ApiPaypalCheckoutCaptureRouteImport.update({
-    id: '/api/paypal-checkout/capture',
-    path: '/api/paypal-checkout/capture',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPaypalCheckoutCreateRoute = ApiPaypalCheckoutCreateRouteImport.update({
-  id: '/api/paypal-checkout/create',
-  path: '/api/paypal-checkout/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaypalCheckoutReturnRoute = ApiPaypalCheckoutReturnRouteImport.update({
-  id: '/api/paypal-checkout/return',
-  path: '/api/paypal-checkout/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
-  id: '/config',
-  path: '/config',
-  getParentRoute: () => ApiPaypalPayoutRoute,
-} as any)
-const ApiPaypalPayoutStatusRoute = ApiPaypalPayoutStatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => ApiPaypalPayoutRoute,
-} as any)
-const ApiPaypalTopupCaptureRoute = ApiPaypalTopupCaptureRouteImport.update({
-  id: '/api/paypal-topup/capture',
-  path: '/api/paypal-topup/capture',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaypalTopupCreateRoute = ApiPaypalTopupCreateRouteImport.update({
-  id: '/api/paypal-topup/create',
-  path: '/api/paypal-topup/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaypalTopupReturnRoute = ApiPaypalTopupReturnRouteImport.update({
-  id: '/api/paypal-topup/return',
-  path: '/api/paypal-topup/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAppVersionRoute = ApiPublicAppVersionRouteImport.update({
-  id: '/api/public/app-version',
-  path: '/api/public/app-version',
+const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
+  id: '/api/public/paypal-webhook',
+  path: '/api/public/paypal-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicNotificationsFanoutRoute =
@@ -505,86 +369,177 @@ const ApiPublicNotificationsFanoutRoute =
     path: '/api/public/notifications-fanout',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicPaydunyaIpnRoute = ApiPublicPaydunyaIpnRouteImport.update({
-  id: '/api/public/paydunya-ipn',
-  path: '/api/public/paydunya-ipn',
+const ApiPublicAppVersionRoute = ApiPublicAppVersionRouteImport.update({
+  id: '/api/public/app-version',
+  path: '/api/public/app-version',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
-  id: '/api/public/paypal-webhook',
-  path: '/api/public/paypal-webhook',
+const ApiPaypalTopupReturnRoute = ApiPaypalTopupReturnRouteImport.update({
+  id: '/api/paypal-topup/return',
+  path: '/api/paypal-topup/return',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSocialChatPollRoute = ApiSocialChatPollRouteImport.update({
-  id: '/api/social-chat/poll',
-  path: '/api/social-chat/poll',
+const ApiPaypalTopupCreateRoute = ApiPaypalTopupCreateRouteImport.update({
+  id: '/api/paypal-topup/create',
+  path: '/api/paypal-topup/create',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSocialChatReplyRoute = ApiSocialChatReplyRouteImport.update({
-  id: '/api/social-chat/reply',
-  path: '/api/social-chat/reply',
+const ApiPaypalTopupCaptureRoute = ApiPaypalTopupCaptureRouteImport.update({
+  id: '/api/paypal-topup/capture',
+  path: '/api/paypal-topup/capture',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTiktokRestreamRoute = ApiTiktokRestreamRouteImport.update({
-  id: '/api/tiktok/restream',
-  path: '/api/tiktok/restream',
+const ApiPaypalPayoutStatusRoute = ApiPaypalPayoutStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => ApiPaypalPayoutRoute,
+} as any)
+const ApiPaypalPayoutConfigRoute = ApiPaypalPayoutConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => ApiPaypalPayoutRoute,
+} as any)
+const ApiPaypalCheckoutReturnRoute = ApiPaypalCheckoutReturnRouteImport.update({
+  id: '/api/paypal-checkout/return',
+  path: '/api/paypal-checkout/return',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiVitrineSignedUploadRoute = ApiVitrineSignedUploadRouteImport.update({
-  id: '/api/vitrine/signed-upload',
-  path: '/api/vitrine/signed-upload',
+const ApiPaypalCheckoutCreateRoute = ApiPaypalCheckoutCreateRouteImport.update({
+  id: '/api/paypal-checkout/create',
+  path: '/api/paypal-checkout/create',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWalletTopupConfirmRoute = ApiWalletTopupConfirmRouteImport.update({
-  id: '/confirm',
-  path: '/confirm',
-  getParentRoute: () => ApiWalletTopupRoute,
-} as any)
-const ApiYoutubeDisconnectRoute = ApiYoutubeDisconnectRouteImport.update({
-  id: '/api/youtube/disconnect',
-  path: '/api/youtube/disconnect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiYoutubeRestreamRoute = ApiYoutubeRestreamRouteImport.update({
-  id: '/api/youtube/restream',
-  path: '/api/youtube/restream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiYoutubeStatusRoute = ApiYoutubeStatusRouteImport.update({
-  id: '/api/youtube/status',
-  path: '/api/youtube/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiFacebookOauthCallbackRoute =
-  ApiFacebookOauthCallbackRouteImport.update({
-    id: '/api/facebook/oauth/callback',
-    path: '/api/facebook/oauth/callback',
+const ApiPaypalCheckoutCaptureRoute =
+  ApiPaypalCheckoutCaptureRouteImport.update({
+    id: '/api/paypal-checkout/capture',
+    path: '/api/paypal-checkout/capture',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiFacebookOauthStartRoute = ApiFacebookOauthStartRouteImport.update({
-  id: '/api/facebook/oauth/start',
-  path: '/api/facebook/oauth/start',
+const ApiLiveReplayWebhookRoute = ApiLiveReplayWebhookRouteImport.update({
+  id: '/api/live-replay/webhook',
+  path: '/api/live-replay/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiYoutubeOauthCallbackRoute = ApiYoutubeOauthCallbackRouteImport.update({
-  id: '/api/youtube/oauth/callback',
-  path: '/api/youtube/oauth/callback',
+const ApiLiveReplayStopRoute = ApiLiveReplayStopRouteImport.update({
+  id: '/api/live-replay/stop',
+  path: '/api/live-replay/stop',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiYoutubeOauthStartRoute = ApiYoutubeOauthStartRouteImport.update({
-  id: '/api/youtube/oauth/start',
-  path: '/api/youtube/oauth/start',
+const ApiLiveReplayStartRoute = ApiLiveReplayStartRouteImport.update({
+  id: '/api/live-replay/start',
+  path: '/api/live-replay/start',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
+const ApiLiveReplayPurgeRoute = ApiLiveReplayPurgeRouteImport.update({
+  id: '/api/live-replay/purge',
+  path: '/api/live-replay/purge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveReplayPlayUrlRoute = ApiLiveReplayPlayUrlRouteImport.update({
+  id: '/api/live-replay/play-url',
+  path: '/api/live-replay/play-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveReplayDeleteRoute = ApiLiveReplayDeleteRouteImport.update({
+  id: '/api/live-replay/delete',
+  path: '/api/live-replay/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookStatusRoute = ApiFacebookStatusRouteImport.update({
+  id: '/api/facebook/status',
+  path: '/api/facebook/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookRestreamRoute = ApiFacebookRestreamRouteImport.update({
+  id: '/api/facebook/restream',
+  path: '/api/facebook/restream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookPagesRoute = ApiFacebookPagesRouteImport.update({
+  id: '/api/facebook/pages',
+  path: '/api/facebook/pages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookDisconnectRoute = ApiFacebookDisconnectRouteImport.update({
+  id: '/api/facebook/disconnect',
+  path: '/api/facebook/disconnect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEmailConfirmVerifyRoute = ApiEmailConfirmVerifyRouteImport.update({
+  id: '/api/email-confirm/verify',
+  path: '/api/email-confirm/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEmailConfirmSendRoute = ApiEmailConfirmSendRouteImport.update({
+  id: '/api/email-confirm/send',
+  path: '/api/email-confirm/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectStatusRoute = ApiConnectStatusRouteImport.update({
+  id: '/api/connect/status',
+  path: '/api/connect/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectPayoutRoute = ApiConnectPayoutRouteImport.update({
+  id: '/api/connect/payout',
+  path: '/api/connect/payout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectOnboardRoute = ApiConnectOnboardRouteImport.update({
+  id: '/api/connect/onboard',
+  path: '/api/connect/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectLoginLinkRoute = ApiConnectLoginLinkRouteImport.update({
+  id: '/api/connect/login-link',
+  path: '/api/connect/login-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCheckoutConfirmRoute = ApiCheckoutConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => ApiCheckoutRoute,
+} as any)
+const ApiCheckoutCancelIntentRoute = ApiCheckoutCancelIntentRouteImport.update({
+  id: '/cancel-intent',
+  path: '/cancel-intent',
+  getParentRoute: () => ApiCheckoutRoute,
+} as any)
+const ApiAdminTestPushRoute = ApiAdminTestPushRouteImport.update({
+  id: '/api/admin/test-push',
+  path: '/api/admin/test-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPushRoute = ApiAdminPushRouteImport.update({
+  id: '/api/admin/push',
+  path: '/api/admin/push',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPaymentsModeRoute = ApiAdminPaymentsModeRouteImport.update({
+  id: '/api/admin/payments-mode',
+  path: '/api/admin/payments-mode',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
 const LovableEmailTransactionalPreviewRoute =
@@ -593,10 +548,31 @@ const LovableEmailTransactionalPreviewRoute =
     path: '/lovable/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiYoutubeOauthStartRoute = ApiYoutubeOauthStartRouteImport.update({
+  id: '/api/youtube/oauth/start',
+  path: '/api/youtube/oauth/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiYoutubeOauthCallbackRoute = ApiYoutubeOauthCallbackRouteImport.update({
+  id: '/api/youtube/oauth/callback',
+  path: '/api/youtube/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookOauthStartRoute = ApiFacebookOauthStartRouteImport.update({
+  id: '/api/facebook/oauth/start',
+  path: '/api/facebook/oauth/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFacebookOauthCallbackRoute =
+  ApiFacebookOauthCallbackRouteImport.update({
+    id: '/api/facebook/oauth/callback',
+    path: '/api/facebook/oauth/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -630,7 +606,6 @@ export interface FileRoutesByFullPath {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
-  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -647,6 +622,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
+  '/api/admin/push': typeof ApiAdminPushRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -666,9 +642,6 @@ export interface FileRoutesByFullPath {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
-  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
-  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
-  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -679,7 +652,6 @@ export interface FileRoutesByFullPath {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
-  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -728,7 +700,6 @@ export interface FileRoutesByTo {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
-  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -745,6 +716,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
+  '/api/admin/push': typeof ApiAdminPushRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -764,9 +736,6 @@ export interface FileRoutesByTo {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
-  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
-  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
-  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -777,7 +746,6 @@ export interface FileRoutesByTo {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
-  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -827,7 +795,6 @@ export interface FileRoutesById {
   '/api/checkout': typeof ApiCheckoutRouteWithChildren
   '/api/livekit-ingress': typeof ApiLivekitIngressRoute
   '/api/livekit-token': typeof ApiLivekitTokenRoute
-  '/api/paydunya-payout': typeof ApiPaydunyaPayoutRoute
   '/api/paypal-payout': typeof ApiPaypalPayoutRouteWithChildren
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/wallet-topup': typeof ApiWalletTopupRouteWithChildren
@@ -844,6 +811,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/account/delete': typeof ApiAccountDeleteRoute
   '/api/admin/payments-mode': typeof ApiAdminPaymentsModeRoute
+  '/api/admin/push': typeof ApiAdminPushRoute
   '/api/admin/test-push': typeof ApiAdminTestPushRoute
   '/api/checkout/cancel-intent': typeof ApiCheckoutCancelIntentRoute
   '/api/checkout/confirm': typeof ApiCheckoutConfirmRoute
@@ -863,9 +831,6 @@ export interface FileRoutesById {
   '/api/live-replay/start': typeof ApiLiveReplayStartRoute
   '/api/live-replay/stop': typeof ApiLiveReplayStopRoute
   '/api/live-replay/webhook': typeof ApiLiveReplayWebhookRoute
-  '/api/paydunya-topup/confirm': typeof ApiPaydunyaTopupConfirmRoute
-  '/api/paydunya-topup/create': typeof ApiPaydunyaTopupCreateRoute
-  '/api/paydunya-topup/return': typeof ApiPaydunyaTopupReturnRoute
   '/api/paypal-checkout/capture': typeof ApiPaypalCheckoutCaptureRoute
   '/api/paypal-checkout/create': typeof ApiPaypalCheckoutCreateRoute
   '/api/paypal-checkout/return': typeof ApiPaypalCheckoutReturnRoute
@@ -876,7 +841,6 @@ export interface FileRoutesById {
   '/api/paypal-topup/return': typeof ApiPaypalTopupReturnRoute
   '/api/public/app-version': typeof ApiPublicAppVersionRoute
   '/api/public/notifications-fanout': typeof ApiPublicNotificationsFanoutRoute
-  '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/social-chat/poll': typeof ApiSocialChatPollRoute
   '/api/social-chat/reply': typeof ApiSocialChatReplyRoute
@@ -927,7 +891,6 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
-    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -944,6 +907,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
+    | '/api/admin/push'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -963,9 +927,6 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
-    | '/api/paydunya-topup/confirm'
-    | '/api/paydunya-topup/create'
-    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -976,7 +937,6 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
-    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -1025,7 +985,6 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
-    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -1042,6 +1001,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
+    | '/api/admin/push'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -1061,9 +1021,6 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
-    | '/api/paydunya-topup/confirm'
-    | '/api/paydunya-topup/create'
-    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -1074,7 +1031,6 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
-    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -1123,7 +1079,6 @@ export interface FileRouteTypes {
     | '/api/checkout'
     | '/api/livekit-ingress'
     | '/api/livekit-token'
-    | '/api/paydunya-payout'
     | '/api/paypal-payout'
     | '/api/stripe-webhook'
     | '/api/wallet-topup'
@@ -1140,6 +1095,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/account/delete'
     | '/api/admin/payments-mode'
+    | '/api/admin/push'
     | '/api/admin/test-push'
     | '/api/checkout/cancel-intent'
     | '/api/checkout/confirm'
@@ -1159,9 +1115,6 @@ export interface FileRouteTypes {
     | '/api/live-replay/start'
     | '/api/live-replay/stop'
     | '/api/live-replay/webhook'
-    | '/api/paydunya-topup/confirm'
-    | '/api/paydunya-topup/create'
-    | '/api/paydunya-topup/return'
     | '/api/paypal-checkout/capture'
     | '/api/paypal-checkout/create'
     | '/api/paypal-checkout/return'
@@ -1172,7 +1125,6 @@ export interface FileRouteTypes {
     | '/api/paypal-topup/return'
     | '/api/public/app-version'
     | '/api/public/notifications-fanout'
-    | '/api/public/paydunya-ipn'
     | '/api/public/paypal-webhook'
     | '/api/social-chat/poll'
     | '/api/social-chat/reply'
@@ -1222,7 +1174,6 @@ export interface RootRouteChildren {
   ApiCheckoutRoute: typeof ApiCheckoutRouteWithChildren
   ApiLivekitIngressRoute: typeof ApiLivekitIngressRoute
   ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
-  ApiPaydunyaPayoutRoute: typeof ApiPaydunyaPayoutRoute
   ApiPaypalPayoutRoute: typeof ApiPaypalPayoutRouteWithChildren
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiWalletTopupRoute: typeof ApiWalletTopupRouteWithChildren
@@ -1239,6 +1190,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
   ApiAdminPaymentsModeRoute: typeof ApiAdminPaymentsModeRoute
+  ApiAdminPushRoute: typeof ApiAdminPushRoute
   ApiAdminTestPushRoute: typeof ApiAdminTestPushRoute
   ApiConnectLoginLinkRoute: typeof ApiConnectLoginLinkRoute
   ApiConnectOnboardRoute: typeof ApiConnectOnboardRoute
@@ -1256,9 +1208,6 @@ export interface RootRouteChildren {
   ApiLiveReplayStartRoute: typeof ApiLiveReplayStartRoute
   ApiLiveReplayStopRoute: typeof ApiLiveReplayStopRoute
   ApiLiveReplayWebhookRoute: typeof ApiLiveReplayWebhookRoute
-  ApiPaydunyaTopupConfirmRoute: typeof ApiPaydunyaTopupConfirmRoute
-  ApiPaydunyaTopupCreateRoute: typeof ApiPaydunyaTopupCreateRoute
-  ApiPaydunyaTopupReturnRoute: typeof ApiPaydunyaTopupReturnRoute
   ApiPaypalCheckoutCaptureRoute: typeof ApiPaypalCheckoutCaptureRoute
   ApiPaypalCheckoutCreateRoute: typeof ApiPaypalCheckoutCreateRoute
   ApiPaypalCheckoutReturnRoute: typeof ApiPaypalCheckoutReturnRoute
@@ -1267,7 +1216,6 @@ export interface RootRouteChildren {
   ApiPaypalTopupReturnRoute: typeof ApiPaypalTopupReturnRoute
   ApiPublicAppVersionRoute: typeof ApiPublicAppVersionRoute
   ApiPublicNotificationsFanoutRoute: typeof ApiPublicNotificationsFanoutRoute
-  ApiPublicPaydunyaIpnRoute: typeof ApiPublicPaydunyaIpnRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiSocialChatPollRoute: typeof ApiSocialChatPollRoute
   ApiSocialChatReplyRoute: typeof ApiSocialChatReplyRoute
@@ -1288,137 +1236,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account-deletion': {
-      id: '/account-deletion'
-      path: '/account-deletion'
-      fullPath: '/account-deletion'
-      preLoaderRoute: typeof AccountDeletionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth-callback': {
-      id: '/auth-callback'
-      path: '/auth-callback'
-      fullPath: '/auth-callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/community': {
-      id: '/community'
-      path: '/community'
-      fullPath: '/community'
-      preLoaderRoute: typeof CommunityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connect-return': {
-      id: '/connect-return'
-      path: '/connect-return'
-      fullPath: '/connect-return'
-      preLoaderRoute: typeof ConnectReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/earnings': {
-      id: '/earnings'
-      path: '/earnings'
-      fullPath: '/earnings'
-      preLoaderRoute: typeof EarningsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/egress-template': {
-      id: '/egress-template'
-      path: '/egress-template'
-      fullPath: '/egress-template'
-      preLoaderRoute: typeof EgressTemplateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/help': {
-      id: '/help'
-      path: '/help'
-      fullPath: '/help'
-      preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/open': {
-      id: '/open'
-      path: '/open'
-      fullPath: '/open'
-      preLoaderRoute: typeof OpenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orders': {
-      id: '/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof OrdersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/paypal-return': {
-      id: '/paypal-return'
-      path: '/paypal-return'
-      fullPath: '/paypal-return'
-      preLoaderRoute: typeof PaypalReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/safety': {
-      id: '/safety'
-      path: '/safety'
-      fullPath: '/safety'
-      preLoaderRoute: typeof SafetyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shop': {
-      id: '/shop'
-      path: '/shop'
-      fullPath: '/shop'
-      preLoaderRoute: typeof ShopRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unsubscribe': {
@@ -1428,151 +1250,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wallet': {
-      id: '/wallet'
-      path: '/wallet'
-      fullPath: '/wallet'
-      preLoaderRoute: typeof WalletRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/apple-app-site-association': {
-      id: '/.well-known/apple-app-site-association'
-      path: '/.well-known/apple-app-site-association'
-      fullPath: '/.well-known/apple-app-site-association'
-      preLoaderRoute: typeof DotwellKnownAppleAppSiteAssociationRouteImport
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/assetlinks.json': {
-      id: '/.well-known/assetlinks.json'
-      path: '/.well-known/assetlinks.json'
-      fullPath: '/.well-known/assetlinks.json'
-      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
+    '/safety': {
+      id: '/safety'
+      path: '/safety'
+      fullPath: '/safety'
+      preLoaderRoute: typeof SafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/broadcast-egress-session': {
-      id: '/api/broadcast-egress-session'
-      path: '/api/broadcast-egress-session'
-      fullPath: '/api/broadcast-egress-session'
-      preLoaderRoute: typeof ApiBroadcastEgressSessionRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/checkout': {
-      id: '/api/checkout'
-      path: '/api/checkout'
-      fullPath: '/api/checkout'
-      preLoaderRoute: typeof ApiCheckoutRouteImport
+    '/paypal-return': {
+      id: '/paypal-return'
+      path: '/paypal-return'
+      fullPath: '/paypal-return'
+      preLoaderRoute: typeof PaypalReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/livekit-ingress': {
-      id: '/api/livekit-ingress'
-      path: '/api/livekit-ingress'
-      fullPath: '/api/livekit-ingress'
-      preLoaderRoute: typeof ApiLivekitIngressRouteImport
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/livekit-token': {
-      id: '/api/livekit-token'
-      path: '/api/livekit-token'
-      fullPath: '/api/livekit-token'
-      preLoaderRoute: typeof ApiLivekitTokenRouteImport
+    '/open': {
+      id: '/open'
+      path: '/open'
+      fullPath: '/open'
+      preLoaderRoute: typeof OpenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/paydunya-payout': {
-      id: '/api/paydunya-payout'
-      path: '/api/paydunya-payout'
-      fullPath: '/api/paydunya-payout'
-      preLoaderRoute: typeof ApiPaydunyaPayoutRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/paypal-payout': {
-      id: '/api/paypal-payout'
-      path: '/api/paypal-payout'
-      fullPath: '/api/paypal-payout'
-      preLoaderRoute: typeof ApiPaypalPayoutRouteImport
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/stripe-webhook': {
-      id: '/api/stripe-webhook'
-      path: '/api/stripe-webhook'
-      fullPath: '/api/stripe-webhook'
-      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+    '/egress-template': {
+      id: '/egress-template'
+      path: '/egress-template'
+      fullPath: '/egress-template'
+      preLoaderRoute: typeof EgressTemplateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/wallet-topup': {
-      id: '/api/wallet-topup'
-      path: '/api/wallet-topup'
-      fullPath: '/api/wallet-topup'
-      preLoaderRoute: typeof ApiWalletTopupRouteImport
+    '/earnings': {
+      id: '/earnings'
+      path: '/earnings'
+      fullPath: '/earnings'
+      preLoaderRoute: typeof EarningsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/broadcast/$liveId': {
-      id: '/broadcast/$liveId'
-      path: '/broadcast/$liveId'
-      fullPath: '/broadcast/$liveId'
-      preLoaderRoute: typeof BroadcastLiveIdRouteImport
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+    '/connect-return': {
+      id: '/connect-return'
+      path: '/connect-return'
+      fullPath: '/connect-return'
+      preLoaderRoute: typeof ConnectReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/guide/reussir-ses-encheres-en-live': {
-      id: '/guide/reussir-ses-encheres-en-live'
-      path: '/guide/reussir-ses-encheres-en-live'
-      fullPath: '/guide/reussir-ses-encheres-en-live'
-      preLoaderRoute: typeof GuideReussirSesEncheresEnLiveRouteImport
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/guide/what-is-live-shopping': {
-      id: '/guide/what-is-live-shopping'
-      path: '/guide/what-is-live-shopping'
-      fullPath: '/guide/what-is-live-shopping'
-      preLoaderRoute: typeof GuideWhatIsLiveShoppingRouteImport
+    '/auth-callback': {
+      id: '/auth-callback'
+      path: '/auth-callback'
+      fullPath: '/auth-callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/join/$code': {
-      id: '/join/$code'
-      path: '/join/$code'
-      fullPath: '/join/$code'
-      preLoaderRoute: typeof JoinCodeRouteImport
+    '/account-deletion': {
+      id: '/account-deletion'
+      path: '/account-deletion'
+      fullPath: '/account-deletion'
+      preLoaderRoute: typeof AccountDeletionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/live/$id': {
-      id: '/live/$id'
-      path: '/live/$id'
-      fullPath: '/live/$id'
-      preLoaderRoute: typeof LiveIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/defi-plus': {
-      id: '/preview/defi-plus'
-      path: '/preview/defi-plus'
-      fullPath: '/preview/defi-plus'
-      preLoaderRoute: typeof PreviewDefiPlusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/gift-baobab': {
-      id: '/preview/gift-baobab'
-      path: '/preview/gift-baobab'
-      fullPath: '/preview/gift-baobab'
-      preLoaderRoute: typeof PreviewGiftBaobabRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sell/onboarding': {
@@ -1582,326 +1390,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellOnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/preview/gift-baobab': {
+      id: '/preview/gift-baobab'
+      path: '/preview/gift-baobab'
+      fullPath: '/preview/gift-baobab'
+      preLoaderRoute: typeof PreviewGiftBaobabRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/preview/defi-plus': {
+      id: '/preview/defi-plus'
+      path: '/preview/defi-plus'
+      fullPath: '/preview/defi-plus'
+      preLoaderRoute: typeof PreviewDefiPlusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/account/delete': {
-      id: '/api/account/delete'
-      path: '/api/account/delete'
-      fullPath: '/api/account/delete'
-      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+    '/live/$id': {
+      id: '/live/$id'
+      path: '/live/$id'
+      fullPath: '/live/$id'
+      preLoaderRoute: typeof LiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/payments-mode': {
-      id: '/api/admin/payments-mode'
-      path: '/api/admin/payments-mode'
-      fullPath: '/api/admin/payments-mode'
-      preLoaderRoute: typeof ApiAdminPaymentsModeRouteImport
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/test-push': {
-      id: '/api/admin/test-push'
-      path: '/api/admin/test-push'
-      fullPath: '/api/admin/test-push'
-      preLoaderRoute: typeof ApiAdminTestPushRouteImport
+    '/guide/what-is-live-shopping': {
+      id: '/guide/what-is-live-shopping'
+      path: '/guide/what-is-live-shopping'
+      fullPath: '/guide/what-is-live-shopping'
+      preLoaderRoute: typeof GuideWhatIsLiveShoppingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/checkout/cancel-intent': {
-      id: '/api/checkout/cancel-intent'
-      path: '/cancel-intent'
-      fullPath: '/api/checkout/cancel-intent'
-      preLoaderRoute: typeof ApiCheckoutCancelIntentRouteImport
-      parentRoute: typeof ApiCheckoutRoute
-    }
-    '/api/checkout/confirm': {
-      id: '/api/checkout/confirm'
-      path: '/confirm'
-      fullPath: '/api/checkout/confirm'
-      preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
-      parentRoute: typeof ApiCheckoutRoute
-    }
-    '/api/connect/login-link': {
-      id: '/api/connect/login-link'
-      path: '/api/connect/login-link'
-      fullPath: '/api/connect/login-link'
-      preLoaderRoute: typeof ApiConnectLoginLinkRouteImport
+    '/guide/reussir-ses-encheres-en-live': {
+      id: '/guide/reussir-ses-encheres-en-live'
+      path: '/guide/reussir-ses-encheres-en-live'
+      fullPath: '/guide/reussir-ses-encheres-en-live'
+      preLoaderRoute: typeof GuideReussirSesEncheresEnLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/connect/onboard': {
-      id: '/api/connect/onboard'
-      path: '/api/connect/onboard'
-      fullPath: '/api/connect/onboard'
-      preLoaderRoute: typeof ApiConnectOnboardRouteImport
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/connect/payout': {
-      id: '/api/connect/payout'
-      path: '/api/connect/payout'
-      fullPath: '/api/connect/payout'
-      preLoaderRoute: typeof ApiConnectPayoutRouteImport
+    '/broadcast/$liveId': {
+      id: '/broadcast/$liveId'
+      path: '/broadcast/$liveId'
+      fullPath: '/broadcast/$liveId'
+      preLoaderRoute: typeof BroadcastLiveIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/connect/status': {
-      id: '/api/connect/status'
-      path: '/api/connect/status'
-      fullPath: '/api/connect/status'
-      preLoaderRoute: typeof ApiConnectStatusRouteImport
+    '/api/wallet-topup': {
+      id: '/api/wallet-topup'
+      path: '/api/wallet-topup'
+      fullPath: '/api/wallet-topup'
+      preLoaderRoute: typeof ApiWalletTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/email-confirm/send': {
-      id: '/api/email-confirm/send'
-      path: '/api/email-confirm/send'
-      fullPath: '/api/email-confirm/send'
-      preLoaderRoute: typeof ApiEmailConfirmSendRouteImport
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/email-confirm/verify': {
-      id: '/api/email-confirm/verify'
-      path: '/api/email-confirm/verify'
-      fullPath: '/api/email-confirm/verify'
-      preLoaderRoute: typeof ApiEmailConfirmVerifyRouteImport
+    '/api/paypal-payout': {
+      id: '/api/paypal-payout'
+      path: '/api/paypal-payout'
+      fullPath: '/api/paypal-payout'
+      preLoaderRoute: typeof ApiPaypalPayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/disconnect': {
-      id: '/api/facebook/disconnect'
-      path: '/api/facebook/disconnect'
-      fullPath: '/api/facebook/disconnect'
-      preLoaderRoute: typeof ApiFacebookDisconnectRouteImport
+    '/api/livekit-token': {
+      id: '/api/livekit-token'
+      path: '/api/livekit-token'
+      fullPath: '/api/livekit-token'
+      preLoaderRoute: typeof ApiLivekitTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/pages': {
-      id: '/api/facebook/pages'
-      path: '/api/facebook/pages'
-      fullPath: '/api/facebook/pages'
-      preLoaderRoute: typeof ApiFacebookPagesRouteImport
+    '/api/livekit-ingress': {
+      id: '/api/livekit-ingress'
+      path: '/api/livekit-ingress'
+      fullPath: '/api/livekit-ingress'
+      preLoaderRoute: typeof ApiLivekitIngressRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/restream': {
-      id: '/api/facebook/restream'
-      path: '/api/facebook/restream'
-      fullPath: '/api/facebook/restream'
-      preLoaderRoute: typeof ApiFacebookRestreamRouteImport
+    '/api/checkout': {
+      id: '/api/checkout'
+      path: '/api/checkout'
+      fullPath: '/api/checkout'
+      preLoaderRoute: typeof ApiCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/status': {
-      id: '/api/facebook/status'
-      path: '/api/facebook/status'
-      fullPath: '/api/facebook/status'
-      preLoaderRoute: typeof ApiFacebookStatusRouteImport
+    '/api/broadcast-egress-session': {
+      id: '/api/broadcast-egress-session'
+      path: '/api/broadcast-egress-session'
+      fullPath: '/api/broadcast-egress-session'
+      preLoaderRoute: typeof ApiBroadcastEgressSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/live-replay/delete': {
-      id: '/api/live-replay/delete'
-      path: '/api/live-replay/delete'
-      fullPath: '/api/live-replay/delete'
-      preLoaderRoute: typeof ApiLiveReplayDeleteRouteImport
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/live-replay/play-url': {
-      id: '/api/live-replay/play-url'
-      path: '/api/live-replay/play-url'
-      fullPath: '/api/live-replay/play-url'
-      preLoaderRoute: typeof ApiLiveReplayPlayUrlRouteImport
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/live-replay/purge': {
-      id: '/api/live-replay/purge'
-      path: '/api/live-replay/purge'
-      fullPath: '/api/live-replay/purge'
-      preLoaderRoute: typeof ApiLiveReplayPurgeRouteImport
+    '/.well-known/apple-app-site-association': {
+      id: '/.well-known/apple-app-site-association'
+      path: '/.well-known/apple-app-site-association'
+      fullPath: '/.well-known/apple-app-site-association'
+      preLoaderRoute: typeof DotwellKnownAppleAppSiteAssociationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/live-replay/start': {
-      id: '/api/live-replay/start'
-      path: '/api/live-replay/start'
-      fullPath: '/api/live-replay/start'
-      preLoaderRoute: typeof ApiLiveReplayStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/live-replay/stop': {
-      id: '/api/live-replay/stop'
-      path: '/api/live-replay/stop'
-      fullPath: '/api/live-replay/stop'
-      preLoaderRoute: typeof ApiLiveReplayStopRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/live-replay/webhook': {
-      id: '/api/live-replay/webhook'
-      path: '/api/live-replay/webhook'
-      fullPath: '/api/live-replay/webhook'
-      preLoaderRoute: typeof ApiLiveReplayWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paydunya-topup/confirm': {
-      id: '/api/paydunya-topup/confirm'
-      path: '/api/paydunya-topup/confirm'
-      fullPath: '/api/paydunya-topup/confirm'
-      preLoaderRoute: typeof ApiPaydunyaTopupConfirmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paydunya-topup/create': {
-      id: '/api/paydunya-topup/create'
-      path: '/api/paydunya-topup/create'
-      fullPath: '/api/paydunya-topup/create'
-      preLoaderRoute: typeof ApiPaydunyaTopupCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paydunya-topup/return': {
-      id: '/api/paydunya-topup/return'
-      path: '/api/paydunya-topup/return'
-      fullPath: '/api/paydunya-topup/return'
-      preLoaderRoute: typeof ApiPaydunyaTopupReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-checkout/capture': {
-      id: '/api/paypal-checkout/capture'
-      path: '/api/paypal-checkout/capture'
-      fullPath: '/api/paypal-checkout/capture'
-      preLoaderRoute: typeof ApiPaypalCheckoutCaptureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-checkout/create': {
-      id: '/api/paypal-checkout/create'
-      path: '/api/paypal-checkout/create'
-      fullPath: '/api/paypal-checkout/create'
-      preLoaderRoute: typeof ApiPaypalCheckoutCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-checkout/return': {
-      id: '/api/paypal-checkout/return'
-      path: '/api/paypal-checkout/return'
-      fullPath: '/api/paypal-checkout/return'
-      preLoaderRoute: typeof ApiPaypalCheckoutReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-payout/config': {
-      id: '/api/paypal-payout/config'
-      path: '/config'
-      fullPath: '/api/paypal-payout/config'
-      preLoaderRoute: typeof ApiPaypalPayoutConfigRouteImport
-      parentRoute: typeof ApiPaypalPayoutRoute
-    }
-    '/api/paypal-payout/status': {
-      id: '/api/paypal-payout/status'
-      path: '/status'
-      fullPath: '/api/paypal-payout/status'
-      preLoaderRoute: typeof ApiPaypalPayoutStatusRouteImport
-      parentRoute: typeof ApiPaypalPayoutRoute
-    }
-    '/api/paypal-topup/capture': {
-      id: '/api/paypal-topup/capture'
-      path: '/api/paypal-topup/capture'
-      fullPath: '/api/paypal-topup/capture'
-      preLoaderRoute: typeof ApiPaypalTopupCaptureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-topup/create': {
-      id: '/api/paypal-topup/create'
-      path: '/api/paypal-topup/create'
-      fullPath: '/api/paypal-topup/create'
-      preLoaderRoute: typeof ApiPaypalTopupCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/paypal-topup/return': {
-      id: '/api/paypal-topup/return'
-      path: '/api/paypal-topup/return'
-      fullPath: '/api/paypal-topup/return'
-      preLoaderRoute: typeof ApiPaypalTopupReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/app-version': {
-      id: '/api/public/app-version'
-      path: '/api/public/app-version'
-      fullPath: '/api/public/app-version'
-      preLoaderRoute: typeof ApiPublicAppVersionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/notifications-fanout': {
-      id: '/api/public/notifications-fanout'
-      path: '/api/public/notifications-fanout'
-      fullPath: '/api/public/notifications-fanout'
-      preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/paydunya-ipn': {
-      id: '/api/public/paydunya-ipn'
-      path: '/api/public/paydunya-ipn'
-      fullPath: '/api/public/paydunya-ipn'
-      preLoaderRoute: typeof ApiPublicPaydunyaIpnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/paypal-webhook': {
-      id: '/api/public/paypal-webhook'
-      path: '/api/public/paypal-webhook'
-      fullPath: '/api/public/paypal-webhook'
-      preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/social-chat/poll': {
-      id: '/api/social-chat/poll'
-      path: '/api/social-chat/poll'
-      fullPath: '/api/social-chat/poll'
-      preLoaderRoute: typeof ApiSocialChatPollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/social-chat/reply': {
-      id: '/api/social-chat/reply'
-      path: '/api/social-chat/reply'
-      fullPath: '/api/social-chat/reply'
-      preLoaderRoute: typeof ApiSocialChatReplyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/tiktok/restream': {
-      id: '/api/tiktok/restream'
-      path: '/api/tiktok/restream'
-      fullPath: '/api/tiktok/restream'
-      preLoaderRoute: typeof ApiTiktokRestreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/vitrine/signed-upload': {
-      id: '/api/vitrine/signed-upload'
-      path: '/api/vitrine/signed-upload'
-      fullPath: '/api/vitrine/signed-upload'
-      preLoaderRoute: typeof ApiVitrineSignedUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/wallet-topup/confirm': {
-      id: '/api/wallet-topup/confirm'
-      path: '/confirm'
-      fullPath: '/api/wallet-topup/confirm'
-      preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
-      parentRoute: typeof ApiWalletTopupRoute
-    }
-    '/api/youtube/disconnect': {
-      id: '/api/youtube/disconnect'
-      path: '/api/youtube/disconnect'
-      fullPath: '/api/youtube/disconnect'
-      preLoaderRoute: typeof ApiYoutubeDisconnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/youtube/restream': {
-      id: '/api/youtube/restream'
-      path: '/api/youtube/restream'
-      fullPath: '/api/youtube/restream'
-      preLoaderRoute: typeof ApiYoutubeRestreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/youtube/status': {
-      id: '/api/youtube/status'
-      path: '/api/youtube/status'
-      fullPath: '/api/youtube/status'
-      preLoaderRoute: typeof ApiYoutubeStatusRouteImport
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/suppression': {
@@ -1911,39 +1530,312 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/oauth/callback': {
-      id: '/api/facebook/oauth/callback'
-      path: '/api/facebook/oauth/callback'
-      fullPath: '/api/facebook/oauth/callback'
-      preLoaderRoute: typeof ApiFacebookOauthCallbackRouteImport
+    '/api/youtube/status': {
+      id: '/api/youtube/status'
+      path: '/api/youtube/status'
+      fullPath: '/api/youtube/status'
+      preLoaderRoute: typeof ApiYoutubeStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/facebook/oauth/start': {
-      id: '/api/facebook/oauth/start'
-      path: '/api/facebook/oauth/start'
-      fullPath: '/api/facebook/oauth/start'
-      preLoaderRoute: typeof ApiFacebookOauthStartRouteImport
+    '/api/youtube/restream': {
+      id: '/api/youtube/restream'
+      path: '/api/youtube/restream'
+      fullPath: '/api/youtube/restream'
+      preLoaderRoute: typeof ApiYoutubeRestreamRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/youtube/oauth/callback': {
-      id: '/api/youtube/oauth/callback'
-      path: '/api/youtube/oauth/callback'
-      fullPath: '/api/youtube/oauth/callback'
-      preLoaderRoute: typeof ApiYoutubeOauthCallbackRouteImport
+    '/api/youtube/disconnect': {
+      id: '/api/youtube/disconnect'
+      path: '/api/youtube/disconnect'
+      fullPath: '/api/youtube/disconnect'
+      preLoaderRoute: typeof ApiYoutubeDisconnectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/youtube/oauth/start': {
-      id: '/api/youtube/oauth/start'
-      path: '/api/youtube/oauth/start'
-      fullPath: '/api/youtube/oauth/start'
-      preLoaderRoute: typeof ApiYoutubeOauthStartRouteImport
+    '/api/wallet-topup/confirm': {
+      id: '/api/wallet-topup/confirm'
+      path: '/confirm'
+      fullPath: '/api/wallet-topup/confirm'
+      preLoaderRoute: typeof ApiWalletTopupConfirmRouteImport
+      parentRoute: typeof ApiWalletTopupRoute
+    }
+    '/api/vitrine/signed-upload': {
+      id: '/api/vitrine/signed-upload'
+      path: '/api/vitrine/signed-upload'
+      fullPath: '/api/vitrine/signed-upload'
+      preLoaderRoute: typeof ApiVitrineSignedUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/api/tiktok/restream': {
+      id: '/api/tiktok/restream'
+      path: '/api/tiktok/restream'
+      fullPath: '/api/tiktok/restream'
+      preLoaderRoute: typeof ApiTiktokRestreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social-chat/reply': {
+      id: '/api/social-chat/reply'
+      path: '/api/social-chat/reply'
+      fullPath: '/api/social-chat/reply'
+      preLoaderRoute: typeof ApiSocialChatReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/social-chat/poll': {
+      id: '/api/social-chat/poll'
+      path: '/api/social-chat/poll'
+      fullPath: '/api/social-chat/poll'
+      preLoaderRoute: typeof ApiSocialChatPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paypal-webhook': {
+      id: '/api/public/paypal-webhook'
+      path: '/api/public/paypal-webhook'
+      fullPath: '/api/public/paypal-webhook'
+      preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/notifications-fanout': {
+      id: '/api/public/notifications-fanout'
+      path: '/api/public/notifications-fanout'
+      fullPath: '/api/public/notifications-fanout'
+      preLoaderRoute: typeof ApiPublicNotificationsFanoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/app-version': {
+      id: '/api/public/app-version'
+      path: '/api/public/app-version'
+      fullPath: '/api/public/app-version'
+      preLoaderRoute: typeof ApiPublicAppVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-topup/return': {
+      id: '/api/paypal-topup/return'
+      path: '/api/paypal-topup/return'
+      fullPath: '/api/paypal-topup/return'
+      preLoaderRoute: typeof ApiPaypalTopupReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-topup/create': {
+      id: '/api/paypal-topup/create'
+      path: '/api/paypal-topup/create'
+      fullPath: '/api/paypal-topup/create'
+      preLoaderRoute: typeof ApiPaypalTopupCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-topup/capture': {
+      id: '/api/paypal-topup/capture'
+      path: '/api/paypal-topup/capture'
+      fullPath: '/api/paypal-topup/capture'
+      preLoaderRoute: typeof ApiPaypalTopupCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-payout/status': {
+      id: '/api/paypal-payout/status'
+      path: '/status'
+      fullPath: '/api/paypal-payout/status'
+      preLoaderRoute: typeof ApiPaypalPayoutStatusRouteImport
+      parentRoute: typeof ApiPaypalPayoutRoute
+    }
+    '/api/paypal-payout/config': {
+      id: '/api/paypal-payout/config'
+      path: '/config'
+      fullPath: '/api/paypal-payout/config'
+      preLoaderRoute: typeof ApiPaypalPayoutConfigRouteImport
+      parentRoute: typeof ApiPaypalPayoutRoute
+    }
+    '/api/paypal-checkout/return': {
+      id: '/api/paypal-checkout/return'
+      path: '/api/paypal-checkout/return'
+      fullPath: '/api/paypal-checkout/return'
+      preLoaderRoute: typeof ApiPaypalCheckoutReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-checkout/create': {
+      id: '/api/paypal-checkout/create'
+      path: '/api/paypal-checkout/create'
+      fullPath: '/api/paypal-checkout/create'
+      preLoaderRoute: typeof ApiPaypalCheckoutCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paypal-checkout/capture': {
+      id: '/api/paypal-checkout/capture'
+      path: '/api/paypal-checkout/capture'
+      fullPath: '/api/paypal-checkout/capture'
+      preLoaderRoute: typeof ApiPaypalCheckoutCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/webhook': {
+      id: '/api/live-replay/webhook'
+      path: '/api/live-replay/webhook'
+      fullPath: '/api/live-replay/webhook'
+      preLoaderRoute: typeof ApiLiveReplayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/stop': {
+      id: '/api/live-replay/stop'
+      path: '/api/live-replay/stop'
+      fullPath: '/api/live-replay/stop'
+      preLoaderRoute: typeof ApiLiveReplayStopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/start': {
+      id: '/api/live-replay/start'
+      path: '/api/live-replay/start'
+      fullPath: '/api/live-replay/start'
+      preLoaderRoute: typeof ApiLiveReplayStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/purge': {
+      id: '/api/live-replay/purge'
+      path: '/api/live-replay/purge'
+      fullPath: '/api/live-replay/purge'
+      preLoaderRoute: typeof ApiLiveReplayPurgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/play-url': {
+      id: '/api/live-replay/play-url'
+      path: '/api/live-replay/play-url'
+      fullPath: '/api/live-replay/play-url'
+      preLoaderRoute: typeof ApiLiveReplayPlayUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live-replay/delete': {
+      id: '/api/live-replay/delete'
+      path: '/api/live-replay/delete'
+      fullPath: '/api/live-replay/delete'
+      preLoaderRoute: typeof ApiLiveReplayDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/status': {
+      id: '/api/facebook/status'
+      path: '/api/facebook/status'
+      fullPath: '/api/facebook/status'
+      preLoaderRoute: typeof ApiFacebookStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/restream': {
+      id: '/api/facebook/restream'
+      path: '/api/facebook/restream'
+      fullPath: '/api/facebook/restream'
+      preLoaderRoute: typeof ApiFacebookRestreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/pages': {
+      id: '/api/facebook/pages'
+      path: '/api/facebook/pages'
+      fullPath: '/api/facebook/pages'
+      preLoaderRoute: typeof ApiFacebookPagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/disconnect': {
+      id: '/api/facebook/disconnect'
+      path: '/api/facebook/disconnect'
+      fullPath: '/api/facebook/disconnect'
+      preLoaderRoute: typeof ApiFacebookDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/email-confirm/verify': {
+      id: '/api/email-confirm/verify'
+      path: '/api/email-confirm/verify'
+      fullPath: '/api/email-confirm/verify'
+      preLoaderRoute: typeof ApiEmailConfirmVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/email-confirm/send': {
+      id: '/api/email-confirm/send'
+      path: '/api/email-confirm/send'
+      fullPath: '/api/email-confirm/send'
+      preLoaderRoute: typeof ApiEmailConfirmSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/status': {
+      id: '/api/connect/status'
+      path: '/api/connect/status'
+      fullPath: '/api/connect/status'
+      preLoaderRoute: typeof ApiConnectStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/payout': {
+      id: '/api/connect/payout'
+      path: '/api/connect/payout'
+      fullPath: '/api/connect/payout'
+      preLoaderRoute: typeof ApiConnectPayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/onboard': {
+      id: '/api/connect/onboard'
+      path: '/api/connect/onboard'
+      fullPath: '/api/connect/onboard'
+      preLoaderRoute: typeof ApiConnectOnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect/login-link': {
+      id: '/api/connect/login-link'
+      path: '/api/connect/login-link'
+      fullPath: '/api/connect/login-link'
+      preLoaderRoute: typeof ApiConnectLoginLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/checkout/confirm': {
+      id: '/api/checkout/confirm'
+      path: '/confirm'
+      fullPath: '/api/checkout/confirm'
+      preLoaderRoute: typeof ApiCheckoutConfirmRouteImport
+      parentRoute: typeof ApiCheckoutRoute
+    }
+    '/api/checkout/cancel-intent': {
+      id: '/api/checkout/cancel-intent'
+      path: '/cancel-intent'
+      fullPath: '/api/checkout/cancel-intent'
+      preLoaderRoute: typeof ApiCheckoutCancelIntentRouteImport
+      parentRoute: typeof ApiCheckoutRoute
+    }
+    '/api/admin/test-push': {
+      id: '/api/admin/test-push'
+      path: '/api/admin/test-push'
+      fullPath: '/api/admin/test-push'
+      preLoaderRoute: typeof ApiAdminTestPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/push': {
+      id: '/api/admin/push'
+      path: '/api/admin/push'
+      fullPath: '/api/admin/push'
+      preLoaderRoute: typeof ApiAdminPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/payments-mode': {
+      id: '/api/admin/payments-mode'
+      path: '/api/admin/payments-mode'
+      fullPath: '/api/admin/payments-mode'
+      preLoaderRoute: typeof ApiAdminPaymentsModeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/preview': {
@@ -1953,11 +1845,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/oauth/start': {
+      id: '/api/youtube/oauth/start'
+      path: '/api/youtube/oauth/start'
+      fullPath: '/api/youtube/oauth/start'
+      preLoaderRoute: typeof ApiYoutubeOauthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/youtube/oauth/callback': {
+      id: '/api/youtube/oauth/callback'
+      path: '/api/youtube/oauth/callback'
+      fullPath: '/api/youtube/oauth/callback'
+      preLoaderRoute: typeof ApiYoutubeOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/oauth/start': {
+      id: '/api/facebook/oauth/start'
+      path: '/api/facebook/oauth/start'
+      fullPath: '/api/facebook/oauth/start'
+      preLoaderRoute: typeof ApiFacebookOauthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/facebook/oauth/callback': {
+      id: '/api/facebook/oauth/callback'
+      path: '/api/facebook/oauth/callback'
+      fullPath: '/api/facebook/oauth/callback'
+      preLoaderRoute: typeof ApiFacebookOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -2035,7 +1955,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCheckoutRoute: ApiCheckoutRouteWithChildren,
   ApiLivekitIngressRoute: ApiLivekitIngressRoute,
   ApiLivekitTokenRoute: ApiLivekitTokenRoute,
-  ApiPaydunyaPayoutRoute: ApiPaydunyaPayoutRoute,
   ApiPaypalPayoutRoute: ApiPaypalPayoutRouteWithChildren,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiWalletTopupRoute: ApiWalletTopupRouteWithChildren,
@@ -2052,6 +1971,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
   ApiAdminPaymentsModeRoute: ApiAdminPaymentsModeRoute,
+  ApiAdminPushRoute: ApiAdminPushRoute,
   ApiAdminTestPushRoute: ApiAdminTestPushRoute,
   ApiConnectLoginLinkRoute: ApiConnectLoginLinkRoute,
   ApiConnectOnboardRoute: ApiConnectOnboardRoute,
@@ -2069,9 +1989,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveReplayStartRoute: ApiLiveReplayStartRoute,
   ApiLiveReplayStopRoute: ApiLiveReplayStopRoute,
   ApiLiveReplayWebhookRoute: ApiLiveReplayWebhookRoute,
-  ApiPaydunyaTopupConfirmRoute: ApiPaydunyaTopupConfirmRoute,
-  ApiPaydunyaTopupCreateRoute: ApiPaydunyaTopupCreateRoute,
-  ApiPaydunyaTopupReturnRoute: ApiPaydunyaTopupReturnRoute,
   ApiPaypalCheckoutCaptureRoute: ApiPaypalCheckoutCaptureRoute,
   ApiPaypalCheckoutCreateRoute: ApiPaypalCheckoutCreateRoute,
   ApiPaypalCheckoutReturnRoute: ApiPaypalCheckoutReturnRoute,
@@ -2080,7 +1997,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaypalTopupReturnRoute: ApiPaypalTopupReturnRoute,
   ApiPublicAppVersionRoute: ApiPublicAppVersionRoute,
   ApiPublicNotificationsFanoutRoute: ApiPublicNotificationsFanoutRoute,
-  ApiPublicPaydunyaIpnRoute: ApiPublicPaydunyaIpnRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiSocialChatPollRoute: ApiSocialChatPollRoute,
   ApiSocialChatReplyRoute: ApiSocialChatReplyRoute,
